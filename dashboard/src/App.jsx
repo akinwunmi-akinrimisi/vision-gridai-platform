@@ -5,6 +5,7 @@ import AppLayout from './components/layout/AppLayout';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import ProjectsHome from './pages/ProjectsHome';
 import ProjectDashboard from './pages/ProjectDashboard';
+import NicheResearch from './pages/NicheResearch';
 import TopicReview from './pages/TopicReview';
 import ScriptReview from './pages/ScriptReview';
 import ProductionMonitor from './pages/ProductionMonitor';
@@ -24,6 +25,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<ProjectsHome />} />
           <Route path="/project/:id" element={<ProjectDashboard />} />
+          <Route path="/project/:id/research" element={<NicheResearch />} />
           <Route path="/project/:id/topics" element={<TopicReview />} />
           <Route path="/project/:id/topics/:topicId/script" element={<ScriptReview />} />
           <Route path="/project/:id/production" element={<ProductionMonitor />} />

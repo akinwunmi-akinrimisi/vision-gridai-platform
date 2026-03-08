@@ -25,3 +25,9 @@ export async function webhookCall(endpoint, data = {}) {
     return { success: false, data: null, error: err.message };
   }
 }
+
+/**
+ * Convenience endpoint helpers.
+ */
+export const createProject = (data) => webhookCall('project/create', data);
+export const generateTopics = (projectId) => webhookCall('topics/generate', { project_id: projectId });
