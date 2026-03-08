@@ -43,18 +43,18 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Script Generation
 
-- [ ] **SCPT-01**: 3-pass script generation using dynamic prompts from `prompt_configs`
+- [x] **SCPT-01**: 3-pass script generation using dynamic prompts from `prompt_configs`
 - [ ] **SCPT-02**: Pass 1 (Foundation, 5-7K words) generated with topic + avatar data injected
 - [ ] **SCPT-03**: Pass 2 (Depth, 8-10K words) generated with full Pass 1 as context
 - [ ] **SCPT-04**: Pass 3 (Resolution, 5-7K words) generated with summaries of Pass 1 + 2
-- [ ] **SCPT-05**: Per-pass scoring on 7 dimensions — pass below 6.0 regenerated before next pass
+- [x] **SCPT-05**: Per-pass scoring on 7 dimensions — pass below 6.0 regenerated before next pass
 - [ ] **SCPT-06**: Combined scoring after all 3 passes — below 7.0 triggers weakest pass regeneration
 - [ ] **SCPT-07**: Max 3 regeneration attempts total, force-pass on attempt 3
-- [ ] **SCPT-08**: Visual type assignment (static_image/i2v/t2v) by Claude for each scene
-- [ ] **SCPT-09**: Scene rows inserted into `scenes` table (one row per scene, ~172 per video)
-- [ ] **SCPT-10**: Script Review page shows full script by chapter, per-pass scores, combined score, visual distribution
-- [ ] **SCPT-11**: User can approve script from dashboard (Gate 2)
-- [ ] **SCPT-12**: User can reject script with feedback or refine specific passes
+- [x] **SCPT-08**: Visual type assignment (static_image/i2v/t2v) by Claude for each scene
+- [x] **SCPT-09**: Scene rows inserted into `scenes` table (one row per scene, ~172 per video)
+- [x] **SCPT-10**: Script Review page shows full script by chapter, per-pass scores, combined score, visual distribution
+- [x] **SCPT-11**: User can approve script from dashboard (Gate 2)
+- [x] **SCPT-12**: User can reject script with feedback or refine specific passes
 
 ### Production Pipeline
 
@@ -164,18 +164,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TOPC-08 | Phase 2 | Complete |
 | TOPC-09 | Phase 2 | Pending |
 | TOPC-10 | Phase 2 | Complete |
-| SCPT-01 | Phase 3 | Pending |
+| SCPT-01 | Phase 3 | Complete |
 | SCPT-02 | Phase 3 | Pending |
 | SCPT-03 | Phase 3 | Pending |
 | SCPT-04 | Phase 3 | Pending |
-| SCPT-05 | Phase 3 | Pending |
+| SCPT-05 | Phase 3 | Complete |
 | SCPT-06 | Phase 3 | Pending |
 | SCPT-07 | Phase 3 | Pending |
-| SCPT-08 | Phase 3 | Pending |
-| SCPT-09 | Phase 3 | Pending |
-| SCPT-10 | Phase 3 | Pending |
-| SCPT-11 | Phase 3 | Pending |
-| SCPT-12 | Phase 3 | Pending |
+| SCPT-08 | Phase 3 | Complete |
+| SCPT-09 | Phase 3 | Complete |
+| SCPT-10 | Phase 3 | Complete |
+| SCPT-11 | Phase 3 | Complete |
+| SCPT-12 | Phase 3 | Complete |
 | PROD-01 | Phase 4 | Pending |
 | PROD-02 | Phase 4 | Pending |
 | PROD-03 | Phase 4 | Pending |
