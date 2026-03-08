@@ -139,78 +139,78 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FNDN-01 | — | Pending |
-| FNDN-02 | — | Pending |
-| FNDN-03 | — | Pending |
-| FNDN-04 | — | Pending |
-| FNDN-05 | — | Pending |
-| FNDN-06 | — | Pending |
-| FNDN-07 | — | Pending |
-| FNDN-08 | — | Pending |
-| NICH-01 | — | Pending |
-| NICH-02 | — | Pending |
-| NICH-03 | — | Pending |
-| NICH-04 | — | Pending |
-| NICH-05 | — | Pending |
-| NICH-06 | — | Pending |
-| NICH-07 | — | Pending |
-| TOPC-01 | — | Pending |
-| TOPC-02 | — | Pending |
-| TOPC-03 | — | Pending |
-| TOPC-04 | — | Pending |
-| TOPC-05 | — | Pending |
-| TOPC-06 | — | Pending |
-| TOPC-07 | — | Pending |
-| TOPC-08 | — | Pending |
-| TOPC-09 | — | Pending |
-| TOPC-10 | — | Pending |
-| SCPT-01 | — | Pending |
-| SCPT-02 | — | Pending |
-| SCPT-03 | — | Pending |
-| SCPT-04 | — | Pending |
-| SCPT-05 | — | Pending |
-| SCPT-06 | — | Pending |
-| SCPT-07 | — | Pending |
-| SCPT-08 | — | Pending |
-| SCPT-09 | — | Pending |
-| SCPT-10 | — | Pending |
-| SCPT-11 | — | Pending |
-| SCPT-12 | — | Pending |
-| PROD-01 | — | Pending |
-| PROD-02 | — | Pending |
-| PROD-03 | — | Pending |
-| PROD-04 | — | Pending |
-| PROD-05 | — | Pending |
-| PROD-06 | — | Pending |
-| PROD-07 | — | Pending |
-| PROD-08 | — | Pending |
-| PROD-09 | — | Pending |
-| PROD-10 | — | Pending |
-| PROD-11 | — | Pending |
-| PROD-12 | — | Pending |
-| PROD-13 | — | Pending |
-| PROD-14 | — | Pending |
-| PUBL-01 | — | Pending |
-| PUBL-02 | — | Pending |
-| PUBL-03 | — | Pending |
-| PUBL-04 | — | Pending |
-| PUBL-05 | — | Pending |
-| PUBL-06 | — | Pending |
-| PUBL-07 | — | Pending |
-| ANLY-01 | — | Pending |
-| ANLY-02 | — | Pending |
-| ANLY-03 | — | Pending |
-| ANLY-04 | — | Pending |
-| OPS-01 | — | Pending |
-| OPS-02 | — | Pending |
-| OPS-03 | — | Pending |
-| OPS-04 | — | Pending |
+| FNDN-01 | Phase 1 | Pending |
+| FNDN-02 | Phase 1 | Pending |
+| FNDN-03 | Phase 1 | Pending |
+| FNDN-04 | Phase 1 | Pending |
+| FNDN-05 | Phase 1 | Pending |
+| FNDN-06 | Phase 1 | Pending |
+| FNDN-07 | Phase 1 | Pending |
+| FNDN-08 | Phase 1 | Pending |
+| NICH-01 | Phase 2 | Pending |
+| NICH-02 | Phase 2 | Pending |
+| NICH-03 | Phase 2 | Pending |
+| NICH-04 | Phase 2 | Pending |
+| NICH-05 | Phase 2 | Pending |
+| NICH-06 | Phase 2 | Pending |
+| NICH-07 | Phase 2 | Pending |
+| TOPC-01 | Phase 2 | Pending |
+| TOPC-02 | Phase 2 | Pending |
+| TOPC-03 | Phase 2 | Pending |
+| TOPC-04 | Phase 2 | Pending |
+| TOPC-05 | Phase 2 | Pending |
+| TOPC-06 | Phase 2 | Pending |
+| TOPC-07 | Phase 2 | Pending |
+| TOPC-08 | Phase 2 | Pending |
+| TOPC-09 | Phase 2 | Pending |
+| TOPC-10 | Phase 2 | Pending |
+| SCPT-01 | Phase 3 | Pending |
+| SCPT-02 | Phase 3 | Pending |
+| SCPT-03 | Phase 3 | Pending |
+| SCPT-04 | Phase 3 | Pending |
+| SCPT-05 | Phase 3 | Pending |
+| SCPT-06 | Phase 3 | Pending |
+| SCPT-07 | Phase 3 | Pending |
+| SCPT-08 | Phase 3 | Pending |
+| SCPT-09 | Phase 3 | Pending |
+| SCPT-10 | Phase 3 | Pending |
+| SCPT-11 | Phase 3 | Pending |
+| SCPT-12 | Phase 3 | Pending |
+| PROD-01 | Phase 4 | Pending |
+| PROD-02 | Phase 4 | Pending |
+| PROD-03 | Phase 4 | Pending |
+| PROD-04 | Phase 4 | Pending |
+| PROD-05 | Phase 4 | Pending |
+| PROD-06 | Phase 4 | Pending |
+| PROD-07 | Phase 4 | Pending |
+| PROD-08 | Phase 4 | Pending |
+| PROD-09 | Phase 4 | Pending |
+| PROD-10 | Phase 4 | Pending |
+| PROD-11 | Phase 4 | Pending |
+| PROD-12 | Phase 4 | Pending |
+| PROD-13 | Phase 4 | Pending |
+| PROD-14 | Phase 4 | Pending |
+| OPS-01 | Phase 4 | Pending |
+| OPS-02 | Phase 4 | Pending |
+| PUBL-01 | Phase 5 | Pending |
+| PUBL-02 | Phase 5 | Pending |
+| PUBL-03 | Phase 5 | Pending |
+| PUBL-04 | Phase 5 | Pending |
+| PUBL-05 | Phase 5 | Pending |
+| PUBL-06 | Phase 5 | Pending |
+| PUBL-07 | Phase 5 | Pending |
+| ANLY-01 | Phase 5 | Pending |
+| ANLY-02 | Phase 5 | Pending |
+| ANLY-03 | Phase 5 | Pending |
+| ANLY-04 | Phase 5 | Pending |
+| OPS-03 | Phase 6 | Pending |
+| OPS-04 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 59 total
-- Mapped to phases: 0
-- Unmapped: 59 ⚠️
+- Mapped to phases: 59
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-08*
-*Last updated: 2026-03-08 after initial definition*
+*Last updated: 2026-03-08 after roadmap creation*
