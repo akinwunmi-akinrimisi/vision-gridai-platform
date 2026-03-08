@@ -49,13 +49,13 @@ Plans:
   3. User can approve, reject (with feedback), refine (with custom instructions that consider all 24 other topics), or inline-edit any topic from the dashboard
   4. Bulk actions work (approve all, approve by playlist group)
   5. Projects Home page shows all projects as cards with status, topic count, and key metrics
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
-- [ ] 02-04: TBD
+- [ ] 02-01-PLAN.md -- Reusable UI components (Modal, SidePanel, ConfirmDialog, SkeletonCard, FilterDropdown), data hooks, route wiring, project-scoped sidebar
+- [ ] 02-02-PLAN.md -- Projects Home page with real data, create project modal, n8n project creation + niche research workflow
+- [ ] 02-03-PLAN.md -- Niche Research page with blue-ocean hero, competitor cards, pain points, keywords, playlist angles
+- [ ] 02-04-PLAN.md -- Topic Review page with Gate 1 approval flow, n8n topic generation + action workflows
 
 ### Phase 3: Script Generation
 **Goal**: User can trigger script generation for approved topics and review quality-scored scripts before production begins
@@ -130,7 +130,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-03-08 |
-| 2. Niche Research + Topics | 0/4 | Not started | - |
+| 2. Niche Research + Topics | 0/4 | Planning complete | - |
 | 3. Script Generation | 0/3 | Not started | - |
 | 4. Production Pipeline | 0/5 | Not started | - |
 | 5. Publish + Analytics | 0/3 | Not started | - |
