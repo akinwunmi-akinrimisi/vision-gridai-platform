@@ -34,10 +34,8 @@ vi.mock('../lib/api', () => ({
   webhookCall: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-// Import component under test -- does not exist yet (RED phase)
 import ScorePanel from '../components/script/ScorePanel';
 
-// Mock score data matching script_pass_scores JSONB structure
 const mockCombinedScores = {
   score: 7.8,
   dimensions: {
@@ -92,19 +90,32 @@ const mockPassScores = {
   combined: mockCombinedScores,
 };
 
-const mockMetadata = {
+const mockTopic = {
+  id: 'test-topic-id',
   word_count: 18742,
   scene_count: 172,
-  visual_split: { static_image: 75, i2v: 25, t2v: 72 },
   script_attempts: 1,
-};
-
-const mockAvatar = {
-  avatar_name_age: 'Marcus, 34',
-  occupation_income: 'Software Engineer, $145K/yr',
-  pain_point: 'Paying $695/yr, not sure getting value back',
-  emotional_driver: 'Validation anxiety',
-  dream_outcome: 'Confident that annual fee pays for itself',
+  script_quality_score: 7.8,
+  script_pass_scores: mockPassScores,
+  script_review_status: 'pending',
+  script_json: {
+    metadata: { visual_split: { static_image: 75, i2v: 25, t2v: 72 } },
+  },
+  script_metadata: {
+    video_metadata: {
+      title: 'Is the Amex Platinum Worth $695?',
+      description: 'A deep dive into credit card rewards.',
+      tags: ['credit cards', 'amex platinum'],
+      thumbnail_prompt: 'A platinum credit card on a marble surface',
+    },
+  },
+  avatars: [{
+    avatar_name_age: 'Marcus, 34',
+    occupation_income: 'Software Engineer, $145K/yr',
+    pain_point: 'Paying $695/yr, not sure getting value back',
+    emotional_driver: 'Validation anxiety',
+    dream_outcome: 'Confident that annual fee pays for itself',
+  }],
 };
 
 function renderWithProviders(ui) {
@@ -124,66 +135,153 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('ScorePanel — Overall Score (SCPT-05)', () => {
+describe('ScorePanel -- Overall Score (SCPT-05)', () => {
   it('renders overall quality score prominently', () => {
-    // RED: component does not exist yet
-    expect(true).toBe(false);
+    renderWithProviders(
+      <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    const scoreEl = screen.getByTestId('overall-score');
+    expect(scoreEl.textContent).toContain('7.8');
+    expect(scoreEl.textContent).toContain('/10');
   });
 });
 
-describe('ScorePanel — Dimension Bars (SCPT-05)', () => {
+describe('ScorePanel -- Dimension Bars (SCPT-05)', () => {
   it('renders 7 dimension score bars', () => {
-    // RED: 7 bars for persona_integration, hook_strength, pacing, specificity, tts_readability, visual_prompts, anti_patterns
-    expect(true).toBe(false);
+    renderWithProviders(
+      <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    const bars = screen.getByTestId('dimension-bars');
+    expect(bars.children.length).toBe(7);
   });
 
   it('uses green color for scores >= 8', () => {
-    // RED: emerald/green for high scores
-    expect(true).toBe(false);
+    renderWithProviders(
+      <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    // hook_strength is 8.2 -- should be emerald
+    const bar = screen.getByTestId('bar-hook_strength');
+    expect(bar.className).toContain('bg-emerald-500');
   });
 
   it('uses amber color for scores >= 7 and < 8', () => {
-    // RED: amber for mid-range scores
-    expect(true).toBe(false);
+    renderWithProviders(
+      <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    // pacing is 7.5 -- should be amber
+    const bar = screen.getByTestId('bar-pacing');
+    expect(bar.className).toContain('bg-amber-500');
   });
 
   it('uses red color for scores < 7', () => {
-    // RED: red for low scores
-    expect(true).toBe(false);
+    const topicWithLowScore = {
+      ...mockTopic,
+      script_pass_scores: {
+        ...mockPassScores,
+        combined: {
+          ...mockCombinedScores,
+          dimensions: {
+            ...mockCombinedScores.dimensions,
+            tts_readability: 6.5,
+          },
+        },
+      },
+    };
+
+    renderWithProviders(
+      <ScorePanel topic={topicWithLowScore} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    const bar = screen.getByTestId('bar-tts_readability');
+    expect(bar.className).toContain('bg-red-500');
   });
 });
 
-describe('ScorePanel — Metadata', () => {
+describe('ScorePanel -- Metadata', () => {
   it('renders word count, scene count, visual split, and attempts', () => {
-    // RED: metadata section with key stats
-    expect(true).toBe(false);
+    renderWithProviders(
+      <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    const grid = screen.getByTestId('metadata-grid');
+    expect(grid.textContent).toContain('18,742');
+    expect(grid.textContent).toContain('172');
+    expect(grid.textContent).toContain('75 / 25 / 72');
+    expect(grid.textContent).toContain('1 of 3');
   });
 });
 
-describe('ScorePanel — Action Buttons (SCPT-11, SCPT-12)', () => {
+describe('ScorePanel -- Action Buttons (SCPT-11, SCPT-12)', () => {
   it('renders Approve, Reject, and Refine action buttons', () => {
-    // RED: three action buttons
-    expect(true).toBe(false);
+    renderWithProviders(
+      <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    expect(screen.getByTestId('approve-btn')).toBeDefined();
+    expect(screen.getByTestId('reject-btn')).toBeDefined();
+    expect(screen.getByTestId('refine-btn')).toBeDefined();
+    expect(screen.getByTestId('approve-btn').textContent).toContain('Approve Script');
+    expect(screen.getByTestId('reject-btn').textContent).toContain('Reject');
+    expect(screen.getByTestId('refine-btn').textContent).toContain('Refine');
   });
 });
 
-describe('ScorePanel — Per-Pass Breakdown', () => {
+describe('ScorePanel -- Per-Pass Breakdown', () => {
   it('per-pass breakdown is collapsible and collapsed by default', () => {
-    // RED: collapsible section for pass1/pass2/pass3 individual scores
-    expect(true).toBe(false);
+    renderWithProviders(
+      <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    // Per-pass breakdown should be collapsed -- individual pass scores should not be visible initially
+    expect(screen.queryByText('Pass 1: 7.2/10')).toBeNull();
+
+    // Click the "Per-Pass Breakdown" toggle
+    const toggleBtn = screen.getByText('Per-Pass Breakdown');
+    fireEvent.click(toggleBtn);
+
+    // Now pass scores should be visible
+    expect(screen.getByText('Pass 1: 7.2/10')).toBeDefined();
+    expect(screen.getByText('Pass 2: 7.9/10')).toBeDefined();
+    expect(screen.getByText('Pass 3: 8.1/10')).toBeDefined();
   });
 });
 
-describe('ScorePanel — Customer Avatar', () => {
+describe('ScorePanel -- Customer Avatar', () => {
   it('shows collapsible customer avatar section', () => {
-    // RED: avatar data in collapsible section
-    expect(true).toBe(false);
+    renderWithProviders(
+      <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    // Collapsed by default
+    expect(screen.queryByText('Marcus, 34')).toBeNull();
+
+    // Toggle open
+    const toggleBtn = screen.getByText('Customer Avatar');
+    fireEvent.click(toggleBtn);
+
+    expect(screen.getByText('Marcus, 34')).toBeDefined();
+    expect(screen.getByText('Software Engineer, $145K/yr')).toBeDefined();
   });
 });
 
-describe('ScorePanel — YouTube Metadata', () => {
+describe('ScorePanel -- YouTube Metadata', () => {
   it('shows collapsible YouTube metadata section', () => {
-    // RED: YouTube title, description, tags in collapsible section
-    expect(true).toBe(false);
+    renderWithProviders(
+      <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
+    );
+
+    // Collapsed by default
+    expect(screen.queryByText('Is the Amex Platinum Worth $695?')).toBeNull();
+
+    // Toggle open
+    const toggleBtn = screen.getByText('YouTube Metadata');
+    fireEvent.click(toggleBtn);
+
+    expect(screen.getByText('Is the Amex Platinum Worth $695?')).toBeDefined();
+    expect(screen.getByText('A deep dive into credit card rewards.')).toBeDefined();
   });
 });
