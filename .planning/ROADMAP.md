@@ -133,7 +133,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-03-08 |
 | 2. Niche Research + Topics | 1/5 | Executing | - |
-| 3. Script Generation | 1/4 | In Progress|  |
+| 3. Script Generation | 2/4 | In Progress|  |
 | 4. Production Pipeline | 0/5 | Not started | - |
 | 5. Publish + Analytics | 0/3 | Not started | - |
 | 6. Polish | 0/1 | Not started | - |
