@@ -1,0 +1,131 @@
+{
+  "webhook": {
+    "path": "/webhook/script/generate",
+    "method": "POST",
+    "request": {
+      "topic_id": "uuid"
+    },
+    "immediate_response": {
+      "success": true,
+      "message": "Script generation started"
+    }
+  },
+  "description": "Orchestrates 3-pass script generation with per-pass scoring, visual type assignment, and scene insertion. Returns immediately; progress communicated via Supabase Realtime on topics table (script_pass_scores, status changes).",
+  "async_steps": [
+    {
+      "step": 1,
+      "name": "Initialize",
+      "actions": [
+        "Read topic from Supabase: GET /rest/v1/topics?id=eq.{topic_id}&select=*,avatars(*)",
+        "Read prompt_configs for this project: GET /rest/v1/prompt_configs?project_id=eq.{project_id}&is_active=eq.true",
+        "Validate prompt_configs exist (script_pass1, script_pass2, script_pass3, evaluator, visual_director). If missing, PATCH topics?id=eq.{topic_id} SET status='failed', error_log='Missing prompt configs'",
+        "Read project for niche profile: GET /rest/v1/projects?id=eq.{project_id}",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET status='scripting', script_attempts=script_attempts+1",
+        "POST /rest/v1/production_log INSERT { project_id, topic_id, stage: 'script_generation', action: 'started', details: { attempt: script_attempts } }"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Pass 1 — Foundation (5-7K words)",
+      "actions": [
+        "Inject variables into script_pass1 prompt template: {{niche_expertise_profile}}, {{seo_title}}, {{narrative_hook}}, {{avatar_name_age}}, {{pain_point}}, {{occupation_income}}, {{life_stage}}, {{spending_profile}}, {{knowledge_level}}, {{emotional_driver}}, {{online_hangouts}}, {{objection}}, {{dream_outcome}}, {{playlist_angle}}, {{key_segments}}",
+        "Call Claude Sonnet via Anthropic API (POST https://api.anthropic.com/v1/messages) with injected prompt, max_tokens=8192",
+        "Parse response into scenes array: each scene has { scene_id, narration_text, image_prompt, chapter, emotional_beat }",
+        "Score Pass 1: call evaluator prompt with Pass 1 output text, parse 7-dimension scores (persona_integration, hook_strength, pacing, specificity, tts_readability, visual_prompts, anti_patterns)",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_pass_scores = jsonb_set(script_pass_scores, '{pass1}', '{ \"score\": N, \"dimensions\": {...}, \"feedback\": \"...\" }')",
+        "If pass1.score < 6.0 AND script_attempts < 3: regenerate Pass 1 with evaluator feedback injected as correction context, re-score",
+        "If pass1.score < 6.0 AND script_attempts >= 3: continue anyway (will force-pass at combined evaluation)",
+        "POST /rest/v1/production_log INSERT { stage: 'script_generation', action: 'pass1_complete', details: { score, word_count } }"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Pass 2 — Depth (8-10K words)",
+      "actions": [
+        "Inject variables into script_pass2 prompt template + include FULL Pass 1 output as context",
+        "Call Claude Sonnet via Anthropic API with Pass 2 prompt, max_tokens=12288",
+        "Parse response into scenes array",
+        "Score Pass 2: call evaluator prompt with Pass 2 output text, parse 7-dimension scores",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_pass_scores = jsonb_set(script_pass_scores, '{pass2}', '{ \"score\": N, \"dimensions\": {...}, \"feedback\": \"...\" }')",
+        "Same retry logic as Pass 1 for score < 6.0",
+        "POST /rest/v1/production_log INSERT { stage: 'script_generation', action: 'pass2_complete', details: { score, word_count } }"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Pass 3 — Resolution (5-7K words)",
+      "actions": [
+        "Generate summaries of Pass 1 + Pass 2 (condensed to ~2K words each, not full text)",
+        "Inject variables into script_pass3 prompt template + include Pass 1 and Pass 2 summaries",
+        "Call Claude Sonnet via Anthropic API with Pass 3 prompt, max_tokens=8192",
+        "Parse response into scenes array",
+        "Score Pass 3: call evaluator prompt with Pass 3 output text, parse 7-dimension scores",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_pass_scores = jsonb_set(script_pass_scores, '{pass3}', '{ \"score\": N, \"dimensions\": {...}, \"feedback\": \"...\" }')",
+        "POST /rest/v1/production_log INSERT { stage: 'script_generation', action: 'pass3_complete', details: { score, word_count } }"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Combined Evaluation",
+      "actions": [
+        "Concatenate all 3 passes into full script (ordered by scene_number across passes)",
+        "Call evaluator prompt with full combined script text",
+        "Parse 7-dimension scores for combined output",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_pass_scores = jsonb_set(script_pass_scores, '{combined}', '{ \"score\": N, \"dimensions\": {...}, \"feedback\": \"...\" }'), script_quality_score = combined.score, script_evaluation = { dimensions, feedback, timestamp }",
+        "If combined.score < 7.0 AND script_attempts < 3: identify weakest pass (lowest average dimension score), regenerate that pass only with evaluator feedback, re-evaluate combined",
+        "If combined.score < 7.0 AND script_attempts >= 3: PATCH /rest/v1/topics?id=eq.{topic_id} SET script_force_passed = true",
+        "POST /rest/v1/production_log INSERT { stage: 'script_generation', action: 'combined_evaluation', details: { combined_score, force_passed, attempts } }"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Visual Type Assignment",
+      "actions": [
+        "Call Claude with visual_director prompt from prompt_configs + full scene list as context",
+        "Claude assigns visual_type to each scene: 'static_image' (~75 scenes), 'i2v' (~25 scenes), 't2v' (~72 scenes)",
+        "Assignment rules: emotional/action scenes get i2v, abstract/concept scenes get t2v, descriptive/data scenes get static_image",
+        "Update scenes array with visual_type assignments",
+        "POST /rest/v1/production_log INSERT { stage: 'script_generation', action: 'visual_assignment', details: { static_image_count, i2v_count, t2v_count } }"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Store Results",
+      "actions": [
+        "Build script_json JSONB: { scenes: [...], chapters: [...], metadata: { total_words, total_scenes, visual_split: { static_image: N, i2v: N, t2v: N } } }",
+        "Build script_metadata JSONB: { video_metadata: { title, description, tags: [...], thumbnail_prompt } }",
+        "Count total words across all scenes (sum of narration_text word counts)",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_json=..., script_metadata=..., word_count=N, scene_count=N",
+        "DELETE existing scenes for this topic (if retry): DELETE /rest/v1/scenes?topic_id=eq.{topic_id}",
+        "Bulk INSERT ~172 scene rows: POST /rest/v1/scenes with Prefer: return=minimal header",
+        "Each scene row: { topic_id, project_id, scene_number, scene_id, narration_text, image_prompt, visual_type, emotional_beat, chapter }",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET status='review' (signals dashboard to show script for Gate 2 review)",
+        "POST /rest/v1/production_log INSERT { stage: 'script_generation', action: 'completed', details: { word_count, scene_count, quality_score, force_passed, attempts } }"
+      ]
+    }
+  ],
+  "error_handling": {
+    "on_claude_api_error": "PATCH /rest/v1/topics?id=eq.{topic_id} SET status='failed', error_log=error_message. POST /rest/v1/production_log INSERT { stage: 'script_generation', action: 'failed', details: { error, step } }.",
+    "on_supabase_write_error": "Retry once with 5s delay. If still fails, PATCH topics status='failed' with error details.",
+    "on_timeout": "Each Claude call has 120s timeout. If exceeded, log timeout error and fail the current pass. Retry logic applies if attempts remain.",
+    "on_parse_error": "If Claude response cannot be parsed into scenes array, log raw response in production_log and retry the pass with explicit JSON formatting instructions."
+  },
+  "supabase_writes_summary": {
+    "topics_patches": "6-8 (status transitions + score updates per pass)",
+    "scenes_delete": "1 (cleanup before insert, if retry)",
+    "scenes_inserts": "~172 (bulk POST with JSON array body)",
+    "production_log_inserts": "7-9 (1 per step + error entries)"
+  },
+  "realtime_events": {
+    "topics.status": "scripting -> review (or failed)",
+    "topics.script_pass_scores": "Updated after each pass scoring (dashboard shows live pass tracker)",
+    "topics.script_quality_score": "Set after combined evaluation"
+  },
+  "notes": [
+    "Per-pass threshold: 6.0. Combined threshold: 7.0. Max 3 total attempts.",
+    "Prompts are loaded from prompt_configs table — NEVER hardcoded in workflow.",
+    "All variable injection uses the topic + avatar + project data from Supabase.",
+    "The dashboard subscribes to topics.script_pass_scores changes for live pass-by-pass progress display.",
+    "After status='review', the Script Review page becomes accessible for Gate 2 approval."
+  ]
+}
