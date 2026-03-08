@@ -31,12 +31,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Supabase Realtime subscription fires when a row is updated in any tracked table (projects, topics, scenes) and the dashboard reflects the change without page refresh
   4. n8n webhook endpoints accept POST requests from the dashboard and return responses (testable via curl)
   5. Design system colors, typography, and spacing from MASTER.md are visibly applied across all page shells
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
 - [ ] 01-01-PLAN.md -- Vite scaffold, routing, sidebar, auth gate, design system
 - [ ] 01-02-PLAN.md -- Supabase client, TanStack Query, Realtime hook, webhook API
 - [ ] 01-03-PLAN.md -- Infrastructure hardening (n8n timeouts, PostgreSQL tuning, Docker memory limits)
+- [ ] 01-04-PLAN.md -- n8n webhook stub workflows (status, project/create, topics/generate, topics/action)
 
 ### Phase 2: Niche Research + Topics
 **Goal**: User can create a project, have it researched automatically, generate 25 topics, and approve/reject/refine them from the dashboard
@@ -128,7 +129,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/3 | Not started | - |
+| 1. Foundation | 0/4 | Not started | - |
 | 2. Niche Research + Topics | 0/4 | Not started | - |
 | 3. Script Generation | 0/3 | Not started | - |
 | 4. Production Pipeline | 0/5 | Not started | - |
