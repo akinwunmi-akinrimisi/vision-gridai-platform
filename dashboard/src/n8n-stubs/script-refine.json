@@ -1,0 +1,114 @@
+{
+  "webhook": {
+    "path": "/webhook/script/refine",
+    "method": "POST",
+    "request": {
+      "topic_id": "uuid",
+      "instructions": "string (user's refinement instructions, e.g. 'the hook is weak, make it more confrontational')"
+    },
+    "immediate_response": {
+      "success": true,
+      "message": "Refinement started"
+    }
+  },
+  "description": "Refines the script by regenerating the weakest pass with user instructions injected as additional context. Returns immediately; progress communicated via Supabase Realtime.",
+  "async_steps": [
+    {
+      "step": 1,
+      "name": "Read current script state",
+      "actions": [
+        "Read topic: GET /rest/v1/topics?id=eq.{topic_id}&select=script_json,script_pass_scores,script_metadata,project_id",
+        "Read prompt_configs: GET /rest/v1/prompt_configs?project_id=eq.{project_id}&is_active=eq.true",
+        "Read project for niche profile: GET /rest/v1/projects?id=eq.{project_id}"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Identify weakest pass",
+      "actions": [
+        "Compare script_pass_scores.pass1.score, pass2.score, pass3.score",
+        "Select the pass with the lowest score as the regeneration target",
+        "If scores are equal, prefer regenerating Pass 1 (foundation affects everything downstream)"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Update status",
+      "actions": [
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET status='scripting', script_review_status='refining'",
+        "POST /rest/v1/production_log INSERT { stage: 'script_refinement', action: 'started', details: { target_pass, instructions } }"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Regenerate weakest pass",
+      "actions": [
+        "Load the prompt template for the target pass (script_pass1, script_pass2, or script_pass3)",
+        "Inject standard variables + user instructions as additional refinement context",
+        "If regenerating Pass 2: include Pass 1 output as context (same as original generation)",
+        "If regenerating Pass 3: include Pass 1 + Pass 2 summaries as context",
+        "Call Claude Sonnet via Anthropic API with augmented prompt",
+        "Parse response into scenes array"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Re-score regenerated pass",
+      "actions": [
+        "Call evaluator prompt with regenerated pass output",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_pass_scores.{target_pass} = { score, dimensions, feedback }"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Re-evaluate combined script",
+      "actions": [
+        "Replace the target pass scenes in the full script with regenerated scenes",
+        "Call evaluator with full combined script",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_pass_scores.combined = { score, dimensions, feedback }, script_quality_score = new_combined_score, script_evaluation = { dimensions, feedback, timestamp }"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Update stored script",
+      "actions": [
+        "Rebuild script_json with updated scenes from regenerated pass",
+        "Recalculate word_count and scene_count",
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_json=..., word_count=N, scene_count=N",
+        "DELETE scenes for this topic that belong to the regenerated pass range: DELETE /rest/v1/scenes?topic_id=eq.{topic_id}&scene_number=gte.{start}&scene_number=lte.{end}",
+        "INSERT replacement scene rows for the regenerated pass: POST /rest/v1/scenes",
+        "Append to refinement_history: PATCH /rest/v1/topics?id=eq.{topic_id} SET refinement_history = refinement_history || [{ instructions, timestamp, pass_regenerated, old_score, new_score }]"
+      ]
+    },
+    {
+      "step": 8,
+      "name": "Finalize",
+      "actions": [
+        "PATCH /rest/v1/topics?id=eq.{topic_id} SET status='review', script_review_status='pending'",
+        "POST /rest/v1/production_log INSERT { stage: 'script_refinement', action: 'completed', details: { pass_regenerated, old_score, new_score, instructions } }"
+      ]
+    }
+  ],
+  "error_handling": {
+    "on_claude_api_error": "PATCH topics status='failed', error_log=error_message. Log to production_log.",
+    "on_supabase_write_error": "Retry once. If still fails, PATCH topics status='failed'.",
+    "on_timeout": "120s timeout per Claude call. On timeout, fail and restore previous status='review'."
+  },
+  "supabase_writes_summary": {
+    "topics_patches": "4 (status transitions + score updates + script_json + refinement_history)",
+    "scenes_deletes": "1 (affected pass range)",
+    "scenes_inserts": "~50-70 (replacement scenes for regenerated pass)",
+    "production_log_inserts": 2
+  },
+  "realtime_events": {
+    "topics.status": "review -> scripting -> review",
+    "topics.script_review_status": "pending -> refining -> pending",
+    "topics.script_pass_scores": "Updated for regenerated pass + combined"
+  },
+  "notes": [
+    "Refinement regenerates only ONE pass (the weakest), not the entire script.",
+    "User instructions are injected as additional context alongside the original prompt template.",
+    "The refinement_history array tracks all refinement attempts for audit trail.",
+    "After refinement completes, the script returns to 'review' status for re-evaluation by the user."
+  ]
+}

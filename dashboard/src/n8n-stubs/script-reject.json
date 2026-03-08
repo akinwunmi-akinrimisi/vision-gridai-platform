@@ -1,0 +1,40 @@
+{
+  "webhook": {
+    "path": "/webhook/script/reject",
+    "method": "POST",
+    "request": {
+      "topic_id": "uuid",
+      "feedback": "string (optional rejection reason / instructions for improvement)"
+    },
+    "response": {
+      "success": true
+    }
+  },
+  "description": "Gate 2 rejection: marks script as rejected with optional feedback. The user can later trigger refinement or full regeneration. Synchronous — returns immediately with result.",
+  "sync_steps": [
+    {
+      "step": 1,
+      "name": "Update topic status",
+      "action": "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_review_status='rejected', script_review_feedback=feedback"
+    },
+    {
+      "step": 2,
+      "name": "Log rejection",
+      "action": "POST /rest/v1/production_log INSERT { project_id, topic_id, stage: 'script_review', action: 'rejected', details: { feedback } }"
+    }
+  ],
+  "error_handling": {
+    "on_supabase_write_error": "Return { success: false, error: 'Failed to update topic status' } with HTTP 500",
+    "on_topic_not_found": "Return { success: false, error: 'Topic not found' } with HTTP 404"
+  },
+  "supabase_writes_summary": {
+    "topics_patches": 1,
+    "production_log_inserts": 1
+  },
+  "notes": [
+    "Rejection does not delete the script — it remains viewable in Script Review page.",
+    "User can trigger /webhook/script/refine after rejection to improve the script.",
+    "User can trigger /webhook/script/generate again for a full re-generation (increments script_attempts).",
+    "The feedback field is stored for reference and can be shown in refinement history."
+  ]
+}

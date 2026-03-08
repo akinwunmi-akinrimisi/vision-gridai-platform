@@ -1,0 +1,42 @@
+{
+  "webhook": {
+    "path": "/webhook/script/approve",
+    "method": "POST",
+    "request": {
+      "topic_id": "uuid"
+    },
+    "response": {
+      "success": true,
+      "data": {
+        "topic_id": "uuid",
+        "script_review_status": "approved"
+      }
+    }
+  },
+  "description": "Gate 2 approval: marks script as approved, setting topic status to 'approved' which signals readiness for Phase 4 production pipeline. Synchronous — returns immediately with result.",
+  "sync_steps": [
+    {
+      "step": 1,
+      "name": "Update topic status",
+      "action": "PATCH /rest/v1/topics?id=eq.{topic_id} SET script_review_status='approved', status='approved'"
+    },
+    {
+      "step": 2,
+      "name": "Log approval",
+      "action": "POST /rest/v1/production_log INSERT { project_id, topic_id, stage: 'script_review', action: 'approved', details: { quality_score: topic.script_quality_score, force_passed: topic.script_force_passed } }"
+    }
+  ],
+  "error_handling": {
+    "on_supabase_write_error": "Return { success: false, error: 'Failed to update topic status' } with HTTP 500",
+    "on_topic_not_found": "Return { success: false, error: 'Topic not found' } with HTTP 404"
+  },
+  "supabase_writes_summary": {
+    "topics_patches": 1,
+    "production_log_inserts": 1
+  },
+  "notes": [
+    "After approval, status='approved' signals Phase 4 production pipeline can begin.",
+    "Phase 3 does NOT wire production triggers — it only sets the status.",
+    "The dashboard reads script_review_status to show approval badges on Topic Review cards."
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "webhook": {
+    "path": "/webhook/script/regen-prompts",
+    "method": "POST",
+    "request": {
+      "topic_id": "uuid",
+      "scene_ids": ["uuid1", "uuid2", "..."]
+    },
+    "immediate_response": {
+      "success": true,
+      "message": "Prompt regeneration started"
+    }
+  },
+  "description": "Batch regenerates image_prompt for specified scenes using the visual_director prompt and each scene's narration_text. Returns immediately; updated prompts written via Supabase.",
+  "async_steps": [
+    {
+      "step": 1,
+      "name": "Read scene and prompt data",
+      "actions": [
+        "Read scenes by IDs: GET /rest/v1/scenes?id=in.({scene_ids_comma_separated})&select=id,scene_number,scene_id,narration_text,visual_type,chapter,emotional_beat",
+        "Read topic for project_id: GET /rest/v1/topics?id=eq.{topic_id}&select=project_id",
+        "Read visual_director prompt: GET /rest/v1/prompt_configs?project_id=eq.{project_id}&prompt_type=eq.visual_director&is_active=eq.true"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Regenerate image prompts",
+      "actions": [
+        "For each scene in the batch: call Claude with visual_director prompt + scene narration_text + visual_type + emotional_beat + chapter context",
+        "Parse response to extract new image_prompt for each scene",
+        "Batch scenes into groups of 10-20 per Claude call for efficiency (pass multiple scenes in one prompt)"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Update scenes",
+      "actions": [
+        "For each scene: PATCH /rest/v1/scenes?id=eq.{scene_id} SET image_prompt=new_prompt",
+        "Also update the scene's image_prompt in topics.script_json.scenes array: read-modify-write on topics.script_json",
+        "POST /rest/v1/production_log INSERT { stage: 'prompt_regeneration', action: 'completed', details: { scene_count: N, scene_ids } }"
+      ]
+    }
+  ],
+  "error_handling": {
+    "on_claude_api_error": "Log error to production_log. Partial success is OK — scenes that succeeded keep their new prompts, failed scenes retain original prompts.",
+    "on_supabase_write_error": "Retry individual scene PATCH once. Log failures.",
+    "on_empty_scene_ids": "Return { success: false, error: 'No scene IDs provided' } synchronously (do not start async)."
+  },
+  "supabase_writes_summary": {
+    "scenes_patches": "N (one per scene in batch)",
+    "topics_patches": "1 (update script_json with new prompts)",
+    "production_log_inserts": 1
+  },
+  "realtime_events": {
+    "scenes.image_prompt": "Updated per scene as prompts are regenerated"
+  },
+  "notes": [
+    "This is a batch operation — the dashboard collects edited scenes and sends all IDs at once.",
+    "The 'Regenerate Edited Prompts' toolbar button in Script Review triggers this endpoint.",
+    "Image prompts are regenerated using the visual_director prompt, not the original script generation prompts.",
+    "Both the scenes table rows AND the topics.script_json are updated to stay in sync.",
+    "Partial success is acceptable — the dashboard can show which scenes were updated."
+  ]
+}
