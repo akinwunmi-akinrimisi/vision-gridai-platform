@@ -1,0 +1,79 @@
+{
+  "name": "WF_TOPICS_GENERATE — Generate 25 Topics + Avatars",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "topics/generate", "responseMode": "responseNode", "options": { "allowedOrigins": "*" } },
+      "id": "wf-tg-webhook", "name": "Webhook Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [200, 300]
+    },
+    {
+      "parameters": { "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst project_id = body.project_id;\nif (!project_id) throw new Error('project_id required');\nreturn [{ json: { project_id } }];" },
+      "id": "wf-tg-validate", "name": "Validate", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [400, 300]
+    },
+    {
+      "parameters": { "method": "GET", "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $json.project_id }}&select=*", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" }] }, "options": {} },
+      "id": "wf-tg-read-project", "name": "Read Project", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [600, 200],
+      "credentials": { "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": { "method": "GET", "url": "={{$env.SUPABASE_URL}}/rest/v1/prompt_configs?project_id=eq.{{ $('Validate').first().json.project_id }}&prompt_type=eq.topic_generator&is_active=eq.true&limit=1", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" }] }, "options": {} },
+      "id": "wf-tg-read-prompt", "name": "Read Prompt Config", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [600, 400],
+      "credentials": { "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": { "jsCode": "const project = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst promptRow = $('Read Prompt Config').first().json[0] || $('Read Prompt Config').first().json;\nconst project_id = $('Validate').first().json.project_id;\n\nlet prompt = promptRow?.prompt_text || '';\nprompt = prompt.replace(/\\{\\{niche\\}\\}/g, project.niche || '')\n  .replace(/\\{\\{playlist1_name\\}\\}/g, project.playlist1_name || '')\n  .replace(/\\{\\{playlist1_theme\\}\\}/g, project.playlist1_theme || '')\n  .replace(/\\{\\{playlist2_name\\}\\}/g, project.playlist2_name || '')\n  .replace(/\\{\\{playlist2_theme\\}\\}/g, project.playlist2_theme || '')\n  .replace(/\\{\\{playlist3_name\\}\\}/g, project.playlist3_name || '')\n  .replace(/\\{\\{playlist3_theme\\}\\}/g, project.playlist3_theme || '')\n  .replace(/\\{\\{expertise_profile\\}\\}/g, project.niche_expertise_profile || '')\n  .replace(/\\{\\{blue_ocean_strategy\\}\\}/g, project.niche_blue_ocean_strategy || '')\n  .replace(/\\{\\{target_video_count\\}\\}/g, String(project.target_video_count || 25));\n\nif (!prompt) {\n  prompt = `Generate ${project.target_video_count || 25} SEO-optimized YouTube topics for the niche \"${project.niche}\". Return JSON array with topic objects including: topic_number, playlist_group (1-3), playlist_angle, seo_title, narrative_hook, key_segments, estimated_cpm, viral_potential, and nested avatar object with: avatar_name_age, occupation_income, life_stage, pain_point, spending_profile, knowledge_level, emotional_driver, online_hangouts, objection, dream_outcome.`;\n}\n\nreturn [{ json: { project_id, niche: project.niche, prompt } }];" },
+      "id": "wf-tg-build-prompt", "name": "Build Prompt", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [820, 300]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ JSON.stringify({ success: true }) }}", "options": { "responseCode": 200 } },
+      "id": "wf-tg-respond", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [1040, 160]
+    },
+    {
+      "parameters": { "method": "PATCH", "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $json.project_id }}", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" }, { "name": "Prefer", "value": "return=minimal" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ status: 'generating_topics' }) }}", "options": {} },
+      "id": "wf-tg-status-generating", "name": "Status → Generating", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1040, 440],
+      "credentials": { "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": { "method": "POST", "url": "https://api.anthropic.com/v1/messages", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }, { "name": "content-type", "value": "application/json" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 16384, system: $('Build Prompt').first().json.prompt.substring(0, 500), messages: [{ role: 'user', content: $('Build Prompt').first().json.prompt }] }) }}", "options": { "timeout": 120000 } },
+      "id": "wf-tg-anthropic", "name": "Claude: Generate Topics", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1260, 440],
+      "credentials": { "httpHeaderAuth": { "id": "anthropic-api-key", "name": "Anthropic API Key" } },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": { "jsCode": "const response = $input.first().json;\nif (response.error) throw new Error(`Anthropic error: ${response.error.message}`);\nconst text = (response.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\nlet jsonText = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst s = jsonText.indexOf('['), e = jsonText.lastIndexOf(']');\nif (s === -1 || e === -1) throw new Error('No JSON array in response');\nconst topics = JSON.parse(jsonText.substring(s, e + 1));\nconst project_id = $('Validate').first().json.project_id;\nconst topicRows = topics.map((t, i) => ({ project_id, topic_number: t.topic_number || i + 1, playlist_group: t.playlist_group, playlist_angle: t.playlist_angle, original_title: t.seo_title, seo_title: t.seo_title, narrative_hook: t.narrative_hook, key_segments: t.key_segments, estimated_cpm: t.estimated_cpm, viral_potential: t.viral_potential, review_status: 'pending', status: 'pending' }));\nconst avatarData = topics.map(t => t.avatar || {});\nreturn [{ json: { project_id, topicRows, avatarData } }];" },
+      "id": "wf-tg-parse", "name": "Parse Topics", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1480, 440]
+    },
+    {
+      "parameters": { "method": "POST", "url": "={{$env.SUPABASE_URL}}/rest/v1/topics", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" }, { "name": "Prefer", "value": "return=representation" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify($json.topicRows) }}", "options": {} },
+      "id": "wf-tg-insert-topics", "name": "INSERT Topics", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1700, 440],
+      "credentials": { "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": { "jsCode": "const insertedTopics = $input.first().json;\nconst topics = Array.isArray(insertedTopics) ? insertedTopics : [insertedTopics];\nconst avatarData = $('Parse Topics').first().json.avatarData;\nconst project_id = $('Validate').first().json.project_id;\nconst avatarRows = topics.map((t, i) => {\n  const a = avatarData[i] || {};\n  return { topic_id: t.id, project_id, video_title_short: t.seo_title, avatar_name_age: a.avatar_name_age, occupation_income: a.occupation_income, life_stage: a.life_stage, pain_point: a.pain_point, spending_profile: a.spending_profile, knowledge_level: a.knowledge_level, emotional_driver: a.emotional_driver, online_hangouts: a.online_hangouts, objection: a.objection, dream_outcome: a.dream_outcome, review_status: 'pending' };\n});\nreturn [{ json: { project_id, avatarRows } }];" },
+      "id": "wf-tg-map-avatars", "name": "Map Avatars", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1920, 440]
+    },
+    {
+      "parameters": { "method": "POST", "url": "={{$env.SUPABASE_URL}}/rest/v1/avatars", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" }, { "name": "Prefer", "value": "return=minimal" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify($json.avatarRows) }}", "options": {} },
+      "id": "wf-tg-insert-avatars", "name": "INSERT Avatars", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [2140, 440],
+      "credentials": { "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": { "method": "PATCH", "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Validate').first().json.project_id }}", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" }, { "name": "Prefer", "value": "return=minimal" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ status: 'topics_pending_review' }) }}", "options": {} },
+      "id": "wf-tg-status-ready", "name": "Status → Topics Pending", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [2360, 440],
+      "credentials": { "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase Service Role" } }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": { "main": [[{ "node": "Validate", "type": "main", "index": 0 }]] },
+    "Validate": { "main": [[{ "node": "Read Project", "type": "main", "index": 0 }, { "node": "Read Prompt Config", "type": "main", "index": 0 }]] },
+    "Read Project": { "main": [[{ "node": "Build Prompt", "type": "main", "index": 0 }]] },
+    "Read Prompt Config": { "main": [[{ "node": "Build Prompt", "type": "main", "index": 0 }]] },
+    "Build Prompt": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }, { "node": "Status → Generating", "type": "main", "index": 0 }]] },
+    "Status → Generating": { "main": [[{ "node": "Claude: Generate Topics", "type": "main", "index": 0 }]] },
+    "Claude: Generate Topics": { "main": [[{ "node": "Parse Topics", "type": "main", "index": 0 }]] },
+    "Parse Topics": { "main": [[{ "node": "INSERT Topics", "type": "main", "index": 0 }]] },
+    "INSERT Topics": { "main": [[{ "node": "Map Avatars", "type": "main", "index": 0 }]] },
+    "Map Avatars": { "main": [[{ "node": "INSERT Avatars", "type": "main", "index": 0 }]] },
+    "INSERT Avatars": { "main": [[{ "node": "Status → Topics Pending", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
