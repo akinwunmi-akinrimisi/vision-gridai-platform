@@ -20,12 +20,15 @@ export default function ConfirmDialog({
   confirmText = 'Confirm',
   confirmVariant = 'primary',
   loading = false,
+  children,
 }) {
   const variantStyles = {
     primary:
       'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30',
     danger:
       'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30',
+    success:
+      'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30',
   };
 
   return (
@@ -33,6 +36,7 @@ export default function ConfirmDialog({
       <div className="space-y-5">
         <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
           {message}
+          {children}
         </div>
 
         <div className="flex items-center justify-end gap-3">
