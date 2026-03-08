@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-08T19:49:16.708Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-08T20:01:53.056Z"
 last_activity: 2026-03-08 — Plan 02-00 executed (Wave 0 test scaffolds)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 ---
@@ -70,6 +70,7 @@ Progress: [██████░░░░] 56% (5/9 total plans)
 | Phase 02 P00 | 4min | 1 task | 6 files |
 | Phase 03 P00 | 5min | 2 tasks | 8 files |
 | Phase 03 P01 | 5min | 2 tasks | 11 files |
+| Phase 03 P02 | 9min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - 02-00: Tests use vi.mock for supabase, react-router, and api modules rather than dynamic imports
 - [Phase 03]: Created stub files for hooks/components so Vite resolves imports in RED phase tests
 - [Phase 03]: ScorePanel uses CollapsibleSection sub-component for avatar, YouTube metadata, and per-pass breakdown
+- [Phase 03]: Scenes sourced from useScenes hook with fallback to topic.script_json.scenes
+- [Phase 03]: TopicCard renders View Script link instead of Edit button for approved topics
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-08T19:49:16.705Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-03-08T20:01:53.053Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
