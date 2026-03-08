@@ -68,12 +68,13 @@ Plans:
   3. Script Review page displays the full script organized by chapter, per-pass scores, combined score, visual type distribution, and scene count
   4. User can approve the script (Gate 2), reject it with feedback, or request refinement of specific passes
   5. After script approval, scene rows (~172) exist in the scenes table with visual types assigned (static_image, i2v, t2v)
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
-- [ ] 03-03: TBD
+- [ ] 03-00-PLAN.md -- Wave 0: Vitest test scaffolds for Script Review components (5 test files)
+- [ ] 03-01-PLAN.md -- Data hooks (useScript, useScenes, useScriptMutations), API helpers, ScorePanel, PassTracker, ForcePassBanner
+- [ ] 03-02-PLAN.md -- Script Review page rewrite, ScriptContent, ChapterAccordion, SceneRow, SceneEditForm, ScriptToolbar, TopicCard update
+- [ ] 03-03-PLAN.md -- n8n webhook stubs for 3-pass generation, approve, reject, refine, regen-prompts
 
 ### Phase 4: Production Pipeline
 **Goal**: Approved scripts are automatically produced into assembled videos with real-time scene-level progress visible on the dashboard
@@ -132,7 +133,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-03-08 |
 | 2. Niche Research + Topics | 1/5 | Executing | - |
-| 3. Script Generation | 0/3 | Not started | - |
+| 3. Script Generation | 0/4 | Not started | - |
 | 4. Production Pipeline | 0/5 | Not started | - |
 | 5. Publish + Analytics | 0/3 | Not started | - |
 | 6. Polish | 0/1 | Not started | - |
