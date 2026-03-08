@@ -86,14 +86,17 @@ Plans:
   3. Production Monitor page shows real-time scene-by-scene progress (172 indicators updating live via Supabase Realtime as each asset completes)
   4. FFmpeg assembles the final video using concat with stream copy (no re-encoding), with captions and normalized audio
   5. Supervisor agent runs every 30 minutes and detects topics stuck for more than 2 hours, with ability to retry or skip
-**Plans**: 3 plans
+**Plans**: 8 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
-- [ ] 04-03: TBD
-- [ ] 04-04: TBD
-- [ ] 04-05: TBD
+- [ ] 04-00-PLAN.md -- Wave 0: Vitest test scaffolds + stub files for all Production Monitor components and hooks
+- [ ] 04-01-PLAN.md -- Production API helpers, data hooks (useProductionProgress, useProductionMutations, useProductionLog, useProjectMetrics)
+- [ ] 04-02-PLAN.md -- Production Monitor page rewrite with HeroCard, DotGrid, QueueList, FailedScenes, ActivityLog, SupervisorAlert
+- [ ] 04-03-PLAN.md -- PipelineTable component, ProjectDashboard rewrite with real metrics, TopicCard production badges
+- [ ] 04-04-PLAN.md -- n8n production webhook API + TTS audio generation workflow with master timeline
+- [ ] 04-05-PLAN.md -- n8n visual generation workflows: Seedream 4.5 images, Kling 2.1 I2V, Kling 2.1 T2V (sliding window)
+- [ ] 04-06-PLAN.md -- n8n captions + FFmpeg assembly workflow (SRT, scene clips, concat, audio normalization)
+- [ ] 04-07-PLAN.md -- n8n supervisor agent (30-min cron) + sidebar alert indicators + webhook docs
 
 ### Phase 5: Publish + Analytics
 **Goal**: User can preview assembled videos, approve for YouTube publishing, and see analytics flow back into the dashboard
@@ -134,6 +137,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Foundation | 4/4 | Complete   | 2026-03-08 |
 | 2. Niche Research + Topics | 1/5 | Executing | - |
 | 3. Script Generation | 3/4 | In Progress|  |
-| 4. Production Pipeline | 0/5 | Not started | - |
+| 4. Production Pipeline | 0/8 | Not started | - |
 | 5. Publish + Analytics | 0/3 | Not started | - |
 | 6. Polish | 0/1 | Not started | - |
