@@ -13,9 +13,9 @@ import {
   ChevronRight,
   Menu,
   X,
-  Circle,
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import ConnectionStatus from './ConnectionStatus';
 
 const navItems = [
   { label: 'Home', icon: LayoutDashboard, path: '/', exact: true },
@@ -116,12 +116,7 @@ export default function Sidebar({ onLogout }) {
       {/* Footer */}
       <div className="px-3 py-4 border-t border-border dark:border-border-dark space-y-2">
         {/* Connection status */}
-        <div className={`flex items-center gap-2 px-3 py-1.5 ${collapsed ? 'justify-center' : ''}`}>
-          <Circle className="w-2.5 h-2.5 fill-emerald-500 text-emerald-500" />
-          {!collapsed && (
-            <span className="text-xs text-text-muted dark:text-text-muted-dark">Connected</span>
-          )}
-        </div>
+        <ConnectionStatus collapsed={collapsed} />
 
         <ThemeToggle collapsed={collapsed} />
 
