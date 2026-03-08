@@ -31,12 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Supabase Realtime subscription fires when a row is updated in any tracked table (projects, topics, scenes) and the dashboard reflects the change without page refresh
   4. n8n webhook endpoints accept POST requests from the dashboard and return responses (testable via curl)
   5. Design system colors, typography, and spacing from MASTER.md are visibly applied across all page shells
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md -- Vite scaffold, routing, sidebar, auth gate, design system
+- [ ] 01-02-PLAN.md -- Supabase client, TanStack Query, Realtime hook, webhook API
+- [ ] 01-03-PLAN.md -- Infrastructure hardening (n8n timeouts, PostgreSQL tuning, Docker memory limits)
 
 ### Phase 2: Niche Research + Topics
 **Goal**: User can create a project, have it researched automatically, generate 25 topics, and approve/reject/refine them from the dashboard
@@ -48,7 +48,7 @@ Plans:
   3. User can approve, reject (with feedback), refine (with custom instructions that consider all 24 other topics), or inline-edit any topic from the dashboard
   4. Bulk actions work (approve all, approve by playlist group)
   5. Projects Home page shows all projects as cards with status, topic count, and key metrics
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 02-01: TBD
@@ -66,7 +66,7 @@ Plans:
   3. Script Review page displays the full script organized by chapter, per-pass scores, combined score, visual type distribution, and scene count
   4. User can approve the script (Gate 2), reject it with feedback, or request refinement of specific passes
   5. After script approval, scene rows (~172) exist in the scenes table with visual types assigned (static_image, i2v, t2v)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 03-01: TBD
@@ -83,7 +83,7 @@ Plans:
   3. Production Monitor page shows real-time scene-by-scene progress (172 indicators updating live via Supabase Realtime as each asset completes)
   4. FFmpeg assembles the final video using concat with stream copy (no re-encoding), with captions and normalized audio
   5. Supervisor agent runs every 30 minutes and detects topics stuck for more than 2 hours, with ability to retry or skip
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 04-01: TBD
@@ -102,7 +102,7 @@ Plans:
   3. YouTube upload completes with metadata, captions, thumbnail, and correct playlist assignment, respecting the 6-upload daily quota
   4. Analytics page displays per-video YouTube metrics (views, watch hours, CTR, revenue) pulled by a daily cron
   5. Per-video and per-project cost tracking is visible on the dashboard
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 05-01: TBD
@@ -116,7 +116,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Settings page allows changing per-project configuration (script approach, image/video models, target word count, target scene count, YouTube channel/playlist IDs)
   2. Prompt editor on the Settings page displays all dynamic prompts for the project and allows viewing and editing them
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 06-01: TBD
