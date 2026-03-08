@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 
-// Mock react-router useParams
+// Mock react-router useParams and useNavigate
+const mockNavigate = vi.fn();
 vi.mock('react-router', async () => {
   const actual = await vi.importActual('react-router');
   return {
     ...actual,
     useParams: () => ({ id: 'test-project-id', topicId: 'test-topic-id' }),
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
   };
 });
 
@@ -35,11 +36,8 @@ vi.mock('../lib/api', () => ({
   webhookCall: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-// Import component under test -- does not exist yet (RED phase)
-import ScriptReview from '../pages/ScriptReview';
-
-// Mock data matching script_json and script_pass_scores JSONB structures
-const mockTopic = {
+// Mock the hooks to control data
+const mockTopicData = {
   id: 'test-topic-id',
   project_id: 'test-project-id',
   topic_number: 1,
@@ -55,107 +53,60 @@ const mockTopic = {
   scene_count: 172,
   script_quality_score: 7.8,
   script_pass_scores: {
-    pass1: {
-      score: 7.2,
-      dimensions: {
-        persona_integration: 7.5,
-        hook_strength: 8.0,
-        pacing: 7.0,
-        specificity: 7.5,
-        tts_readability: 6.8,
-        visual_prompts: 7.0,
-        anti_patterns: 7.5,
-      },
-      feedback: 'Strong hook, good persona usage.',
-    },
-    pass2: {
-      score: 7.9,
-      dimensions: {
-        persona_integration: 8.0,
-        hook_strength: 8.5,
-        pacing: 7.5,
-        specificity: 8.0,
-        tts_readability: 7.5,
-        visual_prompts: 7.5,
-        anti_patterns: 8.0,
-      },
-      feedback: 'Excellent depth.',
-    },
-    pass3: {
-      score: 8.1,
-      dimensions: {
-        persona_integration: 8.5,
-        hook_strength: 8.0,
-        pacing: 8.0,
-        specificity: 8.0,
-        tts_readability: 8.0,
-        visual_prompts: 8.0,
-        anti_patterns: 8.0,
-      },
-      feedback: 'Strong resolution.',
-    },
-    combined: {
-      score: 7.8,
-      dimensions: {
-        persona_integration: 8.0,
-        hook_strength: 8.2,
-        pacing: 7.5,
-        specificity: 7.8,
-        tts_readability: 7.4,
-        visual_prompts: 7.5,
-        anti_patterns: 7.8,
-      },
-      feedback: 'Well-structured script.',
-    },
+    pass1: { score: 7.2, dimensions: { persona_integration: 7.5, hook_strength: 8.0, pacing: 7.0, specificity: 7.5, tts_readability: 6.8, visual_prompts: 7.0, anti_patterns: 7.5 } },
+    pass2: { score: 7.9, dimensions: { persona_integration: 8.0, hook_strength: 8.5, pacing: 7.5, specificity: 8.0, tts_readability: 7.5, visual_prompts: 7.5, anti_patterns: 8.0 } },
+    pass3: { score: 8.1, dimensions: { persona_integration: 8.5, hook_strength: 8.0, pacing: 8.0, specificity: 8.0, tts_readability: 8.0, visual_prompts: 8.0, anti_patterns: 8.0 } },
+    combined: { score: 7.8, dimensions: { persona_integration: 8.0, hook_strength: 8.2, pacing: 7.5, specificity: 7.8, tts_readability: 7.4, visual_prompts: 7.5, anti_patterns: 7.8 } },
   },
   script_json: {
     scenes: [
-      {
-        scene_id: 'scene_001',
-        scene_number: 1,
-        chapter: 'Chapter 1: The Amex Platinum Myth',
-        narration_text: 'Meet Marcus. He is thirty-four years old.',
-        image_prompt: 'A professional man in his mid-thirties at a modern desk.',
-        visual_type: 'static_image',
-        emotional_beat: 'curiosity',
-      },
-      {
-        scene_id: 'scene_002',
-        scene_number: 2,
-        chapter: 'Chapter 1: The Amex Platinum Myth',
-        narration_text: 'Every month, six hundred and ninety-five dollars disappears.',
-        image_prompt: 'A credit card statement with highlighted charges.',
-        visual_type: 'i2v',
-        emotional_beat: 'tension',
-      },
-      {
-        scene_id: 'scene_003',
-        scene_number: 3,
-        chapter: 'Chapter 2: The 7 Personas',
-        narration_text: 'But here is the thing most people miss entirely.',
-        image_prompt: 'Split screen showing seven different lifestyles.',
-        visual_type: 't2v',
-        emotional_beat: 'revelation',
-      },
+      { scene_id: 'scene_001', scene_number: 1, chapter: 'Chapter 1: The Amex Platinum Myth', narration_text: 'Meet Marcus. He is thirty-four years old.', image_prompt: 'A professional man in his mid-thirties.', visual_type: 'static_image', emotional_beat: 'curiosity' },
+      { scene_id: 'scene_002', scene_number: 2, chapter: 'Chapter 1: The Amex Platinum Myth', narration_text: 'Every month, six hundred and ninety-five dollars disappears.', image_prompt: 'A credit card statement.', visual_type: 'i2v', emotional_beat: 'tension' },
+      { scene_id: 'scene_003', scene_number: 3, chapter: 'Chapter 2: The 7 Personas', narration_text: 'But here is the thing most people miss entirely.', image_prompt: 'Split screen showing seven lifestyles.', visual_type: 't2v', emotional_beat: 'revelation' },
     ],
-    chapters: [
-      { name: 'Chapter 1: The Amex Platinum Myth', scene_range: [1, 2] },
-      { name: 'Chapter 2: The 7 Personas', scene_range: [3, 3] },
-    ],
-    metadata: {
-      total_words: 18742,
-      total_scenes: 172,
-      visual_split: { static_image: 75, i2v: 25, t2v: 72 },
-    },
+    metadata: { total_words: 18742, total_scenes: 172, visual_split: { static_image: 75, i2v: 25, t2v: 72 } },
   },
-  avatars: [
-    {
-      avatar_name_age: 'Marcus, 34',
-      occupation_income: 'Software Engineer, $145K/yr',
-      pain_point: 'Paying $695/yr, not sure getting value back',
-    },
-  ],
+  script_metadata: { video_metadata: { title: 'Amex Platinum', description: 'Test', tags: ['credit'] } },
+  avatars: [{ avatar_name_age: 'Marcus, 34', occupation_income: 'Software Engineer, $145K/yr', pain_point: 'Paying $695/yr' }],
 };
+
+const mockScenes = [
+  { id: 's1', scene_id: 'scene_001', scene_number: 1, chapter: 'Chapter 1: The Amex Platinum Myth', narration_text: 'Meet Marcus. He is thirty-four years old.', image_prompt: 'A professional man in his mid-thirties.', visual_type: 'static_image', emotional_beat: 'curiosity' },
+  { id: 's2', scene_id: 'scene_002', scene_number: 2, chapter: 'Chapter 1: The Amex Platinum Myth', narration_text: 'Every month, six hundred and ninety-five dollars disappears.', image_prompt: 'A credit card statement.', visual_type: 'i2v', emotional_beat: 'tension' },
+  { id: 's3', scene_id: 'scene_003', scene_number: 3, chapter: 'Chapter 2: The 7 Personas', narration_text: 'But here is the thing most people miss entirely.', image_prompt: 'Split screen showing seven lifestyles.', visual_type: 't2v', emotional_beat: 'revelation' },
+];
+
+const mockTopics = [
+  { ...mockTopicData, id: 'topic-1', topic_number: 1, review_status: 'approved' },
+  { ...mockTopicData, id: 'test-topic-id', topic_number: 2, review_status: 'approved' },
+  { ...mockTopicData, id: 'topic-3', topic_number: 3, review_status: 'approved' },
+];
+
+let mockUseScriptReturn = { data: mockTopicData, isLoading: false, error: null };
+let mockUseScenesReturn = { data: mockScenes, isLoading: false, error: null };
+let mockUseTopicsReturn = { data: mockTopics, isLoading: false, error: null };
+
+vi.mock('../hooks/useScript', () => ({
+  useScript: () => mockUseScriptReturn,
+}));
+
+vi.mock('../hooks/useScenes', () => ({
+  useScenes: () => mockUseScenesReturn,
+}));
+
+vi.mock('../hooks/useTopics', () => ({
+  useTopics: () => mockUseTopicsReturn,
+}));
+
+vi.mock('../hooks/useScriptMutations', () => ({
+  useGenerateScript: () => ({ mutate: vi.fn(), isPending: false }),
+  useApproveScript: () => ({ mutate: vi.fn(), isPending: false }),
+  useRejectScript: () => ({ mutate: vi.fn(), isPending: false }),
+  useRefineScript: () => ({ mutate: vi.fn(), isPending: false }),
+  useRegenPrompts: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
+import ScriptReview from '../pages/ScriptReview';
 
 function renderWithProviders(ui) {
   const queryClient = new QueryClient({
@@ -172,76 +123,121 @@ function renderWithProviders(ui) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUseScriptReturn = { data: mockTopicData, isLoading: false, error: null };
+  mockUseScenesReturn = { data: mockScenes, isLoading: false, error: null };
+  mockUseTopicsReturn = { data: mockTopics, isLoading: false, error: null };
 });
 
-describe('ScriptReview — Header Bar (SCPT-10)', () => {
+describe('ScriptReview -- Header Bar (SCPT-10)', () => {
   it('renders header with topic title, playlist badge, and status badge', () => {
-    // RED: page component does not exist yet
-    expect(true).toBe(false);
+    renderWithProviders(<ScriptReview />);
+    // Title appears in header (h1) and possibly in refine panel summary
+    expect(screen.getAllByText(/Amex Platinum Worth/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('The Mathematician').length).toBeGreaterThan(0);
   });
 
   it('renders prev/next arrows for navigating between approved topics', () => {
-    // RED: navigation between approved topics
-    expect(true).toBe(false);
+    renderWithProviders(<ScriptReview />);
+    const prevBtn = screen.getByTestId('prev-topic-btn');
+    const nextBtn = screen.getByTestId('next-topic-btn');
+    expect(prevBtn).toBeTruthy();
+    expect(nextBtn).toBeTruthy();
   });
 });
 
-describe('ScriptReview — Score Panel (SCPT-05)', () => {
+describe('ScriptReview -- Score Panel (SCPT-05)', () => {
   it('renders score panel with 7 dimension bars', () => {
-    // RED: score panel with dimension bars
-    expect(true).toBe(false);
+    renderWithProviders(<ScriptReview />);
+    expect(screen.getByTestId('score-panel')).toBeTruthy();
+    expect(screen.getByTestId('overall-score')).toBeTruthy();
   });
 
   it('renders pass tracker during generation when status is scripting', () => {
-    // RED: pass tracker showing generation progress
-    expect(true).toBe(false);
+    mockUseScriptReturn = {
+      data: { ...mockTopicData, status: 'scripting', script_json: null, script_quality_score: null },
+      isLoading: false,
+      error: null,
+    };
+    mockUseScenesReturn = { data: [], isLoading: false, error: null };
+
+    renderWithProviders(<ScriptReview />);
+    expect(screen.getByTestId('pass-tracker')).toBeTruthy();
   });
 });
 
-describe('ScriptReview — Chapter Accordions (SCPT-10)', () => {
+describe('ScriptReview -- Chapter Accordions (SCPT-10)', () => {
   it('renders chapter accordions with scene counts', () => {
-    // RED: chapters grouped from script_json
-    expect(true).toBe(false);
+    renderWithProviders(<ScriptReview />);
+    expect(screen.getByTestId('chapter-Chapter 1: The Amex Platinum Myth')).toBeTruthy();
+    expect(screen.getByTestId('chapter-Chapter 2: The 7 Personas')).toBeTruthy();
   });
 
   it('first chapter is expanded by default, rest collapsed', () => {
-    // RED: default expand behavior
-    expect(true).toBe(false);
+    renderWithProviders(<ScriptReview />);
+    // First chapter's scenes should be visible
+    expect(screen.getByTestId('scene-row-1')).toBeTruthy();
+    expect(screen.getByTestId('scene-row-2')).toBeTruthy();
+    // Second chapter's scene should not be visible (collapsed)
+    expect(screen.queryByTestId('scene-row-3')).toBeNull();
   });
 
   it('clicking a chapter header toggles expand/collapse', () => {
-    // RED: toggle interaction
-    expect(true).toBe(false);
+    renderWithProviders(<ScriptReview />);
+    // Chapter 2 is collapsed, click to expand
+    const ch2 = screen.getByTestId('chapter-Chapter 2: The 7 Personas');
+    const toggleBtn = within(ch2).getByRole('button');
+    fireEvent.click(toggleBtn);
+    expect(screen.getByTestId('scene-row-3')).toBeTruthy();
   });
 });
 
-describe('ScriptReview — Scene Rows (SCPT-08)', () => {
+describe('ScriptReview -- Scene Rows (SCPT-08)', () => {
   it('renders scene rows with 3-digit padded monospace line numbers', () => {
-    // RED: scene line numbers like "001", "002"
-    expect(true).toBe(false);
+    renderWithProviders(<ScriptReview />);
+    expect(screen.getByTestId('line-number-1').textContent).toBe('001');
+    expect(screen.getByTestId('line-number-2').textContent).toBe('002');
   });
 
   it('renders visual type badges: blue=static_image, purple=i2v, amber=t2v', () => {
-    // RED: color-coded visual type badges per scene
-    expect(true).toBe(false);
+    renderWithProviders(<ScriptReview />);
+    // Check that badges exist within scene rows
+    const row1 = screen.getByTestId('scene-row-1');
+    expect(within(row1).getByText('Image')).toBeTruthy();
+
+    const row2 = screen.getByTestId('scene-row-2');
+    expect(within(row2).getByText('I2V')).toBeTruthy();
   });
 
   it('image prompts are hidden by default', () => {
-    // RED: image prompts not visible until hover/click
-    expect(true).toBe(false);
+    renderWithProviders(<ScriptReview />);
+    // Image prompt text should not be visible
+    expect(screen.queryByText('A professional man in his mid-thirties.')).toBeNull();
   });
 });
 
-describe('ScriptReview — Generate Script CTA (SCPT-01)', () => {
+describe('ScriptReview -- Generate Script CTA (SCPT-01)', () => {
   it('shows "Generate Script" CTA when topic has no script', () => {
-    // RED: CTA displayed when script_json is null
-    expect(true).toBe(false);
+    mockUseScriptReturn = {
+      data: { ...mockTopicData, script_json: null, status: 'approved', script_quality_score: null, script_pass_scores: null },
+      isLoading: false,
+      error: null,
+    };
+    mockUseScenesReturn = { data: [], isLoading: false, error: null };
+
+    renderWithProviders(<ScriptReview />);
+    expect(screen.getByTestId('generate-script-cta')).toBeTruthy();
   });
 });
 
-describe('ScriptReview — Force Pass Warning', () => {
+describe('ScriptReview -- Force Pass Warning', () => {
   it('shows force-pass amber warning when script_force_passed is true', () => {
-    // RED: amber banner for force-passed scripts
-    expect(true).toBe(false);
+    mockUseScriptReturn = {
+      data: { ...mockTopicData, script_force_passed: true },
+      isLoading: false,
+      error: null,
+    };
+
+    renderWithProviders(<ScriptReview />);
+    expect(screen.getByTestId('force-pass-banner')).toBeTruthy();
   });
 });

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { CheckCircle2, XCircle, RefreshCw, Pencil, ChevronDown } from 'lucide-react';
+import { Link } from 'react-router';
+import { CheckCircle2, XCircle, RefreshCw, Pencil, FileText, ChevronDown } from 'lucide-react';
 
 const STATUS_BADGE = {
   pending: 'badge badge-amber',
@@ -33,7 +34,22 @@ const AVATAR_FIELDS = [
   { key: 'dream_outcome', label: 'Dream Outcome' },
 ];
 
-export default function TopicCard({ topic, isSelected, onToggleSelect, onApprove, onReject, onRefine, onEdit }) {
+const SCRIPT_STATUS_BADGE = {
+  generating: { cls: 'badge badge-amber animate-shimmer', label: 'Generating' },
+  review: { cls: 'badge badge-amber', label: 'Review' },
+  approved: { cls: 'badge badge-green', label: 'Script Approved' },
+  rejected: { cls: 'badge badge-red', label: 'Script Rejected' },
+};
+
+function getScriptBadge(topic) {
+  if (topic.script_review_status === 'approved') return SCRIPT_STATUS_BADGE.approved;
+  if (topic.script_review_status === 'rejected') return SCRIPT_STATUS_BADGE.rejected;
+  if (topic.status === 'scripting' && topic.script_review_status === 'pending') return SCRIPT_STATUS_BADGE.generating;
+  if (topic.script_json && topic.script_review_status === 'pending') return SCRIPT_STATUS_BADGE.review;
+  return null;
+}
+
+export default function TopicCard({ topic, projectId, isSelected, onToggleSelect, onApprove, onReject, onRefine, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   const avatar = topic.avatars?.[0] || {};
   const status = topic.review_status || 'pending';
@@ -81,6 +97,14 @@ export default function TopicCard({ topic, isSelected, onToggleSelect, onApprove
           {status === 'refining' ? 'Refining...' : status}
         </span>
 
+        {/* Script status badge */}
+        {(() => {
+          const scriptBadge = getScriptBadge(topic);
+          return scriptBadge ? (
+            <span className={scriptBadge.cls}>{scriptBadge.label}</span>
+          ) : null;
+        })()}
+
         {/* CPM */}
         <span className="text-xs text-text-muted dark:text-text-muted-dark hidden sm:inline">
           {topic.estimated_cpm}
@@ -119,13 +143,24 @@ export default function TopicCard({ topic, isSelected, onToggleSelect, onApprove
           >
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onEdit(topic)}
-            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
-            title="Edit"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
+          {topic.review_status === 'approved' ? (
+            <Link
+              to={`/project/${projectId || topic.project_id}/topics/${topic.id}/script`}
+              className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+              title="View Script"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FileText className="w-4 h-4" />
+            </Link>
+          ) : (
+            <button
+              onClick={() => onEdit(topic)}
+              className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
+              title="Edit"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         <ChevronDown
