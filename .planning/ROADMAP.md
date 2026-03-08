@@ -131,7 +131,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-03-08 |
-| 2. Niche Research + Topics | 0/5 | Planning complete | - |
+| 2. Niche Research + Topics | 1/5 | Executing | - |
 | 3. Script Generation | 0/3 | Not started | - |
 | 4. Production Pipeline | 0/5 | Not started | - |
 | 5. Publish + Analytics | 0/3 | Not started | - |
