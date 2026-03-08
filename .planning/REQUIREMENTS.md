@@ -10,10 +10,10 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Foundation
 
 - [x] **FNDN-01**: Dashboard skeleton renders with React Router navigation across all 7 page routes
-- [ ] **FNDN-02**: Supabase JS client initializes and connects to self-hosted Supabase instance
-- [ ] **FNDN-03**: Reusable Realtime subscription hook (`useRealtimeSubscription`) with proper cleanup on unmount
-- [ ] **FNDN-04**: TanStack Query data layer with Realtime-triggered cache invalidation
-- [ ] **FNDN-05**: n8n webhook API layer with endpoints for all dashboard actions (project CRUD, topic actions, production triggers, approvals)
+- [x] **FNDN-02**: Supabase JS client initializes and connects to self-hosted Supabase instance
+- [x] **FNDN-03**: Reusable Realtime subscription hook (`useRealtimeSubscription`) with proper cleanup on unmount
+- [x] **FNDN-04**: TanStack Query data layer with Realtime-triggered cache invalidation
+- [x] **FNDN-05**: n8n webhook API layer with endpoints for all dashboard actions (project CRUD, topic actions, production triggers, approvals)
 - [x] **FNDN-06**: Simple password gate protecting dashboard access
 - [x] **FNDN-07**: Design system applied — colors, typography, spacing per MASTER.md
 - [ ] **FNDN-08**: Infrastructure hardened — n8n timeouts configured, PostgreSQL max_connections increased, Docker memory limits set
@@ -140,10 +140,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | FNDN-01 | Phase 1 | Complete |
-| FNDN-02 | Phase 1 | Pending |
-| FNDN-03 | Phase 1 | Pending |
-| FNDN-04 | Phase 1 | Pending |
-| FNDN-05 | Phase 1 | Pending |
+| FNDN-02 | Phase 1 | Complete |
+| FNDN-03 | Phase 1 | Complete |
+| FNDN-04 | Phase 1 | Complete |
+| FNDN-05 | Phase 1 | Complete |
 | FNDN-06 | Phase 1 | Complete |
 | FNDN-07 | Phase 1 | Complete |
 | FNDN-08 | Phase 1 | Pending |
