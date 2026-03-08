@@ -20,7 +20,6 @@ vi.mock('../lib/supabase', () => ({
   },
 }));
 
-// Import hook under test -- does not exist yet (RED phase)
 import { useScenes } from '../hooks/useScenes';
 
 function createWrapper() {
@@ -38,26 +37,68 @@ function createWrapper() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Reset default mock chain
+  mockOrder.mockResolvedValue({ data: [], error: null });
+  mockEq.mockReturnValue({ order: mockOrder });
+  mockSelect.mockReturnValue({ eq: mockEq });
+  mockFrom.mockReturnValue({ select: mockSelect });
 });
 
 describe('useScenes (SCPT-09)', () => {
-  it('fetches scenes from Supabase filtered by topic_id, ordered by scene_number', () => {
-    // RED: hook does not exist yet
-    expect(true).toBe(false);
+  it('fetches scenes from Supabase filtered by topic_id, ordered by scene_number', async () => {
+    const mockScenes = [
+      { id: 's1', scene_number: 1, topic_id: 'topic-1' },
+      { id: 's2', scene_number: 2, topic_id: 'topic-1' },
+    ];
+    mockOrder.mockResolvedValue({ data: mockScenes, error: null });
+
+    const { result } = renderHook(() => useScenes('topic-1'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockFrom).toHaveBeenCalledWith('scenes');
+    expect(mockSelect).toHaveBeenCalledWith('*');
+    expect(mockEq).toHaveBeenCalledWith('topic_id', 'topic-1');
+    expect(mockOrder).toHaveBeenCalledWith('scene_number', { ascending: true });
+    expect(result.current.data).toEqual(mockScenes);
   });
 
-  it('returns empty array when no scenes exist', () => {
-    // RED: default empty state
-    expect(true).toBe(false);
+  it('returns empty array when no scenes exist', async () => {
+    mockOrder.mockResolvedValue({ data: null, error: null });
+
+    const { result } = renderHook(() => useScenes('topic-1'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([]);
   });
 
   it('subscribes to Realtime on scenes table with topic_id filter', () => {
-    // RED: Realtime subscription for live updates
-    expect(true).toBe(false);
+    renderHook(() => useScenes('topic-1'), {
+      wrapper: createWrapper(),
+    });
+
+    expect(mockChannel).toHaveBeenCalled();
+    expect(mockOn).toHaveBeenCalledWith(
+      'postgres_changes',
+      expect.objectContaining({
+        table: 'scenes',
+        filter: 'topic_id=eq.topic-1',
+      }),
+      expect.any(Function)
+    );
+    expect(mockSubscribe).toHaveBeenCalled();
   });
 
   it('is disabled when topicId is null or undefined', () => {
-    // RED: query should not fire without a valid topicId
-    expect(true).toBe(false);
+    const { result } = renderHook(() => useScenes(null), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(mockFrom).not.toHaveBeenCalled();
   });
 });

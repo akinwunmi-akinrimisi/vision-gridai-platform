@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import React from 'react';
 
@@ -31,11 +31,11 @@ vi.mock('../lib/supabase', () => ({
 }));
 
 // Mock webhookCall
+const mockWebhookCall = vi.fn().mockResolvedValue({ success: true });
 vi.mock('../lib/api', () => ({
-  webhookCall: vi.fn().mockResolvedValue({ success: true }),
+  webhookCall: (...args) => mockWebhookCall(...args),
 }));
 
-// Import hooks under test -- do not exist yet (RED phase)
 import {
   useApproveScript,
   useRejectScript,
@@ -61,66 +61,219 @@ beforeEach(() => {
 });
 
 describe('useApproveScript (SCPT-11)', () => {
-  it('calls webhookCall with script/approve and topic_id', () => {
-    // RED: hook does not exist yet
-    expect(true).toBe(false);
+  it('calls webhookCall with script/approve and topic_id', async () => {
+    const { result } = renderHook(() => useApproveScript('test-topic-id'), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockWebhookCall).toHaveBeenCalledWith('script/approve', { topic_id: 'test-topic-id' });
   });
 
-  it('invalidates script query on settle', () => {
-    // RED: cache invalidation after mutation
-    expect(true).toBe(false);
+  it('invalidates script query on settle', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    const wrapper = ({ children }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useApproveScript('test-topic-id'), { wrapper });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['script', 'test-topic-id'] });
   });
 
-  it('optimistic update sets script_review_status to approved', () => {
-    // RED: optimistic update modifies cached data before server responds
-    expect(true).toBe(false);
+  it('optimistic update sets script_review_status to approved', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(['script', 'test-topic-id'], {
+      id: 'test-topic-id',
+      script_review_status: 'pending',
+    });
+
+    const wrapper = ({ children }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useApproveScript('test-topic-id'), { wrapper });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id' });
+    });
+
+    // Check optimistic update was applied
+    const data = queryClient.getQueryData(['script', 'test-topic-id']);
+    expect(data.script_review_status).toBe('approved');
   });
 });
 
 describe('useRejectScript (SCPT-12)', () => {
-  it('calls webhookCall with script/reject, topic_id, and feedback', () => {
-    // RED: hook does not exist yet
-    expect(true).toBe(false);
+  it('calls webhookCall with script/reject, topic_id, and feedback', async () => {
+    const { result } = renderHook(() => useRejectScript('test-topic-id'), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id', feedback: 'Hook is weak' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockWebhookCall).toHaveBeenCalledWith('script/reject', {
+      topic_id: 'test-topic-id',
+      feedback: 'Hook is weak',
+    });
   });
 
-  it('invalidates script query on settle', () => {
-    // RED: cache invalidation
-    expect(true).toBe(false);
+  it('invalidates script query on settle', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    const wrapper = ({ children }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useRejectScript('test-topic-id'), { wrapper });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id', feedback: 'Bad' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['script', 'test-topic-id'] });
   });
 
-  it('optimistic update sets script_review_status to rejected', () => {
-    // RED: optimistic update
-    expect(true).toBe(false);
+  it('optimistic update sets script_review_status to rejected', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(['script', 'test-topic-id'], {
+      id: 'test-topic-id',
+      script_review_status: 'pending',
+    });
+
+    const wrapper = ({ children }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useRejectScript('test-topic-id'), { wrapper });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id', feedback: 'Bad' });
+    });
+
+    const data = queryClient.getQueryData(['script', 'test-topic-id']);
+    expect(data.script_review_status).toBe('rejected');
   });
 });
 
 describe('useRefineScript (SCPT-12)', () => {
-  it('calls webhookCall with script/refine, topic_id, and instructions', () => {
-    // RED: hook does not exist yet
-    expect(true).toBe(false);
+  it('calls webhookCall with script/refine, topic_id, and instructions', async () => {
+    const { result } = renderHook(() => useRefineScript('test-topic-id'), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id', instructions: 'Strengthen the hook' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockWebhookCall).toHaveBeenCalledWith('script/refine', {
+      topic_id: 'test-topic-id',
+      instructions: 'Strengthen the hook',
+    });
   });
 
-  it('invalidates script query on settle', () => {
-    // RED: cache invalidation
-    expect(true).toBe(false);
+  it('invalidates script query on settle', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    const wrapper = ({ children }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useRefineScript('test-topic-id'), { wrapper });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id', instructions: 'Fix it' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['script', 'test-topic-id'] });
   });
 });
 
 describe('useRegenPrompts', () => {
-  it('calls webhookCall with script/regen-prompts, topic_id, and scene_ids', () => {
-    // RED: hook does not exist yet
-    expect(true).toBe(false);
+  it('calls webhookCall with script/regen-prompts, topic_id, and scene_ids', async () => {
+    const { result } = renderHook(() => useRegenPrompts('test-topic-id'), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id', scene_ids: ['s1', 's2'] });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockWebhookCall).toHaveBeenCalledWith('script/regen-prompts', {
+      topic_id: 'test-topic-id',
+      scene_ids: ['s1', 's2'],
+    });
   });
 
-  it('invalidates scenes query on settle', () => {
-    // RED: invalidates scenes (not script) query key
-    expect(true).toBe(false);
+  it('invalidates scenes query on settle', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    const wrapper = ({ children }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useRegenPrompts('test-topic-id'), { wrapper });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id', scene_ids: ['s1'] });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['scenes', 'test-topic-id'] });
   });
 });
 
-describe('Script Mutations — Error Handling', () => {
-  it('error rollback restores previous data on approve failure', () => {
-    // RED: rollback optimistic update when server returns error
-    expect(true).toBe(false);
+describe('Script Mutations -- Error Handling', () => {
+  it('error rollback restores previous data on approve failure', async () => {
+    mockWebhookCall.mockRejectedValueOnce(new Error('Network error'));
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(['script', 'test-topic-id'], {
+      id: 'test-topic-id',
+      script_review_status: 'pending',
+    });
+
+    const wrapper = ({ children }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useApproveScript('test-topic-id'), { wrapper });
+
+    await act(async () => {
+      result.current.mutate({ topic_id: 'test-topic-id' });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    const data = queryClient.getQueryData(['script', 'test-topic-id']);
+    expect(data.script_review_status).toBe('pending');
   });
 });
