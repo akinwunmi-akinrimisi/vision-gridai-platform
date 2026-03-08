@@ -20,13 +20,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Niche Research
 
-- [ ] **NICH-01**: User can create a new project by entering a niche name and optional description from the dashboard
+- [x] **NICH-01**: User can create a new project by entering a niche name and optional description from the dashboard
 - [ ] **NICH-02**: System researches niche via Claude + web search — competitor audit, audience pain points, keyword gaps, blue-ocean analysis
 - [ ] **NICH-03**: Research results stored in `niche_profiles` table with structured JSONB fields
 - [ ] **NICH-04**: System generates dynamic prompts (system prompt, expertise profile, topic generator, script passes, evaluator) per niche
 - [ ] **NICH-05**: Dynamic prompts stored in `prompt_configs` table with versioning
 - [ ] **NICH-06**: 3 playlist angles with names and themes generated per niche
-- [ ] **NICH-07**: Projects Home page displays all projects as cards with status, topic count, spend, and revenue
+- [x] **NICH-07**: Projects Home page displays all projects as cards with status, topic count, spend, and revenue
 
 ### Topic Generation
 
@@ -34,12 +34,12 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **TOPC-02**: Topics generated using blue-ocean methodology with quality benchmarks (2 AM Test, Share Test, Rewatch Test)
 - [ ] **TOPC-03**: Each topic includes SEO title, narrative hook, key segments, CPM estimate, viral potential
 - [ ] **TOPC-04**: Each avatar includes 10 data points (name/age, occupation, pain point, emotional driver, etc.)
-- [ ] **TOPC-05**: Topic Review page displays all 25 topics as expandable cards with avatar data
-- [ ] **TOPC-06**: User can approve individual topics from dashboard (Gate 1)
-- [ ] **TOPC-07**: User can reject topics with feedback from dashboard
-- [ ] **TOPC-08**: User can refine topics with custom instructions — system considers all 24 other topics to avoid overlap
+- [x] **TOPC-05**: Topic Review page displays all 25 topics as expandable cards with avatar data
+- [x] **TOPC-06**: User can approve individual topics from dashboard (Gate 1)
+- [x] **TOPC-07**: User can reject topics with feedback from dashboard
+- [x] **TOPC-08**: User can refine topics with custom instructions — system considers all 24 other topics to avoid overlap
 - [ ] **TOPC-09**: User can inline edit topic fields (title, hook, avatar data)
-- [ ] **TOPC-10**: Bulk actions available — approve all, approve by playlist group
+- [x] **TOPC-10**: Bulk actions available — approve all, approve by playlist group
 
 ### Script Generation
 
@@ -147,23 +147,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FNDN-06 | Phase 1 | Complete |
 | FNDN-07 | Phase 1 | Complete |
 | FNDN-08 | Phase 1 | Pending |
-| NICH-01 | Phase 2 | Pending |
+| NICH-01 | Phase 2 | Complete |
 | NICH-02 | Phase 2 | Pending |
 | NICH-03 | Phase 2 | Pending |
 | NICH-04 | Phase 2 | Pending |
 | NICH-05 | Phase 2 | Pending |
 | NICH-06 | Phase 2 | Pending |
-| NICH-07 | Phase 2 | Pending |
+| NICH-07 | Phase 2 | Complete |
 | TOPC-01 | Phase 2 | Pending |
 | TOPC-02 | Phase 2 | Pending |
 | TOPC-03 | Phase 2 | Pending |
 | TOPC-04 | Phase 2 | Pending |
-| TOPC-05 | Phase 2 | Pending |
-| TOPC-06 | Phase 2 | Pending |
-| TOPC-07 | Phase 2 | Pending |
-| TOPC-08 | Phase 2 | Pending |
+| TOPC-05 | Phase 2 | Complete |
+| TOPC-06 | Phase 2 | Complete |
+| TOPC-07 | Phase 2 | Complete |
+| TOPC-08 | Phase 2 | Complete |
 | TOPC-09 | Phase 2 | Pending |
-| TOPC-10 | Phase 2 | Pending |
+| TOPC-10 | Phase 2 | Complete |
 | SCPT-01 | Phase 3 | Pending |
 | SCPT-02 | Phase 3 | Pending |
 | SCPT-03 | Phase 3 | Pending |
