@@ -77,6 +77,11 @@ All endpoints return the standard JSON envelope:
 | Edit & Retry Scene | /webhook/production/edit-retry-scene | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
 | Manual Assemble | /webhook/production/assemble | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
 | TTS Audio | /webhook/production/tts | POST | Implemented | 4 | WF_TTS_AUDIO.json |
+| Image Generation | /webhook/production/images | POST | Implemented (internal) | 4 | WF_IMAGE_GENERATION.json |
+| I2V Generation | /webhook/production/i2v | POST | Implemented (internal) | 4 | WF_I2V_GENERATION.json |
+| T2V Generation | /webhook/production/t2v | POST | Implemented (internal) | 4 | WF_T2V_GENERATION.json |
+| Assembly | /webhook/production/assembly | POST | Implemented (internal) | 4 | WF_CAPTIONS_ASSEMBLY.json |
+| Supervisor (cron) | — (Schedule Trigger) | — | Implemented | 4 | WF_SUPERVISOR.json |
 | Script Approve | /webhook/script/approve | POST | Not created | 3 | - |
 | Script Reject | /webhook/script/reject | POST | Not created | 3 | - |
 | Video Approve | /webhook/video/approve | POST | Not created | 5 | - |
@@ -238,3 +243,175 @@ curl -X POST http://localhost:5173/webhook/status \
 ```
 
 The Vite dev server proxies `/webhook/*` to n8n automatically.
+
+## Phase 4 Production Endpoints — Detailed Reference
+
+### /webhook/production/trigger (POST)
+
+Start production for a single approved topic. Triggers TTS audio generation as the first pipeline step.
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "Production started", "topic_id": "..." } }`
+
+### /webhook/production/trigger-batch (POST)
+
+Start production for multiple topics at once. First topic begins immediately, others are queued.
+
+**Request Body:**
+```json
+{ "topic_ids": ["uuid-1", "uuid-2", "uuid-3"] }
+```
+
+**Response:** `{ "success": true, "data": { "message": "Batch production started", "count": 3 } }`
+
+### /webhook/production/stop (POST)
+
+Stop active production for a topic. Completed scenes are preserved.
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "Production stopped" } }`
+
+### /webhook/production/resume (POST)
+
+Resume a stopped production from where it left off.
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "Production resumed" } }`
+
+### /webhook/production/restart (POST)
+
+Restart production from scratch. Resets all scene statuses to pending.
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "Production restarted" } }`
+
+### /webhook/production/retry-scene (POST)
+
+Retry a single failed scene.
+
+**Request Body:**
+```json
+{ "scene_id": "uuid-here", "topic_id": "uuid-here" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "Scene retry queued" } }`
+
+### /webhook/production/retry-all-failed (POST)
+
+Retry all failed scenes for a topic.
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "All failed scenes retry queued", "count": 5 } }`
+
+### /webhook/production/skip-scene (POST)
+
+Skip a scene and mark it as skipped with a reason.
+
+**Request Body:**
+```json
+{ "scene_id": "uuid-here", "reason": "User skipped" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "Scene skipped" } }`
+
+### /webhook/production/skip-all-failed (POST)
+
+Skip all failed scenes for a topic.
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "All failed scenes skipped", "count": 3 } }`
+
+### /webhook/production/edit-retry-scene (POST)
+
+Edit a scene's image prompt and retry generation.
+
+**Request Body:**
+```json
+{ "scene_id": "uuid-here", "image_prompt": "New prompt text", "topic_id": "uuid-here" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "Scene updated and retry queued" } }`
+
+### /webhook/production/assemble (POST)
+
+Manually trigger FFmpeg assembly for a topic.
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+**Response:** `{ "success": true, "data": { "message": "Assembly started" } }`
+
+### /webhook/production/tts (POST, internal)
+
+Internal endpoint called by trigger workflow. Generates TTS audio for all scenes in a topic.
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+**Note:** Called internally by production trigger, not directly by dashboard.
+
+### /webhook/production/images (POST, internal)
+
+Internal endpoint for image generation. Called after TTS completes.
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+### /webhook/production/i2v (POST, internal)
+
+Internal endpoint for image-to-video generation. Called after TTS completes (parallel with images/t2v).
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+### /webhook/production/t2v (POST, internal)
+
+Internal endpoint for text-to-video generation. Called after TTS completes (parallel with images/i2v).
+
+**Request Body:**
+```json
+{ "topic_id": "uuid-here" }
+```
+
+### WF_SUPERVISOR (Schedule Trigger, no webhook)
+
+Runs on a 30-minute cron schedule. Not accessible via webhook.
+
+**Behavior:**
+1. Queries topics stuck in production stages (audio/images/assembling/producing) for >2 hours
+2. If stuck topic has failed scenes: auto-retries, waits 5 min, escalates if still stuck
+3. If stuck with no failures (stalled workflow): sets alert and re-fires stage webhook
+4. Auto-resolves alerts when topics reach assembled/published/stopped status
+5. Logs all actions to production_log table

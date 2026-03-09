@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ConnectionStatus from './ConnectionStatus';
+import { useSupervisorToasts } from '../SupervisorToastProvider';
 
 // Global nav items (shown at root /)
 const globalNavItems = [
@@ -40,7 +41,7 @@ function resolveNavPath(pathTemplate, projectId) {
   return pathTemplate.replace(':id', projectId || '_');
 }
 
-function NavItem({ item, collapsed, projectId, onClick, exact }) {
+function NavItem({ item, collapsed, projectId, onClick, exact, badge }) {
   const Icon = item.icon;
   const path = projectId ? resolveNavPath(item.path, projectId) : item.path;
 
@@ -66,7 +67,15 @@ function NavItem({ item, collapsed, projectId, onClick, exact }) {
           {isActive && (
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary" />
           )}
-          <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+          <span className="relative">
+            <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+            {badge && (
+              <span
+                data-testid="supervisor-badge"
+                className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse"
+              />
+            )}
+          </span>
           {!collapsed && <span className="text-[13px] font-medium">{item.label}</span>}
         </>
       )}
@@ -79,6 +88,7 @@ export default function Sidebar({ onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { id: projectId } = useParams();
   const location = useLocation();
+  const { hasSupervisorAlert } = useSupervisorToasts();
 
   // Detect if we're inside a project route
   const isInsideProject = !!projectId && location.pathname.startsWith('/project/');
@@ -152,6 +162,7 @@ export default function Sidebar({ onLogout }) {
               projectId={projectId}
               onClick={() => setMobileOpen(false)}
               exact={item.path === '/project/:id'}
+              badge={item.label === 'Production' && hasSupervisorAlert}
             />
           ))
         ) : (
