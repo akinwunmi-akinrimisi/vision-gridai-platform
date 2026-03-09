@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
-import { CheckCircle2, XCircle, RefreshCw, Pencil, FileText, ChevronDown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
+import { CheckCircle2, XCircle, RefreshCw, Pencil, FileText, ChevronDown, Play } from 'lucide-react';
 
 const STATUS_BADGE = {
   pending: 'badge badge-amber',
@@ -41,6 +41,17 @@ const SCRIPT_STATUS_BADGE = {
   rejected: { cls: 'badge badge-red', label: 'Script Rejected' },
 };
 
+const PRODUCTION_STATUS_BADGE = {
+  queued:     { cls: 'badge badge-amber', label: 'Queued' },
+  producing:  { cls: 'badge badge-amber animate-pulse', label: 'Producing' },
+  audio:      { cls: 'badge badge-purple', label: 'Audio' },
+  images:     { cls: 'badge badge-purple', label: 'Images' },
+  assembling: { cls: 'badge badge-purple', label: 'Assembling' },
+  assembled:  { cls: 'badge badge-blue', label: 'Assembled' },
+  stopped:    { cls: 'badge bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300', label: 'Stopped' },
+  failed:     { cls: 'badge badge-red', label: 'Failed' },
+};
+
 function getScriptBadge(topic) {
   if (topic.script_review_status === 'approved') return SCRIPT_STATUS_BADGE.approved;
   if (topic.script_review_status === 'rejected') return SCRIPT_STATUS_BADGE.rejected;
@@ -49,11 +60,46 @@ function getScriptBadge(topic) {
   return null;
 }
 
+function getProductionBadge(topic) {
+  return PRODUCTION_STATUS_BADGE[topic.status] || null;
+}
+
+function parseProgress(val) {
+  if (!val || val === 'pending') return 0;
+  if (val === 'complete') return 100;
+  const match = val.match?.(/done:(\d+)\/(\d+)/);
+  if (match) {
+    const [, done, total] = match;
+    return total > 0 ? Math.round((done / total) * 100) : 0;
+  }
+  return 0;
+}
+
+function computeProductionProgress(topic) {
+  const { status, audio_progress, images_progress, i2v_progress, t2v_progress } = topic;
+  const PRODUCING_STATUSES = ['producing', 'audio', 'images', 'assembling'];
+  if (!PRODUCING_STATUSES.includes(status)) return null;
+
+  const audio = parseProgress(audio_progress);
+  const images = parseProgress(images_progress);
+  const i2v = parseProgress(i2v_progress);
+  const t2v = parseProgress(t2v_progress);
+
+  return Math.round(audio * 0.25 + images * 0.25 + i2v * 0.25 + t2v * 0.25);
+}
+
+function canStartProduction(topic) {
+  return topic.script_review_status === 'approved' && topic.status === 'script_approved';
+}
+
 export default function TopicCard({ topic, projectId, isSelected, onToggleSelect, onApprove, onReject, onRefine, onEdit }) {
   const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
   const avatar = topic.avatars?.[0] || {};
   const status = topic.review_status || 'pending';
   const tintClass = STATUS_TINT[status] || '';
+  const productionBadge = getProductionBadge(topic);
+  const productionProgress = computeProductionProgress(topic);
 
   return (
     <div
@@ -105,6 +151,13 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
           ) : null;
         })()}
 
+        {/* Production status badge */}
+        {productionBadge && (
+          <span className={productionBadge.cls} data-testid={`production-badge-${topic.id}`}>
+            {productionBadge.label}
+          </span>
+        )}
+
         {/* CPM */}
         <span className="text-xs text-text-muted dark:text-text-muted-dark hidden sm:inline">
           {topic.estimated_cpm}
@@ -122,6 +175,16 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
 
         {/* Action buttons */}
         <div className="flex items-center gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
+          {canStartProduction(topic) && (
+            <button
+              onClick={() => navigate(`/project/${projectId || topic.project_id}/production?trigger=${topic.id}`)}
+              className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+              title="Start Production"
+              data-testid={`start-production-${topic.id}`}
+            >
+              <Play className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => onApprove(topic)}
             className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
@@ -168,6 +231,18 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
         />
       </div>
 
+      {/* Mini production progress bar */}
+      {productionProgress != null && (
+        <div className="px-4 pb-2" data-testid={`production-progress-${topic.id}`}>
+          <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-700/50 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary to-blue-500 transition-all duration-500"
+              style={{ width: `${productionProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Expanded content */}
       {expanded && (
         <div className="px-4 pb-4 pt-1 border-t border-border/30 dark:border-white/[0.04] animate-in space-y-4">
@@ -189,9 +264,9 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
 
           {/* Metadata row */}
           <div className="flex gap-4 text-xs">
-            <span><strong className="text-slate-600 dark:text-slate-400">CPM:</strong> {topic.estimated_cpm || '—'}</span>
-            <span><strong className="text-slate-600 dark:text-slate-400">Viral:</strong> {topic.viral_potential || '—'}</span>
-            <span><strong className="text-slate-600 dark:text-slate-400">Playlist:</strong> {topic.playlist_angle || '—'}</span>
+            <span><strong className="text-slate-600 dark:text-slate-400">CPM:</strong> {topic.estimated_cpm || '\u2014'}</span>
+            <span><strong className="text-slate-600 dark:text-slate-400">Viral:</strong> {topic.viral_potential || '\u2014'}</span>
+            <span><strong className="text-slate-600 dark:text-slate-400">Playlist:</strong> {topic.playlist_angle || '\u2014'}</span>
           </div>
 
           {/* Avatar */}
@@ -202,7 +277,7 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
                 {AVATAR_FIELDS.map(({ key, label }) => (
                   <div key={key}>
                     <p className="text-xs text-text-muted dark:text-text-muted-dark">{label}</p>
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{avatar[key] || '—'}</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300">{avatar[key] || '\u2014'}</p>
                   </div>
                 ))}
               </div>
