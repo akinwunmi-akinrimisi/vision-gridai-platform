@@ -60,6 +60,35 @@ export function useProjectMetrics(projectId) {
           topicsWithCpm.length
         : 0;
 
+    const netProfit = Math.round((totalRevenue - totalSpend) * 100) / 100;
+
+    // Aggregate cost_breakdown across all topics
+    const costBreakdown = topics.reduce(
+      (acc, t) => {
+        const cb = t.cost_breakdown;
+        if (cb && typeof cb === 'object') {
+          acc.script += parseFloat(cb.script) || 0;
+          acc.tts += parseFloat(cb.tts) || 0;
+          acc.images += parseFloat(cb.images) || 0;
+          acc.i2v += parseFloat(cb.i2v) || 0;
+          acc.t2v += parseFloat(cb.t2v) || 0;
+        }
+        return acc;
+      },
+      { script: 0, tts: 0, images: 0, i2v: 0, t2v: 0 }
+    );
+    costBreakdown.total = Math.round(totalSpend * 100) / 100;
+    // Round each component
+    Object.keys(costBreakdown).forEach((k) => {
+      costBreakdown[k] = Math.round(costBreakdown[k] * 100) / 100;
+    });
+
+    // Count topics ready for Gate 3 review (assembled)
+    const pendingReview = topics.filter((t) => t.status === 'assembled').length;
+
+    // Count scheduled topics
+    const scheduled = topics.filter((t) => t.status === 'scheduled').length;
+
     return {
       totalTopics,
       approved,
@@ -69,6 +98,10 @@ export function useProjectMetrics(projectId) {
       totalSpend: Math.round(totalSpend * 100) / 100,
       totalRevenue: Math.round(totalRevenue * 100) / 100,
       avgCpm: Math.round(avgCpm * 100) / 100,
+      netProfit,
+      costBreakdown,
+      pendingReview,
+      scheduled,
     };
   }, [topics]);
 

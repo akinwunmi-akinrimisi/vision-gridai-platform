@@ -38,11 +38,24 @@ export default function ProjectDashboard() {
     { label: 'Published', value: metrics.published, icon: Play, color: 'from-purple-500 to-violet-600', textColor: 'text-purple-500' },
   ];
 
+  const netProfitFormatted = metrics.netProfit > 0
+    ? `+${formatCurrency(metrics.netProfit)}`
+    : metrics.netProfit < 0
+      ? `-${formatCurrency(Math.abs(metrics.netProfit))}`
+      : formatCurrency(0);
+
   const financialMetrics = [
-    { label: 'Total Spend', value: formatCurrency(metrics.totalSpend), icon: DollarSign },
-    { label: 'Revenue', value: formatCurrency(metrics.totalRevenue), icon: TrendingUp },
-    { label: 'ROI', value: computeROI(metrics.totalRevenue, metrics.totalSpend), icon: BarChart3 },
-    { label: 'Avg CPM', value: metrics.avgCpm > 0 ? `$${metrics.avgCpm.toFixed(2)}` : '--', icon: AlertCircle },
+    { label: 'Total Spend', value: formatCurrency(metrics.totalSpend), icon: DollarSign, gradient: 'from-blue-500 to-indigo-600' },
+    { label: 'Revenue', value: formatCurrency(metrics.totalRevenue), icon: TrendingUp, gradient: 'from-emerald-500 to-teal-600' },
+    { label: 'ROI', value: computeROI(metrics.totalRevenue, metrics.totalSpend), icon: BarChart3, gradient: 'from-purple-500 to-violet-600' },
+    { label: 'Avg CPM', value: metrics.avgCpm > 0 ? `$${metrics.avgCpm.toFixed(2)}` : '--', icon: AlertCircle, gradient: 'from-amber-500 to-orange-600' },
+    {
+      label: 'Net Profit',
+      value: netProfitFormatted,
+      icon: DollarSign,
+      gradient: metrics.netProfit >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600',
+      valueColor: metrics.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
+    },
   ];
 
   return (
@@ -81,22 +94,24 @@ export default function ProjectDashboard() {
 
       {/* Financial metrics grid */}
       {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mb-8">
+          {Array.from({ length: 5 }).map((_, i) => (
             <SkeletonMetric key={i} />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mb-8">
           {financialMetrics.map((f) => (
             <div key={f.label} className="card-elevated p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <f.icon className="w-4 h-4 text-text-muted dark:text-text-muted-dark" />
-                <span className="text-xs font-medium text-text-muted dark:text-text-muted-dark">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-text-muted dark:text-text-muted-dark uppercase tracking-wider">
                   {f.label}
                 </span>
+                <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${f.gradient} flex items-center justify-center shadow-sm`}>
+                  <f.icon className="w-3.5 h-3.5 text-white" />
+                </div>
               </div>
-              <p className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">
+              <p className={`text-xl font-bold tabular-nums ${f.valueColor || 'text-slate-900 dark:text-white'}`}>
                 {f.value}
               </p>
             </div>
@@ -104,7 +119,22 @@ export default function ProjectDashboard() {
         </div>
       )}
 
-      {/* Pipeline status table */}
+      {/* Pipeline status section */}
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Pipeline Status</h2>
+        {metrics.pendingReview > 0 && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+            <AlertCircle className="w-3 h-3" />
+            {metrics.pendingReview} Pending Review
+          </span>
+        )}
+        {metrics.scheduled > 0 && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+            <Clock className="w-3 h-3" />
+            {metrics.scheduled} Scheduled
+          </span>
+        )}
+      </div>
       <PipelineTable topics={topics || []} projectId={projectId} />
     </div>
   );
