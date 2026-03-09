@@ -1,0 +1,625 @@
+{
+  "name": "WF_SUPERVISOR",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/30 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,status,last_status_change,project_id,seo_title,topic_number,supervisor_alerted" },
+            { "name": "status", "value": "in.(audio,images,assembling,producing)" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "fetch-topics",
+      "name": "Fetch Active Topics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter topics stuck for more than 2 hours (7200000 ms)\nconst topics = $input.first().json;\nconst now = Date.now();\nconst TWO_HOURS_MS = 7200000;\n\nconst stuckTopics = (Array.isArray(topics) ? topics : []).filter(t => {\n  if (!t.last_status_change) return false;\n  const lastChange = new Date(t.last_status_change).getTime();\n  return (now - lastChange) > TWO_HOURS_MS;\n});\n\nreturn [{ json: { stuckTopics, stuckCount: stuckTopics.length } }];"
+      },
+      "id": "filter-stuck",
+      "name": "Filter Stuck Topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.stuckCount}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "has-stuck",
+      "name": "Has Stuck Topics?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split stuck topics into individual items for processing\nconst { stuckTopics } = $input.first().json;\nreturn stuckTopics.map(t => ({ json: t }));"
+      },
+      "id": "split-stuck",
+      "name": "Split Stuck Topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "batch-loop",
+      "name": "Process Each Topic",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1320, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/scenes",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "eq.{{$json.id}}" },
+            { "name": "or", "value": "(audio_status.eq.failed,image_status.eq.failed,video_status.eq.failed)" },
+            { "name": "select", "value": "id,scene_number,audio_status,image_status,video_status" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "check-failed-scenes",
+      "name": "Check Failed Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine if this topic has failed scenes\nconst failedScenes = $input.first().json;\nconst topicData = $('Process Each Topic').first().json;\nconst hasFailures = Array.isArray(failedScenes) && failedScenes.length > 0;\n\nreturn [{ json: {\n  ...topicData,\n  hasFailures,\n  failedCount: hasFailures ? failedScenes.length : 0,\n  failedScenes: hasFailures ? failedScenes : []\n}}];"
+      },
+      "id": "eval-failures",
+      "name": "Evaluate Failures",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasFailures}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "has-failures",
+      "name": "Has Failed Scenes?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1980, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.N8N_WEBHOOK_BASE || 'https://n8n.srv1297445.hstgr.cloud/webhook'}}/production/retry-all-failed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.DASHBOARD_API_TOKEN}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "={{$json.id}}" }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "retry-failed",
+      "name": "Retry All Failed Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"project_id\": \"{{$('Process Each Topic').first().json.project_id}}\",\n  \"topic_id\": \"{{$('Process Each Topic').first().json.id}}\",\n  \"stage\": \"supervisor\",\n  \"action\": \"auto_retry\",\n  \"details\": { \"topic_id\": \"{{$('Process Each Topic').first().json.id}}\", \"failed_count\": {{$('Evaluate Failures').first().json.failedCount}}, \"reason\": \"stuck >2h\" }\n}",
+        "options": {}
+      },
+      "id": "log-retry",
+      "name": "Log Retry Attempt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2420, 100]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "minutes"
+      },
+      "id": "wait-after-retry",
+      "name": "Wait 5 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2640, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/scenes",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "eq.{{$('Process Each Topic').first().json.id}}" },
+            { "name": "or", "value": "(audio_status.eq.failed,image_status.eq.failed,video_status.eq.failed)" },
+            { "name": "select", "value": "id,scene_number" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "recheck-failures",
+      "name": "Re-check Failed Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2860, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if failures remain after retry\nconst remaining = $input.first().json;\nconst stillFailed = Array.isArray(remaining) && remaining.length > 0;\nreturn [{ json: { stillFailed, remainingCount: stillFailed ? remaining.length : 0 } }];"
+      },
+      "id": "check-remaining",
+      "name": "Check Remaining Failures",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3080, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.stillFailed}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "still-stuck",
+      "name": "Still Stuck?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3300, 100]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{$('Process Each Topic').first().json.id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"supervisor_alerted\": true }",
+        "options": {}
+      },
+      "id": "alert-after-retry",
+      "name": "Set Alert After Retry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3520, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"project_id\": \"{{$('Process Each Topic').first().json.project_id}}\",\n  \"topic_id\": \"{{$('Process Each Topic').first().json.id}}\",\n  \"stage\": \"supervisor\",\n  \"action\": \"alerted\",\n  \"details\": { \"topic_id\": \"{{$('Process Each Topic').first().json.id}}\", \"remaining_failures\": {{$('Check Remaining Failures').first().json.remainingCount}}, \"message\": \"Auto-retry did not resolve stuck pipeline\" }\n}",
+        "options": {}
+      },
+      "id": "log-alert-retry",
+      "name": "Log Alert After Retry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3740, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{$json.id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"supervisor_alerted\": true }",
+        "options": {}
+      },
+      "id": "alert-no-failures",
+      "name": "Set Alert (No Failures)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"project_id\": \"{{$json.project_id}}\",\n  \"topic_id\": \"{{$json.id}}\",\n  \"stage\": \"supervisor\",\n  \"action\": \"alerted\",\n  \"details\": { \"topic_id\": \"{{$json.id}}\", \"status\": \"{{$json.status}}\", \"message\": \"Topic stuck with no failed scenes - possible workflow stall\" }\n}",
+        "options": {}
+      },
+      "id": "log-alert-stall",
+      "name": "Log Alert (Stall)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2420, 340]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Re-fire the appropriate stage webhook for a stalled topic\nconst topic = $('Evaluate Failures').first().json;\nconst status = topic.status;\nconst baseUrl = $env.N8N_WEBHOOK_BASE || 'https://n8n.srv1297445.hstgr.cloud/webhook';\nconst token = $env.DASHBOARD_API_TOKEN;\n\nlet endpoints = [];\nif (status === 'audio') {\n  endpoints = [`${baseUrl}/production/tts`];\n} else if (status === 'images') {\n  endpoints = [\n    `${baseUrl}/production/images`,\n    `${baseUrl}/production/i2v`,\n    `${baseUrl}/production/t2v`\n  ];\n} else if (status === 'assembling') {\n  endpoints = [`${baseUrl}/production/assembly`];\n}\n\nreturn [{ json: { endpoints, topic_id: topic.id, token } }];"
+      },
+      "id": "compute-refire",
+      "name": "Compute Re-fire Endpoints",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 340]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Re-fire each endpoint for the stalled workflow\nconst { endpoints, topic_id, token } = $input.first().json;\n\nfor (const url of endpoints) {\n  try {\n    await fetch(url, {\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json',\n        'Authorization': `Bearer ${token}`\n      },\n      body: JSON.stringify({ topic_id })\n    });\n  } catch (e) {\n    // Best effort — log but don't fail\n  }\n}\n\nreturn [{ json: { refired: endpoints.length, topic_id } }];"
+      },
+      "id": "refire-webhooks",
+      "name": "Re-fire Stage Webhooks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2860, 340]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "supervisor_alerted", "value": "eq.true" },
+            { "name": "status", "value": "in.(assembled,published,stopped)" },
+            { "name": "select", "value": "id" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "find-resolved",
+      "name": "Find Resolved Alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reset supervisor_alerted for resolved topics\nconst resolved = $input.first().json;\nconst topics = Array.isArray(resolved) ? resolved : [];\n\nif (topics.length === 0) {\n  return [{ json: { resolvedCount: 0 } }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst anonKey = $env.SUPABASE_ANON_KEY;\nconst serviceKey = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nfor (const t of topics) {\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${t.id}`, {\n      method: 'PATCH',\n      headers: {\n        'apikey': anonKey,\n        'Authorization': `Bearer ${serviceKey}`,\n        'Content-Type': 'application/json',\n        'Prefer': 'return=minimal'\n      },\n      body: JSON.stringify({ supervisor_alerted: false })\n    });\n  } catch (e) {}\n}\n\nreturn [{ json: { resolvedCount: topics.length } }];"
+      },
+      "id": "reset-resolved",
+      "name": "Reset Resolved Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect summary stats from all processing branches\nconst stuckData = $('Filter Stuck Topics').first().json;\nconst resolvedData = $('Reset Resolved Alerts').first().json;\n\nconst summary = {\n  stuck_count: stuckData.stuckCount || 0,\n  resolved_count: resolvedData.resolvedCount || 0,\n  timestamp: new Date().toISOString()\n};\n\n// Only log if any actions were taken\nif (summary.stuck_count > 0 || summary.resolved_count > 0) {\n  return [{ json: { shouldLog: true, summary } }];\n}\n\nreturn [{ json: { shouldLog: false, summary } }];"
+      },
+      "id": "build-summary",
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.shouldLog}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "should-log",
+      "name": "Should Log Summary?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1540, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"stage\": \"supervisor\",\n  \"action\": \"run_complete\",\n  \"details\": {{JSON.stringify($json.summary)}}\n}",
+        "options": {}
+      },
+      "id": "log-summary",
+      "name": "Log Run Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 500]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          { "node": "Fetch Active Topics", "type": "main", "index": 0 },
+          { "node": "Find Resolved Alerts", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Active Topics": {
+      "main": [
+        [{ "node": "Filter Stuck Topics", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter Stuck Topics": {
+      "main": [
+        [{ "node": "Has Stuck Topics?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Stuck Topics?": {
+      "main": [
+        [{ "node": "Split Stuck Topics", "type": "main", "index": 0 }],
+        [{ "node": "Build Summary", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Stuck Topics": {
+      "main": [
+        [{ "node": "Process Each Topic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Process Each Topic": {
+      "main": [
+        [{ "node": "Build Summary", "type": "main", "index": 0 }],
+        [{ "node": "Check Failed Scenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Failed Scenes": {
+      "main": [
+        [{ "node": "Evaluate Failures", "type": "main", "index": 0 }]
+      ]
+    },
+    "Evaluate Failures": {
+      "main": [
+        [{ "node": "Has Failed Scenes?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Failed Scenes?": {
+      "main": [
+        [{ "node": "Retry All Failed Scenes", "type": "main", "index": 0 }],
+        [{ "node": "Set Alert (No Failures)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Retry All Failed Scenes": {
+      "main": [
+        [{ "node": "Log Retry Attempt", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Retry Attempt": {
+      "main": [
+        [{ "node": "Wait 5 Minutes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 5 Minutes": {
+      "main": [
+        [{ "node": "Re-check Failed Scenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Re-check Failed Scenes": {
+      "main": [
+        [{ "node": "Check Remaining Failures", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Remaining Failures": {
+      "main": [
+        [{ "node": "Still Stuck?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Still Stuck?": {
+      "main": [
+        [{ "node": "Set Alert After Retry", "type": "main", "index": 0 }],
+        [{ "node": "Process Each Topic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Alert After Retry": {
+      "main": [
+        [{ "node": "Log Alert After Retry", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Alert After Retry": {
+      "main": [
+        [{ "node": "Process Each Topic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Alert (No Failures)": {
+      "main": [
+        [{ "node": "Log Alert (Stall)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Alert (Stall)": {
+      "main": [
+        [{ "node": "Compute Re-fire Endpoints", "type": "main", "index": 0 }]
+      ]
+    },
+    "Compute Re-fire Endpoints": {
+      "main": [
+        [{ "node": "Re-fire Stage Webhooks", "type": "main", "index": 0 }]
+      ]
+    },
+    "Re-fire Stage Webhooks": {
+      "main": [
+        [{ "node": "Process Each Topic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Find Resolved Alerts": {
+      "main": [
+        [{ "node": "Reset Resolved Alerts", "type": "main", "index": 0 }]
+      ]
+    },
+    "Reset Resolved Alerts": {
+      "main": [
+        [{ "node": "Build Summary", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        [{ "node": "Should Log Summary?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Should Log Summary?": {
+      "main": [
+        [{ "node": "Log Run Summary", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    { "name": "supervisor" },
+    { "name": "production" },
+    { "name": "cron" }
+  ]
+}
