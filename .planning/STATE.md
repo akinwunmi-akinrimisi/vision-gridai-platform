@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-03-09T04:07:48.078Z"
+last_activity: 2026-03-09 — Plan 04-03 executed (Pipeline table and TopicCard production status)
+progress:
+  total_phases: 6
+  completed_phases: 3
+  total_plans: 21
+  completed_plans: 19
+  percent: 90
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
 stopped_at: Completed 04-04-PLAN.md
 last_updated: "2026-03-09T04:00:10.077Z"
 last_activity: 2026-03-09 — Plan 04-03 executed (Pipeline table and TopicCard production status)
 progress:
-  total_phases: 6
+  [█████████░] 90%
   completed_phases: 3
   total_plans: 21
   completed_plans: 17
@@ -93,6 +109,7 @@ Progress: [████████░░] 76% (16/21 total plans)
 | Phase 04 P02 | 8min | 2 tasks | 8 files |
 | Phase 04 P03 | 5min | 2 tasks | 4 files |
 | Phase 04 P04 | 6min | 2 tasks | 3 files |
+| Phase 04 P06 | 4min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -124,6 +141,8 @@ Recent decisions affecting current work:
 - [Phase 04]: TTS uses workflow static data for cumulative timeline across SplitInBatches loop
 - [Phase 04]: DotGrid computes failedScenes locally from scenes array as fallback when hook doesn't provide it
 - [Phase 04]: Scene status color mapping: gray=pending, blue=audio, cyan=image, purple=video, green=complete, red=failed
+- [Phase 04]: SRT captions include skipped scenes with marker text for timeline continuity
+- [Phase 04]: Concat list checks file existence on disk, excluding failed clips
 
 ### Pending Todos
 
@@ -135,6 +154,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T04:00:10.072Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-03-09T04:07:48.074Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None

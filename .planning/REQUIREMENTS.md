@@ -64,8 +64,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **PROD-04**: Image generation for static_image scenes using Kie.ai Seedream 4.5 (100 per video)
 - [ ] **PROD-05**: I2V clip generation for i2v scenes using Kie.ai Kling 2.1 Standard (25 per video)
 - [ ] **PROD-06**: T2V clip generation for t2v scenes using Kie.ai Kling 2.1 Standard (72 per video)
-- [ ] **PROD-07**: Caption/subtitle file generated from scene narration + timestamps
-- [ ] **PROD-08**: FFmpeg assembly — concat all scene clips with `-c copy` (no re-encoding), add captions, normalize audio
+- [x] **PROD-07**: Caption/subtitle file generated from scene narration + timestamps
+- [x] **PROD-08**: FFmpeg assembly — concat all scene clips with `-c copy` (no re-encoding), add captions, normalize audio
 - [x] **PROD-09**: Each asset uploaded to Google Drive immediately after generation
 - [x] **PROD-10**: Each scene row in Supabase updated immediately after each asset (not batched)
 - [x] **PROD-11**: Self-chaining — each workflow fires the next on completion
@@ -182,8 +182,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROD-04 | Phase 4 | Pending |
 | PROD-05 | Phase 4 | Pending |
 | PROD-06 | Phase 4 | Pending |
-| PROD-07 | Phase 4 | Pending |
-| PROD-08 | Phase 4 | Pending |
+| PROD-07 | Phase 4 | Complete |
+| PROD-08 | Phase 4 | Complete |
 | PROD-09 | Phase 4 | Complete |
 | PROD-10 | Phase 4 | Complete |
 | PROD-11 | Phase 4 | Complete |
