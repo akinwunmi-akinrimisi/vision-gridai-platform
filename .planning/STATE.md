@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Backend & E2E
 status: completed
-stopped_at: Completed 07-04-PLAN.md
-last_updated: "2026-03-09T16:00:37.725Z"
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-09T17:06:19.269Z"
 last_activity: "2026-03-09 — 07-04 complete (dashboard deployed: nginx:alpine behind Traefik, React SPA serving HTTP 200, DNS A record needed for HTTPS)"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 8
+  completed_plans: 5
 ---
 
 ---
@@ -103,14 +103,14 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 7 (Infrastructure Hardening) — COMPLETE (4/4 plans done)
-Plan: 07-04 complete
+Phase: 8 (Credentials & Deployment) — In Progress (1/? plans done)
+Plan: 08-01 complete
 Status: Active
-Last activity: 2026-03-09 — 07-04 complete (dashboard deployed: nginx:alpine behind Traefik, React SPA serving HTTP 200, DNS A record needed for HTTPS)
+Last activity: 2026-03-09 — 08-01 complete (N8N_WEBHOOK_BASE + DASHBOARD_API_TOKEN injected into n8n container, Phase 7 vars preserved, healthz=200)
 
 ```
-v1.1 Progress: [██████████] 100% (Phase 7 complete)
-Phases:        [7: ●] [8: ○] [9: ○] [10: ○]
+v1.1 Progress: [██████░░░░] 63% (Phase 7 complete, Phase 8 in progress)
+Phases:        [7: ●] [8: ◑] [9: ○] [10: ○]
 ```
 
 ## Performance Metrics
@@ -124,6 +124,7 @@ Phases:        [7: ●] [8: ○] [9: ○] [10: ○]
 | Phase 07 P02 | 2 | 2 tasks | 1 files |
 | Phase 07 P03 | 2 | 2 tasks | 0 files |
 | Phase 07 P04 | 28 | 6 tasks | 2 files |
+| Phase 08-credentials-deployment P01 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,8 @@ Phases:        [7: ●] [8: ○] [9: ○] [10: ○]
 - [07-04] VPS uses Traefik (n8n-traefik-1) on ports 80/443 — dashboard deployed as nginx:alpine Docker container with Traefik labels, not standalone Nginx; cert auto-issued by Traefik once DNS is set
 - [07-04] Dashboard repo is private with no VPS deploy key — build locally with npm run build, SCP dist/ to /opt/dashboard; redeployment = scp + no container restart (bind mount)
 - [07-04] DNS A record for dashboard.operscale.cloud must point to 72.61.201.148 — user action required before HTTPS works
+- [08-01] DASHBOARD_API_TOKEN not committed to git — .env untracked; task commits use --allow-empty to record completion without exposing secrets
+- [08-01] VPS override pattern confirmed: /docker/n8n/docker-compose.override.yml holds all custom env vars; NODE_OPTIONS and EXECUTIONS_TIMEOUT in base compose are NOT duplicated in override
 
 ### Research Flags
 - Phase 9: pause_turn handling for long research NOT implemented — may need research spike during planning
@@ -161,6 +164,6 @@ Phases:        [7: ●] [8: ○] [9: ○] [10: ○]
 
 ## Session Continuity
 
-Last session: 2026-03-09T15:40:59.879Z
-Stopped at: Completed 07-04-PLAN.md
+Last session: 2026-03-09T17:06:19.262Z
+Stopped at: Completed 08-01-PLAN.md
 Resume: Phase 7 complete. Next: Plan Phase 8 (Credentials & Deployment). DNS action required: add A record dashboard.operscale.cloud → 72.61.201.148
