@@ -1,0 +1,92 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
+import { useRealtimeSubscription } from './useRealtimeSubscription';
+
+/**
+ * Fetch scenes for a topic and compute stage-by-stage production progress.
+ * Subscribes to Supabase Realtime for live updates.
+ *
+ * @param {string|null} topicId - Topic UUID
+ * @returns {{ scenes: Array, stageProgress: object, failedScenes: Array, isLoading: boolean, error: any }}
+ */
+export function useProductionProgress(topicId) {
+  useRealtimeSubscription(
+    topicId ? 'scenes' : null,
+    topicId ? `topic_id=eq.${topicId}` : null,
+    [['scenes', topicId], ['production-progress', topicId]]
+  );
+
+  const query = useQuery({
+    queryKey: ['scenes', topicId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('scenes')
+        .select('*')
+        .eq('topic_id', topicId)
+        .order('scene_number', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!topicId,
+  });
+
+  const scenes = query.data || [];
+
+  // Compute stage progress
+  const stageProgress = computeStageProgress(scenes);
+
+  // Compute failed scenes
+  const failedScenes = scenes.filter(
+    (s) =>
+      s.audio_status === 'failed' ||
+      s.image_status === 'failed' ||
+      s.video_status === 'failed'
+  );
+
+  return {
+    scenes,
+    stageProgress,
+    failedScenes,
+    isLoading: query.isLoading,
+    error: query.error,
+  };
+}
+
+/**
+ * Compute completion counts for each production stage.
+ */
+function computeStageProgress(scenes) {
+  const total = scenes.length;
+
+  const audioCompleted = scenes.filter(
+    (s) => s.audio_status === 'uploaded' || s.audio_status === 'generated'
+  ).length;
+
+  // All scenes can have images (static_image scenes get images, i2v scenes need images as source)
+  const imagesCompleted = scenes.filter(
+    (s) => s.image_status === 'uploaded' || s.image_status === 'generated'
+  ).length;
+
+  const i2vScenes = scenes.filter((s) => s.visual_type === 'i2v');
+  const i2vCompleted = i2vScenes.filter(
+    (s) => s.video_status === 'uploaded' || s.video_status === 'generated'
+  ).length;
+
+  const t2vScenes = scenes.filter((s) => s.visual_type === 't2v');
+  const t2vCompleted = t2vScenes.filter(
+    (s) => s.video_status === 'uploaded' || s.video_status === 'generated'
+  ).length;
+
+  const clipsCompleted = scenes.filter(
+    (s) => s.clip_status === 'complete' || s.clip_status === 'uploaded'
+  ).length;
+
+  return {
+    audio: { completed: audioCompleted, total },
+    images: { completed: imagesCompleted, total },
+    i2v: { completed: i2vCompleted, total: i2vScenes.length },
+    t2v: { completed: t2vCompleted, total: t2vScenes.length },
+    clips: { completed: clipsCompleted, total },
+  };
+}
