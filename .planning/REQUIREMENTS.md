@@ -18,7 +18,7 @@ Requirements for v1.1 Backend & E2E milestone. Closes v1.0 known gaps.
 
 - [x] **DEPL-01**: n8n production credentials created (Anthropic API key, Supabase service role, Google Cloud TTS, Kie.ai API, Google Drive OAuth, YouTube OAuth)
 - [x] **DEPL-02**: v1.0 stub workflows deactivated to clear webhook path collisions
-- [ ] **DEPL-03**: All v1.0 production workflow JSONs imported and activated in n8n (status, production, publish, settings, supervisor, analytics)
+- [x] **DEPL-03**: All v1.0 production workflow JSONs imported and activated in n8n (status, production, publish, settings, supervisor, analytics)
 - [x] **DEPL-04**: Webhook URLs use $env.N8N_WEBHOOK_BASE expressions (not hardcoded URLs) for self-chaining
 
 ### AI Agent Workflows
@@ -70,7 +70,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFR-04 | Phase 7 | Complete |
 | DEPL-01 | Phase 8 | Complete |
 | DEPL-02 | Phase 8 | Complete |
-| DEPL-03 | Phase 8 | Pending |
+| DEPL-03 | Phase 8 | Complete |
 | DEPL-04 | Phase 8 | Complete |
 | AGNT-01 | Phase 9 | Pending |
 | AGNT-02 | Phase 9 | Pending |
