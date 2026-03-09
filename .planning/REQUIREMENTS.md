@@ -92,8 +92,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Operations
 
-- [ ] **OPS-01**: Supervisor agent runs every 30 minutes checking for stuck pipelines
-- [ ] **OPS-02**: Supervisor can retry workflows, skip scenes, or alert owner based on error type
+- [x] **OPS-01**: Supervisor agent runs every 30 minutes checking for stuck pipelines
+- [x] **OPS-02**: Supervisor can retry workflows, skip scenes, or alert owner based on error type
 - [ ] **OPS-03**: Settings page allows per-project config (script approach, image/video models, word count, scene count)
 - [ ] **OPS-04**: Settings page includes prompt editor for viewing/editing dynamic prompts
 
@@ -190,8 +190,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROD-12 | Phase 4 | Complete |
 | PROD-13 | Phase 4 | Complete |
 | PROD-14 | Phase 4 | Complete |
-| OPS-01 | Phase 4 | Pending |
-| OPS-02 | Phase 4 | Pending |
+| OPS-01 | Phase 4 | Complete |
+| OPS-02 | Phase 4 | Complete |
 | PUBL-01 | Phase 5 | Pending |
 | PUBL-02 | Phase 5 | Pending |
 | PUBL-03 | Phase 5 | Pending |

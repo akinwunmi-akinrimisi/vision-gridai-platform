@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Dashboard skeleton, Supabase client, webhook API, auth gate, infrastructure hardening (completed 2026-03-08)
 - [ ] **Phase 2: Niche Research + Topics** - Project creation, niche research, topic generation, Gate 1 approval flow
 - [ ] **Phase 3: Script Generation** - 3-pass script pipeline with per-pass scoring, scene segmentation, Gate 2 approval flow
-- [ ] **Phase 4: Production Pipeline** - TTS, images, video clips, FFmpeg assembly, real-time production monitor, supervisor agent
+- [x] **Phase 4: Production Pipeline** - TTS, images, video clips, FFmpeg assembly, real-time production monitor, supervisor agent (completed 2026-03-09)
 - [ ] **Phase 5: Publish + Analytics** - Video preview, Gate 3 approval, YouTube upload, analytics cron, cost tracking
 - [ ] **Phase 6: Polish** - Settings page, prompt editor, per-project configuration
 
@@ -137,6 +137,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Foundation | 4/4 | Complete   | 2026-03-08 |
 | 2. Niche Research + Topics | 1/5 | Executing | - |
 | 3. Script Generation | 3/4 | In Progress|  |
-| 4. Production Pipeline | 5/8 | In Progress|  |
+| 4. Production Pipeline | 8/8 | Complete   | 2026-03-09 |
 | 5. Publish + Analytics | 0/3 | Not started | - |
 | 6. Polish | 0/1 | Not started | - |
