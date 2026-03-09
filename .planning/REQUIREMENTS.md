@@ -94,7 +94,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **OPS-01**: Supervisor agent runs every 30 minutes checking for stuck pipelines
 - [x] **OPS-02**: Supervisor can retry workflows, skip scenes, or alert owner based on error type
-- [ ] **OPS-03**: Settings page allows per-project config (script approach, image/video models, word count, scene count)
+- [x] **OPS-03**: Settings page allows per-project config (script approach, image/video models, word count, scene count)
 - [ ] **OPS-04**: Settings page includes prompt editor for viewing/editing dynamic prompts
 
 ## v2 Requirements
@@ -203,7 +203,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ANLY-02 | Phase 5 | Complete |
 | ANLY-03 | Phase 5 | Complete |
 | ANLY-04 | Phase 5 | Complete |
-| OPS-03 | Phase 6 | Pending |
+| OPS-03 | Phase 6 | Complete |
 | OPS-04 | Phase 6 | Pending |
 
 **Coverage:**
