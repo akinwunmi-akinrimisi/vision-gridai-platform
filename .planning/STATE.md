@@ -3,6 +3,21 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Backend & E2E
 status: completed
+stopped_at: Completed 08-05-PLAN.md
+last_updated: "2026-03-09T19:07:50.630Z"
+last_activity: 2026-03-09 — 08-04 complete (18 workflows imported, 16/18 active; WF_TTS_AUDIO + WF_CAPTIONS_ASSEMBLY inactive due to executeCommand unsupported in runner mode — deferred to Phase 9)
+progress:
+  total_phases: 4
+  completed_phases: 2
+  total_plans: 9
+  completed_plans: 9
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: Backend & E2E
+status: completed
 stopped_at: Completed 08-04-PLAN.md
 last_updated: "2026-03-09T18:17:09.150Z"
 last_activity: "2026-03-09 — 08-03 complete (n8n server audit: 205 workflows found, user kept all, webhook paths clear for production import, DEPL-02 satisfied)"
@@ -151,10 +166,10 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 8 (Credentials & Deployment) — COMPLETE (4/4 plans done)
-Plan: 08-04 complete
+Phase: 8 (Credentials & Deployment) — COMPLETE (5/5 plans done)
+Plan: 08-05 complete
 Status: Active
-Last activity: 2026-03-09 — 08-04 complete (18 workflows imported, 16/18 active; WF_TTS_AUDIO + WF_CAPTIONS_ASSEMBLY inactive due to executeCommand unsupported in runner mode — deferred to Phase 9)
+Last activity: 2026-03-09 — 08-05 complete (18/18 workflows active; WF_TTS_AUDIO + WF_CAPTIONS_ASSEMBLY activated after replacing 8 executeCommand nodes with Code nodes; NODE_FUNCTION_ALLOW_BUILTIN=child_process added to n8n override; DEPL-03 satisfied)
 
 ```
 v1.1 Progress: [██████████] 100% (Phase 7 complete, Phase 8 complete)
@@ -176,6 +191,7 @@ Phases:        [7: ●] [8: ●] [9: ○] [10: ○]
 | Phase 08-credentials-deployment P02 | 25 | 3 tasks | 1 files |
 | Phase 08-credentials-deployment P03 | 5 | 3 tasks | 1 files |
 | Phase 08-credentials-deployment P04 | 31 | 3 tasks | 0 files |
+| Phase 08-credentials-deployment P05 | 16 | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -200,7 +216,11 @@ Phases:        [7: ●] [8: ●] [9: ○] [10: ○]
 - [08-02] All 6 credential UUIDs: Anthropic=vlfOXwvIUlRYnr41, Supabase=QsqqFXtnLakNfVKR, Kie=rSyWwwFnPOZFL59o, TTS=wR9CUA4SPWBbPW4O, Drive=z0gigNHVnhcGz2pD, YouTube=bV36zJBQkG9QrayH
 - [08-03] n8n server has 205 total workflows (51 active) — all belong to unrelated projects; user chose to keep all; zero Vision GridAI production workflows active; webhook path namespace clear
 - [08-03] Two inactive stubs exist (WF_WEBHOOK_PROJECT_CREATE: 7yEv1fZonN0wLoJy, WF_WEBHOOK_TOPICS_ACTION: 7pqmKQY8AA71n8bs) — inactive, will not block Plan 08-04 import
-- [08-04] executeCommand unsupported in n8n runner mode — WF_TTS_AUDIO and WF_CAPTIONS_ASSEMBLY need ffmpeg-api HTTP migration (http://ffmpeg-api:3002) in Phase 9
+- [08-04] executeCommand unsupported in n8n runner mode — WF_TTS_AUDIO and WF_CAPTIONS_ASSEMBLY activated in 08-05 via Code nodes with child_process (not ffmpeg-api HTTP migration)
+- [08-05] ffmpeg-api (http://ffmpeg-api:3002) is audio-only (convert PCM, merge MP3) — NOT a general shell proxy; cannot replace executeCommand with HTTP calls to it
+- [08-05] executeCommand -> Code node migration: set NODE_FUNCTION_ALLOW_BUILTIN=child_process in n8n docker-compose override; Code nodes can then use require('child_process').execSync; ffmpeg 8.0.1 + ffprobe confirmed inside n8n container
+- [08-05] n8n workflow list is paginated (219 total); some VisionGridAI workflow names have descriptions appended (e.g. "WF_PROJECT_CREATE — Niche Research + Prompt Generation") — use startsWith() matching when searching by name
+- [08-05] All 18 Vision GridAI workflows now active (DEPL-03 satisfied); Phase 8 fully complete
 - [08-04] n8n auto-resolves httpHeaderAuth creds by name on import; only renamed Drive/YouTube creds needed manual UUID patching
 - [08-04] WF_PROJECT_CREATE webhook path changed to 'internal/project-create' — WF_WEBHOOK_PROJECT_CREATE is canonical external endpoint at 'project/create'
 - [08-04] All 18 workflow IDs recorded: WF_WEBHOOK_STATUS=QRfPPKz2hWaRLF0F, WF_WEBHOOK_PROJECT_CREATE=tX99MoY83pEzfGja, WF_WEBHOOK_TOPICS_GENERATE=H5XjurL9qILe3KaG, WF_WEBHOOK_TOPICS_ACTION=cc0n4oQnEU8Fy5AY, WF_WEBHOOK_PRODUCTION=SsdE4siQ8EbO76ye, WF_WEBHOOK_PUBLISH=K2QLOdQUcvsCQDpy, WF_WEBHOOK_SETTINGS=TfcJuN8HkOdlEmTR, WF_TTS_AUDIO=4L2j3aU2WGnfcvvj, WF_IMAGE_GENERATION=ScP3yoaeuK7BwpUo, WF_I2V_GENERATION=rHQa9gThXQleyStj, WF_T2V_GENERATION=KQDyQt5PV8uqCrXM, WF_CAPTIONS_ASSEMBLY=Fhdy66BLRh7rAwTi, WF_YOUTUBE_UPLOAD=IKu9SGDkS0pzZwoP, WF_ANALYTICS_CRON=2YuUQSGJPQs2n1Rz, WF_SUPERVISOR=uAlOrkJFjkkXrw6t, WF_PROJECT_CREATE=8KW1hiRklamduMzO, WF_TOPICS_GENERATE=J5NTvfweZRiKJ9fG, WF_TOPICS_ACTION=BE1mpwuBigLsq26v
@@ -225,6 +245,6 @@ Phases:        [7: ●] [8: ●] [9: ○] [10: ○]
 
 ## Session Continuity
 
-Last session: 2026-03-09T18:17:09.144Z
-Stopped at: Completed 08-04-PLAN.md
+Last session: 2026-03-09T19:07:32.298Z
+Stopped at: Completed 08-05-PLAN.md
 Resume: Phase 7 complete. Next: Plan Phase 8 (Credentials & Deployment). DNS action required: add A record dashboard.operscale.cloud → 72.61.201.148
