@@ -108,12 +108,14 @@ Plans:
   3. YouTube upload completes with metadata, captions, thumbnail, and correct playlist assignment, respecting the 6-upload daily quota
   4. Analytics page displays per-video YouTube metrics (views, watch hours, CTR, revenue) pulled by a daily cron
   5. Per-video and per-project cost tracking is visible on the dashboard
-**Plans**: 3 plans
+**Plans**: 5 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
-- [ ] 05-03: TBD
+- [ ] 05-00-PLAN.md -- Wave 0: Test scaffolds, stub files, publish/analytics API helpers, data hooks
+- [ ] 05-01-PLAN.md -- Video Review page with Gate 3 approval flow, metadata display/editing, video player, upload progress
+- [ ] 05-02-PLAN.md -- Analytics page with Recharts charts, metric cards, top performer, sortable performance table
+- [ ] 05-03-PLAN.md -- n8n publish webhooks, YouTube upload workflow, batch publish dialog, pipeline status badges
+- [ ] 05-04-PLAN.md -- n8n analytics cron workflow, Project Dashboard financial metrics wiring
 
 ### Phase 6: Polish
 **Goal**: User can configure per-project settings and view/edit dynamic prompts from the dashboard
@@ -138,5 +140,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Niche Research + Topics | 1/5 | Executing | - |
 | 3. Script Generation | 3/4 | In Progress|  |
 | 4. Production Pipeline | 8/8 | Complete   | 2026-03-09 |
-| 5. Publish + Analytics | 0/3 | Not started | - |
+| 5. Publish + Analytics | 0/5 | Not started | - |
 | 6. Polish | 0/1 | Not started | - |
