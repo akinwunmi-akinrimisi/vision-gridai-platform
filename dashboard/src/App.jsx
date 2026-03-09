@@ -10,6 +10,7 @@ import TopicReview from './pages/TopicReview';
 import ScriptReview from './pages/ScriptReview';
 import ProductionMonitor from './pages/ProductionMonitor';
 import Analytics from './pages/Analytics';
+import VideoReview from './pages/VideoReview';
 import Settings from './pages/Settings';
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/project/:id/research" element={<NicheResearch />} />
           <Route path="/project/:id/topics" element={<TopicReview />} />
           <Route path="/project/:id/topics/:topicId/script" element={<ScriptReview />} />
+          <Route path="/project/:id/topics/:topicId/review" element={<VideoReview />} />
           <Route path="/project/:id/production" element={<ProductionMonitor />} />
           <Route path="/project/:id/analytics" element={<Analytics />} />
           <Route path="/project/:id/settings" element={<Settings />} />
