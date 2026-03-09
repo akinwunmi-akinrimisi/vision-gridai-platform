@@ -3,11 +3,43 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Backend & E2E
 status: completed
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-03-09T15:01:29.755Z"
+last_activity: "2026-03-09 — 07-02 complete (PostgreSQL NVMe tuning verified: shared_buffers=1GB, effective_cache_size=3GB, random_page_cost=1.1)"
+progress:
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 4
+  completed_plans: 3
+  percent: 75
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: Backend & E2E
+status: completed
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-03-09T15:00:28.391Z"
+last_activity: 2026-03-09 — 07-01 complete (Docker memory limits + PG tuning + n8n env vars applied on VPS)
+progress:
+  [████████░░] 75%
+  completed_phases: 0
+  total_plans: 4
+  completed_plans: 2
+  percent: 50
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: Backend & E2E
+status: completed
 stopped_at: Completed 07-01-PLAN.md
 last_updated: "2026-03-09T14:55:39.991Z"
 last_activity: 2026-03-09 — Roadmap created
 progress:
-  total_phases: 4
+  [█████░░░░░] 50%
   completed_phases: 0
   total_plans: 4
   completed_plans: 1
@@ -40,13 +72,13 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 7 (Infrastructure Hardening) — in progress (1/4 plans done)
-Plan: 07-01 complete
+Phase: 7 (Infrastructure Hardening) — in progress (2/4 plans done)
+Plan: 07-02 complete
 Status: Active
-Last activity: 2026-03-09 — 07-01 complete (Docker memory limits + PG tuning + n8n env vars applied on VPS)
+Last activity: 2026-03-09 — 07-02 complete (PostgreSQL NVMe tuning verified: shared_buffers=1GB, effective_cache_size=3GB, random_page_cost=1.1)
 
 ```
-v1.1 Progress: [███░░░░░░░] 25%
+v1.1 Progress: [█████░░░░░] 50%
 Phases:        [7: ◑] [8: ○] [9: ○] [10: ○]
 ```
 
@@ -58,6 +90,8 @@ Phases:        [7: ◑] [8: ○] [9: ○] [10: ○]
 | v1.1 phases | 4 |
 | v1.1 requirements | 19 |
 | Phase 07 P01 | 11 | 4 tasks | 3 files |
+| Phase 07 P02 | 2 | 2 tasks | 1 files |
+| Phase 07 P03 | 2 | 2 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -68,6 +102,7 @@ Phases:        [7: ◑] [8: ○] [9: ○] [10: ○]
 - [07-01] VPS has two separate compose stacks at /docker/supabase/ and /docker/n8n/ — repo infra/docker-compose.override.yml is a reference template only, not applied via -f flags
 - [07-01] PostgreSQL command override must include -c listen_addresses=* explicitly or Docker defaults to loopback-only, breaking inter-container connections
 - [07-01] n8n base compose already has 10G RAM + 8192 heap (exceeds plan targets); only missing env vars added via override
+- [07-02] PostgreSQL container name is supabase-db-1; all NVMe tuning confirmed live: shared_buffers=1GB, effective_cache_size=3GB, random_page_cost=1.1
 
 ### Research Flags
 - Phase 9: pause_turn handling for long research NOT implemented — may need research spike during planning
@@ -79,7 +114,7 @@ None.
 
 ### TODOs
 - [x] Execute Phase 7 Plan 01 (INFR-01: Docker memory limits + PG tuning + n8n env vars)
-- [ ] Execute Phase 7 Plan 02 (INFR-02 verification)
+- [x] Execute Phase 7 Plan 02 (INFR-02 verification)
 - [ ] Execute Phase 7 Plan 03 (INFR-03 verification)
 - [ ] Execute Phase 7 Plan 04 (INFR-04)
 - [ ] Plan Phase 8 (Credentials & Deployment)
@@ -88,6 +123,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-09T14:55:39.985Z
-Stopped at: Completed 07-01-PLAN.md
-Resume: Execute 07-02-PLAN.md (INFR-02 verification — depends on 07-01)
+Last session: 2026-03-09T15:01:29.725Z
+Stopped at: Completed 07-03-PLAN.md
+Resume: Execute 07-03-PLAN.md (INFR-03 n8n env vars verification — depends on 07-01)
