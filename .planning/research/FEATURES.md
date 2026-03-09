@@ -1,223 +1,318 @@
 # Feature Research
 
-**Domain:** AI Video Production Platform with Dashboard (Multi-Niche YouTube Channel Automation)
-**Researched:** 2026-03-08
-**Confidence:** HIGH (domain well-defined in Agent.md and Dashboard_Implementation_Plan.md; competitive landscape verified via web search)
+**Domain:** n8n AI Agent Workflows for Niche Research, Topic Generation, and Dynamic Prompt Generation
+**Researched:** 2026-03-09
+**Confidence:** HIGH (Anthropic API docs verified directly, existing workflow JSONs analyzed, n8n patterns confirmed via web search)
+
+## Scope
+
+This research covers ONLY the AI agent workflow features that need to be built or hardened for v1.1. The dashboard, webhook stubs, and production pipeline workflows already exist. This focuses on:
+
+1. Niche research with Claude + web search tool
+2. Topic generation with blue-ocean methodology
+3. Avatar generation (10-data-point customer profiles)
+4. Dynamic prompt generation (7 prompt types per niche)
+5. Topic refinement with 24-topic context awareness
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist. Missing these = product feels incomplete.
+Features that the AI agent workflows MUST deliver correctly or the entire pipeline fails downstream.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Project/niche CRUD | Every dashboard has entity management. Without it, there's no starting point. | LOW | Simple forms + Supabase inserts. Already spec'd in Dashboard_Implementation_Plan.md Page 1. |
-| Pipeline status visibility | If production is running, the user must see what stage each video is in. Blind automation is anxiety-inducing. | MEDIUM | Requires Supabase Realtime subscriptions on `topics` and `scenes` tables. Core value prop of having a dashboard at all. |
-| Approval gates with approve/reject | The 3-gate model is the product's quality control mechanism. Without it, you have an uncontrolled content farm. | MEDIUM | Webhook calls to n8n + Supabase status updates. Gates at topics, scripts, and final video. |
-| Script quality scoring display | If AI scores scripts, users expect to see the scores. Opaque scoring = distrust. | LOW | Read-only display of `script_evaluation` JSONB from topics table. 7-dimension radar or bar chart. |
-| YouTube upload with metadata | The entire pipeline ends at YouTube. Manual upload after automated production defeats the purpose. | MEDIUM | YouTube Data API v3 with resumable uploads, metadata (title, description, tags), captions, thumbnail. Quota limit: 6/day. |
-| Per-video cost tracking | Users paying ~$17/video need to know where money goes. AI API costs are opaque without tracking. | LOW | Aggregate from `cost_breakdown` JSONB on topics table. Display as breakdown chart. |
-| Basic YouTube analytics | After publishing, users need to know if videos perform. Views, watch hours, CTR, and revenue are minimum. | MEDIUM | Daily cron pulling YouTube Analytics API data. Already spec'd as Phase F. |
-| Error state visibility | When a scene fails (TTS timeout, image generation error), user must see it and have recourse. | MEDIUM | Display `error_log` from topics, failed scene indicators from scenes table. Retry buttons. |
-| Production log / audit trail | Users need to trace what happened and when. Essential for debugging production issues. | LOW | Read from `production_log` table. Chronological event list with filters. |
-| Scene-level progress tracking | 172 scenes per video means progress needs granularity beyond "in progress." Users expect to see individual scene completion. | MEDIUM | Supabase Realtime on `scenes` table. Visual grid of 172 dots/cells showing status per scene. |
+| Structured JSON output from Claude | Every downstream node (parse, insert, update) depends on valid JSON. If Claude returns prose or malformed JSON, the workflow crashes. | MEDIUM | Existing workflows use regex extraction (`indexOf('[')` / `lastIndexOf(']')`). This is fragile. Must handle Claude wrapping JSON in markdown fences, adding preamble text, or splitting across multiple text blocks. |
+| Web search integration for niche research | The differentiator. Without real web search, "research" is just Claude hallucinating competitor data from training. | HIGH | Anthropic web search tool (`web_search_20250305` or `web_search_20260209`) is a server-side tool -- Claude decides when to search, API executes it. No beta header needed anymore. Tool definition goes in `tools` array. $10/1000 searches. Current workflow already implements this correctly. |
+| Niche research producing actionable outputs | Research must produce: competitor list, audience pain points, keyword gaps, blue-ocean angles, positioning statement. These feed directly into prompt generation. | HIGH | The quality of ALL downstream content (topics, scripts, videos) depends on research quality. Garbage research = garbage prompts = garbage topics. This is the foundation. |
+| Dynamic prompt generation (7 types) | Each niche needs 7 prompt templates stored in `prompt_configs`: topic_generator, script_pass1/2/3, evaluator, visual_director, scene_segmenter. Without these, topic and script generation have no niche-specific intelligence. | HIGH | Current workflow generates all 7 in a single Claude call. Validation checks for quality benchmarks (2 AM Test, Share Test, Rewatch Test) in topic_generator prompt. |
+| Topic generation (25 topics + avatars) | Must produce exactly 25 topics with all required fields: seo_title, narrative_hook, key_segments, estimated_cpm, viral_potential, playlist_group (1-3), plus nested avatar with 10 fields. | HIGH | Current workflow loads prompt from `prompt_configs`, injects project variables, calls Claude, parses JSON array. Missing or malformed topics break the Topic Review page. |
+| Avatar generation (10 data points each) | Each topic needs a customer avatar: name/age, occupation/income, life stage, pain point, spending profile, knowledge level, emotional driver, online hangouts, objection, dream outcome. | MEDIUM | Currently generated inline with topics (nested in JSON response). Extracted and inserted into `avatars` table after topics are inserted. Topic IDs from Supabase response used as foreign keys. |
+| Refinement with 24-topic context | When user refines a single topic, Claude must see all 24 other topics to avoid overlap. Without this, refined topics often duplicate existing ones. | MEDIUM | Current workflow reads all topics for the project, passes other 24 as context. Adds to `refinement_history` JSONB. Cost: ~$0.15 per refinement due to context size. |
+| Error state handling with status updates | Every workflow step that can fail must write a meaningful status to Supabase (e.g., `research_failed`, `topic_generation_failed`). Dashboard polls status to show progress. | LOW | Current workflows have `onError: "continueRegularOutput"` and error handler nodes. Must ensure error messages are user-readable, not raw API errors. |
+| Idempotent workflow execution | If a workflow is accidentally triggered twice, it should not create duplicate projects/topics. Or if it must re-run, it should detect existing data. | MEDIUM | Currently NO idempotency checking. Running "Generate Topics" twice for the same project creates 50 topics. Need to check if topics already exist for project before inserting. |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set the product apart. Not required, but valuable.
+Features that make Vision GridAI's AI workflows superior to competitors (VidIQ, TubeBuddy, manual research).
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Dynamic niche research with web search | No competitor auto-researches a niche via live web search (competitor audit, Reddit pain points, keyword gaps, blue-ocean analysis). VidIQ/TubeBuddy give keyword data but don't build a complete niche profile. | HIGH | Phase A agentic workflow. Claude + web search tool. Produces system prompts, playlist angles, red-ocean topics, competitor analysis. This is the moat. |
-| AI-generated dynamic prompts per niche | Prompts aren't hardcoded -- they're generated from research. "Credit cards" gets a Credit Card Analyst persona; "stoic philosophy" gets a Classical Philosophy Scholar. No existing platform does this. | HIGH | Depends on niche research output. Stored in `prompt_configs` table. Makes the platform truly niche-agnostic. |
-| 3-pass script generation with per-pass scoring | Most AI video tools generate scripts in one shot. 3-pass (Foundation/Depth/Resolution) with independent scoring catches quality issues early. | HIGH | Pass 1 (5-7K words) -> evaluate -> Pass 2 (8-10K, Pass 1 as context) -> evaluate -> Pass 3 (5-7K, summaries) -> evaluate -> combined. Per-pass threshold: 6.0, combined: 7.0. |
-| Topic refinement with full context (24 other topics) | When refining one topic, Claude sees all 24 others to avoid overlap. Prevents the common problem of AI generating near-duplicate topics. | MEDIUM | Expensive (~$0.15/refinement) but prevents topic cannibalization across the 25-video library. |
-| Inline script editing with scene-level granularity | Users can edit individual scene narration and image prompts without regenerating the entire script. Fine-grained human control over AI output. | MEDIUM | Inline editing on scenes table rows. Changes propagate to downstream production. Need to handle re-triggering TTS/images for edited scenes only. |
-| Real-time scene-by-scene production monitor | Live visualization showing 172 scenes filling in as each asset completes -- audio, images, video clips. No polling, instant via Supabase Realtime. Most production tools show coarse-grained progress bars. | MEDIUM | Supabase Realtime `postgres_changes` on scenes table filtered by topic_id. Visual grid with color-coded status per asset type. |
-| Multi-niche portfolio management | Run multiple niches simultaneously from one dashboard. Compare CPM, revenue, and ROI across niches. No YouTube automation tool offers cross-niche portfolio analytics. | LOW | Already architected via `projects` table. Dashboard needs project switcher and cross-project analytics aggregation. |
-| Customer avatar integration into scripts | Each topic has a 10-data-point avatar (name, age, occupation, pain points, emotional driver, objections, etc.) that's woven into the script. Makes scripts feel personal, not generic. | MEDIUM | Avatar data injected into script generation prompts. Display alongside topic cards for review. |
-| Supervisor agent (pipeline health monitor) | Automated 30-minute cron that detects stalled workflows, failed scenes, and quota issues. Alerts before the user notices. | MEDIUM | n8n cron workflow checking for stuck states. Writes alerts to production_log. Dashboard surfaces supervisor alerts prominently. |
+| Multi-search niche research (10+ web searches per project) | Claude autonomously decides how many searches to run and what queries to use. Current `max_uses: 10` allows thorough research across YouTube, Reddit, Quora, forums. No manual query formulation needed. | LOW (already implemented) | The `web_search_20250305` tool with `max_uses: 10` lets Claude search up to 10 times per API call. Claude formulates queries based on the niche, not the user. |
+| Dynamic filtering with web_search_20260209 | Latest tool version lets Claude write code to filter search results before loading into context. Reduces irrelevant content, lower token cost, more accurate analysis. | LOW (config change) | Upgrade from `web_search_20250305` to `web_search_20260209` in the HTTP Request body. Requires code execution tool to also be enabled (Anthropic handles this server-side). Available on Claude Sonnet 4.6 and Opus 4.6. |
+| Quality benchmark enforcement in prompts | Topic generator prompt is validated to include 2 AM Test, Share Test, and Rewatch Test benchmarks. TOPC-02 compliance check in "Parse Prompts" node rejects prompts missing these. | LOW (already implemented) | Code node throws error if topic_generator prompt_text is missing quality benchmark keywords. This prevents Claude from generating a generic topic prompt that skips quality gates. |
+| Niche-adaptive expertise profiles | Each niche gets a unique expertise persona (e.g., "Senior Credit Card Analyst" vs "Classical Philosophy Scholar"). Scripts written by a domain expert persona are more authoritative. | LOW (already implemented) | Generated during prompt generation step. Stored in `projects.niche_expertise_profile`. Injected into script generation prompts via `{{expertise_profile}}` placeholder. |
+| Playlist angle auto-generation | Claude generates 3 creative playlist angles per niche (e.g., "The Mathematician", "Your Exact Life", "The Investigator" for credit cards). Topics are distributed across angles for content variety. | LOW (already implemented) | Generated during niche research. Stored in `projects.playlist1_name/theme` etc. Topic generator uses these to ensure even distribution (8-9 topics per angle). |
+| Positioning statement for blue-ocean strategy | Claude writes a channel positioning statement that defines how this channel differs from all competitors. This statement guides topic generation and script tone. | LOW (already implemented) | Stored in `projects.niche_blue_ocean_strategy`. Fed into topic generator and script prompts. |
+| pause_turn handling for long research | Anthropic API may return `stop_reason: "pause_turn"` for long-running web search turns. Proper handling lets Claude continue its research across multiple API calls. | HIGH | NOT currently implemented. If research requires many searches, the API may pause mid-turn. The current workflow treats any response as final. Need a loop that detects pause_turn and re-sends the conversation to let Claude continue. |
+| Prompt caching for multi-turn research | Anthropic's prompt caching automatically caches content up to the last `web_search_tool_result` block. For multi-turn research, this reduces token costs on subsequent turns. | MEDIUM | NOT currently implemented. Would matter if implementing pause_turn loop. Add `cache_control` breakpoint on or after last search result block. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem good but create problems.
+Features that seem good but create problems in the AI agent workflow context.
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| In-browser video editor | "Let me tweak the final video." | Massive complexity (timeline editing in browser), FFmpeg re-encoding on VPS with 16GB RAM, scope explosion. Professional editors exist. | Preview-and-approve flow. If video needs changes, reject at Gate 3 with specific feedback, re-run affected production stages. |
-| Full automation (no gates) | "Just produce and publish everything automatically." | YouTube's 2025/2026 "Inauthentic Content" policy penalizes mass-produced low-quality content. One bad video can damage channel trust. Quality gates are the feature. | Keep 3 gates mandatory. Add "auto-approve" toggle per gate only after user has manually approved 5+ items and understands the quality bar. |
-| Multi-format video templates | "Support Shorts, 10-minute explainers, and 2-hour docs." | Each format needs different script structure, scene counts, visual ratios, audio pacing. Supporting all multiplies complexity by 3x for v1. | Ship 2-hour documentary format only. It's the hardest format to produce manually, so automation value is highest. Add formats in v2. |
-| Real-time collaboration / multi-user | "My team needs to review together." | Auth complexity, permission models, conflict resolution on concurrent edits, WebSocket scaling. Solo operator for v1. | Simple password gate for v1. If demand emerges, add invite-based team access in v2 with Supabase RLS. |
-| AI chatbot for niche strategy | "Let me chat with AI about my niche strategy." | Unstructured chat produces inconsistent outputs. The structured niche research pipeline (Phase A) is more reliable. Chat encourages endless iteration without shipping. | Structured niche research with editable outputs. User reviews the generated profile and prompts, edits what they want. |
-| Thumbnail editor / generator in dashboard | "Generate and customize thumbnails in the dashboard." | Image editing UI is complex. Thumbnail quality is highly subjective and benefits from external tools (Canva, Photoshop). | Generate thumbnail prompt in script metadata. Use Seedream to generate a thumbnail image. Display preview. User can download and edit externally if needed. |
-| A/B testing video titles/thumbnails | "Test which title performs better." | Requires YouTube API manipulation of live videos, complex analytics tracking, and statistical significance calculations. Over-engineered for v1. | Display YouTube analytics (CTR, impressions) per video. User manually adjusts future titles based on performance data. Consider A/B testing in v2 after establishing baseline analytics. |
-| Scheduling queue with calendar view | "Show me a content calendar." | Calendar UIs are complex. Publishing schedule depends on YouTube quota (6/day max) and production completion times, which are unpredictable. | Simple publish queue: approved videos listed in order. User clicks "Publish Now" or "Schedule" with a date picker. No full calendar view needed for v1. |
+| User-specified search queries for niche research | "Let me tell Claude what to search for." | Defeats the purpose of agentic research. Claude's value is formulating better queries than a human would. User-specified queries lead to confirmation bias. | User provides niche name + optional description. Claude decides what to search. User reviews results after. |
+| Real-time streaming of Claude's research process | "Show me what Claude is thinking/searching as it researches." | Streaming web search responses requires SSE/WebSocket from n8n to dashboard. n8n webhook nodes don't natively support streaming. Massive complexity for marginal UX improvement. | Update project status at key milestones (researching_competitors -> researching_prompts -> ready_for_topics). Dashboard shows which step is active. |
+| Retry loop for failed JSON parsing | "If JSON is malformed, just retry the Claude call." | Silent retries hide prompt engineering problems. A prompt that regularly produces unparseable JSON needs to be fixed, not retried. Retries also double API costs. | Fail fast with clear error message. Log the raw response for debugging. Fix the prompt if it happens repeatedly. Consider Anthropic's JSON mode if available. |
+| Configurable number of web searches per research | "Let me set max_uses to 20 for deeper research." | More searches = more token context = higher chance of hitting context window limits. 10 searches typically returns 50-100K tokens of content. 20 could approach the 200K context limit. Also costs $0.20 vs $0.10. | Keep max_uses at 10 (default). If research quality is insufficient for a specific niche, user can regenerate with a more specific description, not more searches. |
+| Separate Claude calls per research category | "Run one search for competitors, another for pain points, another for keywords." | Each call starts from zero context. Claude can't cross-reference competitor gaps with audience pain points if they're in separate calls. Integrated research is more insightful. | Single research call with all categories. Claude naturally cross-references findings (e.g., discovers a competitor gap that aligns with an audience pain point = blue ocean opportunity). |
+| GPT-4o as fallback model | "Use GPT-4o if Claude fails." | Different models produce different JSON structures, different writing styles, different evaluation scores. Mixing models creates inconsistency. Also requires OpenAI API key management. | Stick with Claude Sonnet 4.6 for all AI calls. If a call fails, retry with the same model. Consistency > redundancy. |
+| Automatic topic regeneration on low quality | "If topics don't pass quality checks, auto-regenerate." | Quality is subjective. The whole point of Gate 1 is human review. Auto-regeneration might loop indefinitely on "boring" niches. Also wastes API budget. | Generate topics once. Present to user at Gate 1. User decides to approve, reject, refine, or regenerate all. Human judgment is the quality gate. |
 
 ## Feature Dependencies
 
 ```
-[Supabase Schema]
-    |-- required by --> [All Dashboard Pages]
-    |-- required by --> [All n8n Workflows]
-    |-- required by --> [Supabase Realtime Subscriptions]
+[Project Creation (WF_PROJECT_CREATE)]
+    |-- creates --> [Project record in Supabase]
+    |-- triggers --> [Niche Research (Claude + web search)]
+                        |-- produces --> [niche_profiles record]
+                        |-- produces --> [Project updates (expertise, playlists, red-ocean)]
+                        |-- triggers --> [Dynamic Prompt Generation (Claude)]
+                                            |-- produces --> [7 prompt_configs records]
+                                            |-- sets --> [Project status = ready_for_topics]
 
-[n8n Webhook API Layer]
-    |-- required by --> [Dashboard Actions (approve/reject/trigger)]
-    |-- required by --> [Production Pipeline Triggers]
+[Topic Generation (WF_TOPICS_GENERATE)]
+    |-- requires --> [prompt_configs.topic_generator exists]
+    |-- requires --> [Project status = ready_for_topics]
+    |-- produces --> [25 topic records]
+    |-- produces --> [25 avatar records]
+    |-- sets --> [Project status = topics_pending_review]
 
-[Niche Research (Phase A)]
-    |-- required by --> [Dynamic Prompt Generation]
-                            |-- required by --> [Topic Generation (Phase B)]
-                                                    |-- required by --> [Script Generation (Phase C)]
-                                                                            |-- required by --> [Production Pipeline (Phase D)]
-                                                                                                    |-- required by --> [Video Review + Publish (Phase E)]
-                                                                                                                            |-- required by --> [YouTube Analytics (Phase F)]
-
-[Supabase Realtime]
-    |-- enhances --> [Production Monitor Page]
-    |-- enhances --> [Scene Progress Tracking]
-    |-- enhances --> [Topic/Script Review Pages]
+[Topic Actions (WF_TOPICS_ACTION)]
+    |-- requires --> [Topics exist for project]
+    |-- approve --> [Sets review_status = approved]
+    |-- reject --> [Sets review_status = rejected]
+    |-- refine --> [Reads ALL topics, calls Claude with 24-topic context]
+    |-- edit --> [Direct field update on topic record]
 
 [Topic Approval (Gate 1)]
-    |-- required by --> [Script Generation]
+    |-- required by --> [Script Generation (Phase C)]
 
-[Script Approval (Gate 2)]
-    |-- required by --> [TTS Audio Generation]
-    |-- required by --> [Image Generation]
-    |-- required by --> [Video Clip Generation]
-
-[TTS Audio (Master Clock)]
-    |-- required by --> [FFmpeg Assembly] (audio durations drive visual timing)
-    |-- parallel with --> [Image Generation]
-    |-- parallel with --> [I2V + T2V Generation]
-
-[Video Approval (Gate 3)]
-    |-- required by --> [YouTube Upload]
-
-[Supervisor Agent]
-    |-- enhances --> [Pipeline Health] (detects stalls, retries failures)
-    |-- independent of --> [Dashboard] (runs on cron, writes to production_log)
+[Dynamic Prompt Generation]
+    |-- requires --> [Niche research completed]
+    |-- required by --> [Topic Generation]
+    |-- required by --> [Script Generation (uses script_pass1/2/3 prompts)]
+    |-- required by --> [Scene Segmentation (uses scene_segmenter prompt)]
+    |-- required by --> [Visual Direction (uses visual_director prompt)]
+    |-- required by --> [Script Evaluation (uses evaluator prompt)]
 ```
 
 ### Dependency Notes
 
-- **Supabase Schema is foundational:** Every feature reads from or writes to the database. Must be deployed first.
-- **n8n Webhook API bridges dashboard to pipeline:** Without it, dashboard buttons do nothing. Must exist before any dashboard action features.
-- **Niche Research -> Dynamic Prompts -> Topics -> Scripts is a strict chain:** Each phase produces outputs consumed by the next. Cannot be parallelized.
-- **TTS Audio is the master clock:** Image and video generation can run in parallel with audio, but FFmpeg assembly requires all audio durations to be known. Audio MUST complete before assembly.
-- **Supervisor Agent is independent:** Can be added at any point. It reads existing tables and writes to production_log. No other feature depends on it.
+- **Niche Research requires Project Creation:** Cannot research without a project record and niche name.
+- **Dynamic Prompts require Niche Research:** Prompts are generated FROM research outputs (expertise profile, playlist angles, red-ocean list, blue-ocean strategy).
+- **Topic Generation requires prompt_configs:** The topic_generator prompt is loaded from the database, not hardcoded. If prompt_configs is empty, the workflow falls back to a generic prompt (implemented in Build Prompt node), but quality suffers.
+- **Topic Refinement requires ALL topics:** Cannot refine one topic without reading all 24 others for overlap prevention. This creates a read dependency on the topics table.
+- **Script Generation (Phase C) requires both topics AND prompt_configs:** Script pass1/2/3 prompts are loaded from prompt_configs and injected with topic/avatar data. Both must exist.
 
 ## MVP Definition
 
-### Launch With (v1)
+### Launch With (v1.1 -- this milestone)
 
-Minimum viable product -- what's needed to validate the concept with the first niche (US Credit Cards).
+These features must work end-to-end for the US Credit Cards niche.
 
-- [ ] Supabase schema deployed (all 7 tables) -- foundation for everything
-- [ ] Projects Home page (create project, view all projects) -- entry point
-- [ ] Project Dashboard page (pipeline status table, metrics bar) -- command center
-- [ ] n8n webhook API (create project, generate topics, approve/reject/refine) -- bridge to pipeline
-- [ ] Niche research workflow (Phase A: web search + Claude analysis) -- the differentiator
-- [ ] Dynamic prompt generation (stored in prompt_configs) -- niche-agnostic scripts
-- [ ] Topic generation + Gate 1 (approve/reject/refine with context) -- first quality gate
-- [ ] Topic Review page (card layout with actions) -- human review interface
-- [ ] 3-pass script generation + scoring + Gate 2 -- second quality gate
-- [ ] Script Review page (quality scores + script viewer) -- human review interface
-- [ ] Production pipeline (TTS -> images -> I2V/T2V -> assembly) -- the core engine
-- [ ] Production Monitor page (real-time scene progress) -- visibility into production
-- [ ] Video Review + Gate 3 + YouTube upload -- final gate and delivery
-- [ ] Per-video cost tracking (read from cost_breakdown) -- cost awareness
-- [ ] Basic YouTube analytics pull (daily cron) -- performance feedback loop
-- [ ] Simple password gate -- solo operator auth
+- [x] Project creation with Supabase insert (WF_PROJECT_CREATE) -- already implemented
+- [x] Niche research with Claude web search tool (web_search_20250305) -- already implemented
+- [x] Research output parsing and storage (niche_profiles + project updates) -- already implemented
+- [x] Dynamic prompt generation (7 types) with TOPC-02 quality benchmark validation -- already implemented
+- [x] Topic generation loading prompt from prompt_configs (WF_TOPICS_GENERATE) -- already implemented
+- [x] Topic + avatar parsing and Supabase insertion -- already implemented
+- [x] Topic approve/reject/refine/edit actions (WF_TOPICS_ACTION) -- already implemented
+- [x] Refinement with 24-topic context awareness -- already implemented
+- [ ] Idempotency guards (prevent duplicate topics on re-trigger) -- NOT implemented
+- [ ] pause_turn handling for long research sessions -- NOT implemented
+- [ ] Production log entries for research/generation milestones -- NOT implemented
+- [ ] Timeout hardening (120s may not be enough for 10-search research) -- NEEDS validation
+- [ ] Error recovery: if prompt generation fails, research is not lost -- PARTIALLY implemented
 
 ### Add After Validation (v1.x)
 
-Features to add once the first 5-10 videos are published and performing.
+Features to add once the first niche is successfully researched and topics are generated.
 
-- [ ] Analytics dashboard page (charts, trends, cross-video comparison) -- add when enough data exists to chart
-- [ ] Settings page (per-project config: models, word counts, playlist IDs) -- add when running multiple niches
-- [ ] Supervisor agent -- add when pipeline runs unattended for extended periods
-- [ ] Topic refinement with full 24-topic context -- add when topic quality issues emerge
-- [ ] Inline scene editing -- add when users want fine-grained script control
-- [ ] Cross-niche portfolio analytics -- add when operating 2+ niches
+- [ ] Upgrade to web_search_20260209 with dynamic filtering -- reduces token cost, improves accuracy
+- [ ] Prompt caching for multi-turn research -- reduces cost if pause_turn loop is implemented
+- [ ] Research quality scoring (auto-evaluate niche profile completeness) -- flag thin research
+- [ ] Prompt versioning UI (edit/rollback prompts from Settings page) -- already have version column
+- [ ] Bulk topic regeneration with rejection feedback -- regenerate all rejected topics in one call
+- [ ] Avatar refinement independent of topic refinement -- currently avatars are regenerated only with full topic regen
 
 ### Future Consideration (v2+)
 
-Features to defer until product-market fit is established.
-
-- [ ] Additional video formats (Shorts, 10-min explainers) -- defer until 2-hour format is proven profitable
-- [ ] Team access with Supabase RLS -- defer until multi-user demand exists
-- [ ] Mobile-responsive dashboard -- defer until desktop workflow is solid
-- [ ] A/B testing for titles/thumbnails -- defer until baseline analytics establish what "good" looks like
-- [ ] Auto-approve toggle (bypass gates after N manual approvals) -- defer until trust in AI quality is established
-- [ ] Content calendar / scheduling queue -- defer until publishing cadence is predictable
+- [ ] Multi-model support (Claude Opus for complex niches, Haiku for simple ones) -- cost optimization
+- [ ] Research refresh (re-run niche research for existing project with new web data) -- content stays current
+- [ ] Prompt A/B testing (run two topic_generator variants, compare quality scores) -- optimization
+- [ ] Cross-niche prompt transfer (use successful prompt patterns from one niche to seed another) -- scaling efficiency
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Supabase schema | HIGH | LOW | P1 |
-| n8n webhook API layer | HIGH | MEDIUM | P1 |
-| Projects Home page | HIGH | LOW | P1 |
-| Project Dashboard page | HIGH | MEDIUM | P1 |
-| Niche research (Phase A) | HIGH | HIGH | P1 |
-| Dynamic prompt generation | HIGH | HIGH | P1 |
-| Topic generation + Gate 1 | HIGH | MEDIUM | P1 |
-| Topic Review page | HIGH | MEDIUM | P1 |
-| 3-pass script generation + Gate 2 | HIGH | HIGH | P1 |
-| Script Review page | HIGH | MEDIUM | P1 |
-| Production pipeline (D1-D4) | HIGH | HIGH | P1 |
-| Production Monitor page | HIGH | MEDIUM | P1 |
-| Video Review + Gate 3 | HIGH | MEDIUM | P1 |
-| YouTube upload | HIGH | MEDIUM | P1 |
-| Per-video cost display | MEDIUM | LOW | P1 |
-| YouTube analytics cron | MEDIUM | MEDIUM | P1 |
-| Simple password gate | MEDIUM | LOW | P1 |
-| Analytics dashboard page | MEDIUM | MEDIUM | P2 |
-| Settings page | MEDIUM | LOW | P2 |
-| Supervisor agent | MEDIUM | MEDIUM | P2 |
-| Topic refinement with context | MEDIUM | MEDIUM | P2 |
-| Inline scene editing | MEDIUM | MEDIUM | P2 |
-| Cross-niche analytics | LOW | LOW | P2 |
-| Additional video formats | MEDIUM | HIGH | P3 |
-| Team access / multi-user | LOW | HIGH | P3 |
-| Mobile responsive | LOW | MEDIUM | P3 |
-| A/B testing | LOW | HIGH | P3 |
-| Content calendar | LOW | MEDIUM | P3 |
+| Idempotency guards on topic generation | HIGH | LOW | P1 |
+| pause_turn handling for research | MEDIUM | MEDIUM | P1 |
+| Timeout hardening (increase to 180-300s) | HIGH | LOW | P1 |
+| Production log entries for AI steps | MEDIUM | LOW | P1 |
+| Error recovery (research persists on prompt failure) | HIGH | LOW | P1 |
+| Upgrade to web_search_20260209 | MEDIUM | LOW | P2 |
+| Prompt caching | LOW | MEDIUM | P2 |
+| Research quality scoring | LOW | MEDIUM | P2 |
+| Bulk rejected topic regeneration | MEDIUM | MEDIUM | P2 |
+| Avatar independent refinement | LOW | LOW | P3 |
+| Research refresh for existing projects | MEDIUM | MEDIUM | P3 |
+| Prompt A/B testing | LOW | HIGH | P3 |
 
 **Priority key:**
-- P1: Must have for launch
+- P1: Must have for v1.1 launch (this milestone)
 - P2: Should have, add when possible
 - P3: Nice to have, future consideration
 
-## Competitor Feature Analysis
+## Anthropic Web Search Tool -- Implementation Reference
 
-| Feature | VidIQ / TubeBuddy | Pictory / Visla / Synthesia | n8n Community Workflows | Vision GridAI (Our Approach) |
-|---------|-------------------|---------------------------|------------------------|------------------------------|
-| Niche research | Keyword data only; no competitor audit, no pain point mining, no blue-ocean analysis | None | None | Full agentic research: competitor audit, Reddit/Quora pain points, keyword gaps, blue-ocean strategy, auto-generated prompts |
-| Topic generation | AI topic suggestions based on channel history | None (user provides script) | Basic concept generation | 25 SEO-optimized topics with 10-data-point avatars, 3 playlist angles, viral potential scoring |
-| Script writing | None | Basic script-to-video (short form) | Single-pass script | 3-pass (18-20K words), per-pass scoring, 7-dimension evaluation, 2-hour documentary format |
-| Approval workflows | None (analytics only) | None (direct generation) | Basic webhook triggers | 3 mandatory gates (topics, scripts, video) with approve/reject/refine/edit actions |
-| Production monitoring | N/A | N/A | Google Sheets status tracking | Real-time Supabase Realtime, scene-by-scene progress (172 scenes), color-coded asset status |
-| Cost tracking | Subscription pricing only | Per-video pricing shown | Manual tracking | Automatic per-video cost breakdown (script, TTS, images, I2V, T2V) with project totals |
-| YouTube analytics | Extensive (their core product) | None | Basic via API | Daily cron pull of views, watch hours, CTR, revenue, CPM per video |
-| Multi-niche support | Channel-specific | N/A | N/A | Unlimited niches, each with isolated research, prompts, topics, and production |
-| Video length support | N/A | Short-form (< 5 min) | Short-form (< 3 min) | 2-hour documentary (highest automation value, highest barrier to manual production) |
+This section documents the exact API contract for n8n HTTP Request nodes.
+
+### Tool Definition (in tools array)
+
+```json
+{
+  "type": "web_search_20250305",
+  "name": "web_search",
+  "max_uses": 10,
+  "allowed_domains": [],
+  "blocked_domains": []
+}
+```
+
+Or the newer version with dynamic filtering (recommended upgrade):
+
+```json
+{
+  "type": "web_search_20260209",
+  "name": "web_search"
+}
+```
+
+### Request Format (n8n HTTP Request body)
+
+```json
+{
+  "model": "claude-sonnet-4-6",
+  "max_tokens": 16384,
+  "tools": [
+    { "type": "web_search_20250305", "name": "web_search", "max_uses": 10 }
+  ],
+  "messages": [
+    { "role": "user", "content": "Research the niche..." }
+  ]
+}
+```
+
+**Headers required:**
+- `x-api-key`: (via httpHeaderAuth credential)
+- `anthropic-version`: `2023-06-01`
+- `content-type`: `application/json`
+
+**No beta header needed.** The web search tool is GA (no longer requires `anthropic-beta` header).
+
+### Response Format
+
+Response `content` array contains a mix of block types:
+
+1. `text` -- Claude's reasoning/decision text
+2. `server_tool_use` -- Claude's search query (type: `server_tool_use`, name: `web_search`)
+3. `web_search_tool_result` -- Search results with encrypted content
+4. `text` with `citations` -- Claude's final answer with source citations
+
+**Key fields in usage:**
+```json
+{
+  "usage": {
+    "input_tokens": 6039,
+    "output_tokens": 931,
+    "server_tool_use": {
+      "web_search_requests": 1
+    }
+  }
+}
+```
+
+### Parsing Response in n8n Code Node
+
+The existing parse pattern extracts text blocks and finds JSON:
+```javascript
+const textBlocks = (response.content || []).filter(c => c.type === 'text');
+const rawText = textBlocks.map(c => c.text).join('');
+```
+
+This is correct -- `server_tool_use` and `web_search_tool_result` blocks are not text and should be filtered out. Only Claude's final text output contains the JSON research results.
+
+### Edge Cases to Handle
+
+| Edge Case | What Happens | How to Handle |
+|-----------|-------------|---------------|
+| `stop_reason: "pause_turn"` | API paused a long-running turn mid-research | Re-send full response as assistant message, add empty user message, continue |
+| `web_search_tool_result_error` with `too_many_requests` | Rate limit hit on Brave Search | Wait and retry after 30-60 seconds |
+| `web_search_tool_result_error` with `max_uses_exceeded` | Claude tried more searches than allowed | Claude should still produce output from searches already completed |
+| Response >100K tokens | Lots of web content loaded into context | Current `max_tokens: 16384` for output is fine; input tokens scale with search results |
+| `encrypted_content` in multi-turn | Must pass back in subsequent turns for citation continuity | Not relevant for single-turn research (current implementation) |
+| Claude returns no JSON (only analysis text) | Prompt asked for JSON but Claude wrote prose | Parse node throws error. Consider adding "Return ONLY valid JSON" reinforcement in prompt |
+| Timeout at 120 seconds | Research with 10 searches may take 30-90 seconds on average, but can spike | Increase timeout to 300 seconds (5 minutes) for research calls |
+
+### Pricing (for cost tracking)
+
+| Component | Cost |
+|-----------|------|
+| Web search | $10 per 1,000 searches ($0.01 per search) |
+| Input tokens (search results) | Standard Claude pricing ($3/M for Sonnet) |
+| Output tokens (research JSON) | Standard Claude pricing ($15/M for Sonnet) |
+| Estimated total for 10-search research | ~$0.30-0.60 per niche |
+
+## Existing Workflow Analysis
+
+### WF_PROJECT_CREATE (Already Built)
+
+**Status:** Fully implemented with 14 nodes.
+**Flow:** Webhook -> Validate -> INSERT Project -> Extract ID -> (Respond + Start Research) -> Claude Research (web search) -> Parse Research -> (INSERT Niche Profile + UPDATE Project) -> Claude Generate Prompts -> Parse Prompts (with TOPC-02 check) -> INSERT Prompt Configs -> Status Ready
+**Gaps identified:**
+1. No pause_turn handling
+2. 120s timeout may be too short for research
+3. No production_log entries
+4. If prompt generation fails, research results are already saved (good), but project status is not rolled back (partial gap)
+5. No retry logic on transient API errors
+
+### WF_TOPICS_GENERATE (Already Built)
+
+**Status:** Fully implemented with 12 nodes.
+**Flow:** Webhook -> Validate -> (Read Project + Read Prompt Config) -> Build Prompt -> (Respond + Status Generating) -> Claude Generate Topics -> Parse Topics -> INSERT Topics -> Map Avatars -> INSERT Avatars -> Status Topics Pending
+**Gaps identified:**
+1. No idempotency check (will create duplicate topics if triggered twice)
+2. No production_log entries
+3. Falls back to generic prompt if prompt_configs is empty (may produce lower quality)
+4. Topic count not validated (Claude might return 24 or 26 instead of 25)
+5. Avatar insertion depends on topic INSERT returning IDs in order (fragile if Supabase reorders)
+
+### WF_TOPICS_ACTION (Already Built)
+
+**Status:** Fully implemented with 12 nodes.
+**Flow:** Webhook -> Parse Request -> Switch (approve/reject/refine/edit) -> respective handlers
+**Gaps identified:**
+1. Refine action does not update the avatar (only topic fields)
+2. No production_log entries for topic actions
+3. Refinement timeout is 60s (should be sufficient for single-topic refinement)
+4. No bulk refine action (must refine topics one at a time)
 
 ## Sources
 
-- [Zapier: Best AI Video Generators 2026](https://zapier.com/blog/best-ai-video-generator/)
-- [n8n: Fully Automated AI Video Generation Workflow](https://n8n.io/workflows/3442-fully-automated-ai-video-generation-and-multi-platform-publishing/)
-- [Activepieces: Content Workflow Management Guide 2026](https://www.activepieces.com/blog/content-workflow-management)
-- [RevID: Ultimate Guide to YouTube Automation 2026](https://www.revid.ai/blog/youtube-automation)
-- [VidIQ vs TubeBuddy Comparison 2026](https://linodash.com/vidiq-vs-tubebuddy/)
-- [GitHub: prakashdk/video-creator (offline AI video pipeline)](https://github.com/prakashdk/video-creator)
-- [Supabase Realtime Documentation](https://supabase.com/docs/guides/realtime)
-- [Supabase Reports Documentation](https://supabase.com/docs/guides/realtime/reports)
-- [OutlierKit: YouTube Automation Niches 2026](https://outlierkit.com/blog/youtube-automation-niches)
-- [YouTube Automation 2026 Guide (Thinkpeak AI)](https://thinkpeak.ai/youtube-automations-2026-guide/)
+- [Anthropic Web Search Tool Documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool) -- verified 2026-03-09, HIGH confidence
+- [Anthropic Blog: Introducing Web Search on API](https://claude.com/blog/web-search-api) -- official announcement
+- [Anthropic Advanced Tool Use](https://www.anthropic.com/engineering/advanced-tool-use) -- agentic loop patterns
+- [Anthropic Context Windows Documentation](https://platform.claude.com/docs/en/build-with-claude/context-windows) -- 200K token limit
+- [n8n Claude Integration](https://n8n.io/integrations/claude/) -- HTTP Request node patterns
+- [n8n Anthropic AI Agent Template](https://n8n.io/workflows/4399-anthropic-ai-agent-claude-sonnet-4-and-opus-4-with-think-and-web-search-tool/) -- community workflow with web search
+- [Strapi: How to Build AI Agents with n8n 2026](https://strapi.io/blog/build-ai-agents-n8n) -- n8n AI agent architecture
+- [TubeLab Niche Analyzer](https://tubelab.net/niche-analyzer) -- competitor feature reference
+- [BlueOcean AI](https://www.blueocean.ai/) -- agentic competitive analysis patterns
 
 ---
-*Feature research for: AI Video Production Platform with Dashboard (Multi-Niche YouTube Channel Automation)*
-*Researched: 2026-03-08*
+*Feature research for: n8n AI Agent Workflows (Niche Research, Topic Generation, Dynamic Prompt Generation)*
+*Researched: 2026-03-09*
