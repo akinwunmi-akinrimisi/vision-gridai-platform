@@ -65,7 +65,18 @@ All endpoints return the standard JSON envelope:
 | Create Project | /webhook/project/create | POST | Stub | 2 | WF_WEBHOOK_PROJECT_CREATE.json |
 | Generate Topics | /webhook/topics/generate | POST | Stub | 2 | WF_WEBHOOK_TOPICS_GENERATE.json |
 | Topic Action | /webhook/topics/action | POST | Stub | 2 | WF_WEBHOOK_TOPICS_ACTION.json |
-| Production Trigger | /webhook/production/trigger | POST | Not created | 3 | - |
+| Production Trigger | /webhook/production/trigger | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Production Batch Trigger | /webhook/production/trigger-batch | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Production Stop | /webhook/production/stop | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Production Resume | /webhook/production/resume | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Production Restart | /webhook/production/restart | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Retry Scene | /webhook/production/retry-scene | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Retry All Failed | /webhook/production/retry-all-failed | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Skip Scene | /webhook/production/skip-scene | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Skip All Failed | /webhook/production/skip-all-failed | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Edit & Retry Scene | /webhook/production/edit-retry-scene | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| Manual Assemble | /webhook/production/assemble | POST | Implemented | 4 | WF_WEBHOOK_PRODUCTION.json |
+| TTS Audio | /webhook/production/tts | POST | Implemented | 4 | WF_TTS_AUDIO.json |
 | Script Approve | /webhook/script/approve | POST | Not created | 3 | - |
 | Script Reject | /webhook/script/reject | POST | Not created | 3 | - |
 | Video Approve | /webhook/video/approve | POST | Not created | 5 | - |

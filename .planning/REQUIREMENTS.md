@@ -58,17 +58,17 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Production Pipeline
 
-- [ ] **PROD-01**: TTS audio generation for all scenes using Google Cloud TTS Chirp 3 HD
-- [ ] **PROD-02**: Audio duration measured with FFprobe (master clock) — never estimated
-- [ ] **PROD-03**: Master timeline computed from cumulative audio durations (start_time_ms, end_time_ms per scene)
+- [x] **PROD-01**: TTS audio generation for all scenes using Google Cloud TTS Chirp 3 HD
+- [x] **PROD-02**: Audio duration measured with FFprobe (master clock) — never estimated
+- [x] **PROD-03**: Master timeline computed from cumulative audio durations (start_time_ms, end_time_ms per scene)
 - [ ] **PROD-04**: Image generation for static_image scenes using Kie.ai Seedream 4.5 (100 per video)
 - [ ] **PROD-05**: I2V clip generation for i2v scenes using Kie.ai Kling 2.1 Standard (25 per video)
 - [ ] **PROD-06**: T2V clip generation for t2v scenes using Kie.ai Kling 2.1 Standard (72 per video)
 - [ ] **PROD-07**: Caption/subtitle file generated from scene narration + timestamps
 - [ ] **PROD-08**: FFmpeg assembly — concat all scene clips with `-c copy` (no re-encoding), add captions, normalize audio
-- [ ] **PROD-09**: Each asset uploaded to Google Drive immediately after generation
+- [x] **PROD-09**: Each asset uploaded to Google Drive immediately after generation
 - [x] **PROD-10**: Each scene row in Supabase updated immediately after each asset (not batched)
-- [ ] **PROD-11**: Self-chaining — each workflow fires the next on completion
+- [x] **PROD-11**: Self-chaining — each workflow fires the next on completion
 - [x] **PROD-12**: Error handling — failures written to Supabase with `status = 'failed'` + `error_log`
 - [x] **PROD-13**: Production Monitor page shows real-time scene-by-scene progress via Supabase Realtime
 - [x] **PROD-14**: Project Dashboard page shows pipeline status table with all topics, progress bars, and scores
@@ -176,17 +176,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCPT-10 | Phase 3 | Complete |
 | SCPT-11 | Phase 3 | Complete |
 | SCPT-12 | Phase 3 | Complete |
-| PROD-01 | Phase 4 | Pending |
-| PROD-02 | Phase 4 | Pending |
-| PROD-03 | Phase 4 | Pending |
+| PROD-01 | Phase 4 | Complete |
+| PROD-02 | Phase 4 | Complete |
+| PROD-03 | Phase 4 | Complete |
 | PROD-04 | Phase 4 | Pending |
 | PROD-05 | Phase 4 | Pending |
 | PROD-06 | Phase 4 | Pending |
 | PROD-07 | Phase 4 | Pending |
 | PROD-08 | Phase 4 | Pending |
-| PROD-09 | Phase 4 | Pending |
+| PROD-09 | Phase 4 | Complete |
 | PROD-10 | Phase 4 | Complete |
-| PROD-11 | Phase 4 | Pending |
+| PROD-11 | Phase 4 | Complete |
 | PROD-12 | Phase 4 | Complete |
 | PROD-13 | Phase 4 | Complete |
 | PROD-14 | Phase 4 | Complete |

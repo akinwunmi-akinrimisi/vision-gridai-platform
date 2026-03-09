@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-03-09T04:00:10.077Z"
+last_activity: 2026-03-09 — Plan 04-03 executed (Pipeline table and TopicCard production status)
+progress:
+  total_phases: 6
+  completed_phases: 3
+  total_plans: 21
+  completed_plans: 17
+  percent: 81
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
 stopped_at: Completed 04-00-PLAN.md
 last_updated: "2026-03-09T03:51:32.828Z"
 last_activity: 2026-03-09 — Plan 04-01 executed (Production data layer hooks)
 progress:
-  total_phases: 6
+  [████████░░] 81%
   completed_phases: 3
   total_plans: 21
   completed_plans: 15
@@ -75,6 +91,7 @@ Progress: [████████░░] 76% (16/21 total plans)
 | Phase 04 P01 | 5min | 2 tasks | 6 files |
 | Phase 04 P00 | 8min | 2 tasks | 21 files |
 | Phase 04 P03 | 5min | 2 tasks | 4 files |
+| Phase 04 P04 | 6min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -102,6 +119,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Images progress counts all scenes (not just static_image) since i2v scenes also need source images
 - [Phase 04]: Single responsive table with overflow-x-auto instead of dual desktop/mobile layouts to avoid DOM duplication
 - [Phase 04]: Production progress weighted: audio 20%, images 20%, i2v 15%, t2v 15%, assembly 30%
+- [Phase 04]: Single workflow file for all 11 production webhook endpoints (not separate files)
+- [Phase 04]: TTS uses workflow static data for cumulative timeline across SplitInBatches loop
 
 ### Pending Todos
 
@@ -113,6 +132,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T03:58:00Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-03-09T04:00:10.072Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
