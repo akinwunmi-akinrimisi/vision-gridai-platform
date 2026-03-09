@@ -1,10 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import ProjectsHome from '../pages/ProjectsHome';
 
-// Mock supabase client
+// Track the mock data so tests can configure it
+let mockProjectsData = [];
+let mockProjectsLoading = false;
+let mockProjectsError = null;
+let mockMutateAsync = vi.fn().mockResolvedValue({ success: true });
+let mockRetryMutate = vi.fn();
+
+// Mock the hooks
+vi.mock('../hooks/useProjects', () => ({
+  useProjects: () => ({
+    data: mockProjectsData,
+    isLoading: mockProjectsLoading,
+    error: mockProjectsError,
+  }),
+  useCreateProject: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+  }),
+  useRetryResearch: () => ({
+    mutate: mockRetryMutate,
+    isPending: false,
+  }),
+}));
+
+// Mock supabase (needed by useRealtimeSubscription transitive import)
 vi.mock('../lib/supabase', () => ({
   supabase: {
     from: vi.fn(() => ({
@@ -16,16 +40,13 @@ vi.mock('../lib/supabase', () => ({
       on: vi.fn().mockReturnThis(),
       subscribe: vi.fn(),
     })),
+    removeChannel: vi.fn(),
   },
 }));
 
-// Mock useAuth
-vi.mock('../hooks/useAuth', () => ({
-  useAuth: () => ({
-    isAuthenticated: true,
-    login: vi.fn(),
-    logout: vi.fn(),
-  }),
+// Mock sonner
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
 }));
 
 function renderWithProviders(ui) {
@@ -43,26 +64,87 @@ function renderWithProviders(ui) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockProjectsData = [];
+  mockProjectsLoading = false;
+  mockProjectsError = null;
+  mockMutateAsync = vi.fn().mockResolvedValue({ success: true });
+  mockRetryMutate = vi.fn();
 });
 
 describe('ProjectsHome (NICH-07)', () => {
   it('renders project cards from useProjects data', () => {
-    // RED: implement in plan 02-01 -- currently uses mock data, needs real Supabase query
-    expect(true).toBe(false);
+    mockProjectsData = [
+      { id: 'p1', name: 'Credit Cards', niche: 'US Credit Cards', status: 'active', created_at: '2026-01-01T00:00:00Z' },
+      { id: 'p2', name: 'Stoic Philosophy', niche: 'Stoicism', status: 'researching_competitors', created_at: '2026-02-01T00:00:00Z' },
+    ];
+    renderWithProviders(<ProjectsHome />);
+
+    expect(screen.getByText('Credit Cards')).toBeInTheDocument();
+    expect(screen.getByText('Stoic Philosophy')).toBeInTheDocument();
   });
 
   it('shows empty state when no projects exist', () => {
-    // RED: implement in plan 02-01
-    expect(true).toBe(false);
+    mockProjectsData = [];
+    renderWithProviders(<ProjectsHome />);
+
+    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+    expect(screen.getByText('No projects yet')).toBeInTheDocument();
+    expect(screen.getByText('Create Your First Project')).toBeInTheDocument();
   });
 
   it('opens CreateProjectModal on New Project click', () => {
-    // RED: implement in plan 02-01
-    expect(true).toBe(false);
+    mockProjectsData = [];
+    renderWithProviders(<ProjectsHome />);
+
+    // Click the New Project button in the header
+    fireEvent.click(screen.getByText('New Project'));
+
+    // Modal should appear with the niche name field
+    expect(screen.getByLabelText(/Niche Name/)).toBeInTheDocument();
   });
 
   it('shows skeleton cards while loading', () => {
-    // RED: implement in plan 02-01
-    expect(true).toBe(false);
+    mockProjectsLoading = true;
+    mockProjectsData = undefined;
+    const { container } = renderWithProviders(<ProjectsHome />);
+
+    // SkeletonCard renders animate-shimmer elements
+    const shimmers = container.querySelectorAll('.animate-shimmer');
+    expect(shimmers.length).toBeGreaterThan(0);
+  });
+
+  it('shows Retry Research button when project status is research_failed', () => {
+    mockProjectsData = [
+      {
+        id: 'p-failed',
+        name: 'Failed Project',
+        niche: 'Some Niche',
+        status: 'research_failed',
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    ];
+    renderWithProviders(<ProjectsHome />);
+
+    // The retry button should be visible for research_failed project
+    const retryBtn = screen.getByTestId('retry-research-p-failed');
+    expect(retryBtn).toBeInTheDocument();
+  });
+
+  it('Retry Research button calls useRetryResearch with project_id', () => {
+    mockProjectsData = [
+      {
+        id: 'p-failed',
+        name: 'Failed Project',
+        niche: 'Some Niche',
+        status: 'research_failed',
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    ];
+    renderWithProviders(<ProjectsHome />);
+
+    const retryBtn = screen.getByTestId('retry-research-p-failed');
+    fireEvent.click(retryBtn);
+
+    expect(mockRetryMutate).toHaveBeenCalledWith({ project_id: 'p-failed' });
   });
 });
