@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Backend & E2E
 status: completed
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-09T17:18:27.106Z"
+last_activity: 2026-03-09 — 08-01 complete (N8N_WEBHOOK_BASE + DASHBOARD_API_TOKEN injected into n8n container, Phase 7 vars preserved, healthz=200)
+progress:
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 8
+  completed_plans: 6
+  percent: 75
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: Backend & E2E
+status: completed
 stopped_at: Completed 08-01-PLAN.md
 last_updated: "2026-03-09T17:06:19.269Z"
 last_activity: "2026-03-09 — 07-04 complete (dashboard deployed: nginx:alpine behind Traefik, React SPA serving HTTP 200, DNS A record needed for HTTPS)"
 progress:
-  total_phases: 4
+  [████████░░] 75%
   completed_phases: 1
   total_plans: 8
   completed_plans: 5
@@ -103,13 +119,13 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 8 (Credentials & Deployment) — In Progress (1/? plans done)
-Plan: 08-01 complete
+Phase: 8 (Credentials & Deployment) — In Progress (2/4 plans done)
+Plan: 08-02 complete
 Status: Active
-Last activity: 2026-03-09 — 08-01 complete (N8N_WEBHOOK_BASE + DASHBOARD_API_TOKEN injected into n8n container, Phase 7 vars preserved, healthz=200)
+Last activity: 2026-03-09 — 08-02 complete (all 6 n8n credentials verified; UUIDs recorded; TTS credential is 'googleServiceAccount'; DEPL-01 marked complete)
 
 ```
-v1.1 Progress: [██████░░░░] 63% (Phase 7 complete, Phase 8 in progress)
+v1.1 Progress: [████████░░] 75% (Phase 7 complete, Phase 8 50% done)
 Phases:        [7: ●] [8: ◑] [9: ○] [10: ○]
 ```
 
@@ -125,6 +141,7 @@ Phases:        [7: ●] [8: ◑] [9: ○] [10: ○]
 | Phase 07 P03 | 2 | 2 tasks | 0 files |
 | Phase 07 P04 | 28 | 6 tasks | 2 files |
 | Phase 08-credentials-deployment P01 | 3 | 2 tasks | 2 files |
+| Phase 08-credentials-deployment P02 | 25 | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -143,6 +160,10 @@ Phases:        [7: ●] [8: ◑] [9: ○] [10: ○]
 - [07-04] DNS A record for dashboard.operscale.cloud must point to 72.61.201.148 — user action required before HTTPS works
 - [08-01] DASHBOARD_API_TOKEN not committed to git — .env untracked; task commits use --allow-empty to record completion without exposing secrets
 - [08-01] VPS override pattern confirmed: /docker/n8n/docker-compose.override.yml holds all custom env vars; NODE_OPTIONS and EXECUTIONS_TIMEOUT in base compose are NOT duplicated in override
+- [08-02] TTS credential actual name is 'googleServiceAccount' (NOT 'Google Cloud TTS') — UUID wR9CUA4SPWBbPW4O; Plan 08-04 must search by this name when re-linking TTS workflow nodes
+- [08-02] Google Drive credential actual name is 'GoogleDriveAccount' (UUID z0gigNHVnhcGz2pD); YouTube is 'YouTube account' (UUID bV36zJBQkG9QrayH)
+- [08-02] n8n /api/v1/credentials/{id}/test returns 404 for all credentials in this n8n version — version limitation; connectivity verified via direct API calls instead
+- [08-02] All 6 credential UUIDs: Anthropic=vlfOXwvIUlRYnr41, Supabase=QsqqFXtnLakNfVKR, Kie=rSyWwwFnPOZFL59o, TTS=wR9CUA4SPWBbPW4O, Drive=z0gigNHVnhcGz2pD, YouTube=bV36zJBQkG9QrayH
 
 ### Research Flags
 - Phase 9: pause_turn handling for long research NOT implemented — may need research spike during planning
@@ -164,6 +185,6 @@ Phases:        [7: ●] [8: ◑] [9: ○] [10: ○]
 
 ## Session Continuity
 
-Last session: 2026-03-09T17:06:19.262Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-03-09T17:18:14.523Z
+Stopped at: Completed 08-02-PLAN.md
 Resume: Phase 7 complete. Next: Plan Phase 8 (Credentials & Deployment). DNS action required: add A record dashboard.operscale.cloud → 72.61.201.148
