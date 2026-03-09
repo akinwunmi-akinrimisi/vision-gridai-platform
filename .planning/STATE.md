@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Backend & E2E
 status: completed
+stopped_at: Completed 09-04-PLAN.md
+last_updated: "2026-03-09T21:45:07.600Z"
+last_activity: "2026-03-09 — 09-03 complete (WF_TOPICS_ACTION hardened: edit_avatar Switch output 4, production_log for all 5 action types, refine error handler with PATCH Refine Failed + Log Refine Failed; deployed to n8n BE1mpwuBigLsq26v, 29 nodes active; AGNT-05/07/08 satisfied)"
+progress:
+  total_phases: 4
+  completed_phases: 3
+  total_plans: 13
+  completed_plans: 13
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: Backend & E2E
+status: completed
 stopped_at: Completed 09-03-PLAN.md
 last_updated: "2026-03-09T21:19:59.423Z"
 last_activity: "2026-03-09 — 09-02 complete (WF_TOPICS_GENERATE hardened: system prompt fix AGNT-09, idempotency guard AGNT-06, dedup context AGNT-04, production_log AGNT-07, error handler AGNT-08, deployed to n8n J5NTvfweZRiKJ9fG)"
 progress:
-  total_phases: 4
+  [██████████] 100%
   completed_phases: 2
   total_plans: 13
   completed_plans: 12
@@ -213,14 +229,14 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 9 (AI Agent Workflows) — IN PROGRESS (3/4 plans done)
-Plan: 09-03 complete
+Phase: 9 (AI Agent Workflows) — COMPLETE (4/4 plans done)
+Plan: 09-04 complete
 Status: Active
-Last activity: 2026-03-09 — 09-03 complete (WF_TOPICS_ACTION hardened: edit_avatar Switch output 4, production_log for all 5 action types, refine error handler with PATCH Refine Failed + Log Refine Failed; deployed to n8n BE1mpwuBigLsq26v, 29 nodes active; AGNT-05/07/08 satisfied)
+Last activity: 2026-03-09 — 09-04 complete (DASH-01 inline edit: TopicCard inline edit mode, useEditTopic webhook path fixed topics/edit→topics/action, useEditAvatar added, useRetryResearch added, ProjectCard retry button, TopicReview EditPanel removed, NicheResearch topics_exist confirm dialog; deployed to VPS)
 
 ```
-v1.1 Progress: [█████████░] 92% (Phase 7 complete, Phase 8 complete, Phase 9 in progress)
-Phases:        [7: ●] [8: ●] [9: ◐] [10: ○]
+v1.1 Progress: [██████████] 100% (Phase 7 complete, Phase 8 complete, Phase 9 complete)
+Phases:        [7: ●] [8: ●] [9: ●] [10: ○]
 ```
 
 ## Performance Metrics
@@ -242,6 +258,7 @@ Phases:        [7: ●] [8: ●] [9: ◐] [10: ○]
 | Phase 09-ai-agent-workflows P01 | 7 | 2 tasks | 1 files |
 | Phase 09-ai-agent-workflows P02 | 18 | 2 tasks | 1 files |
 | Phase 09 P03 | 18 | 2 tasks | 1 files |
+| Phase 09-ai-agent-workflows P04 | 15 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -284,6 +301,10 @@ Phases:        [7: ●] [8: ●] [9: ◐] [10: ○]
 - [09-03] Check Refine Error Code node inserted between Claude: Refine Topic and Parse Refine Result — detects error responses before parse throws; IF Refine Error routes true=error path / false=success path
 - [09-03] edit_avatar route added at Switch output 4 — PATCH avatars table via topic_id filter (not avatar id); Get Avatar by Topic included as existence confirmation step
 - [09-03] WF_TOPICS_ACTION expanded from 16 to 29 nodes; AGNT-05/07/08 satisfied; DASH-01 prerequisites met
+- [09-04] useEditTopic webhook path was 'topics/edit' (non-existent route) — fixed to 'topics/action' with action='edit'; pre-existing dashboard bug
+- [09-04] Both edit and edit_avatar webhook calls include project_id so WF_TOPICS_ACTION can write production_log with non-null project_id
+- [09-04] EditPanel SidePanel removed from TopicReview — edit is now inline in TopicCard per locked CONTEXT.md decision; EditPanel.jsx file retained but no longer imported
+- [09-04] TopicBulkActions.test.jsx has 4 pre-existing RED stubs from plan 02-02 — out of scope for this plan; all other 193 tests pass
 
 ### Research Flags
 - Phase 9: pause_turn handling for long research NOT implemented — may need research spike during planning
@@ -305,6 +326,6 @@ Phases:        [7: ●] [8: ●] [9: ◐] [10: ○]
 
 ## Session Continuity
 
-Last session: 2026-03-09T21:19:59.409Z
-Stopped at: Completed 09-03-PLAN.md
+Last session: 2026-03-09T21:45:07.582Z
+Stopped at: Completed 09-04-PLAN.md
 Resume: Phase 7 complete. Next: Plan Phase 8 (Credentials & Deployment). DNS action required: add A record dashboard.operscale.cloud → 72.61.201.148

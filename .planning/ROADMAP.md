@@ -29,7 +29,7 @@ Build a multi-niche AI video production platform in phases following the strict 
 
 - [x] **Phase 7: Infrastructure Hardening** — Docker memory limits, PostgreSQL tuning, n8n env vars, dashboard deploy (completed 2026-03-09)
 - [x] **Phase 8: Credentials & Deployment** — Production credentials, stub deactivation, workflow import, webhook URL config (completed 2026-03-09)
-- [ ] **Phase 9: AI Agent Workflows** — Niche research, prompt generation, topic generation, topic actions, inline editing
+- [x] **Phase 9: AI Agent Workflows** — Niche research, prompt generation, topic generation, topic actions, inline editing (completed 2026-03-09)
 - [ ] **Phase 10: End-to-End Validation** — Full pipeline test with US Credit Cards niche through all 3 gates
 
 ## Phase Details
@@ -103,5 +103,5 @@ Plans:
 | 6. Polish | v1.0 | 3/3 | Complete | 2026-03-09 |
 | 7. Infrastructure Hardening | v1.1 | 4/4 | Complete | 2026-03-09 |
 | 8. Credentials & Deployment | v1.1 | 4/4 | Complete | 2026-03-09 |
-| 9. AI Agent Workflows | 3/4 | In Progress|  | - |
+| 9. AI Agent Workflows | 4/4 | Complete   | 2026-03-09 | - |
 | 10. End-to-End Validation | v1.1 | 0/? | Not started | - |
