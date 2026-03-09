@@ -1,0 +1,537 @@
+{
+  "name": "WF_ANALYTICS_CRON",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily 6AM UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analytics/refresh",
+        "options": {},
+        "authentication": "headerAuth",
+        "headerAuth": {
+          "name": "Authorization",
+          "value": "Bearer {{$env.DASHBOARD_API_TOKEN}}"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Manual Refresh Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 540],
+      "webhookId": "analytics-refresh"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize input from either trigger\nconst body = $input.first().json?.body || $input.first().json || {};\nconst projectId = body.project_id || null;\nreturn [{ json: { projectId, source: projectId ? 'webhook' : 'cron' } }];"
+      },
+      "id": "normalize-input",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 420]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,youtube_video_id,status,published_at,project_id,seo_title,topic_number" },
+            { "name": "youtube_video_id", "value": "not.is.null" },
+            { "name": "order", "value": "topic_number.asc" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "fetch-published-topics",
+      "name": "Fetch Published Topics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,youtube_video_id,status,published_at,project_id,seo_title,topic_number" },
+            { "name": "youtube_video_id", "value": "not.is.null" },
+            { "name": "project_id", "value": "eq.{{$json.projectId}}" },
+            { "name": "order", "value": "topic_number.asc" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "fetch-project-topics",
+      "name": "Fetch Project Topics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 540]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$('Normalize Input').item.json.projectId}}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "has-project-filter",
+      "name": "Has Project Filter?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 420],
+      "onFalseOutput": "Fetch Project Topics",
+      "onTrueOutput": "Fetch Published Topics"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle private-to-public transitions for scheduled and over-quota videos\nconst topics = $input.first().json;\nconst allTopics = Array.isArray(topics) ? topics : [];\nconst now = new Date();\n\n// Find scheduled videos whose publish time has passed\nconst transitionCandidates = allTopics.filter(t => {\n  if (t.status === 'scheduled' && t.published_at) {\n    return new Date(t.published_at) <= now;\n  }\n  // Also catch videos stuck in 'publishing' (over-quota private uploads)\n  if (t.status === 'publishing') {\n    return true;\n  }\n  return false;\n});\n\n// Collect video IDs for analytics pull (all topics with youtube_video_id)\nconst videoIds = allTopics\n  .filter(t => t.youtube_video_id)\n  .map(t => t.youtube_video_id);\n\nreturn [{\n  json: {\n    allTopics,\n    transitionCandidates,\n    transitionCount: transitionCandidates.length,\n    videoIds,\n    videoIdString: videoIds.join(','),\n    totalVideos: videoIds.length\n  }\n}];"
+      },
+      "id": "process-topics",
+      "name": "Process Topics & Transitions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.transitionCount}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "has-transitions",
+      "name": "Has Transitions?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split transition candidates into individual items\nconst { transitionCandidates } = $('Process Topics & Transitions').first().json;\nreturn transitionCandidates.map(t => ({ json: t }));"
+      },
+      "id": "split-transitions",
+      "name": "Split Transitions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 200]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://www.googleapis.com/youtube/v3/videos?part=status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "body",
+              "value": "={\"id\": \"{{$json.youtube_video_id}}\", \"status\": {\"privacyStatus\": \"public\"}}"
+            }
+          ]
+        },
+        "authentication": "oAuth2",
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "youtube-set-public",
+      "name": "YouTube Set Public",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 200],
+      "credentials": {
+        "oAuth2Api": { "id": "youtube-oauth2", "name": "YouTube OAuth2" }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{$('Split Transitions').item.json.id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"status\": \"published\", \"published_at\": \"{{ new Date().toISOString() }}\" }"
+      },
+      "id": "update-transition-status",
+      "name": "Update Transition Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1800, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$('Process Topics & Transitions').first().json.totalVideos}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "has-videos",
+      "name": "Has Videos to Analyze?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1140, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build YouTube Analytics API request parameters\nconst { videoIdString, allTopics } = $('Process Topics & Transitions').first().json;\n\nconst now = new Date();\nconst ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);\n\nconst startDate = ninetyDaysAgo.toISOString().split('T')[0];\nconst endDate = now.toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    startDate,\n    endDate,\n    videoIdString,\n    allTopics,\n    analyticsUrl: `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&startDate=${startDate}&endDate=${endDate}&metrics=views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,comments,subscribersGained,estimatedRevenue,cpm,impressions&dimensions=video&filters=video==${videoIdString}&sort=-views`\n  }\n}];"
+      },
+      "id": "build-analytics-query",
+      "name": "Build Analytics Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 540]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$json.analyticsUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "authentication": "oAuth2",
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "youtube-analytics-api",
+      "name": "YouTube Analytics API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 540],
+      "credentials": {
+        "oAuth2Api": { "id": "youtube-oauth2", "name": "YouTube OAuth2" }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse YouTube Analytics response and map to topic updates\nconst response = $input.first().json;\nconst allTopics = $('Build Analytics Query').first().json.allTopics;\n\n// Handle API errors (403 scope issue, empty results, etc.)\nif (response.error) {\n  const errorCode = response.error.code || 'unknown';\n  const errorMsg = response.error.message || JSON.stringify(response.error);\n  return [{\n    json: {\n      updates: [],\n      videosUpdated: 0,\n      error: true,\n      errorCode,\n      errorMessage: errorMsg,\n      scopeWarning: errorCode === 403 ? 'YouTube OAuth2 credential requires yt-analytics.readonly scope' : null\n    }\n  }];\n}\n\nconst rows = response.rows || [];\nif (rows.length === 0) {\n  return [{ json: { updates: [], videosUpdated: 0, error: false } }];\n}\n\n// Column order: videoId, views, estimatedMinutesWatched, averageViewDuration,\n// averageViewPercentage, likes, comments, subscribersGained, estimatedRevenue, cpm, impressions\nconst updates = rows.map(row => {\n  const [videoId, views, watchMinutes, avgDuration, avgPct, likes, comments, subsGained, revenue, cpm, impressions] = row;\n\n  // Find matching topic\n  const topic = allTopics.find(t => t.youtube_video_id === videoId);\n  if (!topic) return null;\n\n  // Format avgDuration (seconds) as M:SS\n  const durationMin = Math.floor(avgDuration / 60);\n  const durationSec = Math.round(avgDuration % 60);\n  const avgViewDuration = `${durationMin}:${String(durationSec).padStart(2, '0')}`;\n\n  // Compute CTR: views / impressions * 100\n  const ctr = impressions > 0 ? Math.round((views / impressions) * 10000) / 100 : 0;\n\n  return {\n    topicId: topic.id,\n    youtubeVideoId: videoId,\n    yt_views: views,\n    yt_watch_hours: Math.round((watchMinutes / 60) * 100) / 100,\n    yt_avg_view_duration: avgViewDuration,\n    yt_avg_view_pct: Math.round(avgPct * 100) / 100,\n    yt_ctr: ctr,\n    yt_impressions: impressions,\n    yt_likes: likes,\n    yt_comments: comments,\n    yt_subscribers_gained: subsGained,\n    yt_estimated_revenue: Math.round(revenue * 100) / 100,\n    yt_actual_cpm: Math.round(cpm * 100) / 100\n  };\n}).filter(Boolean);\n\nreturn [{ json: { updates, videosUpdated: updates.length, error: false } }];"
+      },
+      "id": "parse-analytics",
+      "name": "Parse Analytics Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 540]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.videosUpdated}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "has-updates",
+      "name": "Has Updates?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2020, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split updates into individual items for batch write\nconst { updates } = $('Parse Analytics Response').first().json;\nreturn updates.map(u => ({ json: u }));"
+      },
+      "id": "split-updates",
+      "name": "Split Updates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 440]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{$json.topicId}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"yt_views\": {{$json.yt_views}},\n  \"yt_watch_hours\": {{$json.yt_watch_hours}},\n  \"yt_avg_view_duration\": \"{{$json.yt_avg_view_duration}}\",\n  \"yt_avg_view_pct\": {{$json.yt_avg_view_pct}},\n  \"yt_ctr\": {{$json.yt_ctr}},\n  \"yt_impressions\": {{$json.yt_impressions}},\n  \"yt_likes\": {{$json.yt_likes}},\n  \"yt_comments\": {{$json.yt_comments}},\n  \"yt_subscribers_gained\": {{$json.yt_subscribers_gained}},\n  \"yt_estimated_revenue\": {{$json.yt_estimated_revenue}},\n  \"yt_actual_cpm\": {{$json.yt_actual_cpm}},\n  \"yt_last_updated\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "write-analytics",
+      "name": "Write Analytics to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2460, 440],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"stage\": \"analytics\",\n  \"action\": \"completed\",\n  \"details\": {\n    \"videos_updated\": {{$('Parse Analytics Response').first().json.videosUpdated || 0}},\n    \"transitions\": {{$('Process Topics & Transitions').first().json.transitionCount || 0}},\n    \"source\": \"{{$('Normalize Input').first().json.source}}\",\n    \"timestamp\": \"{{ new Date().toISOString() }}\"\n  }\n}"
+      },
+      "id": "log-completion",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2680, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build response for webhook trigger\nconst videosUpdated = $('Parse Analytics Response').first()?.json?.videosUpdated || 0;\nconst transitionCount = $('Process Topics & Transitions').first()?.json?.transitionCount || 0;\nconst error = $('Parse Analytics Response').first()?.json?.error || false;\nconst scopeWarning = $('Parse Analytics Response').first()?.json?.scopeWarning || null;\n\nreturn [{\n  json: {\n    success: !error,\n    videos_updated: videosUpdated,\n    transitions: transitionCount,\n    ...(scopeWarning ? { warning: scopeWarning } : {}),\n    ...(error ? { error: $('Parse Analytics Response').first()?.json?.errorMessage } : {})\n  }\n}];"
+      },
+      "id": "build-response",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2900, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json)}}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [3120, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"stage\": \"analytics\",\n  \"action\": \"failed\",\n  \"details\": {\n    \"error\": \"{{$json.errorMessage || 'Unknown error'}}\",\n    \"source\": \"{{$('Normalize Input').first().json.source}}\",\n    \"timestamp\": \"{{ new Date().toISOString() }}\"\n  }\n}"
+      },
+      "id": "log-error",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2240, 660],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// No videos to analyze — skip analytics pull\nreturn [{ json: { updates: [], videosUpdated: 0, error: false } }];"
+      },
+      "id": "no-videos-skip",
+      "name": "No Videos — Skip",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 700]
+    }
+  ],
+  "connections": {
+    "Daily 6AM UTC": {
+      "main": [
+        [{ "node": "Normalize Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Manual Refresh Webhook": {
+      "main": [
+        [{ "node": "Normalize Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [{ "node": "Has Project Filter?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Project Filter?": {
+      "main": [
+        [{ "node": "Fetch Published Topics", "type": "main", "index": 0 }],
+        [{ "node": "Fetch Project Topics", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Published Topics": {
+      "main": [
+        [{ "node": "Process Topics & Transitions", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Project Topics": {
+      "main": [
+        [{ "node": "Process Topics & Transitions", "type": "main", "index": 0 }]
+      ]
+    },
+    "Process Topics & Transitions": {
+      "main": [
+        [
+          { "node": "Has Transitions?", "type": "main", "index": 0 },
+          { "node": "Has Videos to Analyze?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Has Transitions?": {
+      "main": [
+        [{ "node": "Split Transitions", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Split Transitions": {
+      "main": [
+        [{ "node": "YouTube Set Public", "type": "main", "index": 0 }]
+      ]
+    },
+    "YouTube Set Public": {
+      "main": [
+        [{ "node": "Update Transition Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Videos to Analyze?": {
+      "main": [
+        [{ "node": "Build Analytics Query", "type": "main", "index": 0 }],
+        [{ "node": "No Videos — Skip", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Analytics Query": {
+      "main": [
+        [{ "node": "YouTube Analytics API", "type": "main", "index": 0 }]
+      ]
+    },
+    "YouTube Analytics API": {
+      "main": [
+        [{ "node": "Parse Analytics Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Analytics Response": {
+      "main": [
+        [{ "node": "Has Updates?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Updates?": {
+      "main": [
+        [{ "node": "Split Updates", "type": "main", "index": 0 }],
+        [{ "node": "Log Completion", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Updates": {
+      "main": [
+        [{ "node": "Write Analytics to Supabase", "type": "main", "index": 0 }]
+      ]
+    },
+    "Write Analytics to Supabase": {
+      "main": [
+        [{ "node": "Log Completion", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Completion": {
+      "main": [
+        [{ "node": "Build Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    },
+    "No Videos — Skip": {
+      "main": [
+        [{ "node": "Log Completion", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "analytics" },
+    { "name": "cron" },
+    { "name": "youtube" }
+  ]
+}
