@@ -1,0 +1,329 @@
+{
+  "name": "WF_SCRIPT_APPROVE — Gate 2 Script Approval",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "script/approve",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wf-sa-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "script-approve-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-approve",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf-sa-check-auth",
+      "name": "Check Auth",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "wf-sa-respond-unauthorized",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst topic_id = body.topic_id;\nif (!topic_id) {\n  throw new Error('topic_id is required');\n}\nreturn [{ json: { topic_id } }];"
+      },
+      "id": "wf-sa-validate",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $json.topic_id, status: 'script_approved', message: 'Script approved, production pipeline triggered' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "wf-sa-respond",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.topic_id }}" },
+            { "name": "select", "value": "id,project_id,seo_title,topic_number" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wf-sa-read-topic",
+      "name": "Read Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('wf-sa-validate').first().json.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ script_review_status: 'approved', status: 'script_approved', updated_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "wf-sa-patch-approved",
+      "name": "Patch Topic Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/trigger",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('wf-sa-validate').first().json.topic_id }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf-sa-trigger-production",
+      "name": "Trigger Production",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1570, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $('wf-sa-read-topic').first().json[0]?.project_id || null, topic_id: $('wf-sa-validate').first().json.topic_id, stage: 'script_review', action: 'approved', details: { title: $('wf-sa-read-topic').first().json[0]?.seo_title || null, triggered_production: true } }) }}",
+        "options": {}
+      },
+      "id": "wf-sa-log",
+      "name": "Log Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1790, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('wf-sa-validate').first().json.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'script_approve_failed', updated_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "wf-sa-error-patch",
+      "name": "Patch Error Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 450],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Auth": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Success": {
+      "main": [
+        [
+          {
+            "node": "Read Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Topic": {
+      "main": [
+        [
+          {
+            "node": "Patch Topic Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patch Topic Approved": {
+      "main": [
+        [
+          {
+            "node": "Trigger Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Production": {
+      "main": [
+        [
+          {
+            "node": "Log Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "webhook"
+    },
+    {
+      "name": "gate2"
+    },
+    {
+      "name": "script-review"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false
+}
