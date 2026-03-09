@@ -4,7 +4,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "project/create",
+        "path": "internal/project-create",
         "responseMode": "responseNode",
         "options": {
           "allowedOrigins": "*"
@@ -14,7 +14,10 @@
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 300],
+      "position": [
+        200,
+        300
+      ],
       "webhookId": "project-create"
     },
     {
@@ -25,7 +28,10 @@
       "name": "Validate Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 300]
+      "position": [
+        420,
+        300
+      ]
     },
     {
       "parameters": {
@@ -36,8 +42,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=representation" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
           ]
         },
         "sendBody": true,
@@ -55,10 +67,13 @@
       "name": "INSERT Project",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [640, 300],
+      "position": [
+        640,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "supabase-service-role",
+          "id": "QsqqFXtnLakNfVKR",
           "name": "Supabase Service Role"
         }
       }
@@ -71,7 +86,10 @@
       "name": "Extract Project ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [860, 300]
+      "position": [
+        860,
+        300
+      ]
     },
     {
       "parameters": {
@@ -85,7 +103,126 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1080, 160]
+      "position": [
+        1080,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $json.project_id, topic_id: null, stage: 'niche_research', action: 'started', details: { niche: $json.niche } }) }}",
+        "options": {}
+      },
+      "id": "wf-pc-log-started",
+      "name": "Log Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1080,
+        620
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/niche_profiles?project_id=eq.{{$json.project_id}}&select=id",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wf-pc-check-niche-profile",
+      "name": "Check Niche Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        620
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Idempotency check: does a niche_profile already exist for this project?\nconst response = $input.first().json;\nconst profiles = Array.isArray(response) ? response : [];\nconst skip_research = profiles.length > 0;\n\n// Pass through project_id and niche from upstream Extract Project ID node\nconst projectData = $('Extract Project ID').first().json;\n\nreturn [{ json: {\n  project_id: projectData.project_id,\n  niche: projectData.niche,\n  description: projectData.description,\n  skip_research\n} }];"
+      },
+      "id": "wf-pc-idempotency-check",
+      "name": "Idempotency Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "skip-research-cond",
+              "leftValue": "={{ $json.skip_research }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf-pc-if-skip-research",
+      "name": "IF Skip Research",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        620
+      ]
     },
     {
       "parameters": {
@@ -96,8 +233,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -109,10 +252,13 @@
       "name": "Status → Researching",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1080, 440],
+      "position": [
+        1080,
+        440
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "supabase-service-role",
+          "id": "QsqqFXtnLakNfVKR",
           "name": "Supabase Service Role"
         }
       }
@@ -126,25 +272,34 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 16384, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 10 }], messages: [{ role: 'user', content: `Research the niche \"${$json.niche}\" for a YouTube 2-hour documentary channel.${$json.description ? ` Context: ${$json.description}` : ''}\n\nUsing web search, perform:\n\n1. COMPETITOR AUDIT: Find top 10 YouTube channels in this niche. For each: channel name, subscriber count (estimate), avg views, topics they cover repeatedly (RED OCEAN), content gaps they miss.\n\n2. AUDIENCE PAIN POINTS: Search Reddit, Quora, and niche forums for: most upvoted questions/complaints, common frustrations with existing YouTube content, what people say is \"missing\".\n\n3. KEYWORD GAPS: Find high-volume, low-competition keywords in this niche that existing channels underserve.\n\n4. BLUE OCEAN ANALYSIS: Identify 5-8 content angles no top channel covers well. Define value curve gaps (where content is shallow/biased). Write a channel positioning statement.\n\n5. NICHE PROFILE: Generate:\n   - A dynamic system prompt (what expertise the AI scriptwriter should embody for this niche)\n   - An expertise description (e.g., \"Senior Credit Card Analyst and Data Journalist\")\n   - 3 playlist angles, each with a creative name and theme description\n   - 10+ red-ocean topics to AVOID (oversaturated)\n   - Primary audience psychographic profile\n\nReturn ONLY valid JSON (no markdown fences) with these exact keys:\n{\n  \"competitor_analysis\": { \"channels\": [...], \"top_videos\": [...], \"gaps\": [...] },\n  \"audience_pain_points\": { \"reddit\": [...], \"quora\": [...], \"forums\": [...] },\n  \"keyword_research\": { \"high_volume\": [...], \"low_competition\": [...], \"trending\": [...] },\n  \"blue_ocean_opportunities\": { \"unoccupied_angles\": [...], \"value_curve_gaps\": [...], \"positioning_statement\": \"...\" },\n  \"expertise_profile\": \"...\",\n  \"system_prompt\": \"...\",\n  \"playlist_angles\": [{ \"name\": \"...\", \"theme\": \"...\" }, ...],\n  \"red_ocean_topics\": [...],\n  \"audience_psychographic\": \"...\"\n}` }] }) }}",
         "options": {
-          "timeout": 120000
+          "timeout": 600000
         }
       },
       "id": "wf-pc-anthropic-research",
       "name": "Claude: Niche Research",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1300, 440],
+      "position": [
+        1300,
+        440
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "anthropic-api-key",
+          "id": "vlfOXwvIUlRYnr41",
           "name": "Anthropic API Key"
         }
       },
@@ -152,13 +307,61 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse Claude's niche research response\nconst response = $input.first().json;\n\n// Check for API error\nif (response.error) {\n  throw new Error(`Anthropic API error: ${response.error.message || JSON.stringify(response.error)}`);\n}\n\n// Extract text content from response\nconst textBlocks = (response.content || []).filter(c => c.type === 'text');\nconst rawText = textBlocks.map(c => c.text).join('');\n\n// Strip markdown code fences if present\nlet jsonText = rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n\n// Find the JSON object\nconst jsonStart = jsonText.indexOf('{');\nconst jsonEnd = jsonText.lastIndexOf('}');\nif (jsonStart === -1 || jsonEnd === -1) {\n  throw new Error('No JSON found in Claude response');\n}\njsonText = jsonText.substring(jsonStart, jsonEnd + 1);\n\nlet research;\ntry {\n  research = JSON.parse(jsonText);\n} catch (e) {\n  throw new Error(`Failed to parse research JSON: ${e.message}`);\n}\n\n// Pass through project context + parsed research\nreturn [{\n  json: {\n    project_id: $('Extract Project ID').first().json.project_id,\n    niche: $('Extract Project ID').first().json.niche,\n    description: $('Extract Project ID').first().json.description,\n    research,\n    competitor_analysis: research.competitor_analysis || {},\n    audience_pain_points: research.audience_pain_points || {},\n    keyword_research: research.keyword_research || {},\n    blue_ocean_opportunities: research.blue_ocean_opportunities || {},\n    expertise_profile: research.expertise_profile || '',\n    system_prompt: research.system_prompt || '',\n    playlist_angles: research.playlist_angles || [],\n    red_ocean_topics: research.red_ocean_topics || [],\n    audience_psychographic: research.audience_psychographic || ''\n  }\n}];"
+        "jsCode": "// Detect if Claude research returned an error response\nconst response = $input.first().json;\n\nif (response.error || response.type === 'error') {\n  const errorMsg = response.error?.message || JSON.stringify(response.error || response);\n  return [{ json: {\n    isError: true,\n    error_message: 'Anthropic API error during research: ' + errorMsg,\n    project_id: $('Extract Project ID').first().json.project_id,\n    niche: $('Extract Project ID').first().json.niche,\n    description: $('Extract Project ID').first().json.description,\n    skip_research: false\n  }}];\n}\n\n// Success — pass through response\nreturn [{ json: { ...response, isError: false } }];"
+      },
+      "id": "wf-pc-check-research-error",
+      "name": "Check Research Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "research-error-cond",
+              "leftValue": "={{ $json.isError }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf-pc-if-research-error",
+      "name": "IF Research Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2180,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Claude's niche research response\nconst response = $input.first().json;\n\n// Extract text content from response\nconst textBlocks = (response.content || []).filter(c => c.type === 'text');\nconst rawText = textBlocks.map(c => c.text).join('');\n\n// Strip markdown code fences if present\nlet jsonText = rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n\n// Find the JSON object\nconst jsonStart = jsonText.indexOf('{');\nconst jsonEnd = jsonText.lastIndexOf('}');\nif (jsonStart === -1 || jsonEnd === -1) {\n  throw new Error('No JSON found in Claude response');\n}\njsonText = jsonText.substring(jsonStart, jsonEnd + 1);\n\nlet research;\ntry {\n  research = JSON.parse(jsonText);\n} catch (e) {\n  throw new Error(`Failed to parse research JSON: ${e.message}`);\n}\n\n// Pass through project context + parsed research\nreturn [{\n  json: {\n    project_id: $('Extract Project ID').first().json.project_id,\n    niche: $('Extract Project ID').first().json.niche,\n    description: $('Extract Project ID').first().json.description,\n    research,\n    competitor_analysis: research.competitor_analysis || {},\n    audience_pain_points: research.audience_pain_points || {},\n    keyword_research: research.keyword_research || {},\n    blue_ocean_opportunities: research.blue_ocean_opportunities || {},\n    expertise_profile: research.expertise_profile || '',\n    system_prompt: research.system_prompt || '',\n    playlist_angles: research.playlist_angles || [],\n    red_ocean_topics: research.red_ocean_topics || [],\n    audience_psychographic: research.audience_psychographic || ''\n  }\n}];"
       },
       "id": "wf-pc-parse-research",
       "name": "Parse Research Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1520, 440]
+      "position": [
+        2400,
+        300
+      ]
     },
     {
       "parameters": {
@@ -169,8 +372,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -182,10 +391,13 @@
       "name": "INSERT Niche Profile",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1740, 340],
+      "position": [
+        2620,
+        180
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "supabase-service-role",
+          "id": "QsqqFXtnLakNfVKR",
           "name": "Supabase Service Role"
         }
       }
@@ -199,8 +411,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -212,13 +430,145 @@
       "name": "UPDATE Project (Research)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1740, 540],
+      "position": [
+        2620,
+        380
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "supabase-service-role",
+          "id": "QsqqFXtnLakNfVKR",
           "name": "Supabase Service Role"
         }
       }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/prompt_configs?project_id=eq.{{$json.project_id}}&select=version&order=version.desc&limit=1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wf-pc-get-prompt-version",
+      "name": "Get Prompt Version",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1960,
+        620
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/prompt_configs?project_id=eq.{{$('Idempotency Check').first().json.project_id}}&is_active=eq.true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"is_active\": false }",
+        "options": {}
+      },
+      "id": "wf-pc-deactivate-old-prompts",
+      "name": "Deactivate Old Prompts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2180,
+        620
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compute next version number for prompt_configs\nconst versions = $('Get Prompt Version').first().json;\nconst versionArray = Array.isArray(versions) ? versions : [];\nconst maxVersion = versionArray.length > 0 ? (versionArray[0].version || 1) : 1;\nconst next_version = maxVersion + 1;\n\nconst projectData = $('Idempotency Check').first().json;\n\nreturn [{ json: {\n  project_id: projectData.project_id,\n  niche: projectData.niche,\n  description: projectData.description,\n  next_version\n} }];"
+      },
+      "id": "wf-pc-compute-version",
+      "name": "Compute Next Version",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{$json.project_id}}&select=niche,niche_expertise_profile,niche_system_prompt,niche_blue_ocean_strategy,niche_red_ocean_topics,playlist1_name,playlist1_theme,playlist2_name,playlist2_theme,playlist3_name,playlist3_theme",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wf-pc-read-project-for-prompts",
+      "name": "Read Project for Prompts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2620,
+        620
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge project data for re-triggered prompt generation\nconst projectArr = $input.first().json;\nconst project = Array.isArray(projectArr) ? projectArr[0] : projectArr;\n\nconst versionData = $('Compute Next Version').first().json;\n\nreturn [{ json: {\n  project_id: versionData.project_id,\n  niche: project.niche || versionData.niche,\n  expertise_profile: project.niche_expertise_profile || '',\n  system_prompt: project.niche_system_prompt || '',\n  playlist_angles: [\n    { name: project.playlist1_name || 'Playlist 1', theme: project.playlist1_theme || '' },\n    { name: project.playlist2_name || 'Playlist 2', theme: project.playlist2_theme || '' },\n    { name: project.playlist3_name || 'Playlist 3', theme: project.playlist3_theme || '' }\n  ],\n  red_ocean_topics: project.niche_red_ocean_topics || [],\n  audience_psychographic: '',\n  blue_ocean_opportunities: { positioning_statement: project.niche_blue_ocean_strategy || '' },\n  next_version: versionData.next_version,\n  is_retrigger: true\n} }];"
+      },
+      "id": "wf-pc-merge-retrigger-data",
+      "name": "Merge Re-trigger Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2840,
+        620
+      ]
     },
     {
       "parameters": {
@@ -229,25 +579,34 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 16384, messages: [{ role: 'user', content: `You are generating dynamic prompt templates for an AI video production platform. The niche is \"${$json.niche}\".\n\nNiche expertise profile: ${$json.expertise_profile}\nNiche system prompt: ${$json.system_prompt}\nPlaylist angles: ${JSON.stringify($json.playlist_angles)}\nRed ocean topics to avoid: ${JSON.stringify($json.red_ocean_topics)}\nAudience psychographic: ${$json.audience_psychographic}\nBlue ocean positioning: ${$json.blue_ocean_opportunities?.positioning_statement || ''}\n\nGenerate 7 prompt templates as JSON. Each prompt must use {{variable}} placeholders for dynamic injection. The prompts are:\n\n1. **topic_generator** — Generates 25 SEO-optimized YouTube topics with customer avatars. CRITICAL: This prompt MUST include these quality benchmarks:\n   - **2 AM Test**: \"Would someone search for this topic at 2 AM when they can't sleep?\"\n   - **Share Test**: \"Would someone share this video with a friend unprompted?\"\n   - **Rewatch Test**: \"Would someone rewatch this or bookmark it for later?\"\n   Each topic must be evaluated against all three tests. Only include topics that pass at least 2 of 3 tests. Include scoring instructions for each test.\n\n2. **script_pass1** — Foundation pass (5-7K words): hook + pattern establishment + core framework. Uses {{seo_title}}, {{narrative_hook}}, {{avatar_name_age}}, {{pain_point}}, etc.\n\n3. **script_pass2** — Depth pass (8-10K words): deep dive into mechanism + evidence + case studies. Receives {{pass1_output}} as context.\n\n4. **script_pass3** — Resolution pass (5-7K words): practical takeaways + transformation + CTA. Receives {{pass1_summary}} and {{pass2_summary}}.\n\n5. **evaluator** — 7-dimension scoring rubric (persona integration, hook strength, pacing, specificity, TTS readability, visual prompts, anti-patterns). Per-pass threshold: 6.0, combined threshold: 7.0.\n\n6. **visual_director** — Assigns visual types (static_image, i2v, t2v) to scenes and generates image prompts.\n\n7. **scene_segmenter** — Splits script into 172 scenes with narration text, image prompts, emotional beats, and chapter assignments.\n\nReturn ONLY valid JSON (no markdown fences) as an array of objects:\n[{ \"prompt_type\": \"topic_generator\", \"prompt_text\": \"...\" }, ...]` }] }) }}",
         "options": {
-          "timeout": 120000
+          "timeout": 600000
         }
       },
       "id": "wf-pc-anthropic-prompts",
       "name": "Claude: Generate Prompts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1960, 440],
+      "position": [
+        3060,
+        440
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "anthropic-api-key",
+          "id": "vlfOXwvIUlRYnr41",
           "name": "Anthropic API Key"
         }
       },
@@ -255,13 +614,61 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse Claude's prompt generation response\nconst response = $input.first().json;\n\nif (response.error) {\n  throw new Error(`Anthropic API error: ${response.error.message || JSON.stringify(response.error)}`);\n}\n\nconst textBlocks = (response.content || []).filter(c => c.type === 'text');\nconst rawText = textBlocks.map(c => c.text).join('');\n\n// Strip markdown fences\nlet jsonText = rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst jsonStart = jsonText.indexOf('[');\nconst jsonEnd = jsonText.lastIndexOf(']');\nif (jsonStart === -1 || jsonEnd === -1) {\n  throw new Error('No JSON array found in prompt generation response');\n}\njsonText = jsonText.substring(jsonStart, jsonEnd + 1);\n\nlet prompts;\ntry {\n  prompts = JSON.parse(jsonText);\n} catch (e) {\n  throw new Error(`Failed to parse prompts JSON: ${e.message}`);\n}\n\nif (!Array.isArray(prompts) || prompts.length < 7) {\n  throw new Error(`Expected 7 prompts, got ${prompts?.length || 0}`);\n}\n\n// TOPC-02 compliance: Verify topic_generator includes quality benchmarks\nconst topicGen = prompts.find(p => p.prompt_type === 'topic_generator');\nif (topicGen) {\n  const text = topicGen.prompt_text;\n  if (!text.includes('2 AM') || !text.includes('Share Test') || !text.includes('Rewatch')) {\n    throw new Error('topic_generator prompt missing quality benchmarks (2 AM Test, Share Test, Rewatch Test) — TOPC-02 compliance failure');\n  }\n}\n\nconst project_id = $('Extract Project ID').first().json.project_id;\n\n// Build prompt_configs rows\nconst rows = prompts.map(p => ({\n  project_id,\n  prompt_type: p.prompt_type,\n  prompt_text: p.prompt_text,\n  version: 1,\n  is_active: true\n}));\n\nreturn [{ json: { project_id, prompt_configs: rows } }];"
+        "jsCode": "// Detect if Claude prompts generation returned an error response\nconst response = $input.first().json;\n\nif (response.error || response.type === 'error') {\n  const errorMsg = response.error?.message || JSON.stringify(response.error || response);\n  return [{ json: {\n    isError: true,\n    error_message: 'Anthropic API error during prompt generation: ' + errorMsg,\n    project_id: $('Extract Project ID').first().json.project_id\n  }}];\n}\n\n// Success — pass through\nreturn [{ json: { ...response, isError: false } }];"
+      },
+      "id": "wf-pc-check-prompts-error",
+      "name": "Check Prompts Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3280,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "prompts-error-cond",
+              "leftValue": "={{ $json.isError }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf-pc-if-prompts-error",
+      "name": "IF Prompts Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3500,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Claude's prompt generation response\nconst response = $input.first().json;\n\nif (response.error) {\n  throw new Error('Anthropic API error: ' + (response.error.message || JSON.stringify(response.error)));\n}\n\nconst textBlocks = (response.content || []).filter(c => c.type === 'text');\nconst rawText = textBlocks.map(c => c.text).join('');\n\n// Strip markdown fences\nlet jsonText = rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst jsonStart = jsonText.indexOf('[');\nconst jsonEnd = jsonText.lastIndexOf(']');\nif (jsonStart === -1 || jsonEnd === -1) {\n  throw new Error('No JSON array found in prompt generation response');\n}\njsonText = jsonText.substring(jsonStart, jsonEnd + 1);\n\nlet prompts;\ntry {\n  prompts = JSON.parse(jsonText);\n} catch (e) {\n  throw new Error('Failed to parse prompts JSON: ' + e.message);\n}\n\nif (!Array.isArray(prompts) || prompts.length < 7) {\n  throw new Error('Expected 7 prompts, got ' + (prompts?.length || 0));\n}\n\n// TOPC-02 compliance: Verify topic_generator includes quality benchmarks\nconst topicGen = prompts.find(p => p.prompt_type === 'topic_generator');\nif (topicGen) {\n  const text = topicGen.prompt_text;\n  if (!text.includes('2 AM') || !text.includes('Share Test') || !text.includes('Rewatch')) {\n    throw new Error('topic_generator prompt missing quality benchmarks (2 AM Test, Share Test, Rewatch Test) — TOPC-02 compliance failure');\n  }\n}\n\nconst project_id = $('Extract Project ID').first().json.project_id;\n\n// Determine version: use next_version if re-trigger, else 1\nlet version = 1;\ntry {\n  const mergeData = $('Merge Re-trigger Data').first().json;\n  if (mergeData && mergeData.next_version) {\n    version = mergeData.next_version;\n  }\n} catch(e) {\n  // Not a re-trigger — version stays 1\n}\n\n// Build prompt_configs rows\nconst rows = prompts.map(p => ({\n  project_id,\n  prompt_type: p.prompt_type,\n  prompt_text: p.prompt_text,\n  version,\n  is_active: true\n}));\n\nreturn [{ json: { project_id, prompt_configs: rows } }];"
       },
       "id": "wf-pc-parse-prompts",
       "name": "Parse Prompts + TOPC-02 Check",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2180, 440]
+      "position": [
+        3720,
+        300
+      ]
     },
     {
       "parameters": {
@@ -272,8 +679,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -285,40 +698,13 @@
       "name": "INSERT Prompt Configs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2400, 440],
+      "position": [
+        3940,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "supabase-service-role",
-          "name": "Supabase Service Role"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $json.project_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ status: 'ready_for_topics' }) }}",
-        "options": {}
-      },
-      "id": "wf-pc-status-ready",
-      "name": "Status → Ready for Topics",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2620, 440],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "supabase-service-role",
+          "id": "QsqqFXtnLakNfVKR",
           "name": "Supabase Service Role"
         }
       }
@@ -332,23 +718,149 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ status: 'research_failed', error_log: $json.message || 'Unknown error during research/prompt generation' }) }}",
+        "jsonBody": "={{ JSON.stringify({ status: 'ready_for_topics' }) }}",
+        "options": {}
+      },
+      "id": "wf-pc-status-ready",
+      "name": "Status → Ready for Topics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4160,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $('Extract Project ID').first().json.project_id, topic_id: null, stage: 'niche_research', action: 'completed', details: { prompts_generated: 7 } }) }}",
+        "options": {}
+      },
+      "id": "wf-pc-log-completed",
+      "name": "Log Completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4380,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Extract Project ID').first().json.project_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'research_failed', error_log: $json.error_message || $json.message || 'Unknown error during research/prompt generation' }) }}",
         "options": {}
       },
       "id": "wf-pc-error-handler",
       "name": "Error → Research Failed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2180, 660],
+      "position": [
+        2400,
+        760
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "supabase-service-role",
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $('Extract Project ID').first().json.project_id, topic_id: null, stage: 'niche_research', action: 'failed', details: { error: $json.error_message || $json.message || 'Unknown error' } }) }}",
+        "options": {}
+      },
+      "id": "wf-pc-log-failed",
+      "name": "Log Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2620,
+        760
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
           "name": "Supabase Service Role"
         }
       }
@@ -357,72 +869,326 @@
   "connections": {
     "Webhook Trigger": {
       "main": [
-        [{ "node": "Validate Input", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Validate Input": {
       "main": [
-        [{ "node": "INSERT Project", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "INSERT Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "INSERT Project": {
       "main": [
-        [{ "node": "Extract Project ID", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Extract Project ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Extract Project ID": {
       "main": [
         [
-          { "node": "Respond to Webhook", "type": "main", "index": 0 },
-          { "node": "Status → Researching", "type": "main", "index": 0 }
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Started": {
+      "main": [
+        [
+          {
+            "node": "Check Niche Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Niche Profile": {
+      "main": [
+        [
+          {
+            "node": "Idempotency Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Idempotency Check": {
+      "main": [
+        [
+          {
+            "node": "IF Skip Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Skip Research": {
+      "main": [
+        [
+          {
+            "node": "Get Prompt Version",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status → Researching",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Status → Researching": {
       "main": [
-        [{ "node": "Claude: Niche Research", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Claude: Niche Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Claude: Niche Research": {
       "main": [
-        [{ "node": "Parse Research Response", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Check Research Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Research Error": {
+      "main": [
+        [
+          {
+            "node": "IF Research Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Research Error": {
+      "main": [
+        [
+          {
+            "node": "Error → Research Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Research Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Parse Research Response": {
       "main": [
         [
-          { "node": "INSERT Niche Profile", "type": "main", "index": 0 },
-          { "node": "UPDATE Project (Research)", "type": "main", "index": 0 }
+          {
+            "node": "INSERT Niche Profile",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "UPDATE Project (Research)",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "UPDATE Project (Research)": {
       "main": [
-        [{ "node": "Claude: Generate Prompts", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Claude: Generate Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prompt Version": {
+      "main": [
+        [
+          {
+            "node": "Deactivate Old Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deactivate Old Prompts": {
+      "main": [
+        [
+          {
+            "node": "Compute Next Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Next Version": {
+      "main": [
+        [
+          {
+            "node": "Read Project for Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Project for Prompts": {
+      "main": [
+        [
+          {
+            "node": "Merge Re-trigger Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Re-trigger Data": {
+      "main": [
+        [
+          {
+            "node": "Claude: Generate Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Claude: Generate Prompts": {
       "main": [
-        [{ "node": "Parse Prompts + TOPC-02 Check", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Check Prompts Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Prompts Error": {
+      "main": [
+        [
+          {
+            "node": "IF Prompts Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Prompts Error": {
+      "main": [
+        [
+          {
+            "node": "Error → Research Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Prompts + TOPC-02 Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Parse Prompts + TOPC-02 Check": {
       "main": [
-        [{ "node": "INSERT Prompt Configs", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "INSERT Prompt Configs",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "INSERT Prompt Configs": {
       "main": [
-        [{ "node": "Status → Ready for Topics", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Status → Ready for Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status → Ready for Topics": {
+      "main": [
+        [
+          {
+            "node": "Log Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error → Research Failed": {
+      "main": [
+        [
+          {
+            "node": "Log Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "staticData": null,
-  "tags": [
-    { "name": "Phase 2", "id": "phase-2" },
-    { "name": "Niche Research", "id": "niche-research" }
-  ]
+  "staticData": null
 }
