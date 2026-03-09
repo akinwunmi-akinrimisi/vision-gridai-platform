@@ -85,8 +85,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Analytics
 
-- [ ] **ANLY-01**: Daily cron pulls YouTube analytics (views, watch hours, CTR, impressions, likes, comments, subscribers, revenue)
-- [ ] **ANLY-02**: Analytics data written to `yt_*` columns on topics table
+- [x] **ANLY-01**: Daily cron pulls YouTube analytics (views, watch hours, CTR, impressions, likes, comments, subscribers, revenue)
+- [x] **ANLY-02**: Analytics data written to `yt_*` columns on topics table
 - [x] **ANLY-03**: Analytics page displays per-video performance metrics
 - [x] **ANLY-04**: Per-video and per-project cost tracking displayed on dashboard
 
@@ -199,8 +199,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PUBL-05 | Phase 5 | Complete |
 | PUBL-06 | Phase 5 | Complete |
 | PUBL-07 | Phase 5 | Complete |
-| ANLY-01 | Phase 5 | Pending |
-| ANLY-02 | Phase 5 | Pending |
+| ANLY-01 | Phase 5 | Complete |
+| ANLY-02 | Phase 5 | Complete |
 | ANLY-03 | Phase 5 | Complete |
 | ANLY-04 | Phase 5 | Complete |
 | OPS-03 | Phase 6 | Pending |
