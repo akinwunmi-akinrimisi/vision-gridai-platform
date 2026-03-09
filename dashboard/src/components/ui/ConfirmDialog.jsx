@@ -33,7 +33,7 @@ export default function ConfirmDialog({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-md">
-      <div className="space-y-5">
+      <div data-testid="confirm-dialog" className="space-y-5">
         <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
           {message}
           {children}
