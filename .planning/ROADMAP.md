@@ -89,7 +89,15 @@ Plans:
   2. 25 topics pass Gate 1 approval (mix of approve, reject, refine actions all work)
   3. At least one topic completes script generation, passes Gate 2, and enters production pipeline
   4. Production pipeline (TTS, images, video, assembly) completes and the video is reviewable at Gate 3
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Build WF_SCRIPT_GENERATE: 3-pass script generation, scoring, scene insert (E2E-01)
+- [ ] 10-02-PLAN.md — Build WF_SCRIPT_APPROVE + WF_SCRIPT_REJECT: Gate 2 action workflows (E2E-01)
+- [ ] 10-03-PLAN.md — E2E Stage 1-2: create project, research niche, generate topics, Gate 1 (E2E-01)
+- [ ] 10-04-PLAN.md — E2E Stage 3: script generation live test, Gate 2 approval (E2E-01)
+- [ ] 10-05-PLAN.md — E2E Stage 4-5: production pipeline live test, Gate 3, YouTube publish (E2E-01)
+- [ ] 10-06-PLAN.md — Bug fixes from Wave 2 + mark E2E-01 complete (E2E-01)
 
 ## Progress
 
@@ -103,5 +111,5 @@ Plans:
 | 6. Polish | v1.0 | 3/3 | Complete | 2026-03-09 |
 | 7. Infrastructure Hardening | v1.1 | 4/4 | Complete | 2026-03-09 |
 | 8. Credentials & Deployment | v1.1 | 4/4 | Complete | 2026-03-09 |
-| 9. AI Agent Workflows | 4/4 | Complete   | 2026-03-09 | - |
-| 10. End-to-End Validation | v1.1 | 0/? | Not started | - |
+| 9. AI Agent Workflows | v1.1 | 4/4 | Complete | 2026-03-09 |
+| 10. End-to-End Validation | v1.1 | 0/6 | In progress | - |
