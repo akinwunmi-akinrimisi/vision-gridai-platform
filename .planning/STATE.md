@@ -72,13 +72,13 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 7 (Infrastructure Hardening) — in progress (2/4 plans done)
-Plan: 07-02 complete
+Phase: 7 (Infrastructure Hardening) — in progress (3/4 plans done)
+Plan: 07-03 complete
 Status: Active
-Last activity: 2026-03-09 — 07-02 complete (PostgreSQL NVMe tuning verified: shared_buffers=1GB, effective_cache_size=3GB, random_page_cost=1.1)
+Last activity: 2026-03-09 — 07-03 complete (n8n env vars verified: N8N_PAYLOAD_SIZE_MAX=256, N8N_BINARY_DATA_TTL=168, NODE_OPTIONS=8192, EXECUTIONS_TIMEOUT=3600, health=200)
 
 ```
-v1.1 Progress: [█████░░░░░] 50%
+v1.1 Progress: [████████░░] 75%
 Phases:        [7: ◑] [8: ○] [9: ○] [10: ○]
 ```
 
@@ -103,6 +103,8 @@ Phases:        [7: ◑] [8: ○] [9: ○] [10: ○]
 - [07-01] PostgreSQL command override must include -c listen_addresses=* explicitly or Docker defaults to loopback-only, breaking inter-container connections
 - [07-01] n8n base compose already has 10G RAM + 8192 heap (exceeds plan targets); only missing env vars added via override
 - [07-02] PostgreSQL container name is supabase-db-1; all NVMe tuning confirmed live: shared_buffers=1GB, effective_cache_size=3GB, random_page_cost=1.1
+- [07-03] n8n container name is n8n-n8n-1 (not n8n-ffmpeg as CLAUDE.md states) — use actual name for all future docker exec commands
+- [07-03] n8n base compose already had NODE_OPTIONS=8192 and EXECUTIONS_TIMEOUT=3600 — both exceed plan targets; all 4 required env vars confirmed present
 
 ### Research Flags
 - Phase 9: pause_turn handling for long research NOT implemented — may need research spike during planning
@@ -115,7 +117,7 @@ None.
 ### TODOs
 - [x] Execute Phase 7 Plan 01 (INFR-01: Docker memory limits + PG tuning + n8n env vars)
 - [x] Execute Phase 7 Plan 02 (INFR-02 verification)
-- [ ] Execute Phase 7 Plan 03 (INFR-03 verification)
+- [x] Execute Phase 7 Plan 03 (INFR-03 verification)
 - [ ] Execute Phase 7 Plan 04 (INFR-04)
 - [ ] Plan Phase 8 (Credentials & Deployment)
 - [ ] Plan Phase 9 (AI Agent Workflows)
@@ -125,4 +127,4 @@ None.
 
 Last session: 2026-03-09T15:01:29.725Z
 Stopped at: Completed 07-03-PLAN.md
-Resume: Execute 07-03-PLAN.md (INFR-03 n8n env vars verification — depends on 07-01)
+Resume: Execute 07-04-PLAN.md (INFR-04 — depends on 07-01/02/03 Wave 1 verifications)
