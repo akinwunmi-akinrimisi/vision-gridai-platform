@@ -41,11 +41,11 @@ See: .planning/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Phase: 4 of 6 (Production Pipeline)
-Plan: 2 of 8 in current phase (04-02 next)
+Plan: 4 of 8 in current phase (04-04 next)
 Status: Executing
-Last activity: 2026-03-09 — Plan 04-01 executed (Production data layer hooks)
+Last activity: 2026-03-09 — Plan 04-03 executed (Pipeline table and TopicCard production status)
 
-Progress: [███████░░░] 67% (14/21 total plans)
+Progress: [████████░░] 76% (16/21 total plans)
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [███████░░░] 67% (14/21 total plans)
 | Phase 03 P03 | 3min | 2 tasks | 5 files |
 | Phase 04 P01 | 5min | 2 tasks | 6 files |
 | Phase 04 P00 | 8min | 2 tasks | 21 files |
+| Phase 04 P03 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Script refine targets weakest pass by score automatically
 - [Phase 04]: Production API helpers in separate productionApi.js module (not api.js) to match Wave 0 test import paths
 - [Phase 04]: Images progress counts all scenes (not just static_image) since i2v scenes also need source images
+- [Phase 04]: Single responsive table with overflow-x-auto instead of dual desktop/mobile layouts to avoid DOM duplication
+- [Phase 04]: Production progress weighted: audio 20%, images 20%, i2v 15%, t2v 15%, assembly 30%
 
 ### Pending Todos
 
@@ -110,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T03:51:22.842Z
-Stopped at: Completed 04-00-PLAN.md
+Last session: 2026-03-09T03:58:00Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
