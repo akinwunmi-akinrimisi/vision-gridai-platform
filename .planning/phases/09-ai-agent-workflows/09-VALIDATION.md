@@ -3,7 +3,7 @@ phase: 9
 slug: ai-agent-workflows
 status: draft
 nyquist_compliant: false
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-03-09
 ---
 
@@ -46,10 +46,9 @@ created: 2026-03-09
 | 9-03-01 | 03 | 2 | AGNT-02 | manual | Check Supabase niche_profiles table after research run | N/A | ⬜ pending |
 | 9-03-02 | 03 | 2 | AGNT-03 | manual | Re-trigger research; prompt_configs rows get version incremented, is_active toggled | N/A | ⬜ pending |
 | 9-03-03 | 03 | 2 | AGNT-04 | manual | Check topics + avatars count = 25 each after generation | N/A | ⬜ pending |
-| 9-04-01 | 04 | 2 | AGNT-05 | manual | Already confirmed working; no new test needed | N/A | ⬜ pending |
-| 9-05-01 | 05 | 3 | AGNT-06 | unit | `cd dashboard && npm test -- --run TopicActions` | ❌ Wave 0 | ⬜ pending |
-| 9-05-02 | 05 | 3 | DASH-01 | unit | `cd dashboard && npm test -- --run TopicActions` | ❌ Wave 0 | ⬜ pending |
-| 9-05-03 | 05 | 3 | DASH-01 | unit | `cd dashboard && npm test -- --run TopicReview` | ❌ Wave 0 | ⬜ pending |
+| 9-04-01 | 04 | 2 | AGNT-05 | unit | `cd dashboard && npm test -- --run TopicActions` | ✅ exists | ⬜ pending |
+| 9-04-02 | 04 | 2 | DASH-01 | unit | `cd dashboard && npm test -- --run TopicActions` | ✅ exists | ⬜ pending |
+| 9-04-03 | 04 | 2 | DASH-01 | unit | `cd dashboard && npm test -- --run TopicReview` | ✅ exists | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -57,9 +56,9 @@ created: 2026-03-09
 
 ## Wave 0 Requirements
 
-- [ ] `dashboard/src/__tests__/TopicActions.test.jsx` — Add/fix stubs for DASH-01 inline edit mode (file exists but tests are RED stubs: `expect(true).toBe(false)`)
-- [ ] `dashboard/src/__tests__/ProjectsHome.test.jsx` — Add test for `research_failed` retry button visibility
-- [ ] `dashboard/src/__tests__/TopicReview.test.jsx` — Add/fix stubs for AGNT-06 dashboard confirm dialog (file exists, tests are RED stubs)
+- [x] `dashboard/src/__tests__/TopicActions.test.jsx` — Add/fix stubs for DASH-01 inline edit mode (file exists; Task 1 of Plan 09-04 replaces RED stubs with real assertions)
+- [x] `dashboard/src/__tests__/ProjectsHome.test.jsx` — Add test for `research_failed` retry button visibility (covered in Plan 09-04 Task 1)
+- [x] `dashboard/src/__tests__/TopicReview.test.jsx` — Add/fix stubs for AGNT-06 dashboard confirm dialog and DASH-01 edit-no-SidePanel (covered in Plan 09-04 Task 1)
 
 *Wave 0 installs no new framework — Vitest already configured in dashboard/vite.config.js*
 
@@ -77,6 +76,7 @@ created: 2026-03-09
 | Error handlers write research_failed status | AGNT-08 | n8n error path; requires triggering actual failure | Trigger WF_PROJECT_CREATE with invalid Anthropic API key; check `projects.status = 'research_failed'` |
 | system param = niche_system_prompt | AGNT-09 | n8n node config; verified by reading execution payload | Check n8n execution input for WF_TOPICS_GENERATE Claude API call node |
 | production_log entries appear in Production Monitor | AGNT-07 | Realtime subscription; requires browser + live workflow run | Run research/generate flow; watch ProductionMonitor page for entries appearing in real-time |
+| topics_exist confirm dialog re-sends with force=true | DASH-01 | End-to-end confirm flow; requires live WF_TOPICS_GENERATE returning topics_exist:true | Trigger topic generation twice; second time verify browser shows confirm dialog; click confirm; verify new topics appear in Supabase |
 
 ---
 
