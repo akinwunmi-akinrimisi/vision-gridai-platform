@@ -12,46 +12,44 @@ Any niche typed into the dashboard produces publish-ready YouTube videos with fu
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ React dashboard with 7 pages, PIN auth, dark mode, glassmorphism design system — v1.0
+- ✓ Supabase JS client + Realtime subscriptions powering live dashboard updates — v1.0
+- ✓ n8n webhook API layer with stub workflows for all dashboard actions — v1.0
+- ✓ TanStack Query data layer with Realtime-triggered cache invalidation — v1.0
+- ✓ Topic Review page with Gate 1 approval flow (approve/reject/refine/bulk) — v1.0
+- ✓ Script Review page with 3-pass scoring (7 dimensions) and Gate 2 approval — v1.0
+- ✓ Production Monitor with real-time 172-scene DotGrid, supervisor alerts — v1.0
+- ✓ Video Review with Gate 3 publish flow, YouTube metadata editing — v1.0
+- ✓ Analytics page with Recharts charts, per-video/per-project cost tracking — v1.0
+- ✓ Settings page with per-project config editing and prompt version history editor — v1.0
+- ✓ n8n production workflow JSONs (TTS, images, I2V, T2V, captions, assembly, supervisor, publish, analytics) — v1.0
 
 ### Active
 
-- [ ] Supabase schema deployed and operational (projects, topics, scenes, avatars, niche_profiles, prompt_configs, production_log)
-- [ ] React dashboard with 7 pages (Projects Home, Project Dashboard, Topic Review, Script Review, Production Monitor, Video Review/not in v1 sprint order, Analytics, Settings)
-- [ ] n8n webhook API layer bridging dashboard actions to pipeline workflows
-- [ ] Supabase Realtime subscriptions powering live dashboard updates (no polling)
-- [ ] Phase A: Project creation + niche research via Claude + web search
-- [ ] Phase B: Topic + avatar generation (25 per project) with Gate 1 approval (approve/reject/refine/edit)
-- [ ] Phase C: 3-pass script generation with per-pass scoring (7 dimensions) and Gate 2 approval
-- [ ] Phase D: Deterministic production — TTS (Chirp 3 HD), images (Seedream 4.5), I2V + T2V (Kling 2.1), captions, FFmpeg assembly
-- [ ] Phase E: Video preview + Gate 3 approval + YouTube upload with metadata/captions/thumbnails
-- [ ] Phase F: YouTube analytics daily cron pulling performance data back into dashboard
-- [ ] Supervisor agent monitoring pipeline health every 30 minutes
-- [ ] Dynamic prompt system — all prompts generated per niche, stored in prompt_configs, never hardcoded
-- [ ] Audio as master clock — FFprobe-measured durations, every visual timed to its audio
-- [ ] Self-chaining workflow architecture — each workflow fires the next on completion
-- [ ] Per-scene Supabase writes — every asset update written immediately, not batched
-- [ ] Topic refinement with full context — all 24 other topics sent as context to avoid overlap
-- [ ] Cost tracking per video and per project
-- [ ] Simple password gate for solo-user auth
+- [ ] Deploy n8n workflows to server and validate end-to-end pipeline
+- [ ] Apply infrastructure hardening configs to VPS (n8n timeouts, PG tuning, Docker limits)
+- [ ] Build n8n AI agent workflows: niche research (Claude + web search), topic generation, avatar generation
+- [ ] Build n8n dynamic prompt generation workflow (system prompt, expertise profile per niche)
+- [ ] Implement inline topic field editing on Topic Review page
+- [ ] End-to-end pipeline test: create project → research → topics → scripts → production → publish
 
 ### Out of Scope
 
 - Multi-user auth / team features — solo operator for v1
-- Mobile app — web-first, responsive later (Sprint 6)
+- Mobile native app — web-first, responsive dashboard sufficient
 - Real-time chat or collaboration features — single-user platform
 - Custom video templates beyond 2hr documentary — one format for now
 - Direct video editing in browser — review and approve only
+- Prompt A/B testing — v2 feature
+- Settings import/export between projects — v2 feature
 
 ## Context
 
+- **Current state:** v1.0 MVP shipped (2026-03-09). Full dashboard + n8n workflow JSONs complete. 256 files, 49K LOC.
+- **Tech stack:** React 18 + Tailwind CSS + Vite (dashboard), n8n workflows (orchestration), Supabase PostgreSQL + Realtime (database), Claude Sonnet via Anthropic API (AI)
 - **Infrastructure:** Hostinger KVM 4 VPS (4 vCPU, 16GB RAM, 200GB NVMe) running n8n Docker, Supabase Docker, and Nginx
-- **Supabase:** Self-hosted at `https://supabase.operscale.cloud` — schema already deployed from `001_initial_schema.sql`
-- **n8n:** Docker container `n8n-ffmpeg` at `https://n8n.srv1297445.hstgr.cloud` — running, no workflows yet
-- **Nginx:** Running, ready to serve dashboard build
-- **First niche:** US Credit Cards (high CPM $35-50+, well-defined in Agent.md examples)
-- **Spec documents:** `VisionGridAI_Platform_Agent.md` (full architecture + schema + pipeline), `Dashboard_Implementation_Plan.md` (detailed dashboard pages + Supabase patterns), `design-system/` (pre-generated design system for all 7 pages)
-- **Design system:** Already generated via UI UX Pro Max at `design-system/vision-gridai/MASTER.md` with per-page overrides
+- **Next steps:** Deploy workflows to n8n server, apply infra configs, build AI agent workflows for niche research + topic generation
+- **First niche:** US Credit Cards (high CPM $35-50+)
 - **Cost target:** ~$17 per video, ~$440/month for 25 videos
 
 ## Constraints
@@ -68,12 +66,16 @@ Any niche typed into the dashboard produces publish-ready YouTube videos with fu
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Supabase over Google Sheets | Relational data, Realtime subscriptions, no rate limits, proper indexing, JSON support | — Pending |
-| HTTP Request nodes over native Supabase n8n node | More control, no dependency on community node maintenance | — Pending |
-| 3-pass script generation with per-pass scoring | Catches problems early (e.g., Pass 1 has no avatar usage → fix before Pass 2 builds on it) | — Pending |
-| React SPA over SSR/Next.js | Simpler deployment (Nginx serves static), no server-side rendering needed for solo dashboard | — Pending |
-| Self-chaining workflows over central orchestrator | Each workflow is independently testable, failure isolation, no single point of failure | — Pending |
-| Follow 6-sprint build order from spec | Foundation → Niche/Topics → Scripts → Production → Publish → Polish matches dependency chain | — Pending |
+| Supabase over Google Sheets | Relational data, Realtime subscriptions, no rate limits, proper indexing, JSON support | ✓ Good — Realtime powers live dashboard updates |
+| HTTP Request nodes over native Supabase n8n node | More control, no dependency on community node maintenance | ✓ Good — consistent pattern across all workflows |
+| 3-pass script generation with per-pass scoring | Catches problems early (e.g., Pass 1 has no avatar usage → fix before Pass 2 builds on it) | ✓ Good — cleanly modeled in UI |
+| React SPA over SSR/Next.js | Simpler deployment (Nginx serves static), no server-side rendering needed for solo dashboard | ✓ Good — fast builds, simple deploys |
+| Self-chaining workflows over central orchestrator | Each workflow is independently testable, failure isolation, no single point of failure | ✓ Good — modular workflow JSONs |
+| GSD wave-based parallel execution | Fresh 200K context per agent, parallel plan execution within waves | ✓ Good — 29 plans in ~3 hours |
+| TanStack Query + Supabase Realtime pattern | Query for initial data, Realtime for cache invalidation, optimistic updates for mutations | ✓ Good — consistent across all pages |
+| Glassmorphism design system | backdrop-blur glass cards with dark mode support, professional look | ✓ Good — cohesive visual identity |
+| Production progress weighted formula | audio 20%, images 20%, i2v 15%, t2v 15%, assembly 30% | — Pending production validation |
+| Single n8n workflow per webhook domain | One JSON file per domain (status, production, publish, settings) not per endpoint | ✓ Good — manageable file count |
 
 ---
-*Last updated: 2026-03-08 after initialization*
+*Last updated: 2026-03-09 after v1.0 milestone*
