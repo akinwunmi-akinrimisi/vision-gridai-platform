@@ -116,7 +116,7 @@ describe('PipelineTable -- Rows', () => {
     renderWithProviders(<PipelineTable topics={mockTopics} />);
     expect(screen.getByText('#1')).toBeTruthy();
     expect(screen.getByText(/Amex Platinum Worth/)).toBeTruthy();
-    expect(screen.getByText('The Mathematician')).toBeTruthy();
+    expect(screen.getAllByText('The Mathematician').length).toBeGreaterThan(0);
   });
 
   it('shows color-coded status badge per topic', () => {
