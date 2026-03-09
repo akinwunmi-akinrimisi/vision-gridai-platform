@@ -127,7 +127,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-00-PLAN.md -- Wave 0: Vitest test scaffolds + stub files for Settings components and hooks
+- [ ] 06-01-PLAN.md -- Settings page tab layout, Configuration tab with editable Production Config and YouTube/Drive sections, data layer
+- [ ] 06-02-PLAN.md -- Prompts tab with 7 prompt editor cards, version history, variable reference, n8n settings webhooks
 
 ## Progress
 
@@ -141,4 +143,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. Script Generation | 3/4 | In Progress|  |
 | 4. Production Pipeline | 8/8 | Complete   | 2026-03-09 |
 | 5. Publish + Analytics | 5/5 | Complete   | 2026-03-09 |
-| 6. Polish | 0/1 | Not started | - |
+| 6. Polish | 0/3 | Not started | - |
