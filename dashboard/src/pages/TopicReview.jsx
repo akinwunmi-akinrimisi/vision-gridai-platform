@@ -2,13 +2,12 @@ import { useState, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router';
 import { CheckCircle2, Rocket, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { useTopics, useApproveTopics, useRejectTopics, useRefineTopic, useEditTopic } from '../hooks/useTopics';
+import { useTopics, useApproveTopics, useRejectTopics, useRefineTopic, useEditTopic, useEditAvatar } from '../hooks/useTopics';
 import { webhookCall } from '../lib/api';
 import TopicCard from '../components/topics/TopicCard';
 import TopicSummaryBar from '../components/topics/TopicSummaryBar';
 import TopicBulkBar from '../components/topics/TopicBulkBar';
 import RefinePanel from '../components/topics/RefinePanel';
-import EditPanel from '../components/topics/EditPanel';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import FilterDropdown from '../components/ui/FilterDropdown';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -35,12 +34,13 @@ export default function TopicReview() {
   const rejectMutation = useRejectTopics(projectId);
   const refineMutation = useRefineTopic(projectId);
   const editMutation = useEditTopic(projectId);
+  const editAvatarMutation = useEditAvatar(projectId);
 
   // State
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [statusFilter, setStatusFilter] = useState('all');
   const [playlistFilter, setPlaylistFilter] = useState('all');
-  const [panelType, setPanelType] = useState(null); // 'refine' | 'edit'
+  const [panelType, setPanelType] = useState(null); // 'refine' only (edit is inline in TopicCard)
   const [panelTopic, setPanelTopic] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // { type, topic?, topics? }
   const [rejectFeedback, setRejectFeedback] = useState('');
@@ -100,9 +100,9 @@ export default function TopicReview() {
     setPanelTopic(topic);
   };
 
-  const handleEdit = (topic) => {
-    setPanelType('edit');
-    setPanelTopic(topic);
+  // Edit is now handled inline in TopicCard — no SidePanel needed
+  const handleEdit = () => {
+    // no-op: TopicCard handles edit mode internally via isEditing state
   };
 
   const handleBulkApprove = () => {
@@ -160,17 +160,6 @@ export default function TopicReview() {
       setPanelTopic(null);
     } catch (err) {
       toast.error(err?.message || 'Refine failed');
-    }
-  };
-
-  const handleEditSubmit = async (fields) => {
-    try {
-      await editMutation.mutateAsync({ topic_id: panelTopic.id, fields });
-      toast.success('Topic updated');
-      setPanelType(null);
-      setPanelTopic(null);
-    } catch (err) {
-      toast.error(err?.message || 'Edit failed');
     }
   };
 
@@ -291,6 +280,8 @@ export default function TopicReview() {
                     onReject={handleReject}
                     onRefine={handleRefine}
                     onEdit={handleEdit}
+                    onSave={(vars) => editMutation.mutateAsync(vars)}
+                    onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
                   />
                 ))}
               </div>
@@ -320,14 +311,6 @@ export default function TopicReview() {
         onClose={() => { setPanelType(null); setPanelTopic(null); }}
         onSubmit={handleRefineSubmit}
         isLoading={refineMutation.isPending}
-      />
-
-      {/* Edit panel */}
-      <EditPanel
-        topic={panelType === 'edit' ? panelTopic : null}
-        onClose={() => { setPanelType(null); setPanelTopic(null); }}
-        onSubmit={handleEditSubmit}
-        isLoading={editMutation.isPending}
       />
 
       {/* Confirm dialog */}

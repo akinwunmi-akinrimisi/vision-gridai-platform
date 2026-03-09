@@ -153,8 +153,8 @@ export function useEditTopic(projectId) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ topic_id, fields }) =>
-      webhookCall('topics/edit', { topic_id, fields }),
+    mutationFn: ({ topic_id, project_id, fields }) =>
+      webhookCall('topics/action', { action: 'edit', topic_id, project_id, fields }),
 
     onMutate: async ({ topic_id, fields }) => {
       await queryClient.cancelQueries({ queryKey: ['topics', projectId] });
@@ -176,6 +176,23 @@ export function useEditTopic(projectId) {
         queryClient.setQueryData(['topics', projectId], context.previousTopics);
       }
     },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['topics', projectId] });
+    },
+  });
+}
+
+/**
+ * Edit a single topic's avatar fields directly via n8n webhook.
+ * @param {string} projectId - Project UUID for cache invalidation
+ */
+export function useEditAvatar(projectId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ topic_id, project_id, fields }) =>
+      webhookCall('topics/action', { action: 'edit_avatar', topic_id, project_id, fields }),
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['topics', projectId] });

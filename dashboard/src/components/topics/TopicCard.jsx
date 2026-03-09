@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { CheckCircle2, XCircle, RefreshCw, Pencil, FileText, ChevronDown, Play } from 'lucide-react';
+import { CheckCircle2, XCircle, RefreshCw, Pencil, FileText, ChevronDown, Play, Save, X, Loader2 } from 'lucide-react';
 
 const STATUS_BADGE = {
   pending: 'badge badge-amber',
@@ -92,14 +92,69 @@ function canStartProduction(topic) {
   return topic.script_review_status === 'approved' && topic.status === 'script_approved';
 }
 
-export default function TopicCard({ topic, projectId, isSelected, onToggleSelect, onApprove, onReject, onRefine, onEdit }) {
+const inputClass =
+  'w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30';
+
+const textareaClass =
+  'w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none';
+
+export default function TopicCard({ topic, projectId, isSelected, onToggleSelect, onApprove, onReject, onRefine, onEdit, onSave, onSaveAvatar }) {
   const [expanded, setExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editTopicFields, setEditTopicFields] = useState({});
+  const [editAvatarFields, setEditAvatarFields] = useState({});
   const navigate = useNavigate();
   const avatar = topic.avatars?.[0] || {};
   const status = topic.review_status || 'pending';
   const tintClass = STATUS_TINT[status] || '';
   const productionBadge = getProductionBadge(topic);
   const productionProgress = computeProductionProgress(topic);
+
+  const handleEnterEdit = (e) => {
+    e.stopPropagation();
+    setEditTopicFields({
+      seo_title: topic.seo_title || '',
+      narrative_hook: topic.narrative_hook || '',
+      key_segments: topic.key_segments || '',
+    });
+    const av = topic.avatars?.[0] || {};
+    const af = {};
+    for (const { key } of AVATAR_FIELDS) {
+      af[key] = av[key] || '';
+    }
+    setEditAvatarFields(af);
+    setIsEditing(true);
+    // Ensure card is expanded in edit mode
+    setExpanded(true);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await Promise.all([
+        onSave && onSave({ topic_id: topic.id, project_id: topic.project_id || projectId, fields: editTopicFields }),
+        onSaveAvatar && onSaveAvatar({ topic_id: topic.id, project_id: topic.project_id || projectId, fields: editAvatarFields }),
+      ]);
+      setIsEditing(false);
+    } catch {
+      // error stays visible — isSaving state returns to false
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = (e) => {
+    if (e) e.stopPropagation();
+    setIsEditing(false);
+  };
+
+  const handleHeaderClick = () => {
+    // Don't collapse while editing
+    if (!isEditing) {
+      setExpanded((prev) => !prev);
+    }
+  };
 
   return (
     <div
@@ -109,7 +164,7 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
       {/* Collapsed row */}
       <div
         className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
-        onClick={() => setExpanded((prev) => !prev)}
+        onClick={handleHeaderClick}
       >
         {/* Checkbox */}
         <input
@@ -130,7 +185,7 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
 
         {/* Title */}
         <span className="flex-1 text-sm font-medium text-slate-900 dark:text-white truncate">
-          {topic.seo_title || topic.original_title}
+          {isEditing ? (editTopicFields.seo_title || topic.seo_title || topic.original_title) : (topic.seo_title || topic.original_title)}
         </span>
 
         {/* Playlist badge */}
@@ -217,7 +272,7 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
             </Link>
           ) : (
             <button
-              onClick={() => onEdit(topic)}
+              onClick={handleEnterEdit}
               className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
               title="Edit"
             >
@@ -246,42 +301,146 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
       {/* Expanded content */}
       {expanded && (
         <div className="px-4 pb-4 pt-1 border-t border-border/30 dark:border-white/[0.04] animate-in space-y-4">
-          {/* Narrative hook */}
-          {topic.narrative_hook && (
-            <div>
-              <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">Narrative Hook</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{topic.narrative_hook}</p>
-            </div>
-          )}
+          {isEditing ? (
+            /* ---- EDIT MODE ---- */
+            <>
+              {/* Topic fields */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">
+                    SEO Title
+                  </label>
+                  <input
+                    data-testid="edit-seo-title"
+                    type="text"
+                    value={editTopicFields.seo_title || ''}
+                    onChange={(e) => setEditTopicFields((prev) => ({ ...prev, seo_title: e.target.value }))}
+                    className={inputClass}
+                    placeholder="SEO Title"
+                  />
+                </div>
 
-          {/* Key segments */}
-          {topic.key_segments && (
-            <div>
-              <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">Key Segments</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">{topic.key_segments}</p>
-            </div>
-          )}
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">
+                    Narrative Hook
+                  </label>
+                  <textarea
+                    data-testid="edit-narrative-hook"
+                    value={editTopicFields.narrative_hook || ''}
+                    onChange={(e) => setEditTopicFields((prev) => ({ ...prev, narrative_hook: e.target.value }))}
+                    rows={3}
+                    className={textareaClass}
+                    placeholder="Narrative hook..."
+                  />
+                </div>
 
-          {/* Metadata row */}
-          <div className="flex gap-4 text-xs">
-            <span><strong className="text-slate-600 dark:text-slate-400">CPM:</strong> {topic.estimated_cpm || '\u2014'}</span>
-            <span><strong className="text-slate-600 dark:text-slate-400">Viral:</strong> {topic.viral_potential || '\u2014'}</span>
-            <span><strong className="text-slate-600 dark:text-slate-400">Playlist:</strong> {topic.playlist_angle || '\u2014'}</span>
-          </div>
-
-          {/* Avatar */}
-          {avatar.avatar_name_age && (
-            <div>
-              <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-2">Customer Avatar</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                {AVATAR_FIELDS.map(({ key, label }) => (
-                  <div key={key}>
-                    <p className="text-xs text-text-muted dark:text-text-muted-dark">{label}</p>
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{avatar[key] || '\u2014'}</p>
-                  </div>
-                ))}
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">
+                    Key Segments
+                  </label>
+                  <textarea
+                    data-testid="edit-key-segments"
+                    value={editTopicFields.key_segments || ''}
+                    onChange={(e) => setEditTopicFields((prev) => ({ ...prev, key_segments: e.target.value }))}
+                    rows={3}
+                    className={textareaClass}
+                    placeholder="Key segments..."
+                  />
+                </div>
               </div>
-            </div>
+
+              {/* Avatar fields */}
+              <div>
+                <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-2">Customer Avatar</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  {AVATAR_FIELDS.map(({ key, label }) => (
+                    <div key={key}>
+                      <label className="block text-xs text-text-muted dark:text-text-muted-dark mb-1">{label}</label>
+                      <input
+                        data-testid={`edit-avatar-${key}`}
+                        type="text"
+                        value={editAvatarFields[key] || ''}
+                        onChange={(e) => setEditAvatarFields((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className={inputClass}
+                        placeholder={label}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Save / Cancel buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/30 dark:border-white/[0.04]">
+                <button
+                  data-testid="edit-cancel"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium
+                    text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.04]
+                    hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-colors cursor-pointer
+                    disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Cancel
+                </button>
+                <button
+                  data-testid="edit-save"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold
+                    text-white bg-primary hover:bg-primary/90 transition-colors cursor-pointer
+                    disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </>
+          ) : (
+            /* ---- READ-ONLY MODE ---- */
+            <>
+              {/* Narrative hook */}
+              {topic.narrative_hook && (
+                <div>
+                  <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">Narrative Hook</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">{topic.narrative_hook}</p>
+                </div>
+              )}
+
+              {/* Key segments */}
+              {topic.key_segments && (
+                <div>
+                  <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">Key Segments</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">{topic.key_segments}</p>
+                </div>
+              )}
+
+              {/* Metadata row */}
+              <div className="flex gap-4 text-xs">
+                <span><strong className="text-slate-600 dark:text-slate-400">CPM:</strong> {topic.estimated_cpm || '\u2014'}</span>
+                <span><strong className="text-slate-600 dark:text-slate-400">Viral:</strong> {topic.viral_potential || '\u2014'}</span>
+                <span><strong className="text-slate-600 dark:text-slate-400">Playlist:</strong> {topic.playlist_angle || '\u2014'}</span>
+              </div>
+
+              {/* Avatar */}
+              {avatar.avatar_name_age && (
+                <div>
+                  <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-2">Customer Avatar</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {AVATAR_FIELDS.map(({ key, label }) => (
+                      <div key={key}>
+                        <p className="text-xs text-text-muted dark:text-text-muted-dark">{label}</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300">{avatar[key] || '\u2014'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

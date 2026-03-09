@@ -33,6 +33,8 @@ export default function NicheResearch() {
   const [generating, setGenerating] = useState(false);
   const [reresearchOpen, setReresearchOpen] = useState(false);
   const [reresearching, setReresearching] = useState(false);
+  const [topicsExistCount, setTopicsExistCount] = useState(null);
+  const [generateMoreOpen, setGenerateMoreOpen] = useState(false);
 
   const isLoading = projectLoading || profileLoading;
   const error = projectError || profileError;
@@ -134,7 +136,24 @@ export default function NicheResearch() {
   const handleGenerateTopics = async () => {
     setGenerating(true);
     try {
-      await generateTopics(projectId);
+      const result = await generateTopics(projectId);
+      if (result?.topics_exist) {
+        setTopicsExistCount(result.count ?? 0);
+        setGenerateMoreOpen(true);
+        setGenerating(false);
+        return;
+      }
+      navigate(`/project/${projectId}/topics`);
+    } catch {
+      setGenerating(false);
+    }
+  };
+
+  const handleConfirmGenerateMore = async () => {
+    setGenerating(true);
+    try {
+      await webhookCall('topics/generate', { project_id: projectId, force: true });
+      setGenerateMoreOpen(false);
       navigate(`/project/${projectId}/topics`);
     } catch {
       setGenerating(false);
@@ -256,6 +275,18 @@ export default function NicheResearch() {
         confirmText="Re-research"
         confirmVariant="danger"
         loading={reresearching}
+      />
+
+      {/* Topics exist — generate more confirmation dialog */}
+      <ConfirmDialog
+        isOpen={generateMoreOpen}
+        onClose={() => setGenerateMoreOpen(false)}
+        onConfirm={handleConfirmGenerateMore}
+        title="Topics Already Exist"
+        message={`${topicsExistCount} topic${topicsExistCount !== 1 ? 's' : ''} already exist for this project. Generate 25 more?`}
+        confirmText="Generate 25 More"
+        confirmVariant="primary"
+        loading={generating}
       />
     </div>
   );

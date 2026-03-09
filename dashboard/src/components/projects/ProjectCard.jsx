@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router';
-import { Folder, CheckCircle2, Circle, Loader2 } from 'lucide-react';
+import { Folder, CheckCircle2, Circle, Loader2, RotateCcw } from 'lucide-react';
 
 const STATUS_BADGE = {
   created: 'badge bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300',
@@ -72,7 +72,7 @@ function isResearching(status) {
   return status && (status.startsWith('researching') || status === 'created');
 }
 
-export default function ProjectCard({ project }) {
+export default function ProjectCard({ project, onRetry }) {
   const { id, name, niche, status, created_at } = project;
   const badgeClass = STATUS_BADGE[status] || 'badge bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300';
   const badgeLabel = STATUS_LABEL[status] || status;
@@ -153,6 +153,24 @@ export default function ProjectCard({ project }) {
       <p className="text-xs text-text-muted dark:text-text-muted-dark mt-3">
         Created {createdDate}
       </p>
+
+      {status === 'research_failed' && onRetry && (
+        <button
+          data-testid={`retry-research-${id}`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRetry({ project_id: id });
+          }}
+          className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium
+            text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/[0.08]
+            border border-amber-200/50 dark:border-amber-500/20
+            hover:bg-amber-100 dark:hover:bg-amber-500/[0.12] transition-colors cursor-pointer"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Retry Research
+        </button>
+      )}
     </NavLink>
   );
 }

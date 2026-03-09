@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Folder, TrendingUp, DollarSign, Video } from 'lucide-react';
-import { useProjects } from '../hooks/useProjects';
+import { useProjects, useRetryResearch } from '../hooks/useProjects';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import ProjectCard from '../components/projects/ProjectCard';
 import CreateProjectModal from '../components/projects/CreateProjectModal';
@@ -8,6 +8,7 @@ import CreateProjectModal from '../components/projects/CreateProjectModal';
 export default function ProjectsHome() {
   const [modalOpen, setModalOpen] = useState(false);
   const { data: projects, isLoading, error } = useProjects();
+  const retryResearchMutation = useRetryResearch();
 
   const totalProjects = projects?.length || 0;
   const publishedCount = projects?.reduce((sum, p) => sum + (p.published_count || 0), 0) || 0;
@@ -110,7 +111,11 @@ export default function ProjectsHome() {
       {!isLoading && !error && projects?.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onRetry={retryResearchMutation.mutate}
+            />
           ))}
 
           {/* Add new project placeholder */}

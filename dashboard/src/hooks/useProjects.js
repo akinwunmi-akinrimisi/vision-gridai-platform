@@ -69,3 +69,20 @@ export function useCreateProject() {
     },
   });
 }
+
+/**
+ * Retry research for a project that has status=research_failed.
+ * Calls the same webhook as project creation but with an existing project_id.
+ */
+export function useRetryResearch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ project_id }) =>
+      webhookCall('project/create', { project_id }),
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
