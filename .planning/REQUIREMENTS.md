@@ -75,20 +75,20 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Publishing
 
-- [ ] **PUBL-01**: Video preview page with embedded player (from Google Drive URL)
-- [ ] **PUBL-02**: Generated YouTube metadata displayed (title, description, tags, chapters)
-- [ ] **PUBL-03**: Thumbnail preview displayed
-- [ ] **PUBL-04**: User can approve and publish video (Gate 3)
-- [ ] **PUBL-05**: User can edit metadata before publishing
-- [ ] **PUBL-06**: YouTube upload with resumable upload, captions, thumbnail, playlist assignment
-- [ ] **PUBL-07**: YouTube API quota respected (max 6 uploads/day)
+- [x] **PUBL-01**: Video preview page with embedded player (from Google Drive URL)
+- [x] **PUBL-02**: Generated YouTube metadata displayed (title, description, tags, chapters)
+- [x] **PUBL-03**: Thumbnail preview displayed
+- [x] **PUBL-04**: User can approve and publish video (Gate 3)
+- [x] **PUBL-05**: User can edit metadata before publishing
+- [x] **PUBL-06**: YouTube upload with resumable upload, captions, thumbnail, playlist assignment
+- [x] **PUBL-07**: YouTube API quota respected (max 6 uploads/day)
 
 ### Analytics
 
 - [ ] **ANLY-01**: Daily cron pulls YouTube analytics (views, watch hours, CTR, impressions, likes, comments, subscribers, revenue)
 - [ ] **ANLY-02**: Analytics data written to `yt_*` columns on topics table
-- [ ] **ANLY-03**: Analytics page displays per-video performance metrics
-- [ ] **ANLY-04**: Per-video and per-project cost tracking displayed on dashboard
+- [x] **ANLY-03**: Analytics page displays per-video performance metrics
+- [x] **ANLY-04**: Per-video and per-project cost tracking displayed on dashboard
 
 ### Operations
 
@@ -192,17 +192,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROD-14 | Phase 4 | Complete |
 | OPS-01 | Phase 4 | Complete |
 | OPS-02 | Phase 4 | Complete |
-| PUBL-01 | Phase 5 | Pending |
-| PUBL-02 | Phase 5 | Pending |
-| PUBL-03 | Phase 5 | Pending |
-| PUBL-04 | Phase 5 | Pending |
-| PUBL-05 | Phase 5 | Pending |
-| PUBL-06 | Phase 5 | Pending |
-| PUBL-07 | Phase 5 | Pending |
+| PUBL-01 | Phase 5 | Complete |
+| PUBL-02 | Phase 5 | Complete |
+| PUBL-03 | Phase 5 | Complete |
+| PUBL-04 | Phase 5 | Complete |
+| PUBL-05 | Phase 5 | Complete |
+| PUBL-06 | Phase 5 | Complete |
+| PUBL-07 | Phase 5 | Complete |
 | ANLY-01 | Phase 5 | Pending |
 | ANLY-02 | Phase 5 | Pending |
-| ANLY-03 | Phase 5 | Pending |
-| ANLY-04 | Phase 5 | Pending |
+| ANLY-03 | Phase 5 | Complete |
+| ANLY-04 | Phase 5 | Complete |
 | OPS-03 | Phase 6 | Pending |
 | OPS-04 | Phase 6 | Pending |
 
