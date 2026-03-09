@@ -27,7 +27,7 @@ Requirements for v1.1 Backend & E2E milestone. Closes v1.0 known gaps.
 - [x] **AGNT-02**: Niche research writes structured results to niche_profiles table (competitor_analysis, pain_points, keywords, blue_ocean as JSONB)
 - [x] **AGNT-03**: Dynamic prompt generation creates 7 prompt types per niche in prompt_configs table with version tracking
 - [x] **AGNT-04**: Topic generation workflow produces 25 topics + 25 avatars using niche-specific prompts with blue-ocean methodology
-- [ ] **AGNT-05**: Topic action workflow handles approve/reject/refine with all-24-topics context for refinement
+- [x] **AGNT-05**: Topic action workflow handles approve/reject/refine with all-24-topics context for refinement
 - [x] **AGNT-06**: Idempotency guards prevent duplicate topic/avatar creation on re-trigger
 - [x] **AGNT-07**: All AI workflows write production_log entries for dashboard activity tracking
 - [x] **AGNT-08**: Error handlers connected on all failure branches with status written to Supabase
@@ -76,7 +76,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGNT-02 | Phase 9 | Complete |
 | AGNT-03 | Phase 9 | Complete |
 | AGNT-04 | Phase 9 | Complete |
-| AGNT-05 | Phase 9 | Pending |
+| AGNT-05 | Phase 9 | Complete |
 | AGNT-06 | Phase 9 | Complete |
 | AGNT-07 | Phase 9 | Complete |
 | AGNT-08 | Phase 9 | Complete |
