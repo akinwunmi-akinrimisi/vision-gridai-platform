@@ -1,0 +1,1325 @@
+{
+  "name": "WF_WEBHOOK_PUBLISH",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video/approve",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "webhook-video-approve",
+      "name": "Webhook Video Approve",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "video-approve-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "auth-check-approve",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-approve",
+      "name": "Check Auth - Approve",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-unauthorized-approve",
+      "name": "Respond Unauthorized - Approve",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst topicId = body.topic_id;\nconst action = body.action || 'publish_now';\nconst scheduleTime = body.schedule_time || null;\n\nreturn [{ json: { topicId, action, scheduleTime } }];"
+      },
+      "id": "parse-approve-body",
+      "name": "Parse Approve Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "action-is-approve-only",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "approve_only",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-approve-only",
+      "name": "If Approve Only",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Parse Approve Body').item.json.topicId }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ video_review_status: 'approved' }) }}",
+        "options": {}
+      },
+      "id": "patch-approve-only",
+      "name": "Patch Approve Only",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Parse Approve Body').item.json.topicId, action: 'approve_only' }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-approve-only",
+      "name": "Respond Approve Only",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1350, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "action-is-schedule",
+              "leftValue": "={{ $('Parse Approve Body').item.json.action }}",
+              "rightValue": "schedule",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-schedule",
+      "name": "If Schedule",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Parse Approve Body').item.json.topicId }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ video_review_status: 'approved', status: 'scheduled', scheduled_publish_at: $('Parse Approve Body').item.json.scheduleTime }) }}",
+        "options": {}
+      },
+      "id": "patch-schedule",
+      "name": "Patch Schedule Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 250]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $env.WF_YOUTUBE_UPLOAD_ID }}",
+        "options": {},
+        "workflowInputs": {
+          "values": [
+            { "name": "topic_id", "value": "={{ $('Parse Approve Body').item.json.topicId }}" },
+            { "name": "privacy_status", "value": "private" }
+          ]
+        }
+      },
+      "id": "exec-upload-schedule",
+      "name": "Execute YouTube Upload - Schedule",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1570, 250]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Parse Approve Body').item.json.topicId, action: 'schedule', schedule_time: $('Parse Approve Body').item.json.scheduleTime }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-schedule",
+      "name": "Respond Schedule",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1790, 250]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Parse Approve Body').item.json.topicId }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ video_review_status: 'approved', status: 'publishing', publish_progress: 'uploading_video' }) }}",
+        "options": {}
+      },
+      "id": "patch-publish-now",
+      "name": "Patch Publish Now Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 450]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $env.WF_YOUTUBE_UPLOAD_ID }}",
+        "options": {},
+        "workflowInputs": {
+          "values": [
+            { "name": "topic_id", "value": "={{ $('Parse Approve Body').item.json.topicId }}" },
+            { "name": "privacy_status", "value": "public" }
+          ]
+        }
+      },
+      "id": "exec-upload-publish",
+      "name": "Execute YouTube Upload - Publish",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1570, 450]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Parse Approve Body').item.json.topicId, action: 'publish_now' }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-publish-now",
+      "name": "Respond Publish Now",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1790, 450]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video/reject",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "webhook-video-reject",
+      "name": "Webhook Video Reject",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 900],
+      "webhookId": "video-reject-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "auth-check-reject",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-reject",
+      "name": "Check Auth - Reject",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 900]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-unauthorized-reject",
+      "name": "Respond Unauthorized - Reject",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 1100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst topicId = body.topic_id;\nconst feedback = body.feedback || '';\nconst rollbackStage = body.rollback_stage || 'assembly';\n\n// Determine which fields to reset based on rollback stage\nlet resetFields = { video_review_status: 'rejected', video_review_feedback: feedback };\n\nif (rollbackStage === 'assembly') {\n  resetFields.status = 'assembly';\n  resetFields.assembly_status = 'pending';\n} else if (rollbackStage === 'visuals') {\n  resetFields.status = 'images';\n  resetFields.images_progress = 'pending';\n  resetFields.i2v_progress = 'pending';\n  resetFields.t2v_progress = 'pending';\n  resetFields.assembly_status = 'pending';\n} else if (rollbackStage === 'full') {\n  resetFields.status = 'audio';\n  resetFields.audio_progress = 'pending';\n  resetFields.images_progress = 'pending';\n  resetFields.i2v_progress = 'pending';\n  resetFields.t2v_progress = 'pending';\n  resetFields.assembly_status = 'pending';\n}\n\nreturn [{ json: { topicId, feedback, rollbackStage, resetFields } }];"
+      },
+      "id": "parse-reject-body",
+      "name": "Parse Reject Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 800]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.topicId }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Parse Reject Body').item.json.resetFields) }}",
+        "options": {}
+      },
+      "id": "patch-reject",
+      "name": "Patch Reject Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Parse Reject Body').item.json.topicId, stage: 'video_review', action: 'rejected', details: { feedback: $('Parse Reject Body').item.json.feedback, rollback_stage: $('Parse Reject Body').item.json.rollbackStage } }) }}",
+        "options": {}
+      },
+      "id": "log-reject",
+      "name": "Log Rejection",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Parse Reject Body').item.json.topicId, rollback_stage: $('Parse Reject Body').item.json.rollbackStage }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-reject",
+      "name": "Respond Reject",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1350, 800]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video/publish",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "webhook-video-publish",
+      "name": "Webhook Video Publish",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 1400],
+      "webhookId": "video-publish-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "auth-check-publish",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-publish",
+      "name": "Check Auth - Publish",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 1400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-unauthorized-publish",
+      "name": "Respond Unauthorized - Publish",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 1600]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'publishing', publish_progress: 'uploading_video' }) }}",
+        "options": {}
+      },
+      "id": "patch-publish-status",
+      "name": "Patch Publish Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 1300]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $env.WF_YOUTUBE_UPLOAD_ID }}",
+        "options": {},
+        "workflowInputs": {
+          "values": [
+            { "name": "topic_id", "value": "={{ $('Webhook Video Publish').item.json.body.topic_id }}" },
+            { "name": "privacy_status", "value": "public" }
+          ]
+        }
+      },
+      "id": "exec-upload-direct",
+      "name": "Execute YouTube Upload - Direct",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [910, 1300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Video Publish').item.json.body.topic_id, action: 'publish' }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-publish",
+      "name": "Respond Publish",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1130, 1300]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video/batch-publish",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "webhook-batch-publish",
+      "name": "Webhook Batch Publish",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 1900],
+      "webhookId": "video-batch-publish-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "auth-check-batch",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-batch",
+      "name": "Check Auth - Batch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 1900]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-unauthorized-batch",
+      "name": "Respond Unauthorized - Batch",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 2100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst topicIds = body.topic_ids || [];\n\n// Return each topic_id as a separate item for SplitInBatches processing\nreturn topicIds.map(id => ({ json: { topic_id: id, total: topicIds.length } }));"
+      },
+      "id": "split-batch-ids",
+      "name": "Split Batch IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 1800]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "batch-loop",
+      "name": "Batch Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [910, 1800]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'publishing', publish_progress: 'uploading_video' }) }}",
+        "options": {}
+      },
+      "id": "patch-batch-status",
+      "name": "Patch Batch Topic Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 1800]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $env.WF_YOUTUBE_UPLOAD_ID }}",
+        "options": {},
+        "workflowInputs": {
+          "values": [
+            { "name": "topic_id", "value": "={{ $json.topic_id }}" },
+            { "name": "privacy_status", "value": "public" }
+          ]
+        }
+      },
+      "id": "exec-upload-batch",
+      "name": "Execute YouTube Upload - Batch",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1350, 1800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { queued: $('Split Batch IDs').item.json.total }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-batch",
+      "name": "Respond Batch",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1570, 1900]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video/update-metadata",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "webhook-update-metadata",
+      "name": "Webhook Update Metadata",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 2500],
+      "webhookId": "video-update-metadata-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "auth-check-metadata",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-metadata",
+      "name": "Check Auth - Metadata",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 2500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-unauthorized-metadata",
+      "name": "Respond Unauthorized - Metadata",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 2700]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst topicId = body.topic_id;\nconst fields = {};\n\n// Only include fields that are present in the request\nif (body.seo_title !== undefined) fields.seo_title = body.seo_title;\nif (body.description !== undefined) {\n  fields.script_metadata = { ...(fields.script_metadata || {}), description: body.description };\n}\nif (body.tags !== undefined) {\n  fields.script_metadata = { ...(fields.script_metadata || {}), tags: body.tags };\n}\nif (body.chapters !== undefined) {\n  fields.script_metadata = { ...(fields.script_metadata || {}), chapters: body.chapters };\n}\nif (body.playlist_group !== undefined) fields.playlist_group = body.playlist_group;\nif (body.thumbnail_prompt !== undefined) {\n  fields.script_metadata = { ...(fields.script_metadata || {}), thumbnail_prompt: body.thumbnail_prompt };\n}\n\nreturn [{ json: { topicId, fields } }];"
+      },
+      "id": "parse-metadata-body",
+      "name": "Parse Metadata Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 2400]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.topicId }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.fields) }}",
+        "options": {}
+      },
+      "id": "patch-metadata",
+      "name": "Patch Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 2400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Parse Metadata Body').item.json.topicId }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-metadata",
+      "name": "Respond Metadata",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1130, 2400]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "thumbnail/regenerate",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "webhook-thumbnail-regen",
+      "name": "Webhook Thumbnail Regenerate",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 3000],
+      "webhookId": "thumbnail-regenerate-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "auth-check-thumbnail",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-thumbnail",
+      "name": "Check Auth - Thumbnail",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 3000]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-unauthorized-thumbnail",
+      "name": "Respond Unauthorized - Thumbnail",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 3200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/v1/task/seedream/seedream-4.5-text-to-image",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prompt: $json.body.prompt, width: 1280, height: 720, num_images: 1 }) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "generate-thumbnail",
+      "name": "Generate Thumbnail - Kie.ai",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 2900],
+      "credentials": {
+        "httpHeaderAuth": { "id": "kie-api-key", "name": "Kie API Key" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst taskId = response.data?.task_id || response.task_id;\nif (!taskId) throw new Error('No task_id in Kie.ai response');\nreturn [{ json: { taskId } }];"
+      },
+      "id": "extract-task-id",
+      "name": "Extract Task ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 2900]
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "wait-thumbnail",
+      "name": "Wait for Generation",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1130, 2900]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.kie.ai/v1/task/result/{{ $('Extract Task ID').item.json.taskId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "poll-thumbnail-result",
+      "name": "Poll Thumbnail Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 2900],
+      "credentials": {
+        "httpHeaderAuth": { "id": "kie-api-key", "name": "Kie API Key" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconst status = result.data?.status || result.status;\n\nif (status === 'completed' || status === 'succeed') {\n  const imageUrl = result.data?.output?.image_urls?.[0] || result.data?.images?.[0]?.url || '';\n  return [{ json: { done: true, imageUrl } }];\n}\n\nif (status === 'failed') {\n  throw new Error('Thumbnail generation failed');\n}\n\n// Still processing\nreturn [{ json: { done: false } }];"
+      },
+      "id": "check-thumbnail-status",
+      "name": "Check Thumbnail Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 2900]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "thumbnail-done",
+              "leftValue": "={{ $json.done }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-thumbnail-done",
+      "name": "If Thumbnail Done",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1790, 2900]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Webhook Thumbnail Regenerate').item.json.body.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ thumbnail_url: $json.imageUrl }) }}",
+        "options": {}
+      },
+      "id": "patch-thumbnail",
+      "name": "Patch Thumbnail URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2010, 2800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { thumbnail_url: $('Check Thumbnail Status').item.json.imageUrl }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-thumbnail",
+      "name": "Respond Thumbnail",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2230, 2800]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video/retry-upload",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "webhook-retry-upload",
+      "name": "Webhook Retry Upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 3500],
+      "webhookId": "video-retry-upload-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "auth-check-retry",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-retry",
+      "name": "Check Auth - Retry",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 3500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-unauthorized-retry",
+      "name": "Respond Unauthorized - Retry",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 3700]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'publishing', publish_progress: 'uploading_video', error_log: null }) }}",
+        "options": {}
+      },
+      "id": "patch-retry-status",
+      "name": "Patch Retry Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 3400]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $env.WF_YOUTUBE_UPLOAD_ID }}",
+        "options": {},
+        "workflowInputs": {
+          "values": [
+            { "name": "topic_id", "value": "={{ $('Webhook Retry Upload').item.json.body.topic_id }}" },
+            { "name": "privacy_status", "value": "public" }
+          ]
+        }
+      },
+      "id": "exec-upload-retry",
+      "name": "Execute YouTube Upload - Retry",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [910, 3400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Retry Upload').item.json.body.topic_id, action: 'retry_upload' }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-retry",
+      "name": "Respond Retry",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1130, 3400]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video/schedule",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "webhook-video-schedule",
+      "name": "Webhook Video Schedule",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 3900],
+      "webhookId": "video-schedule-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "auth-check-schedule",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-schedule",
+      "name": "Check Auth - Schedule",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 3900]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-unauthorized-schedule",
+      "name": "Respond Unauthorized - Schedule",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 4100]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ scheduled_publish_at: $json.body.schedule_time }) }}",
+        "options": {}
+      },
+      "id": "patch-schedule-time",
+      "name": "Patch Schedule Time",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 3800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Video Schedule').item.json.body.topic_id, schedule_time: $('Webhook Video Schedule').item.json.body.schedule_time }, error: null }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-schedule-update",
+      "name": "Respond Schedule Update",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 3800]
+    }
+  ],
+  "connections": {
+    "Webhook Video Approve": {
+      "main": [[{ "node": "Check Auth - Approve", "type": "main", "index": 0 }]]
+    },
+    "Check Auth - Approve": {
+      "main": [
+        [{ "node": "Parse Approve Body", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Approve", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Approve Body": {
+      "main": [[{ "node": "If Approve Only", "type": "main", "index": 0 }]]
+    },
+    "If Approve Only": {
+      "main": [
+        [{ "node": "Patch Approve Only", "type": "main", "index": 0 }],
+        [{ "node": "If Schedule", "type": "main", "index": 0 }]
+      ]
+    },
+    "Patch Approve Only": {
+      "main": [[{ "node": "Respond Approve Only", "type": "main", "index": 0 }]]
+    },
+    "If Schedule": {
+      "main": [
+        [{ "node": "Patch Schedule Status", "type": "main", "index": 0 }],
+        [{ "node": "Patch Publish Now Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Patch Schedule Status": {
+      "main": [[{ "node": "Execute YouTube Upload - Schedule", "type": "main", "index": 0 }]]
+    },
+    "Execute YouTube Upload - Schedule": {
+      "main": [[{ "node": "Respond Schedule", "type": "main", "index": 0 }]]
+    },
+    "Patch Publish Now Status": {
+      "main": [[{ "node": "Execute YouTube Upload - Publish", "type": "main", "index": 0 }]]
+    },
+    "Execute YouTube Upload - Publish": {
+      "main": [[{ "node": "Respond Publish Now", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook Video Reject": {
+      "main": [[{ "node": "Check Auth - Reject", "type": "main", "index": 0 }]]
+    },
+    "Check Auth - Reject": {
+      "main": [
+        [{ "node": "Parse Reject Body", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Reject", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Reject Body": {
+      "main": [[{ "node": "Patch Reject Status", "type": "main", "index": 0 }]]
+    },
+    "Patch Reject Status": {
+      "main": [[{ "node": "Log Rejection", "type": "main", "index": 0 }]]
+    },
+    "Log Rejection": {
+      "main": [[{ "node": "Respond Reject", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook Video Publish": {
+      "main": [[{ "node": "Check Auth - Publish", "type": "main", "index": 0 }]]
+    },
+    "Check Auth - Publish": {
+      "main": [
+        [{ "node": "Patch Publish Status", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Publish", "type": "main", "index": 0 }]
+      ]
+    },
+    "Patch Publish Status": {
+      "main": [[{ "node": "Execute YouTube Upload - Direct", "type": "main", "index": 0 }]]
+    },
+    "Execute YouTube Upload - Direct": {
+      "main": [[{ "node": "Respond Publish", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook Batch Publish": {
+      "main": [[{ "node": "Check Auth - Batch", "type": "main", "index": 0 }]]
+    },
+    "Check Auth - Batch": {
+      "main": [
+        [{ "node": "Split Batch IDs", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Batch", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Batch IDs": {
+      "main": [[{ "node": "Batch Loop", "type": "main", "index": 0 }]]
+    },
+    "Batch Loop": {
+      "main": [
+        [{ "node": "Patch Batch Topic Status", "type": "main", "index": 0 }],
+        [{ "node": "Respond Batch", "type": "main", "index": 0 }]
+      ]
+    },
+    "Patch Batch Topic Status": {
+      "main": [[{ "node": "Execute YouTube Upload - Batch", "type": "main", "index": 0 }]]
+    },
+    "Execute YouTube Upload - Batch": {
+      "main": [[{ "node": "Batch Loop", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook Update Metadata": {
+      "main": [[{ "node": "Check Auth - Metadata", "type": "main", "index": 0 }]]
+    },
+    "Check Auth - Metadata": {
+      "main": [
+        [{ "node": "Parse Metadata Body", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Metadata", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Metadata Body": {
+      "main": [[{ "node": "Patch Metadata", "type": "main", "index": 0 }]]
+    },
+    "Patch Metadata": {
+      "main": [[{ "node": "Respond Metadata", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook Thumbnail Regenerate": {
+      "main": [[{ "node": "Check Auth - Thumbnail", "type": "main", "index": 0 }]]
+    },
+    "Check Auth - Thumbnail": {
+      "main": [
+        [{ "node": "Generate Thumbnail - Kie.ai", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Thumbnail", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate Thumbnail - Kie.ai": {
+      "main": [[{ "node": "Extract Task ID", "type": "main", "index": 0 }]]
+    },
+    "Extract Task ID": {
+      "main": [[{ "node": "Wait for Generation", "type": "main", "index": 0 }]]
+    },
+    "Wait for Generation": {
+      "main": [[{ "node": "Poll Thumbnail Result", "type": "main", "index": 0 }]]
+    },
+    "Poll Thumbnail Result": {
+      "main": [[{ "node": "Check Thumbnail Status", "type": "main", "index": 0 }]]
+    },
+    "Check Thumbnail Status": {
+      "main": [[{ "node": "If Thumbnail Done", "type": "main", "index": 0 }]]
+    },
+    "If Thumbnail Done": {
+      "main": [
+        [{ "node": "Patch Thumbnail URL", "type": "main", "index": 0 }],
+        [{ "node": "Wait for Generation", "type": "main", "index": 0 }]
+      ]
+    },
+    "Patch Thumbnail URL": {
+      "main": [[{ "node": "Respond Thumbnail", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook Retry Upload": {
+      "main": [[{ "node": "Check Auth - Retry", "type": "main", "index": 0 }]]
+    },
+    "Check Auth - Retry": {
+      "main": [
+        [{ "node": "Patch Retry Status", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Retry", "type": "main", "index": 0 }]
+      ]
+    },
+    "Patch Retry Status": {
+      "main": [[{ "node": "Execute YouTube Upload - Retry", "type": "main", "index": 0 }]]
+    },
+    "Execute YouTube Upload - Retry": {
+      "main": [[{ "node": "Respond Retry", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook Video Schedule": {
+      "main": [[{ "node": "Check Auth - Schedule", "type": "main", "index": 0 }]]
+    },
+    "Check Auth - Schedule": {
+      "main": [
+        [{ "node": "Patch Schedule Time", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Schedule", "type": "main", "index": 0 }]
+      ]
+    },
+    "Patch Schedule Time": {
+      "main": [[{ "node": "Respond Schedule Update", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 8,
+  "updatedAt": "2026-03-09T08:30:00.000Z",
+  "versionId": "1"
+}
