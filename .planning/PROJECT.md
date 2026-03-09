@@ -43,6 +43,19 @@ Any niche typed into the dashboard produces publish-ready YouTube videos with fu
 - Prompt A/B testing — v2 feature
 - Settings import/export between projects — v2 feature
 
+## Current Milestone: v1.1 Backend & E2E
+
+**Goal:** Close all v1.0 gaps — build the n8n AI agent workflows, deploy all workflows to server, apply infrastructure hardening, and validate the full pipeline end-to-end with US Credit Cards niche.
+
+**Target features:**
+- n8n niche research workflow (Claude API with tool_use web search via HTTP Request node)
+- n8n topic + avatar generation workflow (25 topics, 25 avatars per project)
+- n8n dynamic prompt generation workflow (7 prompt types per niche)
+- Inline topic field editing on Topic Review page
+- Infrastructure hardening applied to VPS (n8n timeouts, PostgreSQL tuning, Docker memory limits)
+- All v1.0 workflow JSONs deployed and imported to n8n server
+- End-to-end pipeline validation: create project → research → topics → scripts → production → publish
+
 ## Context
 
 - **Current state:** v1.0 MVP shipped (2026-03-09). Full dashboard + n8n workflow JSONs complete. 256 files, 49K LOC.
@@ -76,6 +89,7 @@ Any niche typed into the dashboard produces publish-ready YouTube videos with fu
 | Glassmorphism design system | backdrop-blur glass cards with dark mode support, professional look | ✓ Good — cohesive visual identity |
 | Production progress weighted formula | audio 20%, images 20%, i2v 15%, t2v 15%, assembly 30% | — Pending production validation |
 | Single n8n workflow per webhook domain | One JSON file per domain (status, production, publish, settings) not per endpoint | ✓ Good — manageable file count |
+| Claude API with tool_use for niche research | Direct Anthropic API via n8n HTTP Request node with web search tool. Full control, matches existing pattern | — Pending |
 
 ---
-*Last updated: 2026-03-09 after v1.0 milestone*
+*Last updated: 2026-03-09 after v1.1 milestone start*
