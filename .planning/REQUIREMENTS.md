@@ -64,31 +64,31 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFR-01 | - | Pending |
-| INFR-02 | - | Pending |
-| INFR-03 | - | Pending |
-| INFR-04 | - | Pending |
-| DEPL-01 | - | Pending |
-| DEPL-02 | - | Pending |
-| DEPL-03 | - | Pending |
-| DEPL-04 | - | Pending |
-| AGNT-01 | - | Pending |
-| AGNT-02 | - | Pending |
-| AGNT-03 | - | Pending |
-| AGNT-04 | - | Pending |
-| AGNT-05 | - | Pending |
-| AGNT-06 | - | Pending |
-| AGNT-07 | - | Pending |
-| AGNT-08 | - | Pending |
-| AGNT-09 | - | Pending |
-| DASH-01 | - | Pending |
-| E2E-01 | - | Pending |
+| INFR-01 | Phase 7 | Pending |
+| INFR-02 | Phase 7 | Pending |
+| INFR-03 | Phase 7 | Pending |
+| INFR-04 | Phase 7 | Pending |
+| DEPL-01 | Phase 8 | Pending |
+| DEPL-02 | Phase 8 | Pending |
+| DEPL-03 | Phase 8 | Pending |
+| DEPL-04 | Phase 8 | Pending |
+| AGNT-01 | Phase 9 | Pending |
+| AGNT-02 | Phase 9 | Pending |
+| AGNT-03 | Phase 9 | Pending |
+| AGNT-04 | Phase 9 | Pending |
+| AGNT-05 | Phase 9 | Pending |
+| AGNT-06 | Phase 9 | Pending |
+| AGNT-07 | Phase 9 | Pending |
+| AGNT-08 | Phase 9 | Pending |
+| AGNT-09 | Phase 9 | Pending |
+| DASH-01 | Phase 9 | Pending |
+| E2E-01 | Phase 10 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after research synthesis*
+*Last updated: 2026-03-09 after roadmap creation*

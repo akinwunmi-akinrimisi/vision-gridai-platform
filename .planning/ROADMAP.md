@@ -7,6 +7,7 @@ Build a multi-niche AI video production platform in phases following the strict 
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-6 (shipped 2026-03-09) — [Archive](milestones/v1.0-ROADMAP.md)
+- [ ] **v1.1 Backend & E2E** — Phases 7-10 — Deploy, harden, build AI agents, validate pipeline
 
 ## Phases
 
@@ -24,6 +25,60 @@ Build a multi-niche AI video production platform in phases following the strict 
 
 </details>
 
+### v1.1 Backend & E2E
+
+- [ ] **Phase 7: Infrastructure Hardening** — Docker memory limits, PostgreSQL tuning, n8n env vars, dashboard deploy
+- [ ] **Phase 8: Credentials & Deployment** — Production credentials, stub deactivation, workflow import, webhook URL config
+- [ ] **Phase 9: AI Agent Workflows** — Niche research, prompt generation, topic generation, topic actions, inline editing
+- [ ] **Phase 10: End-to-End Validation** — Full pipeline test with US Credit Cards niche through all 3 gates
+
+## Phase Details
+
+### Phase 7: Infrastructure Hardening
+**Goal**: VPS runtime is stable and correctly configured for production workloads
+**Depends on**: Nothing (first v1.1 phase)
+**Requirements**: INFR-01, INFR-02, INFR-03, INFR-04
+**Success Criteria** (what must be TRUE):
+  1. Docker containers run with explicit memory limits and do not OOM-kill each other under load
+  2. PostgreSQL responds to queries using NVMe-optimized settings (shared_buffers 1GB, effective_cache_size 3GB)
+  3. n8n accepts workflow executions up to 600s timeout with 2GB heap and 256MB payload limit
+  4. Dashboard is accessible via browser at the production URL serving the latest React build
+**Plans**: TBD
+
+### Phase 8: Credentials & Deployment
+**Goal**: All v1.0 production workflows are running on the n8n server with valid credentials
+**Depends on**: Phase 7
+**Requirements**: DEPL-01, DEPL-02, DEPL-03, DEPL-04
+**Success Criteria** (what must be TRUE):
+  1. All six production credentials exist in n8n and pass a manual test call (Anthropic, Supabase, Google TTS, Kie.ai, Drive, YouTube)
+  2. No v1.0 stub workflows are active — only full v1.1 implementations respond to webhook paths
+  3. All production workflow JSONs are imported, activated, and visible in n8n workflow list
+  4. Self-chaining webhook URLs resolve correctly using environment variable expressions (not hardcoded)
+**Plans**: TBD
+
+### Phase 9: AI Agent Workflows
+**Goal**: Users can create a project, research a niche, generate topics, and take actions on them from the dashboard
+**Depends on**: Phase 8
+**Requirements**: AGNT-01, AGNT-02, AGNT-03, AGNT-04, AGNT-05, AGNT-06, AGNT-07, AGNT-08, AGNT-09, DASH-01
+**Success Criteria** (what must be TRUE):
+  1. Creating a project and triggering research produces a complete niche profile (competitors, pain points, keywords, blue-ocean) visible on the dashboard
+  2. Generating topics produces exactly 25 topics and 25 avatars with all required fields, and re-triggering does not create duplicates
+  3. Approve, reject, and refine actions update topic status in real-time on the dashboard, with refinement considering all 24 other topics
+  4. Inline editing of topic fields (title, hook, avatar data) saves changes without full page reload
+  5. All AI workflow failures write error status to Supabase and produce production_log entries visible in the dashboard
+**Plans**: TBD
+
+### Phase 10: End-to-End Validation
+**Goal**: The full pipeline works from niche input to YouTube publish with the US Credit Cards niche
+**Depends on**: Phase 9
+**Requirements**: E2E-01
+**Success Criteria** (what must be TRUE):
+  1. A new "US Credit Cards" project completes niche research and displays results on the dashboard
+  2. 25 topics pass Gate 1 approval (mix of approve, reject, refine actions all work)
+  3. At least one topic completes script generation, passes Gate 2, and enters production pipeline
+  4. Production pipeline (TTS, images, video, assembly) completes and the video is reviewable at Gate 3
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -34,3 +89,7 @@ Build a multi-niche AI video production platform in phases following the strict 
 | 4. Production Pipeline | v1.0 | 8/8 | Complete | 2026-03-09 |
 | 5. Publish + Analytics | v1.0 | 5/5 | Complete | 2026-03-09 |
 | 6. Polish | v1.0 | 3/3 | Complete | 2026-03-09 |
+| 7. Infrastructure Hardening | v1.1 | 0/? | Not started | - |
+| 8. Credentials & Deployment | v1.1 | 0/? | Not started | - |
+| 9. AI Agent Workflows | v1.1 | 0/? | Not started | - |
+| 10. End-to-End Validation | v1.1 | 0/? | Not started | - |
