@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Backend & E2E
 status: completed
+stopped_at: Completed 07-04-PLAN.md
+last_updated: "2026-03-09T15:40:59.888Z"
+last_activity: "2026-03-09 — 07-03 complete (n8n env vars verified: N8N_PAYLOAD_SIZE_MAX=256, N8N_BINARY_DATA_TTL=168, NODE_OPTIONS=8192, EXECUTIONS_TIMEOUT=3600, health=200)"
+progress:
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 4
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: Backend & E2E
+status: completed
 stopped_at: Completed 07-03-PLAN.md
 last_updated: "2026-03-09T15:01:29.755Z"
 last_activity: "2026-03-09 — 07-02 complete (PostgreSQL NVMe tuning verified: shared_buffers=1GB, effective_cache_size=3GB, random_page_cost=1.1)"
 progress:
-  total_phases: 4
+  [██████████] 100%
   completed_phases: 0
   total_plans: 4
   completed_plans: 3
@@ -72,14 +88,14 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 7 (Infrastructure Hardening) — in progress (3/4 plans done)
-Plan: 07-03 complete
+Phase: 7 (Infrastructure Hardening) — COMPLETE (4/4 plans done)
+Plan: 07-04 complete
 Status: Active
-Last activity: 2026-03-09 — 07-03 complete (n8n env vars verified: N8N_PAYLOAD_SIZE_MAX=256, N8N_BINARY_DATA_TTL=168, NODE_OPTIONS=8192, EXECUTIONS_TIMEOUT=3600, health=200)
+Last activity: 2026-03-09 — 07-04 complete (dashboard deployed: nginx:alpine behind Traefik, React SPA serving HTTP 200, DNS A record needed for HTTPS)
 
 ```
-v1.1 Progress: [████████░░] 75%
-Phases:        [7: ◑] [8: ○] [9: ○] [10: ○]
+v1.1 Progress: [██████████] 100% (Phase 7 complete)
+Phases:        [7: ●] [8: ○] [9: ○] [10: ○]
 ```
 
 ## Performance Metrics
@@ -92,6 +108,7 @@ Phases:        [7: ◑] [8: ○] [9: ○] [10: ○]
 | Phase 07 P01 | 11 | 4 tasks | 3 files |
 | Phase 07 P02 | 2 | 2 tasks | 1 files |
 | Phase 07 P03 | 2 | 2 tasks | 0 files |
+| Phase 07 P04 | 28 | 6 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -105,6 +122,9 @@ Phases:        [7: ◑] [8: ○] [9: ○] [10: ○]
 - [07-02] PostgreSQL container name is supabase-db-1; all NVMe tuning confirmed live: shared_buffers=1GB, effective_cache_size=3GB, random_page_cost=1.1
 - [07-03] n8n container name is n8n-n8n-1 (not n8n-ffmpeg as CLAUDE.md states) — use actual name for all future docker exec commands
 - [07-03] n8n base compose already had NODE_OPTIONS=8192 and EXECUTIONS_TIMEOUT=3600 — both exceed plan targets; all 4 required env vars confirmed present
+- [07-04] VPS uses Traefik (n8n-traefik-1) on ports 80/443 — dashboard deployed as nginx:alpine Docker container with Traefik labels, not standalone Nginx; cert auto-issued by Traefik once DNS is set
+- [07-04] Dashboard repo is private with no VPS deploy key — build locally with npm run build, SCP dist/ to /opt/dashboard; redeployment = scp + no container restart (bind mount)
+- [07-04] DNS A record for dashboard.operscale.cloud must point to 72.61.201.148 — user action required before HTTPS works
 
 ### Research Flags
 - Phase 9: pause_turn handling for long research NOT implemented — may need research spike during planning
@@ -112,19 +132,20 @@ Phases:        [7: ◑] [8: ○] [9: ○] [10: ○]
 - Phase 7, 8: Standard patterns, skip research during planning
 
 ### Blockers
-None.
+- [07-04] DNS A record for dashboard.operscale.cloud → 72.61.201.148 not yet set. Add in DNS provider. Traefik will auto-issue TLS cert once DNS resolves. No code changes needed.
 
 ### TODOs
 - [x] Execute Phase 7 Plan 01 (INFR-01: Docker memory limits + PG tuning + n8n env vars)
 - [x] Execute Phase 7 Plan 02 (INFR-02 verification)
 - [x] Execute Phase 7 Plan 03 (INFR-03 verification)
-- [ ] Execute Phase 7 Plan 04 (INFR-04)
+- [x] Execute Phase 7 Plan 04 (INFR-04: Dashboard Deploy — nginx:alpine + Traefik, DNS pending)
+- [ ] Add DNS A record: dashboard.operscale.cloud → 72.61.201.148 (user action)
 - [ ] Plan Phase 8 (Credentials & Deployment)
 - [ ] Plan Phase 9 (AI Agent Workflows)
 - [ ] Plan Phase 10 (End-to-End Validation)
 
 ## Session Continuity
 
-Last session: 2026-03-09T15:01:29.725Z
-Stopped at: Completed 07-03-PLAN.md
-Resume: Execute 07-04-PLAN.md (INFR-04 — depends on 07-01/02/03 Wave 1 verifications)
+Last session: 2026-03-09T15:40:59.879Z
+Stopped at: Completed 07-04-PLAN.md
+Resume: Phase 7 complete. Next: Plan Phase 8 (Credentials & Deployment). DNS action required: add A record dashboard.operscale.cloud → 72.61.201.148
