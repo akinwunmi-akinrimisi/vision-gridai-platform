@@ -1,0 +1,1953 @@
+{
+  "name": "WF_WEBHOOK_PRODUCTION",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/trigger",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-production-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "production-trigger-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-trigger",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-trigger",
+      "name": "Check Auth - Trigger",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-trigger",
+      "name": "Respond Unauthorized - Trigger",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.topic_id }}" },
+            { "name": "select", "value": "*" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-topic-trigger",
+      "name": "Fetch Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "validate-topic-exists",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "validate-script-approved",
+              "leftValue": "={{ $json[0]?.script_review_status }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "validate-status",
+              "leftValue": "={{ ['script_approved','stopped'].includes($json[0]?.status) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validate-topic-trigger",
+      "name": "Validate Topic",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Topic not found or not ready for production (must be script_approved or stopped with approved script)' }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "respond-invalid-topic",
+      "name": "Respond Invalid Topic",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1130, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create Google Drive subfolder structure for the topic\n// In production, this would use Google Drive API to create folders\n// For now, generate placeholder folder IDs and structure\nconst topic = $input.first().json[0];\nconst topicId = topic.id;\nconst topicNumber = topic.topic_number;\nconst title = topic.seo_title || topic.original_title || `Topic ${topicNumber}`;\n\n// Subfolder structure to be created on Google Drive\nconst subfolders = {\n  audio: null,\n  images: null,\n  video_clips: null,\n  captions: null,\n  final: null\n};\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    project_id: topic.project_id,\n    topic_number: topicNumber,\n    title: title,\n    drive_folder_id: topic.drive_folder_id,\n    drive_subfolder_ids: subfolders\n  }\n}];"
+      },
+      "id": "prepare-drive-folders",
+      "name": "Prepare Drive Folders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 100]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'audio', last_status_change: new Date().toISOString(), drive_subfolder_ids: $json.drive_subfolder_ids }) }}",
+        "options": {}
+      },
+      "id": "update-topic-status-audio",
+      "name": "Set Topic Status Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $json.project_id, topic_id: $json.topic_id, stage: 'production', action: 'started', details: { triggered_by: 'dashboard', topic_number: $json.topic_number } }) }}",
+        "options": {}
+      },
+      "id": "log-production-started",
+      "name": "Log Production Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1570, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/tts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $json.topic_id, project_id: $json.project_id }) }}",
+        "options": {}
+      },
+      "id": "fire-tts-workflow",
+      "name": "Fire TTS Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1790, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $json.topic_id, status: 'audio', message: 'Production started, TTS workflow fired' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-trigger-success",
+      "name": "Respond Trigger Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2010, 100]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/trigger-batch",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-batch-trigger",
+      "name": "Webhook Batch Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 800],
+      "webhookId": "production-batch-trigger-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-batch",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-batch",
+      "name": "Check Auth - Batch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-batch",
+      "name": "Respond Unauthorized - Batch",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 1000]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Batch trigger: set first topic to 'audio', rest to 'queued'\nconst topicIds = $input.first().json.body.topic_ids || [];\nif (!topicIds.length) {\n  return [{ json: { error: 'No topic_ids provided', topic_ids: [] } }];\n}\n\n// First topic starts immediately, rest queued\nreturn [{\n  json: {\n    first_topic_id: topicIds[0],\n    queued_topic_ids: topicIds.slice(1),\n    all_topic_ids: topicIds\n  }\n}];"
+      },
+      "id": "prepare-batch",
+      "name": "Prepare Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 700]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=in.({{ $json.queued_topic_ids.join(',') }})" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'queued', last_status_change: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "set-queued-status",
+      "name": "Set Queued Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/trigger",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $json.first_topic_id }) }}",
+        "options": {}
+      },
+      "id": "fire-first-topic",
+      "name": "Fire First Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 700]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { first_topic_id: $('Prepare Batch').item.json.first_topic_id, queued_count: $('Prepare Batch').item.json.queued_topic_ids.length, message: 'Batch production started' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-batch-success",
+      "name": "Respond Batch Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1350, 700]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/stop",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-stop",
+      "name": "Webhook Stop",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 1300],
+      "webhookId": "production-stop-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-stop",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-stop",
+      "name": "Check Auth - Stop",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 1300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-stop",
+      "name": "Respond Unauthorized - Stop",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 1500]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'stopped', last_status_change: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "set-stopped-status",
+      "name": "Set Stopped Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 1200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $json.body?.project_id, topic_id: $('Webhook Stop').item.json.body.topic_id, stage: 'production', action: 'stopped', details: { stopped_by: 'dashboard' } }) }}",
+        "options": {}
+      },
+      "id": "log-stopped",
+      "name": "Log Stopped",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 1200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Stop').item.json.body.topic_id, status: 'stopped', message: 'Production stopped' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-stop-success",
+      "name": "Respond Stop Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1130, 1200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/resume",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-resume",
+      "name": "Webhook Resume",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 1800],
+      "webhookId": "production-resume-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-resume",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-resume",
+      "name": "Check Auth - Resume",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 1800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-resume",
+      "name": "Respond Unauthorized - Resume",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 2000]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $json.body.topic_id }}" },
+            { "name": "action", "value": "=eq.started" },
+            { "name": "order", "value": "created_at.desc" },
+            { "name": "limit", "value": "1" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-last-stage",
+      "name": "Fetch Last Stage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 1700]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine resume stage from last production_log entry\nconst logEntries = $input.first().json;\nconst topicId = $('Webhook Resume').item.json.body.topic_id;\n\nlet resumeStage = 'audio'; // default\nlet webhookPath = 'production/tts';\n\nif (Array.isArray(logEntries) && logEntries.length > 0) {\n  const lastStage = logEntries[0].stage;\n  switch (lastStage) {\n    case 'audio':\n      resumeStage = 'audio';\n      webhookPath = 'production/tts';\n      break;\n    case 'images':\n      resumeStage = 'images';\n      webhookPath = 'production/images';\n      break;\n    case 'i2v':\n      resumeStage = 'images';\n      webhookPath = 'production/i2v';\n      break;\n    case 't2v':\n      resumeStage = 'images';\n      webhookPath = 'production/t2v';\n      break;\n    case 'assembly':\n      resumeStage = 'assembling';\n      webhookPath = 'production/assemble';\n      break;\n    default:\n      resumeStage = 'audio';\n      webhookPath = 'production/tts';\n  }\n}\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    resume_stage: resumeStage,\n    webhook_path: webhookPath\n  }\n}];"
+      },
+      "id": "determine-resume-stage",
+      "name": "Determine Resume Stage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 1700]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: $json.resume_stage, last_status_change: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "set-resume-status",
+      "name": "Set Resume Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 1700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/{{ $json.webhook_path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $json.topic_id }) }}",
+        "options": {}
+      },
+      "id": "fire-resume-workflow",
+      "name": "Fire Resume Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 1700]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $json.topic_id, status: $('Determine Resume Stage').item.json.resume_stage, message: 'Production resumed' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-resume-success",
+      "name": "Respond Resume Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1570, 1700]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/restart",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-restart",
+      "name": "Webhook Restart",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 2300],
+      "webhookId": "production-restart-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-restart",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-restart",
+      "name": "Check Auth - Restart",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 2300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-restart",
+      "name": "Respond Unauthorized - Restart",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 2500]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $json.body.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ audio_status: 'pending', image_status: 'pending', video_status: 'pending', clip_status: 'pending', audio_duration_ms: null, audio_file_drive_id: null, audio_file_url: null, start_time_ms: null, end_time_ms: null, image_url: null, image_drive_id: null, video_url: null, video_drive_id: null, skipped: false, skip_reason: null }) }}",
+        "options": {}
+      },
+      "id": "reset-all-scenes",
+      "name": "Reset All Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 2200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Webhook Restart').item.json.body.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'audio', last_status_change: new Date().toISOString(), cost_breakdown: null, total_cost: 0, audio_progress: 'pending', images_progress: 'pending', i2v_progress: 'pending', t2v_progress: 'pending', assembly_status: 'pending' }) }}",
+        "options": {}
+      },
+      "id": "reset-topic-status",
+      "name": "Reset Topic Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 2200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/tts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Webhook Restart').item.json.body.topic_id }) }}",
+        "options": {}
+      },
+      "id": "fire-tts-restart",
+      "name": "Fire TTS After Restart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 2200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Restart').item.json.body.topic_id, status: 'audio', message: 'Production restarted from scratch' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-restart-success",
+      "name": "Respond Restart Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1350, 2200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/retry-scene",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-retry-scene",
+      "name": "Webhook Retry Scene",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 2800],
+      "webhookId": "production-retry-scene-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-retry-scene",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-retry-scene",
+      "name": "Check Auth - Retry Scene",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 2800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-retry-scene",
+      "name": "Respond Unauthorized - Retry Scene",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 3000]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.scene_id }}" },
+            { "name": "select", "value": "*" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-scene-retry",
+      "name": "Fetch Scene - Retry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 2700]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine which stage failed and reset it\nconst scenes = $input.first().json;\nif (!Array.isArray(scenes) || scenes.length === 0) {\n  return [{ json: { error: 'Scene not found' } }];\n}\nconst scene = scenes[0];\nconst resetFields = {};\nlet failedStage = '';\n\nif (scene.audio_status === 'failed') {\n  resetFields.audio_status = 'pending';\n  failedStage = 'tts';\n} else if (scene.image_status === 'failed') {\n  resetFields.image_status = 'pending';\n  failedStage = scene.visual_type === 'static_image' ? 'images' : 'images';\n} else if (scene.video_status === 'failed') {\n  resetFields.video_status = 'pending';\n  failedStage = scene.visual_type === 'i2v' ? 'i2v' : 't2v';\n} else if (scene.clip_status === 'failed') {\n  resetFields.clip_status = 'pending';\n  failedStage = 'assembly';\n}\n\nreturn [{\n  json: {\n    scene_id: scene.id,\n    topic_id: scene.topic_id,\n    scene_number: scene.scene_number,\n    visual_type: scene.visual_type,\n    failed_stage: failedStage,\n    reset_fields: resetFields\n  }\n}];"
+      },
+      "id": "determine-failed-stage",
+      "name": "Determine Failed Stage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 2700]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.scene_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.reset_fields) }}",
+        "options": {}
+      },
+      "id": "reset-scene-status",
+      "name": "Reset Scene Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 2700]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { scene_id: $json.scene_id, failed_stage: $('Determine Failed Stage').item.json.failed_stage, message: 'Scene reset for retry' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-retry-scene-success",
+      "name": "Respond Retry Scene Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1350, 2700]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/retry-all-failed",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-retry-all-failed",
+      "name": "Webhook Retry All Failed",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 3300],
+      "webhookId": "production-retry-all-failed-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-retry-all",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-retry-all",
+      "name": "Check Auth - Retry All",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 3300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-retry-all",
+      "name": "Respond Unauthorized - Retry All",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 3500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $json.body.topic_id }}" },
+            { "name": "or", "value": "(audio_status.eq.failed,image_status.eq.failed,video_status.eq.failed,clip_status.eq.failed)" },
+            { "name": "select", "value": "id,audio_status,image_status,video_status,clip_status" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-failed-scenes",
+      "name": "Fetch Failed Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 3200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reset all failed statuses to pending\nconst scenes = $input.first().json;\nif (!Array.isArray(scenes) || scenes.length === 0) {\n  return [{ json: { count: 0, scene_ids: [] } }];\n}\n\nconst sceneIds = scenes.map(s => s.id);\nreturn [{ json: { count: scenes.length, scene_ids: sceneIds, topic_id: $('Webhook Retry All Failed').item.json.body.topic_id } }];"
+      },
+      "id": "prepare-retry-all",
+      "name": "Prepare Retry All",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 3200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $json.topic_id }}" },
+            { "name": "or", "value": "(audio_status.eq.failed,image_status.eq.failed,video_status.eq.failed,clip_status.eq.failed)" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ audio_status: $json.scene_ids.length > 0 ? undefined : 'pending', image_status: 'pending', video_status: 'pending', clip_status: 'pending' }) }}",
+        "options": {}
+      },
+      "id": "reset-all-failed",
+      "name": "Reset All Failed Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 3200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $json.topic_id, reset_count: $('Prepare Retry All').item.json.count, message: 'All failed scenes reset for retry' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-retry-all-success",
+      "name": "Respond Retry All Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1350, 3200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/skip-scene",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-skip-scene",
+      "name": "Webhook Skip Scene",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 3800],
+      "webhookId": "production-skip-scene-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-skip",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-skip-scene",
+      "name": "Check Auth - Skip Scene",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 3800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-skip",
+      "name": "Respond Unauthorized - Skip Scene",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 4000]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.scene_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ skipped: true, skip_reason: $json.body.reason || 'Manually skipped' }) }}",
+        "options": {}
+      },
+      "id": "set-scene-skipped",
+      "name": "Set Scene Skipped",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 3700]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { scene_id: $('Webhook Skip Scene').item.json.body.scene_id, skipped: true, message: 'Scene skipped' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-skip-scene-success",
+      "name": "Respond Skip Scene Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 3700]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/skip-all-failed",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-skip-all-failed",
+      "name": "Webhook Skip All Failed",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 4300],
+      "webhookId": "production-skip-all-failed-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-skip-all",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-skip-all",
+      "name": "Check Auth - Skip All Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 4300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-skip-all",
+      "name": "Respond Unauthorized - Skip All",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 4500]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $json.body.topic_id }}" },
+            { "name": "or", "value": "(audio_status.eq.failed,image_status.eq.failed,video_status.eq.failed,clip_status.eq.failed)" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ skipped: true, skip_reason: 'Batch skip all failed' }) }}",
+        "options": {}
+      },
+      "id": "skip-all-failed-scenes",
+      "name": "Skip All Failed Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 4200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Skip All Failed').item.json.body.topic_id, message: 'All failed scenes skipped' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-skip-all-success",
+      "name": "Respond Skip All Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 4200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/edit-retry-scene",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-edit-retry",
+      "name": "Webhook Edit Retry Scene",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 4800],
+      "webhookId": "production-edit-retry-scene-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-edit-retry",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-edit-retry",
+      "name": "Check Auth - Edit Retry",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 4800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-edit-retry",
+      "name": "Respond Unauthorized - Edit Retry",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 5000]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.scene_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ image_prompt: $json.body.image_prompt, image_status: 'pending', video_status: 'pending' }) }}",
+        "options": {}
+      },
+      "id": "update-prompt-and-reset",
+      "name": "Update Prompt and Reset",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 4700]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { scene_id: $('Webhook Edit Retry Scene').item.json.body.scene_id, message: 'Image prompt updated and scene reset for retry' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-edit-retry-success",
+      "name": "Respond Edit Retry Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 4700]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/assemble",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-assemble",
+      "name": "Webhook Assemble",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 5300],
+      "webhookId": "production-assemble-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-assemble",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-assemble",
+      "name": "Check Auth - Assemble",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 5300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-assemble",
+      "name": "Respond Unauthorized - Assemble",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 5500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $json.body.topic_id }}" },
+            { "name": "skipped", "value": "=eq.false" },
+            { "name": "or", "value": "(audio_status.eq.pending,audio_status.eq.failed,image_status.eq.pending,image_status.eq.failed,video_status.eq.pending,video_status.eq.failed)" },
+            { "name": "select", "value": "id" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-incomplete-scenes",
+      "name": "Check Incomplete Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 5200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "all-complete",
+              "leftValue": "={{ Array.isArray($json) ? $json.length : 0 }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validate-all-complete",
+      "name": "Validate All Complete",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [910, 5200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: { incomplete_count: Array.isArray($json) ? $json.length : 0 }, error: 'Not all scenes are complete or skipped. Resolve failed scenes before assembly.' }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "respond-assemble-blocked",
+      "name": "Respond Assembly Blocked",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1130, 5400]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Webhook Assemble').item.json.body.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'assembling', assembly_status: 'starting', last_status_change: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "set-assembling-status",
+      "name": "Set Assembling Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 5100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/captions-assembly",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Webhook Assemble').item.json.body.topic_id }) }}",
+        "options": {}
+      },
+      "id": "fire-assembly-workflow",
+      "name": "Fire Assembly Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 5100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Assemble').item.json.body.topic_id, status: 'assembling', message: 'Assembly started' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-assemble-success",
+      "name": "Respond Assemble Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1570, 5100]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "Check Auth - Trigger", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Trigger": {
+      "main": [
+        [{ "node": "Fetch Topic", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Trigger", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Topic": {
+      "main": [
+        [{ "node": "Validate Topic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate Topic": {
+      "main": [
+        [{ "node": "Prepare Drive Folders", "type": "main", "index": 0 }],
+        [{ "node": "Respond Invalid Topic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Drive Folders": {
+      "main": [
+        [{ "node": "Set Topic Status Audio", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Topic Status Audio": {
+      "main": [
+        [{ "node": "Log Production Started", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Production Started": {
+      "main": [
+        [{ "node": "Fire TTS Workflow", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fire TTS Workflow": {
+      "main": [
+        [{ "node": "Respond Trigger Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Batch Trigger": {
+      "main": [
+        [{ "node": "Check Auth - Batch", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Batch": {
+      "main": [
+        [{ "node": "Prepare Batch", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Batch", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Batch": {
+      "main": [
+        [{ "node": "Set Queued Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Queued Status": {
+      "main": [
+        [{ "node": "Fire First Topic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fire First Topic": {
+      "main": [
+        [{ "node": "Respond Batch Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Stop": {
+      "main": [
+        [{ "node": "Check Auth - Stop", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Stop": {
+      "main": [
+        [{ "node": "Set Stopped Status", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Stop", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Stopped Status": {
+      "main": [
+        [{ "node": "Log Stopped", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Stopped": {
+      "main": [
+        [{ "node": "Respond Stop Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Resume": {
+      "main": [
+        [{ "node": "Check Auth - Resume", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Resume": {
+      "main": [
+        [{ "node": "Fetch Last Stage", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Resume", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Last Stage": {
+      "main": [
+        [{ "node": "Determine Resume Stage", "type": "main", "index": 0 }]
+      ]
+    },
+    "Determine Resume Stage": {
+      "main": [
+        [{ "node": "Set Resume Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Resume Status": {
+      "main": [
+        [{ "node": "Fire Resume Workflow", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fire Resume Workflow": {
+      "main": [
+        [{ "node": "Respond Resume Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Restart": {
+      "main": [
+        [{ "node": "Check Auth - Restart", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Restart": {
+      "main": [
+        [{ "node": "Reset All Scenes", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Restart", "type": "main", "index": 0 }]
+      ]
+    },
+    "Reset All Scenes": {
+      "main": [
+        [{ "node": "Reset Topic Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Reset Topic Status": {
+      "main": [
+        [{ "node": "Fire TTS After Restart", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fire TTS After Restart": {
+      "main": [
+        [{ "node": "Respond Restart Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Retry Scene": {
+      "main": [
+        [{ "node": "Check Auth - Retry Scene", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Retry Scene": {
+      "main": [
+        [{ "node": "Fetch Scene - Retry", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Retry Scene", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Scene - Retry": {
+      "main": [
+        [{ "node": "Determine Failed Stage", "type": "main", "index": 0 }]
+      ]
+    },
+    "Determine Failed Stage": {
+      "main": [
+        [{ "node": "Reset Scene Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Reset Scene Status": {
+      "main": [
+        [{ "node": "Respond Retry Scene Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Retry All Failed": {
+      "main": [
+        [{ "node": "Check Auth - Retry All", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Retry All": {
+      "main": [
+        [{ "node": "Fetch Failed Scenes", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Retry All", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Failed Scenes": {
+      "main": [
+        [{ "node": "Prepare Retry All", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Retry All": {
+      "main": [
+        [{ "node": "Reset All Failed Scenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Reset All Failed Scenes": {
+      "main": [
+        [{ "node": "Respond Retry All Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Skip Scene": {
+      "main": [
+        [{ "node": "Check Auth - Skip Scene", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Skip Scene": {
+      "main": [
+        [{ "node": "Set Scene Skipped", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Skip Scene", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Scene Skipped": {
+      "main": [
+        [{ "node": "Respond Skip Scene Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Skip All Failed": {
+      "main": [
+        [{ "node": "Check Auth - Skip All Failed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Skip All Failed": {
+      "main": [
+        [{ "node": "Skip All Failed Scenes", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Skip All", "type": "main", "index": 0 }]
+      ]
+    },
+    "Skip All Failed Scenes": {
+      "main": [
+        [{ "node": "Respond Skip All Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Edit Retry Scene": {
+      "main": [
+        [{ "node": "Check Auth - Edit Retry", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Edit Retry": {
+      "main": [
+        [{ "node": "Update Prompt and Reset", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Edit Retry", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Prompt and Reset": {
+      "main": [
+        [{ "node": "Respond Edit Retry Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Assemble": {
+      "main": [
+        [{ "node": "Check Auth - Assemble", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth - Assemble": {
+      "main": [
+        [{ "node": "Check Incomplete Scenes", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized - Assemble", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Incomplete Scenes": {
+      "main": [
+        [{ "node": "Validate All Complete", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate All Complete": {
+      "main": [
+        [{ "node": "Set Assembling Status", "type": "main", "index": 0 }],
+        [{ "node": "Respond Assembly Blocked", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Assembling Status": {
+      "main": [
+        [{ "node": "Fire Assembly Workflow", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fire Assembly Workflow": {
+      "main": [
+        [{ "node": "Respond Assemble Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "webhook" },
+    { "name": "production" }
+  ],
+  "triggerCount": 11,
+  "active": false
+}
