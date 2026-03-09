@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { useParams } from 'react-router';
 import {
   Video,
@@ -8,11 +9,15 @@ import {
   TrendingUp,
   BarChart3,
   AlertCircle,
+  Upload,
 } from 'lucide-react';
 import { useTopics } from '../hooks/useTopics';
 import { useProjectMetrics } from '../hooks/useProjectMetrics';
+import { useQuotaStatus } from '../hooks/useQuotaStatus';
+import { useBatchPublish } from '../hooks/usePublishMutations';
 import { SkeletonMetric } from '../components/ui/SkeletonLoader';
 import PipelineTable from '../components/dashboard/PipelineTable';
+import BatchPublishDialog from '../components/video/BatchPublishDialog';
 
 function formatCurrency(num) {
   if (num == null || num === 0) return '$0.00';
@@ -28,8 +33,22 @@ export default function ProjectDashboard() {
   const { id: projectId } = useParams();
   const { data: topics, isLoading: topicsLoading } = useTopics(projectId);
   const { metrics, isLoading: metricsLoading } = useProjectMetrics(projectId);
+  const { remaining: quotaRemaining } = useQuotaStatus(projectId);
+  const batchPublishMutation = useBatchPublish(projectId);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
 
   const isLoading = topicsLoading || metricsLoading;
+
+  // Topics eligible for batch publish: video_review_status='approved' and not already published/publishing
+  const approvedForPublish = useMemo(() => {
+    if (!topics) return [];
+    return topics.filter(
+      (t) =>
+        t.video_review_status === 'approved' &&
+        t.status !== 'published' &&
+        t.status !== 'publishing'
+    );
+  }, [topics]);
 
   const statusMetrics = [
     { label: 'Total Topics', value: metrics.totalTopics, icon: Video, color: 'from-blue-500 to-indigo-600', textColor: 'text-blue-500' },
@@ -120,22 +139,52 @@ export default function ProjectDashboard() {
       )}
 
       {/* Pipeline status section */}
-      <div className="flex items-center gap-3 mb-4">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Pipeline Status</h2>
-        {metrics.pendingReview > 0 && (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-            <AlertCircle className="w-3 h-3" />
-            {metrics.pendingReview} Pending Review
-          </span>
-        )}
-        {metrics.scheduled > 0 && (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-            <Clock className="w-3 h-3" />
-            {metrics.scheduled} Scheduled
-          </span>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Pipeline Status</h2>
+          {metrics.pendingReview > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+              <AlertCircle className="w-3 h-3" />
+              {metrics.pendingReview} Pending Review
+            </span>
+          )}
+          {metrics.scheduled > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+              <Clock className="w-3 h-3" />
+              {metrics.scheduled} Scheduled
+            </span>
+          )}
+        </div>
+        {approvedForPublish.length > 0 && (
+          <button
+            onClick={() => setBatchDialogOpen(true)}
+            className="
+              inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold
+              bg-gradient-to-r from-emerald-500 to-emerald-600 text-white
+              shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30
+              transition-all duration-200 cursor-pointer
+            "
+          >
+            <Upload className="w-4 h-4" />
+            Publish All Approved ({approvedForPublish.length})
+          </button>
         )}
       </div>
       <PipelineTable topics={topics || []} projectId={projectId} />
+
+      {/* Batch publish dialog */}
+      <BatchPublishDialog
+        open={batchDialogOpen}
+        onClose={() => setBatchDialogOpen(false)}
+        topics={approvedForPublish}
+        quotaRemaining={quotaRemaining}
+        loading={batchPublishMutation.isPending}
+        onConfirm={(topicIds) => {
+          batchPublishMutation.mutate({ topicIds }, {
+            onSuccess: () => setBatchDialogOpen(false),
+          });
+        }}
+      />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { Link } from 'react-router';
+import { CheckCircle2, ExternalLink, Eye } from 'lucide-react';
 import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
 
 const STATUS_CONFIG = {
@@ -11,7 +13,12 @@ const STATUS_CONFIG = {
   images:          { label: 'Images',           cls: 'badge badge-purple' },
   assembling:      { label: 'Assembling',       cls: 'badge badge-purple' },
   assembled:       { label: 'Assembled',        cls: 'badge badge-blue' },
-  published:       { label: 'Published',        cls: 'badge badge-green' },
+  ready_review:    { label: 'Ready for Review', cls: 'badge badge-amber' },
+  video_approved:  { label: 'Approved',         cls: 'badge badge-blue' },
+  publishing:      { label: 'Publishing...',    cls: 'badge badge-amber animate-pulse' },
+  scheduled:       { label: 'Scheduled',        cls: 'badge badge-purple' },
+  published:       { label: 'Published',        cls: 'badge badge-green', icon: true },
+  upload_failed:   { label: 'Upload Failed',    cls: 'badge badge-red' },
   failed:          { label: 'Failed',           cls: 'badge badge-red' },
   stopped:         { label: 'Stopped',          cls: 'badge bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300' },
   rejected:        { label: 'Rejected',         cls: 'badge badge-red' },
@@ -31,7 +38,8 @@ function parseProgress(val) {
 function computeProgress(topic) {
   const { status, audio_progress, images_progress, i2v_progress, t2v_progress, assembly_status } = topic;
 
-  if (status === 'published' || status === 'assembled') return 100;
+  if (['published', 'assembled', 'ready_review', 'video_approved', 'scheduled'].includes(status)) return 100;
+  if (['publishing'].includes(status)) return 95;
   if (!['producing', 'audio', 'images', 'assembling', 'queued'].includes(status)) return null;
 
   const audio = parseProgress(audio_progress);
@@ -112,6 +120,7 @@ export default function PipelineTable({ topics, projectId }) {
               <th className="px-4 py-3 text-right">Score</th>
               <th className="px-4 py-3 text-right">Views</th>
               <th className="px-4 py-3 text-right">Revenue</th>
+              <th className="px-4 py-3 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/20 dark:divide-white/[0.04]">
@@ -139,6 +148,7 @@ export default function PipelineTable({ topics, projectId }) {
                       data-testid={`status-badge-${topic.id}`}
                       className={statusCfg.cls}
                     >
+                      {statusCfg.icon && <CheckCircle2 className="w-3 h-3" />}
                       {statusCfg.label}
                     </span>
                   </td>
@@ -167,6 +177,28 @@ export default function PipelineTable({ topics, projectId }) {
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">
                     {formatRevenue(topic.yt_estimated_revenue)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {(topic.status === 'assembled' || topic.status === 'ready_review' || topic.video_review_status === 'approved') && topic.status !== 'published' && topic.status !== 'publishing' && (
+                      <Link
+                        to={`/project/${projectId}/topics/${topic.id}/review`}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary dark:text-blue-400 hover:underline"
+                      >
+                        <Eye className="w-3 h-3" />
+                        Review
+                      </Link>
+                    )}
+                    {topic.status === 'published' && topic.youtube_url && (
+                      <a
+                        href={topic.youtube_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        YouTube
+                      </a>
+                    )}
                   </td>
                 </tr>
               );

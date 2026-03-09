@@ -16,10 +16,12 @@ import {
   Zap,
   ArrowLeft,
   Search,
+  Upload,
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ConnectionStatus from './ConnectionStatus';
 import { useSupervisorToasts } from '../SupervisorToastProvider';
+import { useQuotaStatus } from '../../hooks/useQuotaStatus';
 
 // Global nav items (shown at root /)
 const globalNavItems = [
@@ -92,6 +94,7 @@ export default function Sidebar({ onLogout }) {
 
   // Detect if we're inside a project route
   const isInsideProject = !!projectId && location.pathname.startsWith('/project/');
+  const { remaining: quotaRemaining } = useQuotaStatus(isInsideProject ? projectId : null);
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -183,6 +186,28 @@ export default function Sidebar({ onLogout }) {
       {/* Footer */}
       <div className="px-3 py-3 border-t border-border/50 dark:border-border-dark/50 space-y-0.5">
         <ConnectionStatus collapsed={collapsed} />
+        {isInsideProject && (
+          <div
+            data-testid="quota-indicator"
+            className={`
+              flex items-center gap-2.5 px-3 py-2 rounded-xl
+              ${collapsed ? 'justify-center' : ''}
+              ${quotaRemaining === 0
+                ? 'text-red-500 dark:text-red-400'
+                : quotaRemaining <= 2
+                  ? 'text-amber-500 dark:text-amber-400'
+                  : 'text-text-muted dark:text-text-muted-dark'}
+            `}
+            title={collapsed ? `${quotaRemaining}/6 uploads remaining` : undefined}
+          >
+            <Upload className="w-[18px] h-[18px] flex-shrink-0" />
+            {!collapsed && (
+              <span className="text-[13px] font-medium tabular-nums">
+                {quotaRemaining}/6
+              </span>
+            )}
+          </div>
+        )}
         <ThemeToggle collapsed={collapsed} />
 
         <button
