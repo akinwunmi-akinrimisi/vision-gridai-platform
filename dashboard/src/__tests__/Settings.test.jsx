@@ -35,11 +35,13 @@ vi.mock('../lib/api', () => ({
   webhookCall: vi.fn().mockResolvedValue({ success: true }),
 }));
 
+// Mock sonner
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+}));
+
 // --- Mock data ---
 const mockSettings = {
-  id: 'test-project-id',
-  name: 'Credit Card Rewards Channel',
-  niche: 'US Credit Cards',
   script_approach: '3_pass',
   images_per_video: 100,
   i2v_clips_per_video: 25,
@@ -118,55 +120,108 @@ describe('Settings Page', () => {
       expect(screen.getByRole('tab', { name: /configuration/i })).toBeTruthy();
       expect(screen.getByRole('tab', { name: /prompts/i })).toBeTruthy();
     });
+
+    it('shows Configuration tab content by default', () => {
+      renderWithProviders(<Settings />);
+      expect(screen.getByTestId('config-tab')).toBeTruthy();
+    });
+
+    it('switches to Prompts tab on click', () => {
+      renderWithProviders(<Settings />);
+      fireEvent.click(screen.getByRole('tab', { name: /prompts/i }));
+      expect(screen.getByTestId('prompts-tab')).toBeTruthy();
+    });
   });
 
   describe('Configuration Tab (OPS-03)', () => {
-    it('renders Production Config with editable fields', () => {
+    it('renders all 5 sections', () => {
       renderWithProviders(<Settings />);
       expect(screen.getByText('Production Config')).toBeTruthy();
-      expect(screen.getByDisplayValue('100')).toBeTruthy(); // images_per_video
-      expect(screen.getByDisplayValue('19000')).toBeTruthy(); // target_word_count
+      expect(screen.getByText(/YouTube/)).toBeTruthy();
+      expect(screen.getByText('API & Webhooks')).toBeTruthy();
+      expect(screen.getByText('Security')).toBeTruthy();
+      expect(screen.getByText('Appearance')).toBeTruthy();
     });
 
-    it('shows Save button when field is edited', () => {
+    it('shows production config values in display mode', () => {
       renderWithProviders(<Settings />);
+      expect(screen.getByText('3-Pass')).toBeTruthy();
+      expect(screen.getByText('100')).toBeTruthy();
+      expect(screen.getByText('19000')).toBeTruthy();
+    });
+
+    it('shows Edit buttons only for editable sections (Production Config + YouTube)', () => {
+      renderWithProviders(<Settings />);
+      const editButtons = screen.getAllByRole('button', { name: /edit/i });
+      expect(editButtons).toHaveLength(2);
+    });
+
+    it('enters edit mode for Production Config on Edit click and shows Save/Cancel', () => {
+      renderWithProviders(<Settings />);
+      const editButtons = screen.getAllByRole('button', { name: /edit/i });
+      fireEvent.click(editButtons[0]); // Production Config
+      expect(screen.getByRole('button', { name: /save/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeTruthy();
+    });
+
+    it('shows input fields in edit mode with current values', () => {
+      renderWithProviders(<Settings />);
+      const editButtons = screen.getAllByRole('button', { name: /edit/i });
+      fireEvent.click(editButtons[0]);
+      expect(screen.getByDisplayValue('19000')).toBeTruthy();
+      expect(screen.getByDisplayValue('100')).toBeTruthy();
+    });
+
+    it('calls mutate on Save with edited fields', () => {
+      renderWithProviders(<Settings />);
+      const editButtons = screen.getAllByRole('button', { name: /edit/i });
+      fireEvent.click(editButtons[0]);
       const wordCountInput = screen.getByDisplayValue('19000');
       fireEvent.change(wordCountInput, { target: { value: '20000' } });
-      expect(screen.getByRole('button', { name: /save/i })).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+      expect(mockMutate).toHaveBeenCalledTimes(1);
+      const callArg = mockMutate.mock.calls[0][0];
+      expect(callArg.target_word_count).toBe(20000);
     });
 
-    it('renders YouTube/Drive fields with independent save', () => {
+    it('reverts to display mode on Cancel', () => {
       renderWithProviders(<Settings />);
-      expect(screen.getByDisplayValue('UC_test123')).toBeTruthy(); // youtube_channel_id
-      expect(screen.getByDisplayValue('drive_root_123')).toBeTruthy(); // drive_root_folder_id
+      const editButtons = screen.getAllByRole('button', { name: /edit/i });
+      fireEvent.click(editButtons[0]);
+      fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+      // Edit button should reappear
+      expect(screen.getAllByRole('button', { name: /edit/i }).length).toBeGreaterThanOrEqual(2);
     });
 
-    it('renders read-only sections without edit controls', () => {
+    it('read-only sections do not have opacity-60', () => {
       renderWithProviders(<Settings />);
-      // API & Webhooks and Security/Appearance sections should have no edit buttons
-      const apiSection = screen.getByText('API & Webhooks');
-      expect(apiSection).toBeTruthy();
-      const securitySection = screen.getByText('Security');
-      expect(securitySection).toBeTruthy();
-      const appearanceSection = screen.getByText('Appearance');
-      expect(appearanceSection).toBeTruthy();
-      // These sections should NOT have Save buttons within them
-      const saveButtons = screen.queryAllByRole('button', { name: /save/i });
-      // Without editing, no save buttons should be shown
-      expect(saveButtons.length).toBe(0);
+      const apiSection = screen.getByText('API & Webhooks').closest('.glass-card');
+      if (apiSection) {
+        expect(apiSection.className).not.toContain('opacity-60');
+      }
+    });
+
+    it('YouTube section saves independently from Production Config', () => {
+      renderWithProviders(<Settings />);
+      const editButtons = screen.getAllByRole('button', { name: /edit/i });
+      fireEvent.click(editButtons[1]); // YouTube edit
+      const channelInput = screen.getByDisplayValue('UC_test123');
+      fireEvent.change(channelInput, { target: { value: 'UC_new_channel' } });
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+      expect(mockMutate).toHaveBeenCalledTimes(1);
+      const callArg = mockMutate.mock.calls[0][0];
+      expect(callArg.youtube_channel_id).toBe('UC_new_channel');
+      expect(callArg.script_approach).toBeUndefined();
     });
   });
 
   describe('Prompts Tab (OPS-04)', () => {
     it('renders 7 prompt cards in 3 groups', () => {
       renderWithProviders(<Settings />);
-      // Switch to Prompts tab
       fireEvent.click(screen.getByRole('tab', { name: /prompts/i }));
-      // Should show 3 groups: System & Generation, Script Passes, Evaluation & Visual
-      expect(screen.getByText(/system & generation/i)).toBeTruthy();
-      expect(screen.getByText(/script passes/i)).toBeTruthy();
-      expect(screen.getByText(/evaluation & visual/i)).toBeTruthy();
-      // Should show 7 prompt cards
+      expect(screen.getByText(/core/i)).toBeTruthy();
+      expect(screen.getByText(/script pipeline/i)).toBeTruthy();
+      expect(screen.getByText(/evaluation/i)).toBeTruthy();
       const promptCards = screen.getAllByTestId('prompt-card');
       expect(promptCards.length).toBe(7);
     });
@@ -175,14 +230,13 @@ describe('Settings Page', () => {
       renderWithProviders(<Settings />);
       fireEvent.click(screen.getByRole('tab', { name: /prompts/i }));
       const firstCard = screen.getAllByTestId('prompt-card')[0];
-      fireEvent.click(firstCard);
+      fireEvent.click(firstCard.querySelector('[data-testid="prompt-card-header"]'));
       expect(screen.getByRole('textbox')).toBeTruthy();
     });
 
     it('shows version dropdown on badge click', () => {
       renderWithProviders(<Settings />);
       fireEvent.click(screen.getByRole('tab', { name: /prompts/i }));
-      // Click the version badge on the visual_director prompt (version 3)
       const versionBadges = screen.getAllByTestId('version-badge');
       fireEvent.click(versionBadges[versionBadges.length - 1]);
       expect(screen.getByTestId('version-dropdown')).toBeTruthy();
