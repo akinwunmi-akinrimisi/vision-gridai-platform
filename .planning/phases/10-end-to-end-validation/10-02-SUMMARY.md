@@ -1,9 +1,40 @@
 ---
-plan: 10-02
 phase: 10-end-to-end-validation
+plan: 02
+subsystem: n8n-webhooks
+tags: [gate2, script-review, webhooks, n8n]
 status: complete
-completed: 2026-03-09
+completed: "2026-03-09"
+dependency_graph:
+  requires:
+    - 10-01 (WF_SCRIPT_GENERATE deployed)
+    - WF_WEBHOOK_PRODUCTION (SsdE4siQ8EbO76ye)
+  provides:
+    - WF_SCRIPT_APPROVE (qRsX9Ec7DWxqJiaS)
+    - WF_SCRIPT_REJECT (7yo7dZAtewNxK9TE)
+  affects:
+    - ScriptReview.jsx (Approve/Reject buttons now have live backend)
+    - topics table (script_review_status, status, script_review_feedback)
+    - production_log table
+key_files:
+  created:
+    - workflows/WF_SCRIPT_APPROVE.json
+    - workflows/WF_SCRIPT_REJECT.json
+decisions:
+  - Used responseMode=responseNode with immediate 200 before Supabase writes (fire-and-forget)
+  - Kept auth IF node despite plan note — matches all existing project webhook patterns
+  - WF_SCRIPT_APPROVE self-chains to /production/trigger with 10s timeout
+metrics:
+  duration_seconds: 301
+  completed_date: "2026-03-09"
+  tasks_completed: 2
+  files_created: 2
+requirements_satisfied: [E2E-01]
 ---
+
+# Phase 10 Plan 02: WF_SCRIPT_APPROVE and WF_SCRIPT_REJECT Summary
+
+**One-liner:** Gate 2 approve/reject webhooks that PATCH script_review_status in Supabase and chain approve→production trigger.
 
 # Plan 10-02: WF_SCRIPT_APPROVE + WF_SCRIPT_REJECT
 

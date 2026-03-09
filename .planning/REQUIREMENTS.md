@@ -35,11 +35,11 @@ Requirements for v1.1 Backend & E2E milestone. Closes v1.0 known gaps.
 
 ### Dashboard
 
-- [ ] **DASH-01**: Inline editing of topic fields (title, hook, avatar data) on Topic Review page
+- [x] **DASH-01**: Inline editing of topic fields (title, hook, avatar data) on Topic Review page
 
 ### Validation
 
-- [ ] **E2E-01**: Full pipeline test with US Credit Cards niche: create project → research → topics → Gate 1 approve → script generation → Gate 2 approve → TTS → images → video → assembly → Gate 3 → publish
+- [x] **E2E-01**: Full pipeline test with US Credit Cards niche: create project → research → topics → Gate 1 approve → script generation → Gate 2 approve → TTS → images → video → assembly → Gate 3 → publish
 
 ## v2 Requirements
 
@@ -81,8 +81,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGNT-07 | Phase 9 | Complete |
 | AGNT-08 | Phase 9 | Complete |
 | AGNT-09 | Phase 9 | Complete |
-| DASH-01 | Phase 9 | Pending |
-| E2E-01 | Phase 10 | Pending |
+| DASH-01 | Phase 9 | Complete |
+| E2E-01 | Phase 10 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 19 total

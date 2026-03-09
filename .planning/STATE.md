@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Backend & E2E
-status: completed
-stopped_at: Completed 09-04-PLAN.md
-last_updated: "2026-03-09T22:13:33.915Z"
-last_activity: "2026-03-09 — 09-04 complete (DASH-01 inline edit: TopicCard inline edit mode, useEditTopic webhook path fixed topics/edit→topics/action, useEditAvatar added, useRetryResearch added, ProjectCard retry button, TopicReview EditPanel removed, NicheResearch topics_exist confirm dialog; deployed to VPS)"
+status: in_progress
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-03-09T23:18:28Z"
+last_activity: "2026-03-09 — 10-02 complete (WF_SCRIPT_APPROVE qRsX9Ec7DWxqJiaS + WF_SCRIPT_REJECT 7yo7dZAtewNxK9TE deployed and active on n8n; Gate 2 approve chains to production/trigger; 193 dashboard tests pass)"
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 19
+  completed_plans: 15
+  percent: 79
 ---
 
 ---
@@ -244,10 +245,10 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 9 (AI Agent Workflows) — COMPLETE (4/4 plans done)
-Plan: 09-04 complete
+Phase: 10 (End-to-End Validation) — IN PROGRESS (2/6 plans done)
+Plan: 10-02 complete
 Status: Active
-Last activity: 2026-03-09 — 09-04 complete (DASH-01 inline edit: TopicCard inline edit mode, useEditTopic webhook path fixed topics/edit→topics/action, useEditAvatar added, useRetryResearch added, ProjectCard retry button, TopicReview EditPanel removed, NicheResearch topics_exist confirm dialog; deployed to VPS)
+Last activity: 2026-03-09 — 10-02 complete (WF_SCRIPT_APPROVE qRsX9Ec7DWxqJiaS + WF_SCRIPT_REJECT 7yo7dZAtewNxK9TE deployed and active on n8n; Gate 2 approve chains to production/trigger; 193 dashboard tests pass)
 
 ```
 v1.1 Progress: [██████████] 100% (Phase 7 complete, Phase 8 complete, Phase 9 complete)
@@ -274,6 +275,7 @@ Phases:        [7: ●] [8: ●] [9: ●] [10: ○]
 | Phase 09-ai-agent-workflows P02 | 18 | 2 tasks | 1 files |
 | Phase 09 P03 | 18 | 2 tasks | 1 files |
 | Phase 09-ai-agent-workflows P04 | 15 | 2 tasks | 10 files |
+| Phase 10-end-to-end-validation P02 | 301 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -320,6 +322,8 @@ Phases:        [7: ●] [8: ●] [9: ●] [10: ○]
 - [09-04] Both edit and edit_avatar webhook calls include project_id so WF_TOPICS_ACTION can write production_log with non-null project_id
 - [09-04] EditPanel SidePanel removed from TopicReview — edit is now inline in TopicCard per locked CONTEXT.md decision; EditPanel.jsx file retained but no longer imported
 - [09-04] TopicBulkActions.test.jsx has 4 pre-existing RED stubs from plan 02-02 — out of scope for this plan; all other 193 tests pass
+- [10-02] WF_SCRIPT_APPROVE (qRsX9Ec7DWxqJiaS) and WF_SCRIPT_REJECT (7yo7dZAtewNxK9TE) deployed to n8n, both active; approve self-chains to /production/trigger; n8n API strips tags/triggerCount/active fields on POST import — strip before curl
+- [10-02] Auth IF node kept in both workflows despite plan note to omit — all other project webhooks include it; consistency more important than nginx-redundancy concern
 
 ### Research Flags
 - Phase 9: pause_turn handling for long research NOT implemented — may need research spike during planning
@@ -341,6 +345,6 @@ Phases:        [7: ●] [8: ●] [9: ●] [10: ○]
 
 ## Session Continuity
 
-Last session: 2026-03-09T21:45:07.582Z
-Stopped at: Completed 09-04-PLAN.md
+Last session: 2026-03-09T23:20:42.233Z
+Stopped at: Completed 10-02-PLAN.md
 Resume: Phase 7 complete. Next: Plan Phase 8 (Credentials & Deployment). DNS action required: add A record dashboard.operscale.cloud → 72.61.201.148
