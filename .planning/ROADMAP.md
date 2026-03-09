@@ -103,5 +103,5 @@ Plans:
 | 6. Polish | v1.0 | 3/3 | Complete | 2026-03-09 |
 | 7. Infrastructure Hardening | v1.1 | 4/4 | Complete | 2026-03-09 |
 | 8. Credentials & Deployment | v1.1 | 4/4 | Complete | 2026-03-09 |
-| 9. AI Agent Workflows | 1/4 | In Progress|  | - |
+| 9. AI Agent Workflows | 2/4 | In Progress|  | - |
 | 10. End-to-End Validation | v1.1 | 0/? | Not started | - |
