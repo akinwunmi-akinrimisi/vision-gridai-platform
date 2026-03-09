@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Backend & E2E
 status: completed
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-03-09T17:40:13.983Z"
+last_activity: 2026-03-09 — 08-02 complete (all 6 n8n credentials verified; UUIDs recorded; TTS credential is 'googleServiceAccount'; DEPL-01 marked complete)
+progress:
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 8
+  completed_plans: 7
+  percent: 88
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: Backend & E2E
+status: completed
 stopped_at: Completed 08-02-PLAN.md
 last_updated: "2026-03-09T17:18:27.106Z"
 last_activity: 2026-03-09 — 08-01 complete (N8N_WEBHOOK_BASE + DASHBOARD_API_TOKEN injected into n8n container, Phase 7 vars preserved, healthz=200)
 progress:
-  total_phases: 4
+  [█████████░] 88%
   completed_phases: 1
   total_plans: 8
   completed_plans: 6
@@ -119,13 +135,13 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 8 (Credentials & Deployment) — In Progress (2/4 plans done)
-Plan: 08-02 complete
+Phase: 8 (Credentials & Deployment) — In Progress (3/4 plans done)
+Plan: 08-03 complete
 Status: Active
-Last activity: 2026-03-09 — 08-02 complete (all 6 n8n credentials verified; UUIDs recorded; TTS credential is 'googleServiceAccount'; DEPL-01 marked complete)
+Last activity: 2026-03-09 — 08-03 complete (n8n server audit: 205 workflows found, user kept all, webhook paths clear for production import, DEPL-02 satisfied)
 
 ```
-v1.1 Progress: [████████░░] 75% (Phase 7 complete, Phase 8 50% done)
+v1.1 Progress: [█████████░] 88% (Phase 7 complete, Phase 8 75% done)
 Phases:        [7: ●] [8: ◑] [9: ○] [10: ○]
 ```
 
@@ -142,6 +158,7 @@ Phases:        [7: ●] [8: ◑] [9: ○] [10: ○]
 | Phase 07 P04 | 28 | 6 tasks | 2 files |
 | Phase 08-credentials-deployment P01 | 3 | 2 tasks | 2 files |
 | Phase 08-credentials-deployment P02 | 25 | 3 tasks | 1 files |
+| Phase 08-credentials-deployment P03 | 5 | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -164,6 +181,8 @@ Phases:        [7: ●] [8: ◑] [9: ○] [10: ○]
 - [08-02] Google Drive credential actual name is 'GoogleDriveAccount' (UUID z0gigNHVnhcGz2pD); YouTube is 'YouTube account' (UUID bV36zJBQkG9QrayH)
 - [08-02] n8n /api/v1/credentials/{id}/test returns 404 for all credentials in this n8n version — version limitation; connectivity verified via direct API calls instead
 - [08-02] All 6 credential UUIDs: Anthropic=vlfOXwvIUlRYnr41, Supabase=QsqqFXtnLakNfVKR, Kie=rSyWwwFnPOZFL59o, TTS=wR9CUA4SPWBbPW4O, Drive=z0gigNHVnhcGz2pD, YouTube=bV36zJBQkG9QrayH
+- [08-03] n8n server has 205 total workflows (51 active) — all belong to unrelated projects; user chose to keep all; zero Vision GridAI production workflows active; webhook path namespace clear
+- [08-03] Two inactive stubs exist (WF_WEBHOOK_PROJECT_CREATE: 7yEv1fZonN0wLoJy, WF_WEBHOOK_TOPICS_ACTION: 7pqmKQY8AA71n8bs) — inactive, will not block Plan 08-04 import
 
 ### Research Flags
 - Phase 9: pause_turn handling for long research NOT implemented — may need research spike during planning
@@ -185,6 +204,6 @@ Phases:        [7: ●] [8: ◑] [9: ○] [10: ○]
 
 ## Session Continuity
 
-Last session: 2026-03-09T17:18:14.523Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-03-09T17:40:13.976Z
+Stopped at: Completed 08-03-PLAN.md
 Resume: Phase 7 complete. Next: Plan Phase 8 (Credentials & Deployment). DNS action required: add A record dashboard.operscale.cloud → 72.61.201.148
