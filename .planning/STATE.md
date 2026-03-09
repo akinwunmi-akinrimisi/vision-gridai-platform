@@ -3,30 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-08T20:52:48.842Z"
-last_activity: 2026-03-08 — Plan 02-00 executed (Wave 0 test scaffolds)
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-09T03:46:36Z"
+last_activity: 2026-03-09 — Plan 04-01 executed (Production data layer hooks)
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 02-00-PLAN.md
-last_updated: "2026-03-08T16:58:25Z"
-last_activity: 2026-03-08 — Plan 02-00 executed (Wave 0 test scaffolds)
-progress:
-  total_phases: 6
-  completed_phases: 1
-  total_plans: 9
-  completed_plans: 5
-  percent: 56
+  total_plans: 21
+  completed_plans: 14
+  percent: 67
 ---
 
 # Project State
@@ -36,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Any niche typed into the dashboard produces publish-ready YouTube videos with full human control at 3 approval gates
-**Current focus:** Phase 2: Niche Research + Topics
+**Current focus:** Phase 4: Production Pipeline
 
 ## Current Position
 
-Phase: 2 of 6 (Niche Research + Topics)
-Plan: 1 of 5 in current phase (02-01 next)
+Phase: 4 of 6 (Production Pipeline)
+Plan: 2 of 8 in current phase (04-02 next)
 Status: Executing
-Last activity: 2026-03-08 — Plan 02-00 executed (Wave 0 test scaffolds)
+Last activity: 2026-03-09 — Plan 04-01 executed (Production data layer hooks)
 
-Progress: [██████░░░░] 56% (5/9 total plans)
+Progress: [███████░░░] 67% (14/21 total plans)
 
 ## Performance Metrics
 
@@ -72,6 +57,7 @@ Progress: [██████░░░░] 56% (5/9 total plans)
 | Phase 03 P01 | 5min | 2 tasks | 11 files |
 | Phase 03 P02 | 9min | 2 tasks | 10 files |
 | Phase 03 P03 | 3min | 2 tasks | 5 files |
+| Phase 04 P01 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -95,6 +81,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Scenes sourced from useScenes hook with fallback to topic.script_json.scenes
 - [Phase 03]: TopicCard renders View Script link instead of Edit button for approved topics
 - [Phase 03]: Script refine targets weakest pass by score automatically
+- [Phase 04]: Production API helpers in separate productionApi.js module (not api.js) to match Wave 0 test import paths
+- [Phase 04]: Images progress counts all scenes (not just static_image) since i2v scenes also need source images
 
 ### Pending Todos
 
@@ -106,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-08T20:52:48.839Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-production-pipeline/04-CONTEXT.md
+Last session: 2026-03-09T03:46:36Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: .planning/phases/04-production-pipeline/04-01-SUMMARY.md

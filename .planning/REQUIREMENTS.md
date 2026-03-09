@@ -67,11 +67,11 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **PROD-07**: Caption/subtitle file generated from scene narration + timestamps
 - [ ] **PROD-08**: FFmpeg assembly — concat all scene clips with `-c copy` (no re-encoding), add captions, normalize audio
 - [ ] **PROD-09**: Each asset uploaded to Google Drive immediately after generation
-- [ ] **PROD-10**: Each scene row in Supabase updated immediately after each asset (not batched)
+- [x] **PROD-10**: Each scene row in Supabase updated immediately after each asset (not batched)
 - [ ] **PROD-11**: Self-chaining — each workflow fires the next on completion
-- [ ] **PROD-12**: Error handling — failures written to Supabase with `status = 'failed'` + `error_log`
-- [ ] **PROD-13**: Production Monitor page shows real-time scene-by-scene progress via Supabase Realtime
-- [ ] **PROD-14**: Project Dashboard page shows pipeline status table with all topics, progress bars, and scores
+- [x] **PROD-12**: Error handling — failures written to Supabase with `status = 'failed'` + `error_log`
+- [x] **PROD-13**: Production Monitor page shows real-time scene-by-scene progress via Supabase Realtime
+- [x] **PROD-14**: Project Dashboard page shows pipeline status table with all topics, progress bars, and scores
 
 ### Publishing
 
@@ -185,11 +185,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROD-07 | Phase 4 | Pending |
 | PROD-08 | Phase 4 | Pending |
 | PROD-09 | Phase 4 | Pending |
-| PROD-10 | Phase 4 | Pending |
+| PROD-10 | Phase 4 | Complete |
 | PROD-11 | Phase 4 | Pending |
-| PROD-12 | Phase 4 | Pending |
-| PROD-13 | Phase 4 | Pending |
-| PROD-14 | Phase 4 | Pending |
+| PROD-12 | Phase 4 | Complete |
+| PROD-13 | Phase 4 | Complete |
+| PROD-14 | Phase 4 | Complete |
 | OPS-01 | Phase 4 | Pending |
 | OPS-02 | Phase 4 | Pending |
 | PUBL-01 | Phase 5 | Pending |
