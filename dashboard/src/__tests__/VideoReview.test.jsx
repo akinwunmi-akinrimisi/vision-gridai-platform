@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 
@@ -58,6 +58,8 @@ const mockTopic = {
     },
   },
   publish_progress: null,
+  playlist_group: 1,
+  narrative_hook: 'Every YouTuber says get the Amex Platinum...',
 };
 
 const mockScenes = [
@@ -108,45 +110,61 @@ beforeEach(() => {
 });
 
 describe('VideoReview -- Page rendering', () => {
-  it('renders video review page', () => {
+  it('renders video review page with player', () => {
     renderWithProviders(<VideoReview />);
     expect(screen.getByTestId('video-review-page')).toBeTruthy();
+    expect(screen.getByTestId('video-player')).toBeTruthy();
   });
 
-  it.skip('displays metadata panel with title and tags', () => {
+  it('displays metadata panel with title and tags', () => {
     renderWithProviders(<VideoReview />);
-    expect(screen.getByText(/Amex Platinum/)).toBeTruthy();
-    expect(screen.getByText(/amex/)).toBeTruthy();
+    // Title appears in header and metadata panel
+    expect(screen.getAllByText(/Amex Platinum/).length).toBeGreaterThan(0);
+    // Tags rendered as chips
+    expect(screen.getByText('amex')).toBeTruthy();
+    expect(screen.getByText('credit cards')).toBeTruthy();
+    expect(screen.getByText('platinum')).toBeTruthy();
   });
 
-  it.skip('shows thumbnail preview', () => {
+  it('shows thumbnail preview', () => {
     renderWithProviders(<VideoReview />);
     expect(screen.getByTestId('thumbnail-preview')).toBeTruthy();
   });
 
-  it.skip('shows Gate 3 approve dialog with three options', () => {
-    // Simulate approve click -> expect Publish Now / Schedule / Approve Only options
-    renderWithProviders(<VideoReview />);
-    expect(screen.getByText(/Publish Now/)).toBeTruthy();
-  });
-
-  it.skip('toggles inline metadata edit mode', () => {
-    // Simulate Edit Metadata click -> expect input fields appear
-    renderWithProviders(<VideoReview />);
-    expect(screen.getByText(/Edit Metadata/)).toBeTruthy();
-  });
-
-  it.skip('shows upload progress steps when publishing', () => {
+  it('shows upload progress steps when publishing', () => {
     mockUseVideoReviewReturn = {
       ...mockUseVideoReviewReturn,
       topic: { ...mockTopic, publish_progress: 'uploading_video' },
     };
     renderWithProviders(<VideoReview />);
     expect(screen.getByTestId('upload-progress')).toBeTruthy();
+    expect(screen.getByText('Uploading video')).toBeTruthy();
   });
 
-  it.skip('displays quota remaining', () => {
+  it('shows published banner for published topics', () => {
+    mockUseVideoReviewReturn = {
+      ...mockUseVideoReviewReturn,
+      topic: {
+        ...mockTopic,
+        status: 'published',
+        youtube_video_id: 'yt-123',
+        youtube_url: 'https://youtube.com/watch?v=yt-123',
+        published_at: '2026-03-09T12:00:00Z',
+      },
+    };
     renderWithProviders(<VideoReview />);
-    expect(screen.getByText(/4 uploads remaining/)).toBeTruthy();
+    expect(screen.getByTestId('published-banner')).toBeTruthy();
+    expect(screen.getByText(/View on YouTube/)).toBeTruthy();
+  });
+
+  it('shows edit metadata button', () => {
+    renderWithProviders(<VideoReview />);
+    expect(screen.getByTestId('edit-metadata-btn')).toBeTruthy();
+  });
+
+  it('shows approve and reject buttons', () => {
+    renderWithProviders(<VideoReview />);
+    expect(screen.getByTestId('approve-btn')).toBeTruthy();
+    expect(screen.getByTestId('reject-btn')).toBeTruthy();
   });
 });
