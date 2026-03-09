@@ -17,7 +17,7 @@ Set up n8n to run the production platform end-to-end: create the 6 required cred
 
 **Credentials to create (in n8n credential manager):**
 
-1. `Anthropic API Key` (httpHeaderAuth) — key NOT in .env; user will provide value when prompted
+1. `Anthropic API Key` (httpHeaderAuth) — use `ANTHROPIC_API_KEY` from `.env`
 2. `Supabase Service Role` (httpHeaderAuth) — use `SERVICE_ROLE_KEY` from `.env` (the actual JWT, not the `SUPABASE_SERVICE_ROLE_KEY` placeholder)
 3. `Kie API Key` (httpHeaderAuth) — use `KIE_API` from `.env`
 4. `Google Cloud TTS` (service account JSON) — `SERVICE_ACCOUNT=my-n8n-service-account.json` exists locally; upload/configure in n8n as a Google Cloud service account credential
