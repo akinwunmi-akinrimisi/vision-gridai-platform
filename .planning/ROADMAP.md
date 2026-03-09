@@ -72,7 +72,13 @@ Plans:
   3. Approve, reject, and refine actions update topic status in real-time on the dashboard, with refinement considering all 24 other topics
   4. Inline editing of topic fields (title, hook, avatar data) saves changes without full page reload
   5. All AI workflow failures write error status to Supabase and produce production_log entries visible in the dashboard
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — WF_PROJECT_CREATE hardening: timeout 600s, idempotency guard, production_log, error handlers (AGNT-01, AGNT-02, AGNT-03, AGNT-07, AGNT-08)
+- [ ] 09-02-PLAN.md — WF_TOPICS_GENERATE hardening: idempotency + force batches, system prompt fix, dedup context, production_log, error handlers (AGNT-04, AGNT-06, AGNT-07, AGNT-08, AGNT-09)
+- [ ] 09-03-PLAN.md — WF_TOPICS_ACTION hardening: edit_avatar route, production_log for all actions, refine error handler (AGNT-05, AGNT-07, AGNT-08)
+- [ ] 09-04-PLAN.md — Dashboard inline editing: TopicCard edit mode, fix useEditTopic path, useEditAvatar, useRetryResearch, ProjectCard retry button (DASH-01)
 
 ### Phase 10: End-to-End Validation
 **Goal**: The full pipeline works from niche input to YouTube publish with the US Credit Cards niche
@@ -96,6 +102,6 @@ Plans:
 | 5. Publish + Analytics | v1.0 | 5/5 | Complete | 2026-03-09 |
 | 6. Polish | v1.0 | 3/3 | Complete | 2026-03-09 |
 | 7. Infrastructure Hardening | v1.1 | 4/4 | Complete | 2026-03-09 |
-| 8. Credentials & Deployment | 4/4 | Complete   | 2026-03-09 | - |
-| 9. AI Agent Workflows | v1.1 | 0/? | Not started | - |
+| 8. Credentials & Deployment | v1.1 | 4/4 | Complete | 2026-03-09 |
+| 9. AI Agent Workflows | v1.1 | 0/4 | Not started | - |
 | 10. End-to-End Validation | v1.1 | 0/? | Not started | - |
