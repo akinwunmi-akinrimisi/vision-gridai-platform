@@ -90,6 +90,7 @@ Progress: [████████░░] 76% (16/21 total plans)
 | Phase 03 P03 | 3min | 2 tasks | 5 files |
 | Phase 04 P01 | 5min | 2 tasks | 6 files |
 | Phase 04 P00 | 8min | 2 tasks | 21 files |
+| Phase 04 P02 | 8min | 2 tasks | 8 files |
 | Phase 04 P03 | 5min | 2 tasks | 4 files |
 | Phase 04 P04 | 6min | 2 tasks | 3 files |
 
@@ -121,6 +122,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Production progress weighted: audio 20%, images 20%, i2v 15%, t2v 15%, assembly 30%
 - [Phase 04]: Single workflow file for all 11 production webhook endpoints (not separate files)
 - [Phase 04]: TTS uses workflow static data for cumulative timeline across SplitInBatches loop
+- [Phase 04]: DotGrid computes failedScenes locally from scenes array as fallback when hook doesn't provide it
+- [Phase 04]: Scene status color mapping: gray=pending, blue=audio, cyan=image, purple=video, green=complete, red=failed
 
 ### Pending Todos
 
