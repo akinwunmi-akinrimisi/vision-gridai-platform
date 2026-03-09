@@ -27,7 +27,7 @@ Build a multi-niche AI video production platform in phases following the strict 
 
 ### v1.1 Backend & E2E
 
-- [ ] **Phase 7: Infrastructure Hardening** — Docker memory limits, PostgreSQL tuning, n8n env vars, dashboard deploy
+- [x] **Phase 7: Infrastructure Hardening** — Docker memory limits, PostgreSQL tuning, n8n env vars, dashboard deploy (completed 2026-03-09)
 - [ ] **Phase 8: Credentials & Deployment** — Production credentials, stub deactivation, workflow import, webhook URL config
 - [ ] **Phase 9: AI Agent Workflows** — Niche research, prompt generation, topic generation, topic actions, inline editing
 - [ ] **Phase 10: End-to-End Validation** — Full pipeline test with US Credit Cards niche through all 3 gates
@@ -89,7 +89,7 @@ Build a multi-niche AI video production platform in phases following the strict 
 | 4. Production Pipeline | v1.0 | 8/8 | Complete | 2026-03-09 |
 | 5. Publish + Analytics | v1.0 | 5/5 | Complete | 2026-03-09 |
 | 6. Polish | v1.0 | 3/3 | Complete | 2026-03-09 |
-| 7. Infrastructure Hardening | 3/4 | In Progress|  | - |
+| 7. Infrastructure Hardening | 4/4 | Complete   | 2026-03-09 | - |
 | 8. Credentials & Deployment | v1.1 | 0/? | Not started | - |
 | 9. AI Agent Workflows | v1.1 | 0/? | Not started | - |
 | 10. End-to-End Validation | v1.1 | 0/? | Not started | - |

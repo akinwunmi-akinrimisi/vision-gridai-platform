@@ -12,7 +12,7 @@ Requirements for v1.1 Backend & E2E milestone. Closes v1.0 known gaps.
 - [x] **INFR-01**: Docker memory limits set for all containers (n8n 4GB, supabase-db 4GB, realtime 1GB, rest 512MB)
 - [x] **INFR-02**: PostgreSQL tuned for NVMe VPS (shared_buffers 1GB, effective_cache_size 3GB, random_page_cost 1.1, shm_size 256m)
 - [x] **INFR-03**: n8n environment variables configured (EXECUTIONS_TIMEOUT=600, NODE_OPTIONS=--max-old-space-size=2048, N8N_PAYLOAD_SIZE_MAX=256, binary data pruning enabled)
-- [ ] **INFR-04**: Dashboard built and deployed to Nginx root on VPS
+- [x] **INFR-04**: Dashboard built and deployed to Nginx root on VPS
 
 ### Credentials & Deployment
 
@@ -67,7 +67,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFR-01 | Phase 7 | Complete |
 | INFR-02 | Phase 7 | Complete |
 | INFR-03 | Phase 7 | Complete |
-| INFR-04 | Phase 7 | Pending |
+| INFR-04 | Phase 7 | Complete |
 | DEPL-01 | Phase 8 | Pending |
 | DEPL-02 | Phase 8 | Pending |
 | DEPL-03 | Phase 8 | Pending |
