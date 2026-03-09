@@ -54,7 +54,13 @@ Build a multi-niche AI video production platform in phases following the strict 
   2. No v1.0 stub workflows are active — only full v1.1 implementations respond to webhook paths
   3. All production workflow JSONs are imported, activated, and visible in n8n workflow list
   4. Self-chaining webhook URLs resolve correctly using environment variable expressions (not hardcoded)
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Add N8N_WEBHOOK_BASE + DASHBOARD_API_TOKEN to n8n container env (DEPL-04)
+- [ ] 08-02-PLAN.md — Create 4 new n8n credentials, verify 2 existing, record all UUIDs (DEPL-01)
+- [ ] 08-03-PLAN.md — Discover stubs, user checkpoint, delete confirmed stubs (DEPL-02)
+- [ ] 08-04-PLAN.md — Import 18 workflows in 2 waves, activate, re-link credentials (DEPL-01, DEPL-03)
 
 ### Phase 9: AI Agent Workflows
 **Goal**: Users can create a project, research a niche, generate topics, and take actions on them from the dashboard
@@ -89,7 +95,7 @@ Build a multi-niche AI video production platform in phases following the strict 
 | 4. Production Pipeline | v1.0 | 8/8 | Complete | 2026-03-09 |
 | 5. Publish + Analytics | v1.0 | 5/5 | Complete | 2026-03-09 |
 | 6. Polish | v1.0 | 3/3 | Complete | 2026-03-09 |
-| 7. Infrastructure Hardening | 4/4 | Complete    | 2026-03-09 | - |
-| 8. Credentials & Deployment | v1.1 | 0/? | Not started | - |
+| 7. Infrastructure Hardening | v1.1 | 4/4 | Complete | 2026-03-09 |
+| 8. Credentials & Deployment | v1.1 | 0/4 | Not started | - |
 | 9. AI Agent Workflows | v1.1 | 0/? | Not started | - |
 | 10. End-to-End Validation | v1.1 | 0/? | Not started | - |
