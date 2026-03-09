@@ -1,0 +1,944 @@
+{
+  "name": "WF_TTS_AUDIO",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/tts",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-tts-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "production-tts-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-tts",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-tts",
+      "name": "Check Auth Token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-tts",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Trigger').item.json.body.topic_id, message: 'TTS workflow started' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-tts-accepted",
+      "name": "Respond TTS Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $('Webhook Trigger').item.json.body.topic_id }}" },
+            { "name": "audio_status", "value": "=eq.pending" },
+            { "name": "order", "value": "scene_number.asc" },
+            { "name": "select", "value": "id,topic_id,project_id,scene_number,scene_id,narration_text,visual_type,chapter" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "load-pending-scenes",
+      "name": "Load Pending Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $json[0]?.project_id, topic_id: $('Webhook Trigger').item.json.body.topic_id, stage: 'audio', action: 'started', details: { pending_scenes: $json.length } }) }}",
+        "options": {}
+      },
+      "id": "log-tts-started",
+      "name": "Log TTS Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare scenes array with cumulative tracking metadata\nconst scenes = $('Load Pending Scenes').first().json;\nif (!Array.isArray(scenes) || scenes.length === 0) {\n  return [{ json: { scenes: [], topic_id: $('Webhook Trigger').item.json.body.topic_id, total_scenes: 0 } }];\n}\n\n// Get the last completed scene's end_time_ms for resume support\n// We'll query this separately; for now set initial cumulative to 0\nreturn [{\n  json: {\n    scenes: scenes,\n    topic_id: scenes[0].topic_id,\n    project_id: scenes[0].project_id,\n    total_scenes: scenes.length,\n    current_index: 0,\n    cumulative_end_time_ms: 0,\n    scenes_completed: 0,\n    scenes_failed: 0,\n    total_cost: 0\n  }\n}];"
+      },
+      "id": "prepare-scene-loop",
+      "name": "Prepare Scene Loop",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $json.topic_id }}" },
+            { "name": "audio_status", "value": "=eq.uploaded" },
+            { "name": "order", "value": "scene_number.desc" },
+            { "name": "limit", "value": "1" },
+            { "name": "select", "value": "end_time_ms" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-last-end-time",
+      "name": "Get Last End Time",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1570, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Set cumulative_end_time_ms from last completed scene (for resume support)\nconst lastCompleted = $input.first().json;\nconst prepData = $('Prepare Scene Loop').first().json;\n\nlet cumulativeMs = 0;\nif (Array.isArray(lastCompleted) && lastCompleted.length > 0 && lastCompleted[0].end_time_ms) {\n  cumulativeMs = lastCompleted[0].end_time_ms;\n}\n\nreturn [{\n  json: {\n    ...prepData,\n    cumulative_end_time_ms: cumulativeMs\n  }\n}];"
+      },
+      "id": "set-cumulative-start",
+      "name": "Set Cumulative Start",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1790, 200]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        },
+        "batchSize": 1
+      },
+      "id": "split-scenes",
+      "name": "Loop Over Scenes",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [2010, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Set Cumulative Start').item.json.topic_id }}" },
+            { "name": "select", "value": "status" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-topic-status",
+      "name": "Check Topic Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2230, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-not-stopped",
+              "leftValue": "={{ $json[0]?.status }}",
+              "rightValue": "stopped",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-not-stopped",
+      "name": "If Not Stopped",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2450, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get current scene data from the batch\nconst batchItem = $('Loop Over Scenes').item.json;\nconst scene = batchItem;\n\nreturn [{\n  json: {\n    scene_id: scene.id,\n    topic_id: scene.topic_id,\n    project_id: scene.project_id,\n    scene_number: scene.scene_number,\n    scene_id_text: scene.scene_id,\n    narration_text: scene.narration_text,\n    visual_type: scene.visual_type,\n    chapter: scene.chapter,\n    padded_num: String(scene.scene_number).padStart(3, '0'),\n    retry_count: 0\n  }\n}];"
+      },
+      "id": "prepare-tts-call",
+      "name": "Prepare TTS Call",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2670, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ input: { text: $json.narration_text }, voice: { languageCode: 'en-US', name: 'en-US-Chirp3-HD-Charon' }, audioConfig: { audioEncoding: 'MP3', sampleRateHertz: 24000 } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "tts-api-call",
+      "name": "Google Cloud TTS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2890, 100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "tts-success",
+              "leftValue": "={{ $json.audioContent ? 'true' : 'false' }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-tts-success",
+      "name": "If TTS Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3110, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decode base64 audio and prepare for file write\nconst audioBase64 = $json.audioContent;\nconst prevScene = $('Prepare TTS Call').first().json;\nconst topicId = prevScene.topic_id;\nconst paddedNum = prevScene.padded_num;\n\n// Convert base64 to binary buffer\nconst binaryData = Buffer.from(audioBase64, 'base64');\n\n// Store as binary for file write\nreturn [{\n  json: {\n    scene_id: prevScene.scene_id,\n    topic_id: topicId,\n    project_id: prevScene.project_id,\n    scene_number: prevScene.scene_number,\n    padded_num: paddedNum,\n    file_path: `/tmp/production/${topicId}/audio/scene_${paddedNum}.mp3`,\n    dir_path: `/tmp/production/${topicId}/audio`\n  },\n  binary: {\n    data: {\n      data: audioBase64,\n      mimeType: 'audio/mpeg',\n      fileName: `scene_${paddedNum}.mp3`\n    }\n  }\n}];"
+      },
+      "id": "decode-audio",
+      "name": "Decode Audio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3330, 0]
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p /tmp/production/{{ $json.topic_id }}/audio"
+      },
+      "id": "create-audio-dir",
+      "name": "Create Audio Dir",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [3550, 0]
+    },
+    {
+      "parameters": {
+        "fileName": "={{ $('Decode Audio').item.json.file_path }}",
+        "options": {}
+      },
+      "id": "write-audio-file",
+      "name": "Write Audio File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [3770, 0]
+    },
+    {
+      "parameters": {
+        "command": "=ffprobe -v quiet -show_entries format=duration -of csv=p=0 {{ $('Decode Audio').item.json.file_path }}"
+      },
+      "id": "ffprobe-duration",
+      "name": "FFprobe Duration",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [3990, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse FFprobe output and compute timeline\nconst durationStr = $input.first().json.stdout?.trim() || '0';\nconst durationSeconds = parseFloat(durationStr);\nconst durationMs = Math.round(durationSeconds * 1000);\n\n// Get cumulative timeline from state\n// We need to track this across iterations\nconst sceneData = $('Decode Audio').first().json;\n\n// Read the current cumulative from a global variable or compute it\n// In n8n, we use $getWorkflowStaticData to persist across loop iterations\nconst staticData = $getWorkflowStaticData('global');\nconst startTimeMs = staticData.cumulative_end_time_ms || 0;\nconst endTimeMs = startTimeMs + durationMs;\n\n// Update static data for next iteration\nstaticData.cumulative_end_time_ms = endTimeMs;\nstaticData.scenes_completed = (staticData.scenes_completed || 0) + 1;\nstaticData.total_tts_cost = (staticData.total_tts_cost || 0) + 0.002;\n\nreturn [{\n  json: {\n    scene_id: sceneData.scene_id,\n    topic_id: sceneData.topic_id,\n    project_id: sceneData.project_id,\n    scene_number: sceneData.scene_number,\n    padded_num: sceneData.padded_num,\n    file_path: sceneData.file_path,\n    duration_seconds: durationSeconds,\n    audio_duration_ms: durationMs,\n    start_time_ms: startTimeMs,\n    end_time_ms: endTimeMs,\n    scenes_completed: staticData.scenes_completed,\n    total_tts_cost: staticData.total_tts_cost\n  }\n}];"
+      },
+      "id": "compute-timeline",
+      "name": "Compute Timeline",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4210, 0]
+    },
+    {
+      "parameters": {
+        "name": "=scene_{{ $json.padded_num }}.mp3",
+        "folderId": "={{ $('Set Cumulative Start').item.json.drive_subfolder_ids?.audio || 'root' }}",
+        "options": {}
+      },
+      "id": "upload-to-drive",
+      "name": "Upload to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [4430, 0],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "google-drive-cred",
+          "name": "Google Drive"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Compute Timeline').item.json.scene_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ audio_status: 'uploaded', audio_duration_ms: $('Compute Timeline').item.json.audio_duration_ms, audio_file_drive_id: $json.id || null, audio_file_url: $json.webViewLink || null, start_time_ms: $('Compute Timeline').item.json.start_time_ms, end_time_ms: $('Compute Timeline').item.json.end_time_ms }) }}",
+        "options": {}
+      },
+      "id": "update-scene-supabase",
+      "name": "Update Scene in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4650, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Compute Timeline').item.json.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ audio_progress: 'done:' + $('Compute Timeline').item.json.scenes_completed + '/' + $('Set Cumulative Start').item.json.total_scenes, total_cost: $('Compute Timeline').item.json.total_tts_cost, cost_breakdown: { tts: $('Compute Timeline').item.json.total_tts_cost } }) }}",
+        "options": {}
+      },
+      "id": "update-topic-progress",
+      "name": "Update Topic Progress",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4870, 0]
+    },
+    {
+      "parameters": {},
+      "id": "continue-loop",
+      "name": "Continue Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [5090, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TTS failed - check retry count\nconst prevScene = $('Prepare TTS Call').first().json;\nconst retryCount = prevScene.retry_count || 0;\n\nconst errorMsg = $json.error || $json.message || 'TTS API call failed';\n\nreturn [{\n  json: {\n    scene_id: prevScene.scene_id,\n    topic_id: prevScene.topic_id,\n    scene_number: prevScene.scene_number,\n    retry_count: retryCount,\n    error_message: errorMsg,\n    max_retries: 3\n  }\n}];"
+      },
+      "id": "handle-tts-error",
+      "name": "Handle TTS Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3330, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "can-retry",
+              "leftValue": "={{ $json.retry_count }}",
+              "rightValue": "3",
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-can-retry",
+      "name": "If Can Retry",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3550, 200]
+    },
+    {
+      "parameters": {
+        "amount": "={{ 30 * Math.pow(2, $json.retry_count) }}",
+        "unit": "seconds"
+      },
+      "id": "wait-backoff",
+      "name": "Wait Backoff",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [3770, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Increment retry count and re-attempt TTS\nconst data = $input.first().json;\nreturn [{\n  json: {\n    scene_id: data.scene_id,\n    topic_id: data.topic_id,\n    project_id: $('Prepare TTS Call').first().json.project_id,\n    scene_number: data.scene_number,\n    scene_id_text: $('Prepare TTS Call').first().json.scene_id_text,\n    narration_text: $('Prepare TTS Call').first().json.narration_text,\n    visual_type: $('Prepare TTS Call').first().json.visual_type,\n    chapter: $('Prepare TTS Call').first().json.chapter,\n    padded_num: $('Prepare TTS Call').first().json.padded_num,\n    retry_count: data.retry_count + 1\n  }\n}];"
+      },
+      "id": "increment-retry",
+      "name": "Increment Retry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3990, 150]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.scene_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ audio_status: 'failed' }) }}",
+        "options": {}
+      },
+      "id": "mark-scene-failed",
+      "name": "Mark Scene Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3770, 350]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Track failed scene in static data\nconst staticData = $getWorkflowStaticData('global');\nstaticData.scenes_failed = (staticData.scenes_failed || 0) + 1;\n\nreturn [{ json: { continue: true } }];"
+      },
+      "id": "track-failure",
+      "name": "Track Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3990, 350]
+    },
+    {
+      "parameters": {},
+      "id": "continue-after-fail",
+      "name": "Continue After Fail",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [4210, 350]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TTS stopped by user - log and exit\nconst staticData = $getWorkflowStaticData('global');\n\nreturn [{\n  json: {\n    topic_id: $('Set Cumulative Start').item.json.topic_id,\n    project_id: $('Set Cumulative Start').item.json.project_id,\n    reason: 'stopped_by_user',\n    scenes_completed: staticData.scenes_completed || 0,\n    scenes_failed: staticData.scenes_failed || 0\n  }\n}];"
+      },
+      "id": "handle-stopped",
+      "name": "Handle Stopped",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2670, 350]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $json.project_id, topic_id: $json.topic_id, stage: 'audio', action: 'stopped', details: { reason: 'stopped_by_user', scenes_completed: $json.scenes_completed, scenes_failed: $json.scenes_failed } }) }}",
+        "options": {}
+      },
+      "id": "log-tts-stopped",
+      "name": "Log TTS Stopped",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2890, 350]
+    },
+    {
+      "parameters": {
+        "jsCode": "// All scenes processed - compile summary\nconst staticData = $getWorkflowStaticData('global');\nconst topicId = $('Set Cumulative Start').first().json.topic_id;\nconst projectId = $('Set Cumulative Start').first().json.project_id;\nconst totalScenes = $('Set Cumulative Start').first().json.total_scenes;\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    project_id: projectId,\n    total_scenes: totalScenes,\n    scenes_completed: staticData.scenes_completed || 0,\n    scenes_failed: staticData.scenes_failed || 0,\n    total_duration_ms: staticData.cumulative_end_time_ms || 0,\n    total_tts_cost: staticData.total_tts_cost || 0\n  }\n}];"
+      },
+      "id": "compile-summary",
+      "name": "Compile Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2230, -200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.topic_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'images', audio_progress: 'complete', last_status_change: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "set-topic-images-status",
+      "name": "Set Topic Status Images",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2450, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $('Compile Summary').item.json.project_id, topic_id: $('Compile Summary').item.json.topic_id, stage: 'audio', action: 'completed', details: { scenes_completed: $('Compile Summary').item.json.scenes_completed, scenes_failed: $('Compile Summary').item.json.scenes_failed, total_duration_ms: $('Compile Summary').item.json.total_duration_ms, total_tts_cost: $('Compile Summary').item.json.total_tts_cost } }) }}",
+        "options": {}
+      },
+      "id": "log-tts-completed",
+      "name": "Log TTS Completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2670, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/images",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Compile Summary').item.json.topic_id }) }}",
+        "options": {}
+      },
+      "id": "fire-images-workflow",
+      "name": "Fire Images Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2890, -300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/i2v",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Compile Summary').item.json.topic_id }) }}",
+        "options": {}
+      },
+      "id": "fire-i2v-workflow",
+      "name": "Fire I2V Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2890, -200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/t2v",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Compile Summary').item.json.topic_id }) }}",
+        "options": {}
+      },
+      "id": "fire-t2v-workflow",
+      "name": "Fire T2V Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2890, -100],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "Check Auth Token", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth Token": {
+      "main": [
+        [{ "node": "Respond TTS Accepted", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized", "type": "main", "index": 0 }]
+      ]
+    },
+    "Respond TTS Accepted": {
+      "main": [
+        [{ "node": "Load Pending Scenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Load Pending Scenes": {
+      "main": [
+        [{ "node": "Log TTS Started", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log TTS Started": {
+      "main": [
+        [{ "node": "Prepare Scene Loop", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Scene Loop": {
+      "main": [
+        [{ "node": "Get Last End Time", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Last End Time": {
+      "main": [
+        [{ "node": "Set Cumulative Start", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Cumulative Start": {
+      "main": [
+        [{ "node": "Loop Over Scenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Loop Over Scenes": {
+      "main": [
+        [{ "node": "Compile Summary", "type": "main", "index": 0 }],
+        [{ "node": "Check Topic Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Topic Status": {
+      "main": [
+        [{ "node": "If Not Stopped", "type": "main", "index": 0 }]
+      ]
+    },
+    "If Not Stopped": {
+      "main": [
+        [{ "node": "Prepare TTS Call", "type": "main", "index": 0 }],
+        [{ "node": "Handle Stopped", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare TTS Call": {
+      "main": [
+        [{ "node": "Google Cloud TTS", "type": "main", "index": 0 }]
+      ]
+    },
+    "Google Cloud TTS": {
+      "main": [
+        [{ "node": "If TTS Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "If TTS Success": {
+      "main": [
+        [{ "node": "Decode Audio", "type": "main", "index": 0 }],
+        [{ "node": "Handle TTS Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Decode Audio": {
+      "main": [
+        [{ "node": "Create Audio Dir", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Audio Dir": {
+      "main": [
+        [{ "node": "Write Audio File", "type": "main", "index": 0 }]
+      ]
+    },
+    "Write Audio File": {
+      "main": [
+        [{ "node": "FFprobe Duration", "type": "main", "index": 0 }]
+      ]
+    },
+    "FFprobe Duration": {
+      "main": [
+        [{ "node": "Compute Timeline", "type": "main", "index": 0 }]
+      ]
+    },
+    "Compute Timeline": {
+      "main": [
+        [{ "node": "Upload to Drive", "type": "main", "index": 0 }]
+      ]
+    },
+    "Upload to Drive": {
+      "main": [
+        [{ "node": "Update Scene in Supabase", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Scene in Supabase": {
+      "main": [
+        [{ "node": "Update Topic Progress", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Topic Progress": {
+      "main": [
+        [{ "node": "Continue Loop", "type": "main", "index": 0 }]
+      ]
+    },
+    "Continue Loop": {
+      "main": [
+        [{ "node": "Loop Over Scenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Handle TTS Error": {
+      "main": [
+        [{ "node": "If Can Retry", "type": "main", "index": 0 }]
+      ]
+    },
+    "If Can Retry": {
+      "main": [
+        [{ "node": "Wait Backoff", "type": "main", "index": 0 }],
+        [{ "node": "Mark Scene Failed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait Backoff": {
+      "main": [
+        [{ "node": "Increment Retry", "type": "main", "index": 0 }]
+      ]
+    },
+    "Increment Retry": {
+      "main": [
+        [{ "node": "Google Cloud TTS", "type": "main", "index": 0 }]
+      ]
+    },
+    "Mark Scene Failed": {
+      "main": [
+        [{ "node": "Track Failure", "type": "main", "index": 0 }]
+      ]
+    },
+    "Track Failure": {
+      "main": [
+        [{ "node": "Continue After Fail", "type": "main", "index": 0 }]
+      ]
+    },
+    "Continue After Fail": {
+      "main": [
+        [{ "node": "Loop Over Scenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Handle Stopped": {
+      "main": [
+        [{ "node": "Log TTS Stopped", "type": "main", "index": 0 }]
+      ]
+    },
+    "Compile Summary": {
+      "main": [
+        [{ "node": "Set Topic Status Images", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Topic Status Images": {
+      "main": [
+        [{ "node": "Log TTS Completed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log TTS Completed": {
+      "main": [
+        [
+          { "node": "Fire Images Workflow", "type": "main", "index": 0 },
+          { "node": "Fire I2V Workflow", "type": "main", "index": 0 },
+          { "node": "Fire T2V Workflow", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "production" },
+    { "name": "tts" },
+    { "name": "audio" }
+  ],
+  "triggerCount": 1,
+  "active": false
+}
