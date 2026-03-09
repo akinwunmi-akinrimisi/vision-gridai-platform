@@ -23,14 +23,14 @@ Requirements for v1.1 Backend & E2E milestone. Closes v1.0 known gaps.
 
 ### AI Agent Workflows
 
-- [ ] **AGNT-01**: Niche research workflow calls Claude API with web_search_20250305 tool via HTTP Request node (timeout 300s, max_uses 10)
-- [ ] **AGNT-02**: Niche research writes structured results to niche_profiles table (competitor_analysis, pain_points, keywords, blue_ocean as JSONB)
-- [ ] **AGNT-03**: Dynamic prompt generation creates 7 prompt types per niche in prompt_configs table with version tracking
+- [x] **AGNT-01**: Niche research workflow calls Claude API with web_search_20250305 tool via HTTP Request node (timeout 300s, max_uses 10)
+- [x] **AGNT-02**: Niche research writes structured results to niche_profiles table (competitor_analysis, pain_points, keywords, blue_ocean as JSONB)
+- [x] **AGNT-03**: Dynamic prompt generation creates 7 prompt types per niche in prompt_configs table with version tracking
 - [ ] **AGNT-04**: Topic generation workflow produces 25 topics + 25 avatars using niche-specific prompts with blue-ocean methodology
 - [ ] **AGNT-05**: Topic action workflow handles approve/reject/refine with all-24-topics context for refinement
 - [ ] **AGNT-06**: Idempotency guards prevent duplicate topic/avatar creation on re-trigger
-- [ ] **AGNT-07**: All AI workflows write production_log entries for dashboard activity tracking
-- [ ] **AGNT-08**: Error handlers connected on all failure branches with status written to Supabase
+- [x] **AGNT-07**: All AI workflows write production_log entries for dashboard activity tracking
+- [x] **AGNT-08**: Error handlers connected on all failure branches with status written to Supabase
 - [ ] **AGNT-09**: System prompt loaded from projects.niche_system_prompt (not substring hack)
 
 ### Dashboard
@@ -72,14 +72,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEPL-02 | Phase 8 | Complete |
 | DEPL-03 | Phase 8 | Complete |
 | DEPL-04 | Phase 8 | Complete |
-| AGNT-01 | Phase 9 | Pending |
-| AGNT-02 | Phase 9 | Pending |
-| AGNT-03 | Phase 9 | Pending |
+| AGNT-01 | Phase 9 | Complete |
+| AGNT-02 | Phase 9 | Complete |
+| AGNT-03 | Phase 9 | Complete |
 | AGNT-04 | Phase 9 | Pending |
 | AGNT-05 | Phase 9 | Pending |
 | AGNT-06 | Phase 9 | Pending |
-| AGNT-07 | Phase 9 | Pending |
-| AGNT-08 | Phase 9 | Pending |
+| AGNT-07 | Phase 9 | Complete |
+| AGNT-08 | Phase 9 | Complete |
 | AGNT-09 | Phase 9 | Pending |
 | DASH-01 | Phase 9 | Pending |
 | E2E-01 | Phase 10 | Pending |

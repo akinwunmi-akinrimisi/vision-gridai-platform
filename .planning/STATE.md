@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Backend & E2E
 status: completed
-stopped_at: Phase 9 context gathered
-last_updated: "2026-03-09T19:48:04.802Z"
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-03-09T20:41:58.585Z"
 last_activity: 2026-03-09 — 08-05 complete (18/18 workflows active; WF_TTS_AUDIO + WF_CAPTIONS_ASSEMBLY activated after replacing 8 executeCommand nodes with Code nodes; NODE_FUNCTION_ALLOW_BUILTIN=child_process added to n8n override; DEPL-03 satisfied)
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 13
+  completed_plans: 10
 ---
 
 ---
@@ -207,6 +207,7 @@ Phases:        [7: ●] [8: ●] [9: ○] [10: ○]
 | Phase 08-credentials-deployment P03 | 5 | 3 tasks | 1 files |
 | Phase 08-credentials-deployment P04 | 31 | 3 tasks | 0 files |
 | Phase 08-credentials-deployment P05 | 16 | 3 tasks | 2 files |
+| Phase 09-ai-agent-workflows P01 | 7 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -239,6 +240,9 @@ Phases:        [7: ●] [8: ●] [9: ○] [10: ○]
 - [08-04] n8n auto-resolves httpHeaderAuth creds by name on import; only renamed Drive/YouTube creds needed manual UUID patching
 - [08-04] WF_PROJECT_CREATE webhook path changed to 'internal/project-create' — WF_WEBHOOK_PROJECT_CREATE is canonical external endpoint at 'project/create'
 - [08-04] All 18 workflow IDs recorded: WF_WEBHOOK_STATUS=QRfPPKz2hWaRLF0F, WF_WEBHOOK_PROJECT_CREATE=tX99MoY83pEzfGja, WF_WEBHOOK_TOPICS_GENERATE=H5XjurL9qILe3KaG, WF_WEBHOOK_TOPICS_ACTION=cc0n4oQnEU8Fy5AY, WF_WEBHOOK_PRODUCTION=SsdE4siQ8EbO76ye, WF_WEBHOOK_PUBLISH=K2QLOdQUcvsCQDpy, WF_WEBHOOK_SETTINGS=TfcJuN8HkOdlEmTR, WF_TTS_AUDIO=4L2j3aU2WGnfcvvj, WF_IMAGE_GENERATION=ScP3yoaeuK7BwpUo, WF_I2V_GENERATION=rHQa9gThXQleyStj, WF_T2V_GENERATION=KQDyQt5PV8uqCrXM, WF_CAPTIONS_ASSEMBLY=Fhdy66BLRh7rAwTi, WF_YOUTUBE_UPLOAD=IKu9SGDkS0pzZwoP, WF_ANALYTICS_CRON=2YuUQSGJPQs2n1Rz, WF_SUPERVISOR=uAlOrkJFjkkXrw6t, WF_PROJECT_CREATE=8KW1hiRklamduMzO, WF_TOPICS_GENERATE=J5NTvfweZRiKJ9fG, WF_TOPICS_ACTION=BE1mpwuBigLsq26v
+- [09-01] Idempotency guard reads niche_profiles table before research; if found, skip Claude web search and only re-generate prompts with version increment (MAX(version)+1, is_active toggle)
+- [09-01] Error routing via onError=continueRegularOutput + Check Error Code node + IF branch pattern — both Claude call failures write projects.status=research_failed and production_log action=failed
+- [09-01] WF_PROJECT_CREATE expanded from 14 to 30 nodes; timeout 120s -> 600s on both Claude calls; all AGNT-01/02/03/07/08 requirements satisfied
 
 ### Research Flags
 - Phase 9: pause_turn handling for long research NOT implemented — may need research spike during planning
@@ -260,6 +264,6 @@ Phases:        [7: ●] [8: ●] [9: ○] [10: ○]
 
 ## Session Continuity
 
-Last session: 2026-03-09T19:48:04.784Z
-Stopped at: Phase 9 context gathered
+Last session: 2026-03-09T20:41:58.573Z
+Stopped at: Completed 09-01-PLAN.md
 Resume: Phase 7 complete. Next: Plan Phase 8 (Credentials & Deployment). DNS action required: add A record dashboard.operscale.cloud → 72.61.201.148
