@@ -1,21 +1,33 @@
-/**
- * API helpers for Settings page webhook calls.
- * Stub — will be implemented in Phase 06 Plan 01.
- */
 import { webhookCall } from './api';
 
-export function updateProjectSettings(projectId, fields) {
-  return webhookCall('settings/update', { project_id: projectId, ...fields });
-}
+/**
+ * Update project settings (production config, YouTube/Drive fields).
+ * @param {string} projectId - Project UUID
+ * @param {object} fields - Key-value pairs to update on the projects table
+ */
+export const updateProjectSettings = (projectId, fields) =>
+  webhookCall('project/update-settings', { project_id: projectId, ...fields });
 
-export function updatePrompt(promptId, promptText) {
-  return webhookCall('settings/prompt/update', { prompt_id: promptId, prompt_text: promptText });
-}
+/**
+ * Update a single prompt's text (normal edit — overwrites active row).
+ * @param {string} promptId - Prompt config UUID
+ * @param {string} promptText - New prompt text
+ */
+export const updatePrompt = (promptId, promptText) =>
+  webhookCall('prompts/update', { prompt_id: promptId, prompt_text: promptText });
 
-export function revertPrompt(promptId, version) {
-  return webhookCall('settings/prompt/revert', { prompt_id: promptId, version });
-}
+/**
+ * Revert a prompt to a previous version (creates new version preserving history).
+ * @param {string} promptId - Prompt config UUID
+ * @param {number} version - Version number to revert to
+ */
+export const revertPrompt = (promptId, version) =>
+  webhookCall('prompts/revert', { prompt_id: promptId, version });
 
-export function regenerateAllPrompts(projectId) {
-  return webhookCall('settings/prompts/regenerate', { project_id: projectId });
-}
+/**
+ * Regenerate all prompts for a project using niche profile data.
+ * Creates new versions preserving history.
+ * @param {string} projectId - Project UUID
+ */
+export const regenerateAllPrompts = (projectId) =>
+  webhookCall('prompts/regenerate', { project_id: projectId });
