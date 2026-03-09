@@ -39,7 +39,7 @@ Set up n8n to run the production platform end-to-end: create the 6 required cred
 
 - **Method:** n8n REST API — `POST /api/v1/workflows` for each JSON file from local repo
 - **Source:** `workflows/` directory in the repo — curl posts directly to n8n URL (no SCP needed)
-- **Count:** 17 workflow JSON files to import
+- **Count:** 18 workflow JSON files to import (confirmed by research — CONTEXT.md originally said 17)
 - **Activation order:**
   1. **Wave 1 — Webhook handlers first** (WF_WEBHOOK_PRODUCTION, WF_WEBHOOK_PROJECT_CREATE, WF_WEBHOOK_PUBLISH, WF_WEBHOOK_SETTINGS, WF_WEBHOOK_STATUS, WF_WEBHOOK_TOPICS_ACTION, WF_WEBHOOK_TOPICS_GENERATE) — these must be active before production workflows self-chain into them
   2. **Wave 2 — Production workflows** (all remaining: WF_TTS_AUDIO, WF_IMAGE_GENERATION, WF_I2V_GENERATION, WF_T2V_GENERATION, WF_CAPTIONS_ASSEMBLY, WF_YOUTUBE_UPLOAD, WF_ANALYTICS_CRON, WF_SUPERVISOR, WF_PROJECT_CREATE, WF_TOPICS_GENERATE, WF_TOPICS_ACTION)
