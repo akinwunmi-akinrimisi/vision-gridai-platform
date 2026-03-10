@@ -1,18 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router';
+import CreateProjectModal from '../components/projects/CreateProjectModal';
 
-// Mock react-router
-vi.mock('react-router', async () => {
-  const actual = await vi.importActual('react-router');
-  return {
-    ...actual,
-    useParams: () => ({ id: 'test-project-id' }),
-    useNavigate: () => vi.fn(),
-  };
-});
+let mockMutateAsync = vi.fn().mockResolvedValue({ success: true });
+let mockIsPending = false;
 
-// Mock supabase client
+// Mock useProjects hook
+vi.mock('../../hooks/useProjects', () => ({
+  useCreateProject: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: mockIsPending,
+  }),
+}));
+
+// Mock hooks at correct relative path from component
+vi.mock('../hooks/useProjects', () => ({
+  useCreateProject: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: mockIsPending,
+  }),
+}));
+
+// Mock supabase
 vi.mock('../lib/supabase', () => ({
   supabase: {
     from: vi.fn(() => ({
@@ -25,12 +36,13 @@ vi.mock('../lib/supabase', () => ({
       on: vi.fn().mockReturnThis(),
       subscribe: vi.fn(),
     })),
+    removeChannel: vi.fn(),
   },
 }));
 
-// Mock webhookCall
-vi.mock('../lib/api', () => ({
-  webhookCall: vi.fn().mockResolvedValue({ success: true }),
+// Mock sonner
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
 }));
 
 function renderWithProviders(ui) {
@@ -39,34 +51,65 @@ function renderWithProviders(ui) {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      {ui}
+      <MemoryRouter>
+        {ui}
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockMutateAsync = vi.fn().mockResolvedValue({ success: true });
+  mockIsPending = false;
 });
 
 describe('CreateProjectModal (NICH-01)', () => {
   it('renders modal when isOpen is true', () => {
-    // RED: implement in plan 02-01
-    // CreateProjectModal component does not exist yet
-    expect(true).toBe(false);
+    renderWithProviders(<CreateProjectModal isOpen={true} onClose={vi.fn()} />);
+
+    expect(screen.getByText('New Project')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Niche Name/)).toBeInTheDocument();
+    expect(screen.getByText('Create Project')).toBeInTheDocument();
   });
 
   it('requires niche name to be non-empty', () => {
-    // RED: implement in plan 02-01
-    expect(true).toBe(false);
+    renderWithProviders(<CreateProjectModal isOpen={true} onClose={vi.fn()} />);
+
+    const submitBtn = screen.getByText('Create Project');
+    // Button should be disabled when niche is empty (< 2 chars)
+    expect(submitBtn).toBeDisabled();
   });
 
-  it('calls useCreateProject mutation on submit', () => {
-    // RED: implement in plan 02-01
-    expect(true).toBe(false);
+  it('calls useCreateProject mutation on submit', async () => {
+    renderWithProviders(<CreateProjectModal isOpen={true} onClose={vi.fn()} />);
+
+    const input = screen.getByLabelText(/Niche Name/);
+    fireEvent.change(input, { target: { value: 'US Credit Cards' } });
+
+    const submitBtn = screen.getByText('Create Project');
+    expect(submitBtn).not.toBeDisabled();
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        niche: 'US Credit Cards',
+        description: undefined,
+        target_video_count: 25,
+      });
+    });
   });
 
-  it('shows success animation after submit', () => {
-    // RED: implement in plan 02-01
-    expect(true).toBe(false);
+  it('shows success animation after submit', async () => {
+    renderWithProviders(<CreateProjectModal isOpen={true} onClose={vi.fn()} />);
+
+    const input = screen.getByLabelText(/Niche Name/);
+    fireEvent.change(input, { target: { value: 'US Credit Cards' } });
+    fireEvent.click(screen.getByText('Create Project'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('success-state')).toBeInTheDocument();
+      expect(screen.getByText('Project created!')).toBeInTheDocument();
+    });
   });
 });

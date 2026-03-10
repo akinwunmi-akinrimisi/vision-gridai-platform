@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+dashboard/dist/
+
+# Environment & secrets
+.env
+*.env.local
+client_secret_supabase.json
+my-n8n-service-account.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
