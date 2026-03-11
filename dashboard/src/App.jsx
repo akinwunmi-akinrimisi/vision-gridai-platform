@@ -1,18 +1,26 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router';
 import { useAuth } from './hooks/useAuth';
 import PinGate from './components/auth/PinGate';
 import AppLayout from './components/layout/AppLayout';
 import ErrorBoundary from './components/ui/ErrorBoundary';
-import ProjectsHome from './pages/ProjectsHome';
-import ProjectDashboard from './pages/ProjectDashboard';
-import NicheResearch from './pages/NicheResearch';
-import TopicReview from './pages/TopicReview';
-import ScriptReview from './pages/ScriptReview';
-import ProductionMonitor from './pages/ProductionMonitor';
-import Analytics from './pages/Analytics';
-import VideoReview from './pages/VideoReview';
-import Settings from './pages/Settings';
-import TopicDetail from './pages/TopicDetail';
+
+const ProjectsHome = lazy(() => import('./pages/ProjectsHome'));
+const ProjectDashboard = lazy(() => import('./pages/ProjectDashboard'));
+const NicheResearch = lazy(() => import('./pages/NicheResearch'));
+const TopicReview = lazy(() => import('./pages/TopicReview'));
+const TopicDetail = lazy(() => import('./pages/TopicDetail'));
+const ScriptReview = lazy(() => import('./pages/ScriptReview'));
+const VideoReview = lazy(() => import('./pages/VideoReview'));
+const ProductionMonitor = lazy(() => import('./pages/ProductionMonitor'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+const PageFallback = (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="w-6 h-6 border-2 border-slate-300 dark:border-slate-600 border-t-primary dark:border-t-blue-400 rounded-full animate-spin" />
+  </div>
+);
 
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -24,18 +32,20 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppLayout onLogout={logout}>
-        <Routes>
-          <Route path="/" element={<ProjectsHome />} />
-          <Route path="/project/:id" element={<ProjectDashboard />} />
-          <Route path="/project/:id/research" element={<NicheResearch />} />
-          <Route path="/project/:id/topics" element={<TopicReview />} />
-          <Route path="/project/:id/topics/:topicId" element={<TopicDetail />} />
-          <Route path="/project/:id/topics/:topicId/script" element={<ScriptReview />} />
-          <Route path="/project/:id/topics/:topicId/review" element={<VideoReview />} />
-          <Route path="/project/:id/production" element={<ProductionMonitor />} />
-          <Route path="/project/:id/analytics" element={<Analytics />} />
-          <Route path="/project/:id/settings" element={<Settings />} />
-        </Routes>
+        <Suspense fallback={PageFallback}>
+          <Routes>
+            <Route path="/" element={<ProjectsHome />} />
+            <Route path="/project/:id" element={<ProjectDashboard />} />
+            <Route path="/project/:id/research" element={<NicheResearch />} />
+            <Route path="/project/:id/topics" element={<TopicReview />} />
+            <Route path="/project/:id/topics/:topicId" element={<TopicDetail />} />
+            <Route path="/project/:id/topics/:topicId/script" element={<ScriptReview />} />
+            <Route path="/project/:id/topics/:topicId/review" element={<VideoReview />} />
+            <Route path="/project/:id/production" element={<ProductionMonitor />} />
+            <Route path="/project/:id/analytics" element={<Analytics />} />
+            <Route path="/project/:id/settings" element={<Settings />} />
+          </Routes>
+        </Suspense>
       </AppLayout>
     </ErrorBoundary>
   );

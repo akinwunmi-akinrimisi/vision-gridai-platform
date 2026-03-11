@@ -388,7 +388,7 @@ function AssetCard({ stage, scenes, expanded, onToggle, onRetry, onSkip, stagger
         onClick={onToggle}
         aria-expanded={expanded}
         aria-controls={panelId}
-        className="w-full flex items-center gap-4 p-5 text-left hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-colors group"
+        className="w-full flex items-center gap-3 sm:gap-4 p-4 sm:p-5 text-left hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-colors group"
       >
         <div
           className={`
@@ -540,7 +540,7 @@ function AssetCard({ stage, scenes, expanded, onToggle, onRetry, onSkip, stagger
           className="border-t border-slate-100 dark:border-white/[0.04]"
         >
           {/* Drill-down summary stats */}
-          <div className="px-5 py-3 grid grid-cols-5 gap-2 border-b border-slate-100 dark:border-white/[0.04] bg-slate-50/50 dark:bg-white/[0.01]">
+          <div className="px-3 sm:px-5 py-3 grid grid-cols-3 sm:grid-cols-5 gap-2 border-b border-slate-100 dark:border-white/[0.04] bg-slate-50/50 dark:bg-white/[0.01]">
             {[
               { label: 'Done', value: counts.done, color: 'text-emerald-600 dark:text-emerald-400' },
               { label: 'Active', value: counts.in_progress, color: 'text-amber-600 dark:text-amber-400' },
@@ -821,28 +821,30 @@ export default function TopicDetail() {
   return (
     <div className="animate-in" data-testid="topic-detail-page">
       {/* ── Header ──────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link
-          to={`/project/${projectId}`}
-          className="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-          aria-label="Back to project dashboard"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2.5 mb-1">
-            <h1 className="page-title truncate">{topic.seo_title || topic.original_title || 'Untitled'}</h1>
-            <span className="flex-shrink-0 badge badge-blue text-2xs">#{topic.topic_number}</span>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className={statusCfg.cls}>{statusCfg.label}</span>
-            {topic.playlist_angle && (
-              <span className="text-2xs text-text-muted dark:text-text-muted-dark">{topic.playlist_angle}</span>
-            )}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <Link
+            to={`/project/${projectId}`}
+            className="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+            aria-label="Back to project dashboard"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2.5 mb-1">
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate">{topic.seo_title || topic.original_title || 'Untitled'}</h1>
+              <span className="flex-shrink-0 badge badge-blue text-2xs">#{topic.topic_number}</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className={statusCfg.cls}>{statusCfg.label}</span>
+              {topic.playlist_angle && (
+                <span className="text-2xs text-text-muted dark:text-text-muted-dark">{topic.playlist_angle}</span>
+              )}
+            </div>
           </div>
         </div>
         {/* Quick actions */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 pl-10 sm:pl-0">
           {hasScript && (
             <Link
               to={`/project/${projectId}/topics/${topicId}/script`}

@@ -199,7 +199,7 @@ export default function Analytics() {
   return (
     <div className="animate-in">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6">
         <div className="page-header mb-0">
           <h1 className="page-title">Analytics</h1>
           <p className="page-subtitle">
@@ -208,14 +208,15 @@ export default function Analytics() {
               : 'YouTube performance tracking across all videos'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
             className="btn-secondary btn-sm"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh Now
+            <span className="hidden sm:inline">Refresh Now</span>
+            <span className="sm:hidden">Refresh</span>
           </button>
           <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
         </div>

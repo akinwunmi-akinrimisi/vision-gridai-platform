@@ -118,8 +118,8 @@ export default function PerformanceTable({ topics, projectId }) {
           Video Performance
         </h3>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-white/[0.06]">
               {COLUMNS.map((col) => (

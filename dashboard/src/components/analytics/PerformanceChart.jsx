@@ -40,11 +40,11 @@ export default function PerformanceChart({ data }) {
   const text = isDark ? '#94A3B8' : '#64748B';
 
   return (
-    <div className="glass-card p-6" data-testid="performance-chart">
+    <div className="glass-card p-4 sm:p-6" data-testid="performance-chart">
       <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight mb-4">
         CTR & Avg Duration per Video
       </h3>
-      <div className="h-64">
+      <div className="h-48 sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={grid} />

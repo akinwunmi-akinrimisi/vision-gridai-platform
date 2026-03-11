@@ -30,11 +30,11 @@ export default function CostDonut({ costBreakdown }) {
 
   if (!costBreakdown) {
     return (
-      <div className="glass-card p-6" data-testid="cost-donut">
+      <div className="glass-card p-4 sm:p-6" data-testid="cost-donut">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight mb-4">
           Cost Distribution
         </h3>
-        <div className="h-64 flex items-center justify-center">
+        <div className="h-48 sm:h-64 flex items-center justify-center">
           <div className="text-center">
             <DollarSign className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
             <p className="text-sm text-text-muted dark:text-text-muted-dark">
@@ -58,11 +58,11 @@ export default function CostDonut({ costBreakdown }) {
 
   if (total === 0) {
     return (
-      <div className="glass-card p-6" data-testid="cost-donut">
+      <div className="glass-card p-4 sm:p-6" data-testid="cost-donut">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight mb-4">
           Cost Distribution
         </h3>
-        <div className="h-64 flex items-center justify-center">
+        <div className="h-48 sm:h-64 flex items-center justify-center">
           <p className="text-sm text-text-muted dark:text-text-muted-dark">No cost data yet</p>
         </div>
       </div>
@@ -74,7 +74,7 @@ export default function CostDonut({ costBreakdown }) {
       <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight mb-4">
         Cost Distribution
       </h3>
-      <div className="h-64 relative">
+      <div className="h-48 sm:h-64 relative">
         {/* Center total */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <div className="text-center">

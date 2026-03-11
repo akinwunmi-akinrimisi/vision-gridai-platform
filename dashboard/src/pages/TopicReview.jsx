@@ -179,20 +179,21 @@ export default function TopicReview() {
   return (
     <div className="animate-in">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div className="page-header mb-0">
           <h1 className="page-title">Topic Review</h1>
           <p className="page-subtitle">Review, approve, or refine generated topics</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {hasRejected && (
             <button
               onClick={() => setConfirmAction({ type: 'regenerate-rejected' })}
               className="btn-secondary btn-sm"
             >
               <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
-              Regenerate Rejected
+              <span className="hidden sm:inline">Regenerate Rejected</span>
+              <span className="sm:hidden">Regen</span>
             </button>
           )}
           {counts.pending > 0 && (
@@ -211,7 +212,7 @@ export default function TopicReview() {
       <TopicSummaryBar {...counts} />
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-2 sm:gap-3 mb-5 overflow-x-auto">
         <FilterDropdown label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
         <FilterDropdown label="Playlist" value={playlistFilter} onChange={setPlaylistFilter} options={PLAYLIST_OPTIONS} />
       </div>

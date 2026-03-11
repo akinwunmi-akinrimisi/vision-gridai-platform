@@ -51,9 +51,9 @@ export default function FailedScenes({
   };
 
   return (
-    <div data-testid="failed-scenes" className="glass-card p-6 mb-6">
+    <div data-testid="failed-scenes" className="glass-card p-4 sm:p-6 mb-6">
       {/* Header with batch actions */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-red-500" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -65,29 +65,31 @@ export default function FailedScenes({
             data-testid="retry-all-failed"
             onClick={onRetryAll}
             className="
-              flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
+              flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium
               bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400
               hover:bg-blue-100 dark:hover:bg-blue-900/30
               border border-blue-200 dark:border-blue-800
-              transition-colors duration-200 cursor-pointer
+              transition-colors duration-200 cursor-pointer min-h-[36px]
             "
           >
             <RefreshCw className="w-3 h-3" />
-            Retry All Failed
+            <span className="hidden sm:inline">Retry All Failed</span>
+            <span className="sm:hidden">Retry All</span>
           </button>
           <button
             data-testid="skip-all-failed"
             onClick={onSkipAll}
             className="
-              flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
+              flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium
               bg-slate-50 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400
               hover:bg-slate-100 dark:hover:bg-white/[0.06]
               border border-slate-200 dark:border-white/[0.06]
-              transition-colors duration-200 cursor-pointer
+              transition-colors duration-200 cursor-pointer min-h-[36px]
             "
           >
             <SkipForward className="w-3 h-3" />
-            Skip All Failed
+            <span className="hidden sm:inline">Skip All Failed</span>
+            <span className="sm:hidden">Skip All</span>
           </button>
         </div>
       </div>
@@ -104,12 +106,12 @@ export default function FailedScenes({
             "
           >
             {/* Scene info row */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex items-start sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
                 <span className="text-xs font-semibold text-red-600 dark:text-red-400 shrink-0">
                   Scene {scene.scene_number}
                 </span>
-                <span className="text-[10px] text-text-muted dark:text-text-muted-dark truncate">
+                <span className="text-[10px] text-text-muted dark:text-text-muted-dark truncate hidden sm:inline">
                   {scene.chapter}
                 </span>
                 <span className="text-xs text-red-500 dark:text-red-400 shrink-0">

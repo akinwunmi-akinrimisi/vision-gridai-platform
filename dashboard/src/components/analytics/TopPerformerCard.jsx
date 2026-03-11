@@ -42,30 +42,30 @@ export default function TopPerformerCard({ topic }) {
           </h3>
         </div>
 
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
           {/* Thumbnail */}
           {topic.thumbnail_url && (
             <img
               src={topic.thumbnail_url}
               alt=""
-              className="w-20 h-12 rounded-lg object-cover flex-shrink-0"
+              className="w-full sm:w-20 h-32 sm:h-12 rounded-lg object-cover flex-shrink-0"
             />
           )}
 
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold text-slate-900 dark:text-white truncate mb-3">
+            <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white truncate mb-3">
               {topic.seo_title || topic.original_title || `Topic #${topic.topic_number}`}
             </p>
 
             {/* Metric chips */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {stats.map((s) => (
                 <div
                   key={s.label}
                   className="badge badge-blue"
                 >
                   <s.icon className="w-3 h-3 text-text-muted dark:text-text-muted-dark" />
-                  <span className="text-text-muted dark:text-text-muted-dark">{s.label}:</span>
+                  <span className="text-text-muted dark:text-text-muted-dark hidden sm:inline">{s.label}:</span>
                   <span className="tabular-nums">{s.value}</span>
                 </div>
               ))}

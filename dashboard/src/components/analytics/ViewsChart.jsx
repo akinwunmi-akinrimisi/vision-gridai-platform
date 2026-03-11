@@ -35,11 +35,11 @@ export default function ViewsChart({ data }) {
   const text = isDark ? '#94A3B8' : '#64748B';
 
   return (
-    <div className="glass-card p-6">
+    <div className="glass-card p-4 sm:p-6">
       <h3 className="section-title mb-4">
         Views Over Time
       </h3>
-      <div className="h-64">
+      <div className="h-48 sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>

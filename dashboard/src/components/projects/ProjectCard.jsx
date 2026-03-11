@@ -260,11 +260,11 @@ export default function ProjectCard({ project, onRetry }) {
   return (
     <NavLink to={route} className="card-interactive p-6 group block no-underline">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${accent} flex items-center justify-center shadow-md transition-transform duration-300 group-hover:scale-110`}>
+      <div className="flex items-start justify-between gap-2 mb-4">
+        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${accent} flex items-center justify-center shadow-md transition-transform duration-300 group-hover:scale-110 flex-shrink-0`}>
           <Folder className="w-5 h-5 text-white" strokeWidth={1.8} />
         </div>
-        <span className={computedStatus.badge}>{computedStatus.label}</span>
+        <span className={`${computedStatus.badge} text-right max-w-[60%] truncate`}>{computedStatus.label}</span>
       </div>
 
       {/* Title */}

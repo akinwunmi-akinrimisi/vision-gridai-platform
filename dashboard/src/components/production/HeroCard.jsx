@@ -107,9 +107,9 @@ export default function HeroCard({ topic, stageProgress, elapsed, eta, cost, onS
   const breakdown = topic?.cost_breakdown;
 
   return (
-    <div data-testid="hero-card" className="group glass-card gradient-border-visible p-6 mb-6 shadow-[0_0_30px_rgba(37,99,235,0.06),0_0_60px_rgba(124,58,237,0.04)]">
+    <div data-testid="hero-card" className="group glass-card gradient-border-visible p-4 sm:p-6 mb-6 shadow-[0_0_30px_rgba(37,99,235,0.06),0_0_60px_rgba(124,58,237,0.04)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-start sm:items-center justify-between mb-5 gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent-600 flex items-center justify-center shadow-md shadow-primary/20 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg group-hover:shadow-primary/30">
             <Activity className="w-5 h-5 text-white" />
@@ -148,7 +148,7 @@ export default function HeroCard({ topic, stageProgress, elapsed, eta, cost, onS
       </div>
 
       {/* Timing & Cost */}
-      <div className="flex items-center gap-5 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
+      <div className="flex items-center gap-3 sm:gap-5 pt-4 border-t border-slate-100 dark:border-white/[0.06] flex-wrap">
         <div className="flex items-center gap-1.5 text-xs" data-testid="elapsed-time">
           <Clock className="w-3.5 h-3.5 text-slate-400" />
           <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200">

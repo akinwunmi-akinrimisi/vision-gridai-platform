@@ -66,14 +66,14 @@ export default function DotGrid({ scenes = [] }) {
   ).length;
 
   return (
-    <div data-testid="dot-grid" className="glass-card p-6 mb-6">
+    <div data-testid="dot-grid" className="glass-card p-4 sm:p-6 mb-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Zap className="w-4 h-4 text-primary" />
           <h3 className="section-title text-sm">Scene Progress</h3>
         </div>
-        <div className="flex items-center gap-3 text-2xs text-slate-400 dark:text-slate-500 tabular-nums">
+        <div className="flex items-center gap-2 sm:gap-3 text-2xs text-slate-400 dark:text-slate-500 tabular-nums">
           <span>{completedCount}/{scenes.length} done</span>
           {failedCount > 0 && (
             <span className="text-red-500">{failedCount} failed</span>

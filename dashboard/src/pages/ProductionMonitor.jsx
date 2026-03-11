@@ -166,14 +166,14 @@ export default function ProductionMonitor() {
 
           {/* Stopped state controls */}
           {stoppedTopic && !activeTopic && (
-            <div className="glass-card p-6 mb-6">
+            <div className="glass-card p-4 sm:p-6 mb-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
                   <StopCircle className="w-4 h-4 text-red-500" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Production Stopped</h3>
               </div>
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
                 <button onClick={handleResumeProduction} className="btn-primary btn-sm">
                   <Play className="w-3.5 h-3.5" />
                   Resume
@@ -184,7 +184,7 @@ export default function ProductionMonitor() {
                     value={restartText}
                     onChange={(e) => setRestartText(e.target.value)}
                     placeholder="Type RESTART"
-                    className="input w-40 !py-1.5 text-xs"
+                    className="input w-32 sm:w-40 !py-1.5 text-xs"
                   />
                   <button
                     onClick={handleRestartProduction}

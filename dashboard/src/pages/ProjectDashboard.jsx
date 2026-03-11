@@ -109,7 +109,7 @@ export default function ProjectDashboard() {
       </div>
 
       {/* Financial metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4 mb-8">
         {isLoading
           ? Array.from({ length: 5 }).map((_, i) => <SkeletonMetric key={i} />)
           : financialMetrics.map((f, i) => (
@@ -135,8 +135,8 @@ export default function ProjectDashboard() {
       </div>
 
       {/* Pipeline header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <h2 className="section-title">Pipeline Status</h2>
           {metrics.pendingReview > 0 && (
             <span className="badge badge-amber">
@@ -152,7 +152,7 @@ export default function ProjectDashboard() {
           )}
         </div>
         {approvedForPublish.length > 0 && (
-          <button onClick={() => setBatchDialogOpen(true)} className="btn-success btn-sm">
+          <button onClick={() => setBatchDialogOpen(true)} className="btn-success btn-sm flex-shrink-0">
             <Upload className="w-3.5 h-3.5" />
             Publish All ({approvedForPublish.length})
           </button>

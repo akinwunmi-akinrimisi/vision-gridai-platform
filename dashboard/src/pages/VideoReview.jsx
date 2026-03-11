@@ -181,25 +181,25 @@ export default function VideoReview() {
       )}
 
       {/* Full-width header bar */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
         <Link
           to={`/project/${projectId}`}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
           title="Back to Dashboard"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
 
-        <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-white/[0.08] dark:to-white/[0.04] flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">
+        <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-white/[0.08] dark:to-white/[0.04] flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">
           {topic.topic_number}
         </span>
 
-        <h1 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex-1 min-w-0 truncate">
+        <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight flex-1 min-w-0 truncate">
           {topic.seo_title || topic.original_title}
         </h1>
 
         {topic.playlist_group && (
-          <span className={PLAYLIST_BADGE[topic.playlist_group] || 'badge badge-blue'}>
+          <span className={`${PLAYLIST_BADGE[topic.playlist_group] || 'badge badge-blue'} hidden sm:inline-flex`}>
             Playlist {topic.playlist_group}
           </span>
         )}
@@ -211,7 +211,7 @@ export default function VideoReview() {
         )}
 
         {/* Prev/Next arrows */}
-        <div className="flex items-center gap-1 ml-2">
+        <div className="flex items-center gap-1 ml-auto sm:ml-2">
           <button
             onClick={() =>
               prevTopic &&

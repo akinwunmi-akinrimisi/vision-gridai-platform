@@ -47,26 +47,27 @@ export default function ProjectsHome() {
   return (
     <div className="animate-slide-up">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between gap-3 mb-6 sm:mb-8">
         <div>
           <h1 className="page-title">Projects</h1>
           <p className="page-subtitle">Manage your AI video production niches</p>
         </div>
-        <button onClick={() => setModalOpen(true)} className="btn-primary">
+        <button onClick={() => setModalOpen(true)} className="btn-primary flex-shrink-0">
           <Plus className="w-4 h-4" />
-          New Project
+          <span className="hidden sm:inline">New Project</span>
+          <span className="sm:hidden">New</span>
         </button>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6 sm:mb-8">
         {stats.map((stat, i) => (
           <div
             key={stat.label}
-            className={`glass-card p-5 animate-slide-up stagger-${i + 1}`}
+            className={`glass-card p-3 sm:p-5 animate-slide-up stagger-${i + 1}`}
             style={{ opacity: 0 }}
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
               <span className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 {stat.label}
               </span>
