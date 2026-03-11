@@ -79,7 +79,7 @@ export default function NicheResearch() {
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors cursor-pointer"
+            className="btn-primary btn-sm"
           >
             Retry
           </button>
@@ -203,32 +203,28 @@ export default function NicheResearch() {
         {/* LEFT COLUMN */}
         <div className="space-y-6">
           {/* Blue-Ocean Hero (most prominent) */}
+          <div className="animate-slide-up stagger-1" style={{ opacity: 0 }}>
           <BlueOceanHero
             strategy={project?.niche_blue_ocean_strategy}
             expertiseProfile={project?.niche_expertise_profile}
             valueGaps={blueOcean.value_curve_gaps || blueOcean.unoccupied_angles || []}
           />
+          </div>
 
           {/* Playlist Cards */}
+          <div className="animate-slide-up stagger-2" style={{ opacity: 0 }}>
           <PlaylistCards
             playlists={playlists}
             onRegenerate={handleRegeneratePlaylists}
           />
+          </div>
 
           {/* Generate Topics CTA */}
           {canGenerateTopics && (
             <button
               onClick={handleGenerateTopics}
               disabled={generating}
-              className="
-                w-full flex items-center justify-center gap-2
-                px-6 py-3.5 rounded-xl text-sm font-semibold
-                bg-gradient-to-r from-primary to-indigo-600 text-white
-                shadow-md shadow-primary/20
-                hover:shadow-lg hover:shadow-primary/30
-                transition-all duration-200 cursor-pointer
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
+              className="btn-primary btn-lg w-full"
             >
               {generating ? (
                 <>
@@ -248,7 +244,7 @@ export default function NicheResearch() {
           <div className="flex justify-center">
             <button
               onClick={() => setReresearchOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
+              className="btn-ghost btn-sm"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Re-research Niche
@@ -258,10 +254,18 @@ export default function NicheResearch() {
 
         {/* RIGHT COLUMN */}
         <div className="space-y-6">
-          <CompetitorCards competitors={competitors} />
-          <PainPoints painPoints={painPoints} />
-          <KeywordCloud keywords={keywords} />
-          <RedOceanList topics={redOceanTopics} />
+          <div className="animate-slide-up stagger-3" style={{ opacity: 0 }}>
+            <CompetitorCards competitors={competitors} />
+          </div>
+          <div className="animate-slide-up stagger-4" style={{ opacity: 0 }}>
+            <PainPoints painPoints={painPoints} />
+          </div>
+          <div className="animate-slide-up stagger-5" style={{ opacity: 0 }}>
+            <KeywordCloud keywords={keywords} />
+          </div>
+          <div className="animate-slide-up stagger-6" style={{ opacity: 0 }}>
+            <RedOceanList topics={redOceanTopics} />
+          </div>
         </div>
       </div>
 

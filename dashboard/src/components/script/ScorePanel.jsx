@@ -46,7 +46,7 @@ function CollapsibleSection({ title, icon: Icon, children, defaultOpen = false }
     <div className="border-t border-border/50 dark:border-white/[0.06]">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider hover:text-slate-900 dark:hover:text-white transition-colors"
+        className="w-full flex items-center justify-between py-3 px-2 -mx-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-all"
         aria-expanded={open}
       >
         <span className="flex items-center gap-2">
@@ -85,7 +85,7 @@ export default function ScorePanel({ topic, onApprove, onReject, onRefine, isLoa
   const buttonsDisabled = isLoading || isApproved || !overallScore;
 
   return (
-    <div className="glass-card p-6" data-testid="score-panel">
+    <div className="glass-card p-6 gradient-border-visible" data-testid="score-panel">
       {/* Quality Score Header */}
       <div className="flex items-center gap-3 mb-5">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
@@ -159,7 +159,7 @@ export default function ScorePanel({ topic, onApprove, onReject, onRefine, isLoa
         <button
           onClick={onApprove}
           disabled={buttonsDisabled}
-          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-semibold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="btn-success w-full"
           data-testid="approve-btn"
         >
           <Check className="w-3.5 h-3.5" /> Approve Script
@@ -168,7 +168,7 @@ export default function ScorePanel({ topic, onApprove, onReject, onRefine, isLoa
           <button
             onClick={onReject}
             disabled={buttonsDisabled}
-            className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/[0.08] hover:bg-red-100 dark:hover:bg-red-500/[0.15] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn-danger btn-sm"
             data-testid="reject-btn"
           >
             <X className="w-3.5 h-3.5" /> Reject
@@ -176,7 +176,7 @@ export default function ScorePanel({ topic, onApprove, onReject, onRefine, isLoa
           <button
             onClick={onRefine}
             disabled={buttonsDisabled}
-            className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-primary dark:text-blue-400 bg-primary/[0.06] dark:bg-primary/[0.1] hover:bg-primary/[0.12] dark:hover:bg-primary/[0.18] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn-secondary btn-sm"
             data-testid="refine-btn"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Refine

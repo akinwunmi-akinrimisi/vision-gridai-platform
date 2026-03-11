@@ -189,20 +189,16 @@ export default function TopicReview() {
           {hasRejected && (
             <button
               onClick={() => setConfirmAction({ type: 'regenerate-rejected' })}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium
-                text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/[0.08]
-                border border-amber-200/50 dark:border-amber-500/20
-                hover:bg-amber-100 dark:hover:bg-amber-500/[0.12] transition-colors cursor-pointer"
+              className="btn-secondary btn-sm"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
               Regenerate Rejected
             </button>
           )}
           {counts.pending > 0 && (
             <button
               onClick={handleApproveAll}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold
-                text-white bg-emerald-500 hover:bg-emerald-600 transition-colors cursor-pointer"
+              className="btn-success btn-sm"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               Approve All
@@ -222,16 +218,14 @@ export default function TopicReview() {
 
       {/* All resolved banner */}
       {allResolved && (
-        <div className="flex items-center justify-between px-5 py-4 mb-5 rounded-xl bg-emerald-50 dark:bg-emerald-500/[0.08] border border-emerald-200/50 dark:border-emerald-500/20">
+        <div className="flex items-center justify-between px-5 py-4 mb-5 rounded-2xl bg-emerald-50 dark:bg-emerald-500/[0.08] border border-emerald-200/50 dark:border-emerald-500/20 gradient-border-visible">
           <div className="flex items-center gap-3">
             <Rocket className="w-5 h-5 text-emerald-500" />
             <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
               All topics reviewed! Start production for {counts.approved} approved topics
             </span>
           </div>
-          <button
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-500 hover:bg-emerald-600 transition-colors cursor-pointer"
-          >
+          <button className="btn-success btn-sm">
             Start Production
           </button>
         </div>
@@ -327,7 +321,7 @@ export default function TopicReview() {
             onChange={(e) => setRejectFeedback(e.target.value)}
             placeholder="Rejection feedback (optional)"
             rows={3}
-            className="w-full mt-3 px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            className="input mt-3 resize-none"
           />
         )}
       </ConfirmDialog>

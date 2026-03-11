@@ -113,21 +113,20 @@ export default function PerformanceTable({ topics, projectId }) {
 
   return (
     <div className="glass-card overflow-hidden" data-testid="performance-table">
-      <div className="px-6 py-4 border-b border-white/10 dark:border-slate-700/50">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+      <div className="px-6 py-4 border-b border-white/[0.06]">
+        <h3 className="section-title">
           Video Performance
         </h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 dark:border-slate-700/50">
+            <tr className="border-b border-white/[0.06]">
               {COLUMNS.map((col) => (
                 <th
                   key={col.key}
                   onClick={() => handleSort(col.key)}
-                  className={`px-3 py-3 text-xs font-semibold uppercase tracking-wider
-                    text-text-muted dark:text-text-muted-dark cursor-pointer select-none
+                  className={`table-header cursor-pointer select-none
                     hover:text-slate-900 dark:hover:text-white transition-colors
                     ${col.align === 'right' ? 'text-right' : 'text-left'}
                     ${col.width || ''}`}
@@ -155,44 +154,43 @@ export default function PerformanceTable({ topics, projectId }) {
                 <tr
                   key={topic.id}
                   onClick={() => navigate(`/project/${projectId}/topics/${topic.id}/review`)}
-                  className="border-b border-white/5 dark:border-slate-700/30
-                    hover:bg-white/5 dark:hover:bg-white/[0.03] cursor-pointer transition-colors"
+                  className="table-row-interactive cursor-pointer"
                 >
-                  <td className="px-3 py-3 text-text-muted dark:text-text-muted-dark tabular-nums">
+                  <td className="table-cell text-text-muted dark:text-text-muted-dark tabular-nums">
                     {topic.topic_number}
                   </td>
-                  <td className="px-3 py-3 truncate max-w-[200px] font-medium text-slate-900 dark:text-white">
+                  <td className="table-cell truncate max-w-[200px] font-medium text-slate-900 dark:text-white">
                     {topic.seo_title || topic.original_title || `Topic #${topic.topic_number}`}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums">
+                  <td className="table-cell text-right tabular-nums">
                     {(topic.yt_views || 0).toLocaleString()}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums">
+                  <td className="table-cell text-right tabular-nums">
                     {parseFloat(topic.yt_watch_hours || 0).toFixed(1)}h
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums">
+                  <td className="table-cell text-right tabular-nums">
                     {parseFloat(topic.yt_ctr || 0).toFixed(1)}%
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums">
+                  <td className="table-cell text-right tabular-nums">
                     {formatDuration(durationSecs)}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <td className="table-cell text-right tabular-nums text-emerald-600 dark:text-emerald-400">
                     ${revenue.toFixed(2)}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-amber-600 dark:text-amber-400">
+                  <td className="table-cell text-right tabular-nums text-amber-600 dark:text-amber-400">
                     ${cost.toFixed(2)}
                   </td>
-                  <td className={`px-3 py-3 text-right tabular-nums font-semibold ${
+                  <td className={`table-cell text-right tabular-nums font-semibold ${
                     pl >= 0
                       ? 'text-emerald-600 dark:text-emerald-400'
                       : 'text-red-500 dark:text-red-400'
                   }`}>
                     {pl >= 0 ? '+' : ''}${pl.toFixed(2)}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums">
+                  <td className="table-cell text-right tabular-nums">
                     ${parseFloat(topic.yt_actual_cpm || 0).toFixed(2)}
                   </td>
-                  <td className="px-3 py-3 text-right text-text-muted dark:text-text-muted-dark whitespace-nowrap">
+                  <td className="table-cell text-right text-text-muted dark:text-text-muted-dark whitespace-nowrap">
                     {formatDate(topic.published_at)}
                   </td>
                 </tr>

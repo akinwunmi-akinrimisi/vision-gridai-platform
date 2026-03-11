@@ -37,7 +37,7 @@ n8n (Docker on VPS) — webhook API + production workflows
 SUPABASE (Docker on VPS) — PostgreSQL + Realtime
   │
   ▼ APIs
-Claude (Anthropic) · Google Cloud TTS · Kie.ai · YouTube · Google Drive
+Claude (Anthropic) · Google Cloud TTS · Fal.ai · YouTube · Google Drive
 ```
 
 | Layer | Technology | Role |
@@ -45,14 +45,17 @@ Claude (Anthropic) · Google Cloud TTS · Kie.ai · YouTube · Google Drive
 | Dashboard | React 18 + Tailwind CSS + Supabase JS client | User interface — control everything |
 | API | n8n webhooks (REST) | Bridge between dashboard and workflows |
 | Orchestration | n8n workflows (self-chaining) | Execute pipeline stages |
-| Database | Supabase PostgreSQL | All data — projects, topics, scenes, prompts, analytics |
+| Database | Supabase PostgreSQL | All data — projects, topics, scenes, shorts, prompts, analytics |
 | Realtime | Supabase Realtime subscriptions | Dashboard auto-updates (no polling) |
 | Storage | Google Drive | Media files (audio, images, videos) |
 | AI | Claude Sonnet (Anthropic direct) | Scripts, evaluation, niche research, visual direction |
-| Media | Kie.ai (Seedream 4.5 + Kling 2.1) | Image + video generation |
+| Media (Images) | Fal.ai → Seedream 4.0 | Text-to-image generation (16:9 + 9:16) |
+| Media (Video) | Fal.ai → Wan 2.5 | I2V + T2V generation (16:9 + 9:16) |
 | Audio | Google Cloud TTS (Chirp 3 HD) | Voiceover |
 | Assembly | FFmpeg | Video production |
-| Distribution | YouTube Data API v3 | Upload + analytics |
+| Captions (Shorts) | Remotion (React-based video renderer) | Kinetic word-by-word caption overlays for short-form |
+| Distribution | YouTube Data API v3 + TikTok API + Instagram Graph API | Upload + analytics |
+| Agent Expertise | Agency Agents (61 specialists in ~/.claude/agents/) | Domain expertise for GSD executor agents |
 
 ---
 
@@ -70,10 +73,12 @@ Claude (Anthropic) · Google Cloud TTS · Kie.ai · YouTube · Google Drive
 |---------|-------------|-------------------|
 | Anthropic Claude | HTTP Header Auth (x-api-key) | `Anthropic API Key` |
 | Google Cloud TTS | Service Account (preferred) / OAuth2 | `Google Cloud account` |
-| Kie.ai | HTTP Header Auth (Bearer) | `Kie API Key` — **MUST be proper credential, NOT in config** |
+| Fal.ai | HTTP Header Auth (`Key` prefix) | `Fal API Key` |
 | Google Drive | OAuth2 | `Google Drive account` |
 | YouTube Data API v3 | OAuth2 | `YouTube account` |
 | Supabase | API Key (anon / service_role) | `Supabase API Key` |
+| TikTok Content Posting API | OAuth2 | `TikTok account` |
+| Instagram Graph API | OAuth2 (via Facebook) | `Instagram account` |
 
 ---
 
@@ -113,12 +118,12 @@ CREATE TABLE projects (
   t2v_clips_per_video INTEGER DEFAULT 72,
   target_word_count INTEGER DEFAULT 19000,
   target_scene_count INTEGER DEFAULT 172,
-  image_model TEXT DEFAULT 'seedream/seedream-4.5-text-to-image',
-  image_cost DECIMAL(6,4) DEFAULT 0.032,
-  i2v_model TEXT DEFAULT 'kling/v2-1-standard-image-to-video',
-  i2v_cost DECIMAL(6,4) DEFAULT 0.125,
-  t2v_model TEXT DEFAULT 'kling/v2-1-standard-text-to-video',
-  t2v_cost DECIMAL(6,4) DEFAULT 0.125,
+  image_model TEXT DEFAULT 'fal-ai/bytedance/seedream/v4/text-to-image',
+  image_cost DECIMAL(6,4) DEFAULT 0.030,
+  i2v_model TEXT DEFAULT 'fal-ai/wan-25-preview/image-to-video',
+  i2v_cost DECIMAL(6,4) DEFAULT 0.050,
+  t2v_model TEXT DEFAULT 'fal-ai/wan-25-preview/text-to-video',
+  t2v_cost DECIMAL(6,4) DEFAULT 0.050,
   status TEXT DEFAULT 'created',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -300,6 +305,87 @@ CREATE TABLE production_log (
 CREATE INDEX idx_log_topic ON production_log(topic_id);
 ```
 
+### Table: `shorts`
+
+```sql
+CREATE TABLE shorts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  topic_id UUID REFERENCES topics(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  clip_number INTEGER,
+  start_scene INTEGER,
+  end_scene INTEGER,
+  estimated_duration_ms INTEGER,
+  actual_duration_ms INTEGER,
+  virality_score INTEGER,
+  virality_reason TEXT,
+  clip_title TEXT,
+  hook_text TEXT,
+  hashtags TEXT[],
+  caption TEXT,
+  rewritten_narration JSONB,
+  rewritten_image_prompts JSONB,
+  emphasis_word_map JSONB,            -- [{word, start_ms, end_ms, emphasis: bool}] for Remotion
+  short_form_style TEXT DEFAULT 'tiktok_bold',
+  audio_scenes JSONB,
+  visual_scenes JSONB,
+  portrait_drive_id TEXT,
+  portrait_drive_url TEXT,
+  thumbnail_drive_id TEXT,
+  thumbnail_url TEXT,
+  srt_text TEXT,
+  review_status TEXT DEFAULT 'pending',
+  review_feedback TEXT,
+  production_status TEXT DEFAULT 'pending',
+  production_progress TEXT,
+  tiktok_status TEXT DEFAULT 'pending',
+  tiktok_post_id TEXT,
+  tiktok_scheduled_at TIMESTAMPTZ,
+  tiktok_published_at TIMESTAMPTZ,
+  tiktok_caption TEXT,
+  tiktok_views INTEGER DEFAULT 0,
+  tiktok_likes INTEGER DEFAULT 0,
+  tiktok_comments INTEGER DEFAULT 0,
+  tiktok_shares INTEGER DEFAULT 0,
+  instagram_status TEXT DEFAULT 'pending',
+  instagram_post_id TEXT,
+  instagram_scheduled_at TIMESTAMPTZ,
+  instagram_published_at TIMESTAMPTZ,
+  instagram_caption TEXT,
+  instagram_views INTEGER DEFAULT 0,
+  instagram_likes INTEGER DEFAULT 0,
+  instagram_comments INTEGER DEFAULT 0,
+  youtube_shorts_status TEXT DEFAULT 'pending',
+  youtube_shorts_video_id TEXT,
+  youtube_shorts_scheduled_at TIMESTAMPTZ,
+  youtube_shorts_published_at TIMESTAMPTZ,
+  youtube_shorts_views INTEGER DEFAULT 0,
+  youtube_shorts_likes INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_shorts_topic ON shorts(topic_id);
+CREATE INDEX idx_shorts_posting ON shorts(tiktok_status, instagram_status, youtube_shorts_status);
+```
+
+### Table: `social_accounts`
+
+```sql
+CREATE TABLE social_accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,           -- 'tiktok', 'instagram', 'youtube_shorts'
+  account_name TEXT,
+  account_id TEXT,
+  access_token TEXT,
+  refresh_token TEXT,
+  token_expires_at TIMESTAMPTZ,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
 ---
 
 ## 4. Pipeline Phases
@@ -313,6 +399,8 @@ Phase C: Script Generation (3-pass, agentic, per-pass scoring)        ⚡ ⏸ GA
 Phase D: Production (deterministic — TTS, images, video, assembly)
 Phase E: Video Review + YouTube Publish                               ⏸ GATE 3
 Phase F: Analytics Pull (daily cron)
+Phase G: Shorts Pipeline (agentic analysis + deterministic production) ⚡ ⏸ GATE 4
+Phase H: Social Media Publishing (TikTok, Instagram, YouTube Shorts)
 ```
 
 ### Phase A: Project Creation + Niche Research ⚡ AGENTIC
@@ -405,9 +493,9 @@ Unchanged from current Agent.md — WF03 through WF08:
 
 ```
 WF03: TTS (172 scenes → FFprobe → Master Timeline) → writes to scenes table
-WF04: Images (100 Seedream 4.5) → writes to scenes table  
-WF05A: I2V (25 clips) ──┐
-WF05B: T2V (72 clips) ──┴→ WF06: Captions → WF07: FFmpeg → WF08: Drive Upload
+WF04: Images (75 static, Seedream 4.0 on Fal.ai) → writes to scenes table  
+WF05A: I2V (25 clips, Wan 2.5 on Fal.ai) ──┐
+WF05B: T2V (72 clips, Wan 2.5 on Fal.ai) ──┴→ WF06: Captions → WF07: FFmpeg → WF08: Drive Upload
 ```
 
 **All writes go to Supabase** `scenes` table. Dashboard gets instant updates via Supabase Realtime.
@@ -435,6 +523,76 @@ On approval → WF09: YouTube upload + captions + thumbnail + playlist assignmen
 ### Phase F: Analytics (Daily Cron)
 
 WF10: YouTube Analytics API pull → writes `yt_*` columns to `topics` table. Unchanged from current spec.
+
+### Phase G: Shorts Pipeline ⚡ AGENTIC + DETERMINISTIC + ⏸ GATE 4
+
+**Trigger:** User clicks "Analyze for Viral Clips" on a published topic in the Shorts Creator tab.
+
+**Only available for topics where `status = 'published'`** (YouTube video is live).
+
+**Step G1: Viral Analysis + Content Rewrite ⚡ AGENTIC**
+
+Claude reads `script_json` from Supabase and:
+1. Identifies 20 best ~5-minute segments with virality scores (1-10)
+2. Rewrites narration for short-form (punchier pacing, standalone hooks, CTA at end)
+3. Rewrites image prompts for 9:16 portrait + TikTok aesthetic (vibrant, high contrast, bold, vertical composition)
+4. Marks emphasis words in each clip's narration for kinetic captions: `[{word, start_ms, end_ms, emphasis: true/false}]`
+5. Generates thumbnail prompts (diagonal slant layout, short phrase filling 70-80% of text area)
+6. Stores all in `shorts` table with `review_status = 'pending'`
+
+**Step G2: ⏸ GATE 4 — Shorts Review**
+
+Dashboard shows 20 proposed clips. User can approve, skip, or edit each clip's title, rewritten narration, hashtags, and emphasis word choices.
+
+**Step G3: Shorts Production (DETERMINISTIC)**
+
+For each approved clip:
+```
+WF_SHORTS_AUDIO     → Fresh TTS from rewritten narration → FFprobe → Drive
+WF_SHORTS_IMAGES    → 9:16 images (Seedream 4.0 on Fal.ai, TikTok aesthetic)
+                    → 20 thumbnails (diagonal slant, AI-generated)
+WF_SHORTS_I2V       → 9:16 I2V clips (Wan 2.5 on Fal.ai) ──┐
+WF_SHORTS_T2V       → 9:16 T2V clips (Wan 2.5 on Fal.ai) ──┴→ parallel
+WF_SHORTS_CAPTIONS  → Remotion renders word-by-word kinetic caption overlays
+                      (center screen, emphasis words in yellow/red, pop-in animation)
+WF_SHORTS_ASSEMBLY  → FFmpeg: stitch scenes → composite caption overlay → final clip
+WF_SHORTS_UPLOAD    → Upload clips + thumbnails to Drive (topic_folder/shorts/)
+```
+
+**Caption spec (Remotion):**
+- Animation: Word-by-word pop-in (Hormozi/MrBeast style)
+- Position: Center of screen
+- Emphasis: Bold color change (yellow or red) on key words, rest white
+- Font: Bold sans-serif (Montserrat Black or Inter Black), minimum 48px
+- Shadow: Strong drop shadow for readability over any background
+- Render: ~3-5 min per clip on KVM 4 VPS (90 min total for 20 clips)
+
+**Thumbnail spec:**
+- Layout: Diagonal slant divider — AI-generated image on one side, bold text on other
+- Text: Short phrase (3-6 words), fills 70-80% of text area
+- Style: Vibrant, high contrast — matches TikTok aesthetic
+- Format: 1080×1920 (9:16)
+- Generation: Claude writes prompt → Seedream 4.0 renders → $0.03/thumbnail
+
+### Phase H: Social Media Publishing
+
+**Tab:** 📤 Social Media Publisher (separate from Shorts Creator)
+
+**Platforms:** TikTok (Content Posting API) + Instagram Reels (Graph API) + YouTube Shorts (Data API v3, same channel as long-form)
+
+**Features:**
+- Post Now (immediate upload to selected platform)
+- Schedule (pick date/time per platform per clip)
+- Auto-Schedule (AI suggests peak hours: TikTok 6PM/8PM/10PM, Instagram 12PM/6PM)
+- Cross-platform stagger (TikTok first, Instagram 24h later, YouTube Shorts same day)
+- Edit caption/hashtags per platform before posting
+- Posting history with engagement metrics
+
+**Workflows:**
+```
+WF_SOCIAL_POSTER     → Scheduled cron (every 2 hours): picks up scheduled posts, uploads
+WF_SOCIAL_ANALYTICS  → Daily cron: pulls views/likes/comments from all 3 platforms
+```
 
 ---
 
@@ -490,7 +648,7 @@ Max 3 regeneration attempts total across all passes. Force-pass on attempt 3.
 **Realtime:** Supabase subscriptions (no polling)
 **Auth:** Simple password gate (solo user)
 
-### 7 Pages
+### 9 Pages
 
 | Page | URL | Purpose |
 |------|-----|---------|
@@ -500,6 +658,10 @@ Max 3 regeneration attempts total across all passes. Force-pass on attempt 3.
 | Script Review | `/project/:id/topics/:tid/script` | Gate 2 — quality scores, script viewer, approve/refine |
 | Production Monitor | `/project/:id/production` | Real-time progress with Supabase Realtime |
 | Video Review | `/project/:id/topics/:tid/video` | Gate 3 — preview video, approve/reject/edit metadata |
+| 📱 Shorts Creator | `/shorts` | Gate 4 — analyze scripts, review viral clips, produce 9:16 shorts |
+| 📤 Social Media Publisher | `/social` | Post/schedule clips to TikTok, Instagram, YouTube Shorts |
+| Analytics | `/project/:id/analytics` | YouTube + social media performance, revenue, CPM |
+| Settings | `/project/:id/settings` | Per-project config, prompt editor, model selection, social accounts |
 | Analytics | `/project/:id/analytics` | YouTube performance, revenue, CPM by topic/niche |
 | Settings | `/project/:id/settings` | Per-project config, prompt editor, model selection |
 
@@ -581,7 +743,7 @@ vision-gridai-platform/
 │   ├── download_assets.sh
 │   └── cleanup.sh
 ├── dashboard/
-│   ├── package.json                          ← React + Tailwind + Supabase JS
+│   ├── package.json                          ← React + Tailwind + Supabase JS + Remotion
 │   ├── tailwind.config.js
 │   ├── src/
 │   │   ├── App.jsx                           ← Router + layout
@@ -592,6 +754,8 @@ vision-gridai-platform/
 │   │   │   ├── ScriptReview.jsx
 │   │   │   ├── ProductionMonitor.jsx
 │   │   │   ├── VideoReview.jsx
+│   │   │   ├── ShortsCreator.jsx             ← NEW: Viral analysis + clip review + production
+│   │   │   ├── SocialMediaPublisher.jsx      ← NEW: Post/schedule to TikTok/Instagram/YT Shorts
 │   │   │   ├── Analytics.jsx
 │   │   │   └── Settings.jsx
 │   │   ├── components/
@@ -600,7 +764,13 @@ vision-gridai-platform/
 │   │   │   ├── ProgressBar.jsx
 │   │   │   ├── SceneGrid.jsx
 │   │   │   ├── VideoPlayer.jsx
-│   │   │   └── RefineModal.jsx
+│   │   │   ├── RefineModal.jsx
+│   │   │   ├── ShortClipCard.jsx             ← NEW: Viral clip review card
+│   │   │   └── PostScheduler.jsx             ← NEW: Schedule/post UI per platform
+│   │   ├── remotion/                          ← NEW: Kinetic caption renderer
+│   │   │   ├── KineticCaptions.jsx           ← Word-by-word pop-in component
+│   │   │   ├── render-captions.js            ← CLI script to render caption overlay
+│   │   │   └── composition.jsx               ← Remotion composition config
 │   │   ├── hooks/
 │   │   │   ├── useSupabase.js
 │   │   │   ├── useRealtime.js
@@ -632,24 +802,56 @@ vision-gridai-platform/
     ├── WF11_youtube_upload.json
     ├── WF12_youtube_analytics.json
     ├── WF_SUPERVISOR_AGENT.json
-    └── WF_WEBHOOK_dashboard_api.json
+    ├── WF_WEBHOOK_dashboard_api.json
+    ├── WF_SHORTS_ANALYZE.json            ← Viral analysis + narration rewrite + prompt rewrite
+    ├── WF_SHORTS_AUDIO.json              ← Fresh TTS for rewritten narration
+    ├── WF_SHORTS_IMAGES.json             ← 9:16 images + thumbnails (Fal.ai)
+    ├── WF_SHORTS_I2V.json                ← 9:16 I2V clips (Fal.ai)
+    ├── WF_SHORTS_T2V.json                ← 9:16 T2V clips (Fal.ai)
+    ├── WF_SHORTS_CAPTIONS.json           ← Remotion kinetic caption rendering
+    ├── WF_SHORTS_ASSEMBLY.json           ← FFmpeg stitch + caption composite
+    ├── WF_SHORTS_UPLOAD.json             ← Upload to Drive shorts/ subfolder
+    ├── WF_SOCIAL_POSTER.json             ← Scheduled cron: post to TikTok/Instagram/YT Shorts
+    └── WF_SOCIAL_ANALYTICS.json          ← Daily cron: pull engagement metrics
 ```
 
 ---
 
 ## 9. Cost Tracking
 
-### Per Video
+### Per Video (Main 2-hour YouTube)
 
 | Component | Cost |
 |-----------|------|
 | Script (3-pass + 4 evaluator calls) | $0.80–$1.80 |
 | Visual type assignment (WF04_AGENT) | ~$0.03 |
 | TTS audio (172 scenes) | ~$0.30 |
-| Seedream 4.5 images (100) | $3.20 |
-| Kling I2V clips (25) | $3.13 |
-| Kling T2V clips (72) | $9.00 |
-| **Total per video** | **$16.50–$17.50** |
+| Seedream 4.0 images on Fal.ai (75) | $2.25 |
+| Wan 2.5 I2V clips on Fal.ai (25 × 5s) | $6.25 |
+| Wan 2.5 T2V clips on Fal.ai (72 × 5s) | $18.00 |
+| **Total per main video** | **~$27.50–$28.50** |
+
+### Per Topic — Shorts (20 clips)
+
+| Component | Cost |
+|-----------|------|
+| Viral analysis + narration rewrite + prompt rewrite + emphasis marking | ~$0.08 |
+| Fresh TTS audio (~140 scenes) | ~$0.28 |
+| 9:16 images, Seedream 4.0 on Fal.ai (~62) | $1.86 |
+| 20 thumbnails, Seedream 4.0 on Fal.ai | $0.60 |
+| 9:16 I2V clips, Wan 2.5 on Fal.ai (~21 × 5s) | $5.25 |
+| 9:16 T2V clips, Wan 2.5 on Fal.ai (~57 × 5s) | $14.25 |
+| Remotion caption rendering (20 clips) | Free (local) |
+| FFmpeg assembly (20 clips) | Free (local) |
+| **Total per topic shorts** | **~$22.32** |
+
+### Combined Per Topic
+
+| | Cost |
+|---|------|
+| Main 2-hour YouTube video | ~$28 |
+| 20 short-form clips (TikTok/Instagram/YT Shorts) | ~$22 |
+| **Total per topic** | **~$50** |
 
 ### Per Project Setup (one-time)
 
@@ -662,10 +864,10 @@ vision-gridai-platform/
 
 ### Monthly
 
-| Volume | Production | Supervisor | Total |
-|--------|-----------|------------|-------|
-| 25 videos | ~$425 | $14.40 | ~$440 |
-| 30 videos | ~$510 | $14.40 | ~$525 |
+| Volume | Main Videos | Shorts | Supervisor | Total |
+|--------|-----------|--------|------------|-------|
+| 25 topics (video + shorts) | ~$700 | ~$558 | $14.40 | **~$1,273** |
+| 30 topics (video + shorts) | ~$855 | ~$670 | $14.40 | **~$1,539** |
 
 ---
 
@@ -689,7 +891,7 @@ Headers:
 
 ## Summary
 
-You operate between **a niche name typed into a dashboard** and **published YouTube videos with synced captions, metadata, and analytics** — across any niche, with full control at 3 approval gates.
+You operate between **a niche name typed into a dashboard** and **published content across YouTube (2-hour documentaries), TikTok, Instagram Reels, and YouTube Shorts** — across any niche, with full control at 4 approval gates, powered by 61 specialist AI agents.
 
 Read directives. Make decisions. Run tools. Observe results. Improve the system.
 
@@ -700,3 +902,4 @@ Be pragmatic. Be reliable. **Self-anneal.**
 > ⚠️ **IMMUTABLE** — Do not rewrite, regenerate, or replace this file unless explicitly instructed.
 > Before performing any task: read this file. Apply it strictly.
 > Audio is the master clock. Supabase is the source of truth. No niche is hardcoded. No work is repeated.
+> Fal.ai for media generation. Remotion for kinetic captions. Agency Agents for specialist expertise.

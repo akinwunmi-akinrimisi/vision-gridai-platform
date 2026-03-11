@@ -23,12 +23,10 @@ import ConnectionStatus from './ConnectionStatus';
 import { useSupervisorToasts } from '../SupervisorToastProvider';
 import { useQuotaStatus } from '../../hooks/useQuotaStatus';
 
-// Global nav items (shown at root /)
 const globalNavItems = [
   { label: 'Projects', icon: LayoutDashboard, path: '/' },
 ];
 
-// Project-scoped nav items (shown inside /project/:id/*)
 const projectNavItems = [
   { label: 'Dashboard', icon: Monitor, path: '/project/:id' },
   { label: 'Research', icon: Search, path: '/project/:id/research' },
@@ -53,32 +51,37 @@ function NavItem({ item, collapsed, projectId, onClick, exact, badge }) {
       end={exact}
       onClick={onClick}
       className={({ isActive }) => `
-        group flex items-center gap-3 px-3 py-2.5 rounded-xl
+        group flex items-center gap-3 px-3 py-2 rounded-xl
         transition-all duration-200 cursor-pointer relative
+        will-change-[background-color,box-shadow]
         ${collapsed ? 'justify-center' : ''}
-        ${
-          isActive
-            ? 'bg-primary/[0.08] text-primary dark:bg-primary/[0.15] dark:text-blue-400 font-semibold'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white'
+        ${isActive
+          ? 'nav-item-active'
+          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white'
         }
       `}
+      style={({ isActive }) => isActive ? { boxShadow: '0 0 20px rgba(37,99,235,0.08), 0 0 40px rgba(37,99,235,0.04)' } : undefined}
       title={collapsed ? item.label : undefined}
     >
       {({ isActive }) => (
         <>
           {isActive && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
           )}
-          <span className="relative">
-            <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+          <span className="relative flex-shrink-0">
+            <Icon className={`w-[18px] h-[18px] transition-transform duration-200 ${isActive ? 'drop-shadow-[0_0_3px_rgba(37,99,235,0.3)]' : 'group-hover:scale-105'}`} strokeWidth={isActive ? 2.2 : 1.8} />
             {badge && (
               <span
                 data-testid="supervisor-badge"
-                className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse"
+                className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900 animate-pulse"
               />
             )}
           </span>
-          {!collapsed && <span className="text-[13px] font-medium">{item.label}</span>}
+          {!collapsed && (
+            <span className={`text-[13px] transition-colors duration-200 ${isActive ? 'font-semibold' : 'font-medium'}`}>
+              {item.label}
+            </span>
+          )}
         </>
       )}
     </NavLink>
@@ -92,100 +95,94 @@ export default function Sidebar({ onLogout }) {
   const location = useLocation();
   const { hasSupervisorAlert } = useSupervisorToasts();
 
-  // Detect if we're inside a project route
   const isInsideProject = !!projectId && location.pathname.startsWith('/project/');
   const { remaining: quotaRemaining } = useQuotaStatus(isInsideProject ? projectId : null);
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-border/50 dark:border-border-dark/50">
-        <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center shadow-md shadow-primary/20">
-          <Zap className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-100 dark:border-white/[0.06]">
+        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent-600 flex items-center justify-center shadow-md shadow-primary/25">
+          <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
         </div>
         {!collapsed && (
           <div className="flex flex-col min-w-0">
-            <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight truncate">
-              Vision GridAI
+            <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
+              GridAI
             </span>
-            <span className="text-[10px] text-text-muted dark:text-text-muted-dark font-medium uppercase tracking-wider">
+            <span className="text-2xs text-slate-400 dark:text-slate-500 font-medium uppercase tracking-widest">
               Platform
             </span>
           </div>
         )}
       </div>
 
-      {/* Back to Projects link (when inside a project) */}
+      {/* Back to Projects (inside project) */}
       {isInsideProject && !collapsed && (
-        <div className="px-3 py-3 border-b border-border/50 dark:border-border-dark/50">
+        <div className="px-3 pt-3 pb-1">
           <Link
             to="/"
             onClick={() => setMobileOpen(false)}
             className="
-              flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium
-              text-slate-500 dark:text-slate-400
+              flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium
+              text-slate-400 dark:text-slate-500
               hover:bg-slate-100/80 dark:hover:bg-white/[0.04]
-              hover:text-slate-900 dark:hover:text-white
+              hover:text-slate-700 dark:hover:text-slate-300
               transition-all duration-200
             "
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Projects
+            <ArrowLeft className="w-3.5 h-3.5" />
+            All Projects
           </Link>
         </div>
       )}
 
-      {/* Project switcher (only when NOT inside a project) */}
-      {!isInsideProject && !collapsed && (
-        <div className="px-3 py-3 border-b border-border/50 dark:border-border-dark/50">
-          <button className="
-            w-full text-left px-3 py-2.5 rounded-xl text-sm
-            text-text-muted dark:text-text-muted-dark
-            bg-slate-50/80 dark:bg-white/[0.04]
-            border border-border/50 dark:border-white/[0.06]
-            hover:bg-slate-100 dark:hover:bg-white/[0.06]
-            hover:border-slate-300 dark:hover:border-white/[0.1]
-            transition-all duration-200 cursor-pointer truncate
-            font-medium
-          ">
-            Select Project
-          </button>
-        </div>
-      )}
-
-      {/* Nav links */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto scrollbar-thin">
-        {isInsideProject ? (
-          // Project-scoped navigation
-          projectNavItems.map((item) => (
-            <NavItem
-              key={item.label}
-              item={item}
-              collapsed={collapsed}
-              projectId={projectId}
-              onClick={() => setMobileOpen(false)}
-              exact={item.path === '/project/:id'}
-              badge={item.label === 'Production' && hasSupervisorAlert}
-            />
-          ))
-        ) : (
-          // Global navigation
-          globalNavItems.map((item) => (
-            <NavItem
-              key={item.label}
-              item={item}
-              collapsed={collapsed}
-              projectId={null}
-              onClick={() => setMobileOpen(false)}
-              exact={true}
-            />
-          ))
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto scrollbar-thin">
+        {!isInsideProject && !collapsed && (
+          <div className="px-3 pt-1 pb-2">
+            <span className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              Overview
+            </span>
+          </div>
         )}
+        {isInsideProject && !collapsed && (
+          <div className="px-3 pt-1 pb-2">
+            <span className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              Project
+            </span>
+          </div>
+        )}
+
+        {isInsideProject
+          ? projectNavItems.map((item) => (
+              <NavItem
+                key={item.label}
+                item={item}
+                collapsed={collapsed}
+                projectId={projectId}
+                onClick={() => setMobileOpen(false)}
+                exact={item.path === '/project/:id'}
+                badge={item.label === 'Production' && hasSupervisorAlert}
+              />
+            ))
+          : globalNavItems.map((item) => (
+              <NavItem
+                key={item.label}
+                item={item}
+                collapsed={collapsed}
+                projectId={null}
+                onClick={() => setMobileOpen(false)}
+                exact={true}
+              />
+            ))
+        }
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-3 border-t border-border/50 dark:border-border-dark/50 space-y-0.5">
+      <div className="px-3 py-3 border-t border-slate-100 dark:border-white/[0.06] space-y-0.5">
         <ConnectionStatus collapsed={collapsed} />
+
         {isInsideProject && (
           <div
             data-testid="quota-indicator"
@@ -196,11 +193,11 @@ export default function Sidebar({ onLogout }) {
                 ? 'text-red-500 dark:text-red-400'
                 : quotaRemaining <= 2
                   ? 'text-amber-500 dark:text-amber-400'
-                  : 'text-text-muted dark:text-text-muted-dark'}
+                  : 'text-slate-400 dark:text-slate-500'}
             `}
             title={collapsed ? `${quotaRemaining}/6 uploads remaining` : undefined}
           >
-            <Upload className="w-[18px] h-[18px] flex-shrink-0" />
+            <Upload className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.8} />
             {!collapsed && (
               <span className="text-[13px] font-medium tabular-nums">
                 {quotaRemaining}/6
@@ -208,20 +205,22 @@ export default function Sidebar({ onLogout }) {
             )}
           </div>
         )}
+
         <ThemeToggle collapsed={collapsed} />
 
         <button
           onClick={onLogout}
           className={`
-            flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl
-            text-slate-500 dark:text-slate-500
-            hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/[0.08] dark:hover:text-red-400
+            flex items-center gap-2.5 w-full px-3 py-2 rounded-xl
+            text-slate-400 dark:text-slate-500
+            hover:bg-red-50 hover:text-red-600
+            dark:hover:bg-red-500/[0.08] dark:hover:text-red-400
             transition-all duration-200 cursor-pointer
             ${collapsed ? 'justify-center' : ''}
           `}
           title={collapsed ? 'Logout' : undefined}
         >
-          <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
+          <LogOut className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.8} />
           {!collapsed && <span className="text-[13px] font-medium">Logout</span>}
         </button>
       </div>
@@ -235,13 +234,14 @@ export default function Sidebar({ onLogout }) {
         onClick={() => setMobileOpen(true)}
         className="
           fixed top-4 left-4 z-50 p-2.5 rounded-xl
-          bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg
-          shadow-lg shadow-black/[0.05] dark:shadow-black/[0.3]
-          border border-border/50 dark:border-white/[0.06]
-          text-slate-700 dark:text-white
+          bg-white/90 dark:bg-slate-800/90 backdrop-blur-lg
+          shadow-elevation-2 dark:shadow-glass
+          border border-slate-200/60 dark:border-white/[0.06]
+          text-slate-600 dark:text-slate-300
           lg:hidden cursor-pointer
           transition-all duration-200
           hover:bg-white dark:hover:bg-slate-700
+          active:scale-95
         "
         aria-label="Open menu"
       >
@@ -251,7 +251,7 @@ export default function Sidebar({ onLogout }) {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden transition-opacity duration-200"
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -261,8 +261,8 @@ export default function Sidebar({ onLogout }) {
         className={`
           fixed top-0 left-0 z-50 h-full w-sidebar
           bg-white dark:bg-slate-900
-          border-r border-border/50 dark:border-white/[0.06]
-          shadow-2xl shadow-black/10 dark:shadow-black/40
+          border-r border-slate-200/60 dark:border-white/[0.06]
+          shadow-elevation-4 dark:shadow-glass-lg
           transform transition-transform duration-300 ease-out
           lg:hidden
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -270,7 +270,7 @@ export default function Sidebar({ onLogout }) {
       >
         <button
           onClick={() => setMobileOpen(false)}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] cursor-pointer transition-colors duration-200"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] cursor-pointer transition-colors duration-200"
           aria-label="Close menu"
         >
           <X className="w-5 h-5" />
@@ -282,8 +282,8 @@ export default function Sidebar({ onLogout }) {
       <aside
         className={`
           hidden lg:flex flex-col flex-shrink-0 h-screen sticky top-0
-          bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl
-          border-r border-border/50 dark:border-white/[0.06]
+          bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl
+          border-r border-slate-200/60 dark:border-white/[0.06]
           transition-all duration-300 ease-out
           ${collapsed ? 'w-sidebar-collapsed' : 'w-sidebar'}
         `}
@@ -297,13 +297,15 @@ export default function Sidebar({ onLogout }) {
             absolute -right-3 top-7 z-10
             w-6 h-6 rounded-full
             bg-white dark:bg-slate-800
-            border border-border dark:border-slate-700
-            shadow-md shadow-black/[0.08] dark:shadow-black/[0.3]
+            border border-slate-200 dark:border-slate-700
+            shadow-elevation-2 dark:shadow-glass
             flex items-center justify-center
             text-slate-400 dark:text-slate-500
             hover:text-primary dark:hover:text-blue-400
-            hover:border-primary/30 dark:hover:border-blue-400/30
+            hover:border-primary/30 dark:hover:border-blue-500/30
+            hover:shadow-[0_0_12px_rgba(37,99,235,0.15)]
             transition-all duration-200 cursor-pointer
+            active:scale-90
           "
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >

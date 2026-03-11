@@ -87,10 +87,12 @@ echo "  n8n URL: ${N8N_URL}"
 echo "  Required credentials:"
 echo "    - Anthropic API Key (httpHeaderAuth)"
 echo "    - Google Cloud account (OAuth2 or Service Account)"
-echo "    - Kie API Key (httpHeaderAuth — NOT hardcoded in workflow)"
+echo "    - Fal API Key (httpHeaderAuth, Key prefix)"
 echo "    - Google Drive account (OAuth2)"
 echo "    - YouTube account (OAuth2)"
 echo "    - Supabase API Key (httpHeaderAuth)"
+echo "    - TikTok account (OAuth2) — for shorts social posting"
+echo "    - Instagram account (OAuth2 via Facebook) — for shorts social posting"
 echo "  Verify all exist in n8n → Settings → Credentials"
 
 # ─── 3. INSTALL LOBEHUB SKILLS ──────────────────────────────
@@ -269,6 +271,74 @@ else
   echo "  ⏭️  n8n commands already exist at $N8N_COMMANDS_DIR/"
 fi
 
+# ─── 4e. INSTALL AGENCY AGENTS (61 SPECIALISTS) ─────────────
+
+echo ""
+echo "▶ Installing Agency Agents (61 AI specialists)..."
+
+AGENTS_DIR="$HOME/.claude/agents"
+if [ -d "$AGENTS_DIR" ] && [ "$(ls -1 $AGENTS_DIR/*.md 2>/dev/null | wc -l)" -gt 50 ]; then
+  echo "  ⏭️  Agency Agents already installed at $AGENTS_DIR/ ($(ls -1 $AGENTS_DIR/*.md | wc -l) agents)"
+else
+  if command -v git &> /dev/null; then
+    echo "  Cloning agency-agents repo..."
+    git clone --depth 1 https://github.com/msitarzewski/agency-agents.git /tmp/agency-agents 2>/dev/null
+
+    if [ -d "/tmp/agency-agents" ]; then
+      mkdir -p "$AGENTS_DIR"
+      
+      # Copy all 61 agents from all 9 divisions
+      for division in engineering design marketing product project-management testing support spatial-computing specialized; do
+        if [ -d "/tmp/agency-agents/$division" ]; then
+          cp /tmp/agency-agents/$division/*.md "$AGENTS_DIR/" 2>/dev/null
+        fi
+      done
+      
+      AGENT_COUNT=$(ls -1 "$AGENTS_DIR"/*.md 2>/dev/null | wc -l)
+      echo "  ✅ Installed $AGENT_COUNT agents to $AGENTS_DIR/"
+      echo ""
+      echo "  Key agents for this project:"
+      echo "    Engineering: Frontend Developer, Backend Architect, DevOps Automator, Security Engineer"
+      echo "    Design: Image Prompt Engineer, UI Designer"
+      echo "    Marketing: TikTok Strategist, Instagram Curator, Content Creator"
+      echo "    Testing: API Tester, Workflow Optimizer, Performance Benchmarker"
+      echo "    Specialized: Agents Orchestrator"
+      echo ""
+      echo "  All 61 agents auto-activate by context. No manual invocation needed."
+      
+      rm -rf /tmp/agency-agents
+    else
+      echo "  ⚠️  Git clone failed. Install manually:"
+      echo "     git clone https://github.com/msitarzewski/agency-agents.git /tmp/agency-agents"
+      echo "     mkdir -p ~/.claude/agents && cp /tmp/agency-agents/*/*.md ~/.claude/agents/"
+    fi
+  else
+    echo "  ⚠️  git not found. Install manually:"
+    echo "     git clone https://github.com/msitarzewski/agency-agents.git /tmp/agency-agents"
+    echo "     mkdir -p ~/.claude/agents && cp /tmp/agency-agents/*/*.md ~/.claude/agents/"
+  fi
+fi
+
+# ─── 4f. INSTALL REMOTION (KINETIC CAPTIONS) ────────────────
+
+echo ""
+echo "▶ Installing Remotion (kinetic caption renderer for shorts)..."
+
+if command -v npm &> /dev/null; then
+  # Check if remotion is already in dashboard dependencies
+  if [ -f "dashboard/package.json" ] && grep -q "remotion" dashboard/package.json 2>/dev/null; then
+    echo "  ⏭️  Remotion already in dashboard/package.json"
+  else
+    echo "  Remotion will be added to dashboard/package.json when building shorts pipeline."
+    echo "  Packages needed: remotion @remotion/cli @remotion/renderer"
+    echo "  Free for solo developers. No subscription."
+    echo "  Renders word-by-word kinetic caption overlays as transparent video."
+    echo "  ~3-5 min render time per 5-min clip on KVM 4 VPS."
+  fi
+else
+  echo "  ⚠️  npm not found — needed for Remotion install"
+fi
+
 # ─── 5. CREATE .ENV TEMPLATE ────────────────────────────────
 
 echo ""
@@ -300,7 +370,7 @@ N8N_WEBHOOK_BASE=https://n8n.srv1297445.hstgr.cloud/webhook
 GCP_PROJECT=vision-gridai
 GCP_REGION=us-east5
 
-# Note: API keys for Anthropic, Kie.ai, Google, and YouTube
+# Note: API keys for Anthropic, Fal.ai, Google, YouTube, TikTok, and Instagram
 # are stored in n8n's credential manager — NOT here.
 # This file is for service URLs and tokens only.
 EOF
@@ -360,12 +430,12 @@ CREATE TABLE IF NOT EXISTS projects (
   t2v_clips_per_video INTEGER DEFAULT 72,
   target_word_count INTEGER DEFAULT 19000,
   target_scene_count INTEGER DEFAULT 172,
-  image_model TEXT DEFAULT 'seedream/seedream-4.5-text-to-image',
-  image_cost DECIMAL(6,4) DEFAULT 0.032,
-  i2v_model TEXT DEFAULT 'kling/v2-1-standard-image-to-video',
-  i2v_cost DECIMAL(6,4) DEFAULT 0.125,
-  t2v_model TEXT DEFAULT 'kling/v2-1-standard-text-to-video',
-  t2v_cost DECIMAL(6,4) DEFAULT 0.125,
+  image_model TEXT DEFAULT 'fal-ai/bytedance/seedream/v4/text-to-image',
+  image_cost DECIMAL(6,4) DEFAULT 0.030,
+  i2v_model TEXT DEFAULT 'fal-ai/wan-25-preview/image-to-video',
+  i2v_cost DECIMAL(6,4) DEFAULT 0.050,
+  t2v_model TEXT DEFAULT 'fal-ai/wan-25-preview/text-to-video',
+  t2v_cost DECIMAL(6,4) DEFAULT 0.050,
   status TEXT DEFAULT 'created',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -529,21 +599,126 @@ CREATE TABLE IF NOT EXISTS production_log (
 CREATE INDEX IF NOT EXISTS idx_log_topic ON production_log(topic_id);
 CREATE INDEX IF NOT EXISTS idx_log_created ON production_log(created_at);
 
+-- Shorts (short-form clips for TikTok/Instagram/YouTube Shorts)
+CREATE TABLE IF NOT EXISTS shorts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  topic_id UUID REFERENCES topics(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  clip_number INTEGER,
+  start_scene INTEGER,
+  end_scene INTEGER,
+  estimated_duration_ms INTEGER,
+  actual_duration_ms INTEGER,
+  virality_score INTEGER,
+  virality_reason TEXT,
+  clip_title TEXT,
+  hook_text TEXT,
+  hashtags TEXT[],
+  caption TEXT,
+  rewritten_narration JSONB,
+  rewritten_image_prompts JSONB,
+  emphasis_word_map JSONB,
+  short_form_style TEXT DEFAULT 'tiktok_bold',
+  audio_scenes JSONB,
+  visual_scenes JSONB,
+  portrait_drive_id TEXT,
+  portrait_drive_url TEXT,
+  thumbnail_drive_id TEXT,
+  thumbnail_url TEXT,
+  srt_text TEXT,
+  review_status TEXT DEFAULT 'pending',
+  review_feedback TEXT,
+  production_status TEXT DEFAULT 'pending',
+  production_progress TEXT,
+  tiktok_status TEXT DEFAULT 'pending',
+  tiktok_post_id TEXT,
+  tiktok_scheduled_at TIMESTAMPTZ,
+  tiktok_published_at TIMESTAMPTZ,
+  tiktok_caption TEXT,
+  tiktok_views INTEGER DEFAULT 0,
+  tiktok_likes INTEGER DEFAULT 0,
+  tiktok_comments INTEGER DEFAULT 0,
+  tiktok_shares INTEGER DEFAULT 0,
+  instagram_status TEXT DEFAULT 'pending',
+  instagram_post_id TEXT,
+  instagram_scheduled_at TIMESTAMPTZ,
+  instagram_published_at TIMESTAMPTZ,
+  instagram_caption TEXT,
+  instagram_views INTEGER DEFAULT 0,
+  instagram_likes INTEGER DEFAULT 0,
+  instagram_comments INTEGER DEFAULT 0,
+  youtube_shorts_status TEXT DEFAULT 'pending',
+  youtube_shorts_video_id TEXT,
+  youtube_shorts_scheduled_at TIMESTAMPTZ,
+  youtube_shorts_published_at TIMESTAMPTZ,
+  youtube_shorts_views INTEGER DEFAULT 0,
+  youtube_shorts_likes INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_shorts_topic ON shorts(topic_id);
+CREATE INDEX IF NOT EXISTS idx_shorts_posting ON shorts(tiktok_status, instagram_status, youtube_shorts_status);
+
+-- Social Media Accounts (per project)
+CREATE TABLE IF NOT EXISTS social_accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,
+  account_name TEXT,
+  account_id TEXT,
+  access_token TEXT,
+  refresh_token TEXT,
+  token_expires_at TIMESTAMPTZ,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Enable Realtime for dashboard subscriptions
 ALTER PUBLICATION supabase_realtime ADD TABLE scenes;
 ALTER PUBLICATION supabase_realtime ADD TABLE topics;
 ALTER PUBLICATION supabase_realtime ADD TABLE projects;
 ALTER PUBLICATION supabase_realtime ADD TABLE production_log;
+ALTER PUBLICATION supabase_realtime ADD TABLE shorts;
 
 -- Set REPLICA IDENTITY FULL for UPDATE events in Realtime
 ALTER TABLE scenes REPLICA IDENTITY FULL;
 ALTER TABLE topics REPLICA IDENTITY FULL;
 ALTER TABLE projects REPLICA IDENTITY FULL;
+ALTER TABLE shorts REPLICA IDENTITY FULL;
 
 EOSQL
   echo "  ✅ Created supabase/migrations/001_initial_schema.sql"
 else
-  echo "  ⏭️  Migration file already exists, skipping"
+  echo "  ⏭️  Migration file already exists, skipping creation"
+fi
+
+# Auto-run migration if Supabase container is reachable
+echo ""
+echo "▶ Running Supabase migration..."
+
+# Try common container names
+SUPABASE_CONTAINER=""
+for name in supabase-db supabase_db supabase-postgres supabase_supabase-db_1; do
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "$name"; then
+    SUPABASE_CONTAINER="$name"
+    break
+  fi
+done
+
+if [ -n "$SUPABASE_CONTAINER" ]; then
+  echo "  Found Supabase container: $SUPABASE_CONTAINER"
+  docker exec -i "$SUPABASE_CONTAINER" psql -U postgres < supabase/migrations/001_initial_schema.sql 2>&1 | tail -5
+  if [ $? -eq 0 ]; then
+    echo "  ✅ Migration complete — all tables created/verified"
+  else
+    echo "  ⚠️  Migration had errors. Check output above."
+    echo "     Run manually: docker exec -i $SUPABASE_CONTAINER psql -U postgres < supabase/migrations/001_initial_schema.sql"
+  fi
+else
+  echo "  ⚠️  No Supabase container found locally."
+  echo "     If Supabase is on a remote server, SSH in and run:"
+  echo "     docker exec -i supabase-db psql -U postgres < supabase/migrations/001_initial_schema.sql"
 fi
 
 # ─── 7. DASHBOARD PACKAGE.JSON TEMPLATE ─────────────────────
@@ -639,13 +814,18 @@ echo "  ✅ Setup complete!"
 echo ""
 echo "  Next steps:"
 echo "  1. Edit .env with your actual Supabase keys"
-echo "  2. Run the Supabase migration:"
+echo "  2. Run the Supabase migration (includes shorts + social_accounts tables):"
 echo "     psql -h localhost -p 54321 -U postgres -f supabase/migrations/001_initial_schema.sql"
 echo "  3. Install GSD globally:"
 echo "     npx get-shit-done-cc@latest"
 echo "  4. Generate dashboard design system:"
 echo '     python3 .claude/skills/ui-ux-pro-max/scripts/search.py "AI video production dashboard" --design-system --persist -p "Vision GridAI"'
-echo "  5. Start building:"
+echo "  5. Verify Agency Agents installed:"
+echo "     ls ~/.claude/agents/ | wc -l  (should show 61 agents)"
+echo "  6. Create Fal.ai credential in n8n:"
+echo "     n8n → Settings → Credentials → HTTP Header Auth → Name: 'Fal API Key'"
+echo "     Header Name: Authorization, Header Value: Key YOUR_FAL_API_KEY"
+echo "  7. Start building:"
 echo "     /gsd:new-project  (in Claude Code)"
-echo "  6. Read Agent.md before building anything"
+echo "  8. Read Agent.md before building anything"
 echo "══════════════════════════════════════════════════"

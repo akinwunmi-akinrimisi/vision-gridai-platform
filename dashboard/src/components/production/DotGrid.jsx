@@ -1,37 +1,56 @@
 import { useState } from 'react';
 import { Zap } from 'lucide-react';
 
-/**
- * Determine dot color based on scene statuses.
- * Priority: failed > clip_complete > video > image > audio > skipped > pending
- */
 function getDotColor(scene) {
-  if (scene.skipped) return 'bg-slate-400';
-  if (
-    scene.audio_status === 'failed' ||
-    scene.image_status === 'failed' ||
-    scene.video_status === 'failed'
-  )
-    return 'bg-red-500';
+  if (scene.skipped)
+    return 'bg-slate-400 dark:bg-slate-500';
+  if (scene.audio_status === 'failed' || scene.image_status === 'failed' || scene.video_status === 'failed')
+    return 'bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]';
   if (scene.clip_status === 'complete' || scene.clip_status === 'uploaded')
-    return 'bg-emerald-500 green';
+    return 'bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.4)] green';
   if (scene.video_status === 'uploaded' || scene.video_status === 'generated')
     return 'bg-purple-500';
   if (scene.image_status === 'uploaded' || scene.image_status === 'generated')
     return 'bg-cyan-500';
   if (scene.audio_status === 'uploaded' || scene.audio_status === 'generated')
     return 'bg-blue-500';
-  return 'bg-slate-200 dark:bg-white/[0.06] gray';
+  return 'bg-slate-200 dark:bg-white/[0.08] gray';
 }
 
-/**
- * Scene progress dot grid grouped by chapter.
- * Colors dots by furthest completed stage.
- */
+function isPartialProgress(scene) {
+  if (scene.skipped) return false;
+  if (scene.audio_status === 'failed' || scene.image_status === 'failed' || scene.video_status === 'failed') return false;
+  if (scene.clip_status === 'complete' || scene.clip_status === 'uploaded') return false;
+  // Partial: has some progress but not fully complete
+  const hasAudio = scene.audio_status === 'uploaded' || scene.audio_status === 'generated';
+  const hasImage = scene.image_status === 'uploaded' || scene.image_status === 'generated';
+  const hasVideo = scene.video_status === 'uploaded' || scene.video_status === 'generated';
+  return hasAudio || hasImage || hasVideo;
+}
+
+function getDotTooltipStatus(scene) {
+  if (scene.skipped) return 'Skipped';
+  if (scene.audio_status === 'failed' || scene.image_status === 'failed' || scene.video_status === 'failed') return 'Failed';
+  if (scene.clip_status === 'complete' || scene.clip_status === 'uploaded') return 'Complete';
+  if (scene.video_status === 'uploaded' || scene.video_status === 'generated') return 'Video done';
+  if (scene.image_status === 'uploaded' || scene.image_status === 'generated') return 'Image done';
+  if (scene.audio_status === 'uploaded' || scene.audio_status === 'generated') return 'Audio done';
+  return 'Pending';
+}
+
+const LEGEND = [
+  { label: 'Pending', color: 'bg-slate-200 dark:bg-white/[0.08]' },
+  { label: 'Audio', color: 'bg-blue-500' },
+  { label: 'Image', color: 'bg-cyan-500' },
+  { label: 'Video', color: 'bg-purple-500' },
+  { label: 'Complete', color: 'bg-emerald-500' },
+  { label: 'Failed', color: 'bg-red-500' },
+  { label: 'Skipped', color: 'bg-slate-400' },
+];
+
 export default function DotGrid({ scenes = [] }) {
   const [hoveredScene, setHoveredScene] = useState(null);
 
-  // Group scenes by chapter
   const chapters = scenes.reduce((acc, scene) => {
     const ch = scene.chapter || 'Unknown Chapter';
     if (!acc[ch]) acc[ch] = [];
@@ -39,30 +58,59 @@ export default function DotGrid({ scenes = [] }) {
     return acc;
   }, {});
 
+  const completedCount = scenes.filter(
+    (s) => s.clip_status === 'complete' || s.clip_status === 'uploaded'
+  ).length;
+  const failedCount = scenes.filter(
+    (s) => s.audio_status === 'failed' || s.image_status === 'failed' || s.video_status === 'failed'
+  ).length;
+
   return (
     <div data-testid="dot-grid" className="glass-card p-6 mb-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Zap className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-          Scene-by-Scene Progress
-        </h3>
-        <span className="text-xs text-text-muted dark:text-text-muted-dark">
-          ({scenes.length} scenes)
-        </span>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-primary" />
+          <h3 className="section-title text-sm">Scene Progress</h3>
+        </div>
+        <div className="flex items-center gap-3 text-2xs text-slate-400 dark:text-slate-500 tabular-nums">
+          <span>{completedCount}/{scenes.length} done</span>
+          {failedCount > 0 && (
+            <span className="text-red-500">{failedCount} failed</span>
+          )}
+        </div>
       </div>
 
+      {/* Overall progress bar */}
+      <div className="progress-bar-lg mb-5">
+        <div
+          className="progress-bar-fill"
+          style={{ width: `${scenes.length > 0 ? (completedCount / scenes.length * 100) : 0}%` }}
+        />
+      </div>
+
+      {/* Chapter groups */}
       <div className="space-y-3">
         {Object.entries(chapters).map(([chapterName, chapterScenes]) => (
           <div key={chapterName}>
-            <div className="text-[10px] uppercase tracking-wider text-text-muted dark:text-text-muted-dark mb-1.5 font-medium">
+            <div className="text-2xs uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 font-semibold">
               {chapterName}
             </div>
-            <div className="flex flex-wrap gap-1 relative">
-              {chapterScenes.map((scene) => (
+            <div className="flex flex-wrap gap-[3px]">
+              {chapterScenes.map((scene, index) => (
                 <div
                   key={scene.id}
                   data-testid={`dot-${scene.scene_number}`}
-                  className={`w-2.5 h-2.5 rounded-sm transition-colors duration-300 cursor-default ${getDotColor(scene)}`}
+                  className={`
+                    w-2.5 h-2.5 rounded-[3px] transition-all duration-300 cursor-default
+                    hover:scale-150 hover:z-10 hover:ring-2 hover:ring-white/50 dark:hover:ring-white/20
+                    ${getDotColor(scene)}
+                    ${isPartialProgress(scene) ? 'animate-pulse' : ''}
+                  `}
+                  style={{
+                    opacity: 0,
+                    animation: `fadeIn 0.3s ease-out ${Math.min(index * 8, 500)}ms forwards${isPartialProgress(scene) ? ', pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' : ''}`,
+                  }}
                   onMouseEnter={() => setHoveredScene(scene)}
                   onMouseLeave={() => setHoveredScene(null)}
                 />
@@ -76,44 +124,30 @@ export default function DotGrid({ scenes = [] }) {
       {hoveredScene && (
         <div
           data-testid="dot-tooltip"
-          className="
-            mt-3 px-3 py-2 rounded-lg text-xs
-            bg-slate-100 dark:bg-white/[0.06]
-            border border-border/50 dark:border-white/[0.06]
-            text-slate-700 dark:text-slate-300
-          "
+          className="mt-3 px-3 py-2 rounded-lg text-xs bg-slate-50 dark:bg-white/[0.04] border border-slate-200/60 dark:border-white/[0.06]"
         >
-          <span className="font-semibold">Scene {hoveredScene.scene_number}</span>
-          <span className="block mt-0.5 text-text-muted dark:text-text-muted-dark">
-            audio={hoveredScene.audio_status}, image={hoveredScene.image_status},
-            video={hoveredScene.video_status}, clip={hoveredScene.clip_status}
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-800 dark:text-slate-200">
+              Scene {hoveredScene.scene_number}
+            </span>
+            <span className="badge text-2xs">
+              {getDotTooltipStatus(hoveredScene)}
+            </span>
+          </div>
+          <span className="text-2xs text-slate-400 dark:text-slate-500 mt-0.5 block">
+            audio: {hoveredScene.audio_status} | image: {hoveredScene.image_status} | video: {hoveredScene.video_status}
           </span>
         </div>
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mt-4 text-[10px] text-text-muted dark:text-text-muted-dark flex-wrap">
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-sm bg-slate-200 dark:bg-white/[0.06]" /> Pending
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-sm bg-blue-500" /> Audio
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-sm bg-cyan-500" /> Image
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-sm bg-purple-500" /> Video
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-sm bg-emerald-500" /> Complete
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-sm bg-red-500" /> Failed
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-sm bg-slate-400" /> Skipped
-        </span>
+      <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-100 dark:border-white/[0.06] flex-wrap">
+        {LEGEND.map((item) => (
+          <span key={item.label} className="flex items-center gap-1 text-2xs text-slate-400 dark:text-slate-500">
+            <span className={`w-2 h-2 rounded-[2px] ${item.color}`} />
+            {item.label}
+          </span>
+        ))}
       </div>
     </div>
   );

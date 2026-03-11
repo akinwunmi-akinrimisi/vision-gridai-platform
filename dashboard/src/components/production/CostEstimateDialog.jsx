@@ -19,8 +19,8 @@ export default function CostEstimateDialog({
 
   const ttsCost = sceneCount * 0.002; // ~$0.30 per video
   const imagesCost = imagesCount * (projectConfig.image_cost || 0.032);
-  const i2vCost = i2vCount * (projectConfig.i2v_cost || 0.125);
-  const t2vCost = t2vCount * (projectConfig.t2v_cost || 0.125);
+  const i2vCost = i2vCount * (projectConfig.i2v_cost || 0.050);
+  const t2vCost = t2vCount * (projectConfig.t2v_cost || 0.050);
   const perTopicCost = ttsCost + imagesCost + i2vCost + t2vCost;
   const totalCost = perTopicCost * topics.length;
 
@@ -69,11 +69,11 @@ export default function CostEstimateDialog({
               <span className="tabular-nums font-medium">${imagesCost.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-600 dark:text-slate-400">I2V ({i2vCount} x Kling)</span>
+              <span className="text-slate-600 dark:text-slate-400">I2V ({i2vCount} x Wan 2.5)</span>
               <span className="tabular-nums font-medium">${i2vCost.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-600 dark:text-slate-400">T2V ({t2vCount} x Kling)</span>
+              <span className="text-slate-600 dark:text-slate-400">T2V ({t2vCount} x Wan 2.5)</span>
               <span className="tabular-nums font-medium">${t2vCost.toFixed(2)}</span>
             </div>
             <div className="h-px bg-slate-200 dark:bg-white/[0.06] my-1" />

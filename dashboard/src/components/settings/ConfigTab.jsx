@@ -79,7 +79,7 @@ function EditableSection({ icon: Icon, title, desc, fields, data, onSave, isPend
   return (
     <div className="glass-card p-6">
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center">
+        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${title === 'Production Config' ? 'from-primary/20 to-indigo-500/20' : title === 'YouTube & Drive' ? 'from-red-500/20 to-rose-500/20' : title === 'API & Webhooks' ? 'from-emerald-500/20 to-teal-500/20' : title === 'Security' ? 'from-amber-500/20 to-orange-500/20' : 'from-violet-500/20 to-purple-500/20'} flex items-center justify-center`}>
           <Icon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
         </div>
         <div className="flex-1">
@@ -91,14 +91,14 @@ function EditableSection({ icon: Icon, title, desc, fields, data, onSave, isPend
             <>
               <button
                 onClick={cancelEditing}
-                className="px-3 py-1.5 text-sm rounded-lg border border-border/50 dark:border-white/[0.06] text-text-muted dark:text-text-muted-dark hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+                className="btn-ghost btn-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={isPending}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                className="btn-primary btn-sm"
               >
                 {isPending ? 'Saving...' : 'Save'}
               </button>
@@ -106,7 +106,7 @@ function EditableSection({ icon: Icon, title, desc, fields, data, onSave, isPend
           ) : (
             <button
               onClick={startEditing}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-border/50 dark:border-white/[0.06] text-text-muted dark:text-text-muted-dark hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+              className="btn-secondary btn-sm"
             >
               <Pencil className="w-3.5 h-3.5" />
               Edit
@@ -119,7 +119,7 @@ function EditableSection({ icon: Icon, title, desc, fields, data, onSave, isPend
         {fields.map((field) => (
           <div
             key={field.key}
-            className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.04]"
+            className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.04] hover:bg-slate-100/50 dark:hover:bg-white/[0.03] transition-colors"
           >
             <span className="text-sm text-text-muted dark:text-text-muted-dark">{field.label}</span>
             {isEditing ? (
@@ -141,7 +141,7 @@ function EditableSection({ icon: Icon, title, desc, fields, data, onSave, isPend
  * ----------------------------------------------------------------*/
 function FieldInput({ field, value, onChange }) {
   const baseClass =
-    'text-sm font-medium text-right bg-white dark:bg-white/[0.06] border border-border/50 dark:border-white/[0.08] rounded-lg px-3 py-1 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary/50';
+    'input text-sm font-medium text-right';
 
   if (field.type === 'select') {
     return (
@@ -189,7 +189,7 @@ function ReadOnlySection({ icon: Icon, title, desc, items }) {
   return (
     <div className="glass-card p-6">
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center">
+        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${title === 'API & Webhooks' ? 'from-emerald-500/20 to-teal-500/20' : title === 'Security' ? 'from-amber-500/20 to-orange-500/20' : 'from-violet-500/20 to-purple-500/20'} flex items-center justify-center`}>
           <Icon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
         </div>
         <div>
@@ -202,7 +202,7 @@ function ReadOnlySection({ icon: Icon, title, desc, items }) {
         {items.map((item) => (
           <div
             key={item.label}
-            className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.04]"
+            className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.04] hover:bg-slate-100/50 dark:hover:bg-white/[0.03] transition-colors"
           >
             <span className="text-sm text-text-muted dark:text-text-muted-dark">{item.label}</span>
             <span className="text-sm font-medium text-slate-900 dark:text-white">{item.value}</span>

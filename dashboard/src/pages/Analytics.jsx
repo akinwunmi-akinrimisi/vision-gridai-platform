@@ -212,11 +212,7 @@ export default function Analytics() {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium
-              bg-white/60 dark:bg-white/[0.04] border border-border/50 dark:border-white/[0.06]
-              text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-white/[0.06]
-              hover:border-slate-300 dark:hover:border-white/[0.1] transition-all cursor-pointer
-              disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-secondary btn-sm"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh Now
@@ -227,14 +223,15 @@ export default function Analytics() {
 
       {/* Primary metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
-        {primaryCards.map((m) => (
-          <div key={m.label} className="glass-card p-5">
+        {primaryCards.map((m, i) => (
+          <div key={m.label} className={`metric-card animate-slide-up stagger-${i + 1}`} style={{ opacity: 0 }}>
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-text-muted dark:text-text-muted-dark uppercase tracking-wider">
                 {m.label}
               </span>
               <div
-                className={`w-8 h-8 rounded-xl bg-gradient-to-br ${m.bgColor} flex items-center justify-center shadow-sm`}
+                className={`metric-card-icon bg-gradient-to-br ${m.bgColor}`}
+                style={{ '--icon-glow': m.bgColor.includes('blue') ? 'rgba(37,99,235,0.4)' : m.bgColor.includes('purple') ? 'rgba(139,92,246,0.4)' : m.bgColor.includes('emerald') ? 'rgba(16,185,129,0.4)' : 'rgba(245,158,11,0.4)' }}
               >
                 <m.icon className="w-4 h-4 text-white" />
               </div>
@@ -246,8 +243,8 @@ export default function Analytics() {
 
       {/* Secondary metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8">
-        {secondaryCards.map((m) => (
-          <div key={m.label} className="card-elevated p-4">
+        {secondaryCards.map((m, i) => (
+          <div key={m.label} className={`card-elevated p-4 animate-slide-up stagger-${i + 5}`} style={{ opacity: 0 }}>
             <div className="flex items-center gap-2 mb-1.5">
               <m.icon className="w-3.5 h-3.5 text-text-muted dark:text-text-muted-dark" />
               <span className="text-xs text-text-muted dark:text-text-muted-dark font-medium">
@@ -284,6 +281,7 @@ export default function Analytics() {
       {/* Charts grid */}
       {topics.length > 0 && (
         <>
+          <h2 className="section-title mb-4">Charts & Insights</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
             <div data-testid="views-chart">
               <ViewsChart data={viewsData} />

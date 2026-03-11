@@ -61,7 +61,7 @@ export default function PromptsTab({ projectId }) {
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Prompts</h2>
         <button
           onClick={() => setShowRegenConfirm(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-slate-100 dark:bg-white/[0.06] border border-border/50 dark:border-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-300 transition-colors"
+          className="btn-secondary"
         >
           <RefreshCw className="w-4 h-4" />
           Regenerate All
@@ -71,7 +71,7 @@ export default function PromptsTab({ projectId }) {
       {/* Prompt groups */}
       {PROMPT_GROUPS.map((group) => (
         <div key={group.label} className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted dark:text-text-muted-dark px-1">
+          <h3 className="section-title px-1 mb-1">
             {group.label}
           </h3>
           {group.types.map((type) => {

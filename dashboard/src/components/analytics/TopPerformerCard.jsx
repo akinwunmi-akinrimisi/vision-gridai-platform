@@ -33,10 +33,8 @@ export default function TopPerformerCard({ topic }) {
   ];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl">
-      {/* Gradient top border */}
-      <div className="h-1 bg-gradient-to-r from-primary to-emerald-500 rounded-t-2xl" />
-      <div className="glass-card rounded-t-none p-6">
+    <div className="relative overflow-hidden rounded-2xl gradient-border-visible">
+      <div className="glass-card p-6">
         <div className="flex items-center gap-2 mb-4">
           <Trophy className="w-5 h-5 text-amber-500" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
@@ -64,9 +62,7 @@ export default function TopPerformerCard({ topic }) {
               {stats.map((s) => (
                 <div
                   key={s.label}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg
-                    bg-slate-100 dark:bg-white/[0.06] text-xs font-medium
-                    text-slate-700 dark:text-slate-300"
+                  className="badge badge-blue"
                 >
                   <s.icon className="w-3 h-3 text-text-muted dark:text-text-muted-dark" />
                   <span className="text-text-muted dark:text-text-muted-dark">{s.label}:</span>

@@ -36,12 +36,18 @@ export default function ViewsChart({ data }) {
 
   return (
     <div className="glass-card p-6">
-      <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight mb-4">
+      <h3 className="section-title mb-4">
         Views Over Time
       </h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
+            <defs>
+              <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={COLORS.primary} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={COLORS.primary} stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={grid} />
             <XAxis dataKey="date" tick={{ fontSize: 12, fill: text }} />
             <YAxis tick={{ fontSize: 12, fill: text }} />
@@ -50,8 +56,8 @@ export default function ViewsChart({ data }) {
               type="monotone"
               dataKey="views"
               stroke={COLORS.primary}
-              fill={COLORS.primary}
-              fillOpacity={0.15}
+              fill="url(#viewsGradient)"
+              fillOpacity={1}
               strokeWidth={2}
             />
           </AreaChart>

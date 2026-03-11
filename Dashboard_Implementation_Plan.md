@@ -18,7 +18,7 @@ A complete AI video production platform where you:
 8. **One click to publish** to YouTube with full metadata + captions + thumbnails
 9. **Analytics flow back** into the dashboard showing performance per video, per niche
 
-All powered by: Supabase (database) + n8n (orchestration) + Dashboard (UI) + Claude (intelligence) + Kie.ai (media generation) + FFmpeg (assembly)
+All powered by: Supabase (database) + n8n (orchestration) + Dashboard (UI) + Claude (intelligence) + Fal.ai (media generation) + FFmpeg (assembly) + Remotion (kinetic captions) + Agency Agents (61 AI specialists)
 
 ---
 
@@ -800,11 +800,58 @@ Same as current Agent.md Section 13 spec — views, watch hours, CTR, revenue, C
 
 Per-project configuration:
 - Script approach toggle (3-pass vs single-call)
-- Image/video model selection
+- Image/video model selection (Fal.ai models: Seedream 4.0, Wan 2.5)
 - Target word count / scene count
 - YouTube channel ID and playlist IDs
 - Google Drive folder configuration
 - Prompt editor (view/edit all dynamic prompts for this niche)
+- Social media accounts (TikTok, Instagram credentials)
+
+### Page 8: 📱 Shorts Creator
+
+**URL:** `/shorts` (project list) → `/shorts/{projectId}/{topicId}` (clip creation)
+
+**Project list view:** Shows all projects as cards. Projects with zero published videos are visible but greyed out/disabled. Shows count of published topics and shorts created per project.
+
+**Topic list view:** Shows all topics for selected project. Only topics with `status = 'published'` can start shorts creation. Shows shorts status per topic (not started / N clips approved / N clips ready).
+
+**Clip creation view (per topic):**
+
+1. **"Analyze for Viral Clips" button** → triggers WF_SHORTS_ANALYZE
+2. **Review Gate (Gate 4):** Shows 20 proposed clips as cards with:
+   - Virality score (1-10) with fire emoji for 8+
+   - Clip title (editable)
+   - Original narration vs rewritten short-form narration (side by side)
+   - Rewritten image prompts preview
+   - Emphasis words highlighted in the narration
+   - Hashtags (editable)
+   - Actions: Approve / Skip / Edit
+   - Bulk actions: Approve All / Approve Top 10
+3. **Production monitor:** After approval, shows progress per clip (audio → images → I2V → T2V → captions → assembly)
+4. **Preview:** Play finished 9:16 clips in embedded player
+
+**Thumbnail spec:** Diagonal slant divider, AI-generated image on one side, bold short phrase (3-6 words) filling 70-80% of text area on the other. Vibrant TikTok aesthetic.
+
+**Caption spec:** Remotion word-by-word pop-in, center screen, emphasis words in yellow/red, bold sans-serif font, strong drop shadow.
+
+### Page 9: 📤 Social Media Publisher
+
+**URL:** `/social`
+
+**Ready to Post section:** Table of all clips with portrait_drive_url populated, showing per-platform status (TikTok / Instagram / YouTube Shorts). Each row has:
+- Post Now (immediate upload to selected platform)
+- Schedule (date/time picker per platform)
+- Edit Caption (per-platform caption/hashtag customization)
+- Preview (embedded 9:16 player)
+
+**Bulk actions:**
+- Auto-Schedule All (AI suggests peak hours: TikTok 6PM/8PM/10PM EST, Instagram 12PM/6PM, YouTube Shorts same as TikTok)
+- Post All Now
+- Cross-platform stagger toggle (TikTok first → Instagram 24h later → YouTube Shorts same day)
+
+**Posting History section:** Shows all posted clips with platform, post time, views, likes, comments, shares. Sortable and filterable by platform, date, engagement.
+
+**Analytics integration:** WF_SOCIAL_ANALYTICS pulls engagement metrics daily from all 3 platforms.
 
 ---
 
@@ -957,24 +1004,39 @@ Body:
 | Script evaluation | $0.05–$0.15 | $1.25–$3.75 | $1.50–$4.50 |
 | Visual type assignment | $0.03 | $0.75 | $0.90 |
 | TTS audio | $0.30 | $7.50 | $9.00 |
-| Seedream 4.5 images | $3.20 | $80.00 | $96.00 |
-| Kling I2V clips | $3.13 | $78.25 | $93.75 |
-| Kling T2V clips | $9.00 | $225.00 | $270.00 |
+| Seedream 4.0 images (Fal.ai) | $2.25 | $56.25 | $67.50 |
+| Wan 2.5 I2V clips (Fal.ai) | $6.25 | $156.25 | $187.50 |
+| Wan 2.5 T2V clips (Fal.ai) | $18.00 | $450.00 | $540.00 |
+| **Subtotal: Main Video** | **~$28** | **~$700** | **~$855** |
+| Shorts: Viral analysis + rewrite | $0.08 | $2.00 | $2.40 |
+| Shorts: Fresh TTS audio | $0.28 | $7.00 | $8.40 |
+| Shorts: 9:16 images + thumbnails (Fal.ai) | $2.46 | $61.50 | $73.80 |
+| Shorts: 9:16 I2V + T2V clips (Fal.ai) | $19.50 | $487.50 | $585.00 |
+| Shorts: Remotion captions + FFmpeg | Free | Free | Free |
+| **Subtotal: Shorts (20/topic)** | **~$22** | **~$558** | **~$670** |
 | Supervisor agent | — | — | ~$14.40 |
 | Web search (topic research) | — | ~$0.50 | — |
 | Supabase | — | — | $0 (self-hosted) |
-| **TOTAL** | **~$16.50** | **~$405 + $1.10 setup** | **~$543** |
+| **TOTAL (Video + Shorts)** | **~$50** | **~$1,260** | **~$1,540** |
 
 ---
 
-## 11. OPEN QUESTIONS FOR YOU
+## 11. DECISIONS LOG (All Resolved)
 
-Before I modify the files:
-
-1. **Dashboard tech stack:** Vanilla HTML/JS (simpler, faster to build) or React (more scalable for multi-page app with state management)? Given 7 pages with real-time updates, React might be worth it.
-
-2. **Supabase credentials:** Do you have the Supabase URL + anon key + service_role key ready? I need these for the n8n integration spec.
-
-3. **The refinement flow:** When you reject a topic and provide instructions, should Claude refine JUST that one topic, or should it consider the other 24 topics to avoid overlap?
-
-4. **The 3-pass approach + scoring:** Should each PASS be independently scored, or only the final combined output? (Current plan: evaluate only the combined output after all 3 passes.)
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Dashboard tech | React + Tailwind | 9-page SPA with real-time state management |
+| Refinement flow | Consider all 24 other topics | Avoids overlap, better quality |
+| Script scoring | Per-pass + combined | Catches issues early, before next pass builds on them |
+| Media provider | Fal.ai (Seedream 4.0 + Wan 2.5) | Replaced Kie.ai due to payment issues. More reliable, native 9:16 support. |
+| Script approach | 3-pass | Better quality, proven in previous pipeline |
+| System prompts | Fully dynamic per niche | Claude auto-generates expertise profile from niche input |
+| Multi-project | From day 1 | Each niche = separate project in dashboard |
+| Review gates | 4 gates | Topics, Scripts, Video (pre-YouTube), Shorts (viral clips) |
+| Shorts audio | Fresh TTS with rewritten narration | Punchier pacing for short-form, not reused from long-form |
+| Shorts visuals | Native 9:16, TikTok-bold aesthetic | Not cropped/letterboxed 16:9. Different visual style from main video. |
+| Shorts captions | Remotion kinetic (word-by-word, center, emphasis in yellow/red) | Hormozi/MrBeast style. Free tool, React-based. |
+| Shorts thumbnails | AI-generated, diagonal slant, short phrase 70-80% fill | Fully automated via Claude prompt → Seedream 4.0 |
+| YouTube Shorts | Same channel as long-form | Drives subscribers from shorts to 2-hour videos |
+| Social posting | Both scheduling and immediate | Auto-schedule with peak hours, manual override available |
+| Build process | GSD + Agency Agents (61) + UI UX Pro Max | GSD manages process, agents provide expertise, UUPM provides design |

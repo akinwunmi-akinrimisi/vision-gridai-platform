@@ -7,7 +7,7 @@ Build a multi-niche AI video production platform in phases following the strict 
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-6 (shipped 2026-03-09) — [Archive](milestones/v1.0-ROADMAP.md)
-- [ ] **v1.1 Backend & E2E** — Phases 7-10 — Deploy, harden, build AI agents, validate pipeline
+- [x] **v1.1 Backend & E2E** — Phases 7-10 — Deploy, harden, build AI agents, validate pipeline (completed 2026-03-10)
 
 ## Phases
 
@@ -30,7 +30,7 @@ Build a multi-niche AI video production platform in phases following the strict 
 - [x] **Phase 7: Infrastructure Hardening** — Docker memory limits, PostgreSQL tuning, n8n env vars, dashboard deploy (completed 2026-03-09)
 - [x] **Phase 8: Credentials & Deployment** — Production credentials, stub deactivation, workflow import, webhook URL config (completed 2026-03-09)
 - [x] **Phase 9: AI Agent Workflows** — Niche research, prompt generation, topic generation, topic actions, inline editing (completed 2026-03-09)
-- [ ] **Phase 10: End-to-End Validation** — Full pipeline test with US Credit Cards niche through all 3 gates
+- [x] **Phase 10: End-to-End Validation** — Full pipeline test with US Credit Cards niche through all 3 gates (completed 2026-03-10)
 
 ## Phase Details
 
@@ -112,4 +112,4 @@ Plans:
 | 7. Infrastructure Hardening | v1.1 | 4/4 | Complete | 2026-03-09 |
 | 8. Credentials & Deployment | v1.1 | 4/4 | Complete | 2026-03-09 |
 | 9. AI Agent Workflows | v1.1 | 4/4 | Complete | 2026-03-09 |
-| 10. End-to-End Validation | 2/6 | In Progress|  | - |
+| 10. End-to-End Validation | v1.1 | 6/6 | Complete | 2026-03-10 |

@@ -12,6 +12,7 @@ import ProductionMonitor from './pages/ProductionMonitor';
 import Analytics from './pages/Analytics';
 import VideoReview from './pages/VideoReview';
 import Settings from './pages/Settings';
+import TopicDetail from './pages/TopicDetail';
 
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/project/:id" element={<ProjectDashboard />} />
           <Route path="/project/:id/research" element={<NicheResearch />} />
           <Route path="/project/:id/topics" element={<TopicReview />} />
+          <Route path="/project/:id/topics/:topicId" element={<TopicDetail />} />
           <Route path="/project/:id/topics/:topicId/script" element={<ScriptReview />} />
           <Route path="/project/:id/topics/:topicId/review" element={<VideoReview />} />
           <Route path="/project/:id/production" element={<ProductionMonitor />} />

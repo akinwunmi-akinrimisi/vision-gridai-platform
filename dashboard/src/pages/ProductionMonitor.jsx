@@ -20,26 +20,17 @@ export default function ProductionMonitor() {
   const { id: projectId } = useParams();
   const [searchParams] = useSearchParams();
 
-  // State
   const [showCostDialog, setShowCostDialog] = useState(false);
   const [showStopDialog, setShowStopDialog] = useState(false);
   const [restartText, setRestartText] = useState('');
   const [supervisorDismissed, setSupervisorDismissed] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
-  // Data hooks
   const { data: topics = [], isLoading } = useTopics(projectId);
   const mutations = useProductionMutations(projectId);
 
-  // Derive topic categories
-  const activeTopic = useMemo(
-    () => topics.find((t) => t.status === 'producing'),
-    [topics]
-  );
-  const stoppedTopic = useMemo(
-    () => topics.find((t) => t.status === 'stopped'),
-    [topics]
-  );
+  const activeTopic = useMemo(() => topics.find((t) => t.status === 'producing'), [topics]);
+  const stoppedTopic = useMemo(() => topics.find((t) => t.status === 'stopped'), [topics]);
   const queuedTopics = useMemo(
     () => topics.filter((t) => t.status === 'queued').sort((a, b) => a.topic_number - b.topic_number),
     [topics]
@@ -55,11 +46,10 @@ export default function ProductionMonitor() {
 
   const currentTopic = activeTopic || stoppedTopic;
 
-  // Production progress for active topic
-  const { scenes, stageProgress, failedScenes: hookFailedScenes, isLoading: scenesLoading } = useProductionProgress(currentTopic?.id || null);
+  const { scenes, stageProgress, failedScenes: hookFailedScenes, isLoading: scenesLoading } =
+    useProductionProgress(currentTopic?.id || null);
   const { logs } = useProductionLog(currentTopic?.id || null);
 
-  // Derive failed scenes from scenes array (fallback if hook doesn't provide)
   const failedScenes = useMemo(() => {
     if (hookFailedScenes && hookFailedScenes.length > 0) return hookFailedScenes;
     return scenes.filter(
@@ -67,12 +57,8 @@ export default function ProductionMonitor() {
     );
   }, [hookFailedScenes, scenes]);
 
-  // Elapsed time counter
   useEffect(() => {
-    if (!activeTopic?.last_status_change) {
-      setElapsed(0);
-      return;
-    }
+    if (!activeTopic?.last_status_change) { setElapsed(0); return; }
     const start = new Date(activeTopic.last_status_change).getTime();
     const tick = () => setElapsed(Date.now() - start);
     tick();
@@ -80,18 +66,13 @@ export default function ProductionMonitor() {
     return () => clearInterval(interval);
   }, [activeTopic?.last_status_change]);
 
-  // Auto-open cost dialog from query param
   useEffect(() => {
     const trigger = searchParams.get('trigger');
-    if (trigger && scriptApprovedTopics.length > 0) {
-      setShowCostDialog(true);
-    }
+    if (trigger && scriptApprovedTopics.length > 0) setShowCostDialog(true);
   }, [searchParams, scriptApprovedTopics.length]);
 
-  // Supervisor alert visibility
   const supervisorAlerted = currentTopic?.supervisor_alerted && !supervisorDismissed;
 
-  // Compute simple ETA from stage progress
   const eta = useMemo(() => {
     if (!stageProgress || !elapsed || elapsed <= 0) return null;
     const totalScenes = scenes.length || 1;
@@ -99,9 +80,7 @@ export default function ProductionMonitor() {
       (s) => s.clip_status === 'complete' || s.clip_status === 'uploaded'
     ).length;
     if (doneScenes === 0) return null;
-    const msPerScene = elapsed / doneScenes;
-    const remaining = totalScenes - doneScenes;
-    return remaining * msPerScene;
+    return ((totalScenes - doneScenes) / doneScenes) * elapsed;
   }, [stageProgress, elapsed, scenes]);
 
   // Handlers
@@ -118,33 +97,25 @@ export default function ProductionMonitor() {
   };
 
   const handleStopProduction = () => {
-    if (activeTopic) {
-      mutations.stopProduction.mutate({ topic_id: activeTopic.id });
-    }
+    if (activeTopic) mutations.stopProduction.mutate({ topic_id: activeTopic.id });
     setShowStopDialog(false);
   };
 
   const handleResumeProduction = () => {
-    if (stoppedTopic) {
-      mutations.resumeProduction.mutate({ topic_id: stoppedTopic.id });
-    }
+    if (stoppedTopic) mutations.resumeProduction.mutate({ topic_id: stoppedTopic.id });
   };
 
   const handleRestartProduction = () => {
     if (stoppedTopic && restartText === 'RESTART') {
-      if (mutations.restartProduction) {
-        mutations.restartProduction.mutate({ topic_id: stoppedTopic.id });
-      }
+      if (mutations.restartProduction) mutations.restartProduction.mutate({ topic_id: stoppedTopic.id });
       setRestartText('');
     }
   };
 
   const handleRemoveFromQueue = (topicId) => {
-    // Remove from queue by stopping production (sets back to script_approved)
     mutations.stopProduction.mutate({ topic_id: topicId });
   };
 
-  // Failed scene handlers
   const handleRetryScene = (sceneId) => {
     mutations.retryScene.mutate({ scene_id: sceneId, topic_id: currentTopic?.id });
   };
@@ -160,21 +131,15 @@ export default function ProductionMonitor() {
   };
 
   const handleRetryAllFailed = () => {
-    if (mutations.retryAllFailed) {
-      mutations.retryAllFailed.mutate({ topic_id: currentTopic?.id });
-    }
+    if (mutations.retryAllFailed) mutations.retryAllFailed.mutate({ topic_id: currentTopic?.id });
   };
 
   const handleSkipAllFailed = () => {
-    if (mutations.skipAllFailed) {
-      mutations.skipAllFailed.mutate({ topic_id: currentTopic?.id });
-    }
+    if (mutations.skipAllFailed) mutations.skipAllFailed.mutate({ topic_id: currentTopic?.id });
   };
 
-  // ---- Render ----
-
   return (
-    <div className="animate-in">
+    <div className="animate-slide-up">
       <div className="page-header">
         <h1 className="page-title">Production Monitor</h1>
         <p className="page-subtitle">Real-time pipeline progress with scene-level tracking</p>
@@ -183,17 +148,13 @@ export default function ProductionMonitor() {
       {/* Supervisor Alert */}
       {supervisorAlerted && (
         <div data-testid="supervisor-alert">
-          <SupervisorAlert
-            visible={true}
-            onDismiss={() => setSupervisorDismissed(true)}
-          />
+          <SupervisorAlert visible={true} onDismiss={() => setSupervisorDismissed(true)} />
         </div>
       )}
 
       {/* ACTIVE / STOPPED PRODUCTION */}
       {currentTopic ? (
         <>
-          {/* Hero Card */}
           <HeroCard
             topic={currentTopic}
             stageProgress={stageProgress}
@@ -206,61 +167,40 @@ export default function ProductionMonitor() {
           {/* Stopped state controls */}
           {stoppedTopic && !activeTopic && (
             <div className="glass-card p-6 mb-6">
-              <div className="flex items-center gap-3 mb-3">
-                <StopCircle className="w-5 h-5 text-red-500" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
+                  <StopCircle className="w-4 h-4 text-red-500" />
+                </div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Production Stopped</h3>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleResumeProduction}
-                  className="
-                    flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium
-                    bg-gradient-to-r from-primary to-indigo-600 text-white
-                    shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30
-                    transition-all duration-200 cursor-pointer
-                  "
-                >
-                  <Play className="w-4 h-4" />
-                  Resume Production
+              <div className="flex items-center gap-3 flex-wrap">
+                <button onClick={handleResumeProduction} className="btn-primary btn-sm">
+                  <Play className="w-3.5 h-3.5" />
+                  Resume
                 </button>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={restartText}
                     onChange={(e) => setRestartText(e.target.value)}
-                    placeholder="Type RESTART to confirm"
-                    className="
-                      px-3 py-2 rounded-lg text-sm
-                      bg-white dark:bg-white/[0.04]
-                      border border-slate-200 dark:border-white/[0.1]
-                      text-slate-700 dark:text-slate-300
-                      focus:outline-none focus:ring-2 focus:ring-red-500/30
-                      w-48
-                    "
+                    placeholder="Type RESTART"
+                    className="input w-40 !py-1.5 text-xs"
                   />
                   <button
                     onClick={handleRestartProduction}
                     disabled={restartText !== 'RESTART'}
-                    className="
-                      flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium
-                      bg-gradient-to-r from-red-500 to-red-600 text-white
-                      shadow-md shadow-red-500/20
-                      disabled:opacity-40 disabled:cursor-not-allowed
-                      transition-all duration-200 cursor-pointer
-                    "
+                    className="btn-danger btn-sm"
                   >
-                    <RotateCcw className="w-4 h-4" />
-                    Restart from Scratch
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Restart
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Dot Grid */}
           {scenes.length > 0 && <DotGrid scenes={scenes} />}
 
-          {/* Failed Scenes */}
           {failedScenes && failedScenes.length > 0 && (
             <FailedScenes
               scenes={failedScenes}
@@ -272,39 +212,37 @@ export default function ProductionMonitor() {
             />
           )}
 
-          {/* Queue */}
           {queuedTopics.length > 0 && (
             <QueueList queuedTopics={queuedTopics} onRemove={handleRemoveFromQueue} />
           )}
 
-          {/* Recently Completed */}
           {completedTopics.length > 0 && (
             <div data-testid="recently-completed" className="glass-card p-6 mb-6">
               <div className="flex items-center gap-2 mb-4">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Recently Completed</h3>
+                <h3 className="section-title text-sm">Recently Completed</h3>
               </div>
               <div className="space-y-2">
                 {completedTopics.map((t) => (
                   <div
                     key={t.id}
                     className="
-                      flex items-center gap-3 px-3 py-2 rounded-lg
-                      bg-emerald-50/50 dark:bg-emerald-900/10
-                      border border-emerald-200/50 dark:border-emerald-800/20
+                      flex items-center gap-3 px-3 py-2.5 rounded-xl
+                      bg-emerald-50/50 dark:bg-emerald-500/[0.04]
+                      border border-emerald-200/40 dark:border-emerald-500/10
                     "
                   >
-                    <span className="badge badge-emerald text-[9px] px-1.5 py-0.5">#{t.topic_number}</span>
+                    <span className="badge badge-green text-2xs">#{t.topic_number}</span>
                     <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex-1 truncate">
                       {t.seo_title}
                     </span>
                     {t.total_cost != null && (
-                      <span className="text-xs tabular-nums text-text-muted dark:text-text-muted-dark">
+                      <span className="text-2xs tabular-nums text-slate-400 dark:text-slate-500">
                         ${t.total_cost.toFixed(2)}
                       </span>
                     )}
                     {t.scene_count && (
-                      <span className="text-[10px] text-text-muted dark:text-text-muted-dark">
+                      <span className="text-2xs text-slate-400 dark:text-slate-500">
                         {t.scene_count} scenes
                       </span>
                     )}
@@ -314,13 +252,12 @@ export default function ProductionMonitor() {
             </div>
           )}
 
-          {/* Activity Log */}
           <ActivityLog logs={logs} />
         </>
       ) : (
         /* EMPTY STATE */
-        <div className="glass-card p-8 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-indigo-600/10 flex items-center justify-center mx-auto mb-4">
+        <div className="glass-card p-12 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 dark:from-primary/15 dark:to-accent/15 flex items-center justify-center mx-auto mb-5">
             <Activity className="w-7 h-7 text-primary" />
           </div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
@@ -335,21 +272,15 @@ export default function ProductionMonitor() {
             <button
               data-testid="start-production-cta"
               onClick={() => setShowCostDialog(true)}
-              className="
-                inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold
-                bg-gradient-to-r from-primary to-indigo-600 text-white
-                shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30
-                transition-all duration-200 cursor-pointer
-              "
+              className="btn-primary btn-lg"
             >
-              <Play className="w-4 h-4" />
+              <Play className="w-5 h-5" />
               Start Production
             </button>
           )}
         </div>
       )}
 
-      {/* Cost Estimate Dialog */}
       <CostEstimateDialog
         isOpen={showCostDialog}
         onClose={() => setShowCostDialog(false)}
@@ -357,7 +288,6 @@ export default function ProductionMonitor() {
         topics={scriptApprovedTopics}
       />
 
-      {/* Stop Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showStopDialog}
         onClose={() => setShowStopDialog(false)}

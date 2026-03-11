@@ -41,7 +41,7 @@ export default function CompetitorCards({ competitors }) {
         {displayChannels.map((channel, i) => (
           <div
             key={i}
-            className="p-3 rounded-xl border border-border/50 dark:border-white/[0.06] bg-white/50 dark:bg-white/[0.02] transition-colors"
+            className="card-elevated p-3"
           >
             <p className="text-sm font-semibold text-slate-900 dark:text-white mb-1.5 truncate">
               {channel.name || channel.channel_name || `Channel ${i + 1}`}
@@ -86,7 +86,7 @@ export default function CompetitorCards({ competitors }) {
       {channels.length > 4 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+          className="btn-ghost btn-sm mt-3"
         >
           {expanded ? (
             <>

@@ -150,7 +150,7 @@ export default function VideoReview() {
       {/* Published banner */}
       {isPublished && (
         <div
-          className="mb-4 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/[0.08] border border-emerald-200 dark:border-emerald-500/20"
+          className="mb-4 px-4 py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-500/[0.08] border border-emerald-200 dark:border-emerald-500/20 animate-in"
           data-testid="published-banner"
         >
           <div className="flex items-center gap-2 flex-wrap">
@@ -170,7 +170,7 @@ export default function VideoReview() {
                 href={topic.youtube_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400 hover:underline ml-auto"
+                className="btn-ghost btn-sm ml-auto"
               >
                 View on YouTube
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -190,7 +190,7 @@ export default function VideoReview() {
           <ArrowLeft className="w-5 h-5" />
         </Link>
 
-        <span className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">
+        <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-white/[0.08] dark:to-white/[0.04] flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">
           {topic.topic_number}
         </span>
 
@@ -218,7 +218,7 @@ export default function VideoReview() {
               navigate(`/project/${projectId}/topics/${prevTopic.id}/review`)
             }
             disabled={!prevTopic}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
             title="Previous topic"
             data-testid="prev-topic-btn"
           >
@@ -233,7 +233,7 @@ export default function VideoReview() {
               navigate(`/project/${projectId}/topics/${nextTopic.id}/review`)
             }
             disabled={!nextTopic}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
             title="Next topic"
             data-testid="next-topic-btn"
           >
@@ -253,14 +253,14 @@ export default function VideoReview() {
               <button
                 onClick={() => setShowPublishDialog(true)}
                 disabled={approveVideo.isPending}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="btn-success btn-sm"
               >
                 Approve
               </button>
               <button
                 onClick={() => setShowRejectDialog(true)}
                 disabled={rejectVideo.isPending}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="btn-danger btn-sm"
               >
                 Reject
               </button>

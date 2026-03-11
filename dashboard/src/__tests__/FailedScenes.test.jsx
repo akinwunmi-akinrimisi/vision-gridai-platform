@@ -31,7 +31,7 @@ const mockFailedScenes = [
     clip_status: 'pending',
     image_prompt: 'Sunset over a city skyline',
     narration_text: 'And that is the key insight.',
-    error_log: 'Kling API error: 500 Internal server error. Attempt 3/3.',
+    error_log: 'Fal.ai API error: 500 Internal server error. Attempt 3/3.',
   },
 ];
 

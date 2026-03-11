@@ -92,11 +92,9 @@ function canStartProduction(topic) {
   return topic.script_review_status === 'approved' && topic.status === 'script_approved';
 }
 
-const inputClass =
-  'w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30';
+const inputClass = 'input';
 
-const textareaClass =
-  'w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none';
+const textareaClass = 'input resize-none';
 
 export default function TopicCard({ topic, projectId, isSelected, onToggleSelect, onApprove, onReject, onRefine, onEdit, onSave, onSaveAvatar }) {
   const [expanded, setExpanded] = useState(false);
@@ -242,21 +240,21 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
           )}
           <button
             onClick={() => onApprove(topic)}
-            className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-500/10 hover:scale-110 transition-all cursor-pointer"
             title="Approve"
           >
             <CheckCircle2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => onReject(topic)}
-            className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 hover:scale-110 transition-all cursor-pointer"
             title="Reject"
           >
             <XCircle className="w-4 h-4" />
           </button>
           <button
             onClick={() => onRefine(topic)}
-            className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-500/10 hover:scale-110 transition-all cursor-pointer"
             title="Refine"
           >
             <RefreshCw className="w-4 h-4" />
@@ -289,9 +287,9 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
       {/* Mini production progress bar */}
       {productionProgress != null && (
         <div className="px-4 pb-2" data-testid={`production-progress-${topic.id}`}>
-          <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-700/50 overflow-hidden">
+          <div className="progress-bar">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-blue-500 transition-all duration-500"
+              className="progress-bar-fill"
               style={{ width: `${productionProgress}%` }}
             />
           </div>
@@ -375,10 +373,7 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
                   data-testid="edit-cancel"
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium
-                    text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.04]
-                    hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-colors cursor-pointer
-                    disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-ghost btn-sm"
                 >
                   <X className="w-3.5 h-3.5" />
                   Cancel
@@ -387,9 +382,7 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
                   data-testid="edit-save"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold
-                    text-white bg-primary hover:bg-primary/90 transition-colors cursor-pointer
-                    disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary btn-sm"
                 >
                   {isSaving ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

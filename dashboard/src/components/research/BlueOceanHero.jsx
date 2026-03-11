@@ -75,7 +75,7 @@ export default function BlueOceanHero({ strategy, expertiseProfile, valueGaps = 
             {valueGaps.length > 3 && (
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="mt-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                className="btn-ghost btn-sm mt-3"
               >
                 {expanded ? (
                   <>

@@ -5,21 +5,49 @@ import { webhookCall } from '../lib/api';
 
 /**
  * Fetch all projects ordered by created_at desc.
+ * Also fetches a summary of topics per project for accurate status display.
  * Subscribes to Supabase Realtime for live updates.
  */
 export function useProjects() {
   useRealtimeSubscription('projects', null, [['projects']]);
+  useRealtimeSubscription('topics', null, [['projects']]);
 
   return useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch projects
+      const { data: projects, error: projectsError } = await supabase
         .from('projects')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data || [];
+      if (projectsError) throw projectsError;
+      if (!projects || projects.length === 0) return [];
+
+      // Fetch all topics with minimal fields for status computation
+      const projectIds = projects.map((p) => p.id);
+      const { data: topics, error: topicsError } = await supabase
+        .from('topics')
+        .select('id, project_id, topic_number, status, review_status, script_review_status, video_review_status, seo_title, audio_progress, images_progress, i2v_progress, t2v_progress, assembly_status')
+        .in('project_id', projectIds);
+
+      if (topicsError) {
+        // Fall back to projects-only if topics fail
+        return projects.map((p) => ({ ...p, topics_summary: [] }));
+      }
+
+      // Group topics by project
+      const topicsByProject = {};
+      for (const t of (topics || [])) {
+        if (!topicsByProject[t.project_id]) topicsByProject[t.project_id] = [];
+        topicsByProject[t.project_id].push(t);
+      }
+
+      // Enrich projects with topics summary
+      return projects.map((p) => ({
+        ...p,
+        topics_summary: topicsByProject[p.id] || [],
+      }));
     },
   });
 }
@@ -49,6 +77,7 @@ export function useCreateProject() {
         status: 'researching',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        topics_summary: [],
       };
 
       queryClient.setQueryData(['projects'], (old) =>
