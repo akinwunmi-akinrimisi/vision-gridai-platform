@@ -6,9 +6,24 @@ dashboard/dist/
 
 # Environment & secrets
 .env
+**/.env
 *.env.local
+dashboard/.env
 client_secret_supabase.json
 my-n8n-service-account.json
+
+# Claude Code local settings (contains tokens)
+.claude/settings.local.json
+
+# Planning docs with credentials
+.planning/phases/08-credentials-deployment/08-01-SUMMARY.md
+.planning/phases/08-credentials-deployment/08-CONTEXT.md
+
+# Temp fix/exec scripts
+exec_*.json
+fix_*.js
+list_nodes.js
+push_workflow.js
 
 # Python cache
 __pycache__/
