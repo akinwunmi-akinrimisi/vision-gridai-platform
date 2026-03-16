@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   approveVideo,
   rejectVideo,
@@ -37,10 +38,22 @@ export function useApproveVideo(projectId) {
       return { previous, topicId };
     },
 
-    onError: (_err, _vars, context) => {
+    onSuccess: (result, { action }) => {
+      if (result?.success === false) {
+        toast.error(result.error || 'Failed to process video action');
+        return;
+      }
+      const msg = action === 'publish_now' ? 'Publishing started — monitor progress via Realtime'
+        : action === 'schedule' ? 'Video scheduled for publishing'
+        : 'Video approved';
+      toast.success(msg);
+    },
+
+    onError: (err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['video-review', context.topicId], context.previous);
       }
+      toast.error(err?.message || 'Failed to approve video');
     },
 
     onSettled: (_data, _err, { topicId }) => {
@@ -72,10 +85,19 @@ export function useRejectVideo(projectId) {
       return { previous, topicId };
     },
 
-    onError: (_err, _vars, context) => {
+    onSuccess: (result) => {
+      if (result?.success === false) {
+        toast.error(result.error || 'Failed to reject video');
+        return;
+      }
+      toast.success('Video rejected');
+    },
+
+    onError: (err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['video-review', context.topicId], context.previous);
       }
+      toast.error(err?.message || 'Failed to reject video');
     },
 
     onSettled: (_data, _err, { topicId }) => {
