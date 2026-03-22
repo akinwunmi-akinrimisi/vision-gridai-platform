@@ -16,8 +16,8 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # ─── Config ──────────────────────────────────────────────
-FAL_API_KEY = os.environ.get("FAL_API_KEY", "REDACTED_FAL_API_KEY")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "REDACTED_ANTHROPIC_API_KEY")
+FAL_API_KEY = os.environ.get("FAL_API_KEY", "")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "thumbnails_output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)

@@ -25,6 +25,14 @@ fix_*.js
 list_nodes.js
 push_workflow.js
 
+# Workflow exports (may contain credential refs)
+wf_*.json
+
+# Thumbnail outputs (binary, generated)
+thumbnails_output/
+thumb_*.png
+CardMath_*.jpg
+
 # Python cache
 __pycache__/
 *.pyc
