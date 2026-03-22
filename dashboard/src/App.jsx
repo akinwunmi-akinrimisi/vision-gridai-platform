@@ -15,6 +15,7 @@ const VideoReview = lazy(() => import('./pages/VideoReview'));
 const ProductionMonitor = lazy(() => import('./pages/ProductionMonitor'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Settings = lazy(() => import('./pages/Settings'));
+const ShortsCreator = lazy(() => import('./pages/ShortsCreator'));
 
 const PageFallback = (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/project/:id/topics/:topicId/review" element={<VideoReview />} />
             <Route path="/project/:id/production" element={<ProductionMonitor />} />
             <Route path="/project/:id/analytics" element={<Analytics />} />
+            <Route path="/shorts" element={<ShortsCreator />} />
             <Route path="/project/:id/settings" element={<Settings />} />
           </Routes>
         </Suspense>

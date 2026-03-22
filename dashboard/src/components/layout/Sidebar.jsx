@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   Search,
   Upload,
+  Clapperboard,
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ConnectionStatus from './ConnectionStatus';
@@ -25,6 +26,7 @@ import { useQuotaStatus } from '../../hooks/useQuotaStatus';
 
 const globalNavItems = [
   { label: 'Projects', icon: LayoutDashboard, path: '/' },
+  { label: 'Shorts Creator', icon: Clapperboard, path: '/shorts' },
 ];
 
 const projectNavItems = [
