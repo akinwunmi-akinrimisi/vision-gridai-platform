@@ -44,6 +44,30 @@ export function useAnalytics(projectId, timeRange = '30d') {
     enabled: !!projectId,
   });
 
+  // Fetch previous period data for trend computation
+  const prevQuery = useQuery({
+    queryKey: ['analytics-prev', projectId, timeRange],
+    queryFn: async () => {
+      if (timeRange === 'all') return [];
+      const days = timeRange === '7d' ? 7 : timeRange === '90d' ? 90 : 30;
+      const cutoffEnd = new Date();
+      cutoffEnd.setDate(cutoffEnd.getDate() - days);
+      const cutoffStart = new Date(cutoffEnd);
+      cutoffStart.setDate(cutoffStart.getDate() - days);
+
+      const { data, error } = await supabase
+        .from('topics')
+        .select('yt_views, yt_watch_hours, yt_ctr, yt_estimated_revenue')
+        .eq('project_id', projectId)
+        .eq('status', 'published')
+        .gte('published_at', cutoffStart.toISOString())
+        .lt('published_at', cutoffEnd.toISOString());
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!projectId && timeRange !== 'all',
+  });
+
   const computed = useMemo(() => {
     const topics = query.data || [];
     if (topics.length === 0) {
@@ -57,6 +81,7 @@ export function useAnalytics(projectId, timeRange = '30d') {
         totalSubscribers: 0,
         avgDuration: '--',
         topPerformer: null,
+        trends: {},
       };
     }
 
@@ -107,6 +132,25 @@ export function useAnalytics(projectId, timeRange = '30d') {
       null
     );
 
+    // Compute trends from previous period
+    const prev = prevQuery.data || [];
+    const trends = {};
+    if (prev.length > 0) {
+      const prevViews = prev.reduce((s, t) => s + (t.yt_views || 0), 0);
+      const prevRevenue = prev.reduce((s, t) => s + (parseFloat(t.yt_estimated_revenue) || 0), 0);
+      const prevWatchHours = prev.reduce((s, t) => s + (parseFloat(t.yt_watch_hours) || 0), 0);
+      const prevCtrTopics = prev.filter((t) => t.yt_ctr != null && t.yt_ctr > 0);
+      const prevCtr = prevCtrTopics.length > 0
+        ? prevCtrTopics.reduce((s, t) => s + parseFloat(t.yt_ctr), 0) / prevCtrTopics.length
+        : 0;
+
+      const pctChange = (curr, prv) => prv > 0 ? ((curr - prv) / prv) * 100 : curr > 0 ? 100 : 0;
+      trends.views = pctChange(totalViews, prevViews);
+      trends.revenue = pctChange(totalRevenue, prevRevenue);
+      trends.watchHours = pctChange(totalWatchHours, prevWatchHours);
+      trends.ctr = prevCtr > 0 ? avgCtr - prevCtr : null;
+    }
+
     return {
       totalViews,
       totalWatchHours: Math.round(totalWatchHours * 10) / 10,
@@ -117,8 +161,9 @@ export function useAnalytics(projectId, timeRange = '30d') {
       totalSubscribers,
       avgDuration,
       topPerformer,
+      trends,
     };
-  }, [query.data]);
+  }, [query.data, prevQuery.data]);
 
   return {
     data: query.data || [],

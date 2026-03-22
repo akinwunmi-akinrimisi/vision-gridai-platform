@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { NavLink } from 'react-router';
 import { Folder, CheckCircle2, Circle, Loader2, RotateCcw, ArrowRight } from 'lucide-react';
 
@@ -81,6 +81,27 @@ function getCardAccent(status) {
 }
 
 /**
+ * Format a relative time string from a date.
+ */
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return '';
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  if (diffDay < 30) return `${Math.floor(diffDay / 7)}w ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/**
  * Parse progress string like "done:45/132" into { done: 45, total: 132 }
  */
 function parseProgress(progStr) {
@@ -96,10 +117,9 @@ function parseProgress(progStr) {
  */
 function computeProjectStatus(projectStatus, topics) {
   if (!topics || topics.length === 0) {
-    // No topics: use project-level status
     const label = STATUS_LABEL[projectStatus] || projectStatus || 'Unknown';
     const badge = STATUS_BADGE[projectStatus] || STATUS_BADGE.created;
-    return { label, badge, detail: null, topicCount: 0, publishedCount: 0 };
+    return { label, badge, detail: null, topicCount: 0, publishedCount: 0, totalSpend: 0, totalRevenue: 0 };
   }
 
   const topicCount = topics.length;
@@ -125,26 +145,20 @@ function computeProjectStatus(projectStatus, topics) {
   const scriptApprovedCount = statusCounts.script_approved || 0;
   const pendingReviewCount = topics.filter((t) => t.review_status === 'pending').length;
 
+  // Aggregate financials
+  const totalSpend = topics.reduce((s, t) => s + (parseFloat(t.total_cost) || 0), 0);
+  const totalRevenue = topics.reduce((s, t) => s + (parseFloat(t.yt_estimated_revenue) || 0), 0);
+
+  const base = { topicCount, publishedCount, totalSpend, totalRevenue };
+
   // Priority order: most advanced active state first
-
-  // 1. All published
   if (publishedCount === topicCount) {
-    return {
-      label: `All Published`,
-      badge: 'badge badge-green',
-      detail: `${topicCount} video${topicCount !== 1 ? 's' : ''}`,
-      topicCount,
-      publishedCount,
-    };
+    return { label: 'All Published', badge: 'badge badge-green', detail: `${topicCount} video${topicCount !== 1 ? 's' : ''}`, ...base };
   }
-
-  // 2. Active production
   if (producingTopics.length > 0) {
     const activeTopic = producingTopics.find((t) => t.status === 'producing') || producingTopics[0];
     const topicNum = activeTopic.topic_number;
     let progressDetail = '';
-
-    // Try to show specific stage progress
     if (activeTopic.status === 'producing' || activeTopic.status === 'audio' || activeTopic.status === 'images') {
       const imgProg = parseProgress(activeTopic.images_progress);
       const audioProg = parseProgress(activeTopic.audio_progress);
@@ -156,93 +170,38 @@ function computeProjectStatus(projectStatus, topics) {
         progressDetail = ` (Images ${imgProg.done}/${imgProg.total})`;
       }
     }
-
-    return {
-      label: `Production: Topic #${topicNum}${progressDetail}`,
-      badge: 'badge badge-amber animate-pulse',
-      detail: producingTopics.length > 1 ? `+${producingTopics.length - 1} queued` : null,
-      topicCount,
-      publishedCount,
-    };
+    return { label: `Production: Topic #${topicNum}${progressDetail}`, badge: 'badge badge-amber animate-pulse', detail: producingTopics.length > 1 ? `+${producingTopics.length - 1} queued` : null, ...base };
   }
-
-  // 3. Assembling / assembled / video review pending
   if (assembledCount > 0) {
     const reviewTopic = topics.find((t) => t.status === 'ready_review' || t.status === 'assembled');
-    return {
-      label: `Video Review Pending (Gate 3)`,
-      badge: 'badge badge-purple',
-      detail: reviewTopic ? `Topic #${reviewTopic.topic_number}` : `${assembledCount} topic${assembledCount !== 1 ? 's' : ''}`,
-      topicCount,
-      publishedCount,
-    };
+    return { label: 'Video Review Pending (Gate 3)', badge: 'badge badge-purple', detail: reviewTopic ? `Topic #${reviewTopic.topic_number}` : `${assembledCount} topic${assembledCount !== 1 ? 's' : ''}`, ...base };
   }
-
-  // 4. Script generation in progress
   if (scriptingTopics.length > 0) {
     const t = scriptingTopics[0];
-    return {
-      label: `Script Generation: Topic #${t.topic_number}`,
-      badge: 'badge badge-cyan animate-pulse',
-      detail: scriptingTopics.length > 1 ? `+${scriptingTopics.length - 1} more` : null,
-      topicCount,
-      publishedCount,
-    };
+    return { label: `Script Generation: Topic #${t.topic_number}`, badge: 'badge badge-cyan animate-pulse', detail: scriptingTopics.length > 1 ? `+${scriptingTopics.length - 1} more` : null, ...base };
   }
-
-  // 5. Ready for production (script approved, not producing)
   if (scriptApprovedCount > 0) {
-    return {
-      label: `Ready for Production`,
-      badge: 'badge badge-blue',
-      detail: `${scriptApprovedCount} topic${scriptApprovedCount !== 1 ? 's' : ''} approved`,
-      topicCount,
-      publishedCount,
-    };
+    return { label: 'Ready for Production', badge: 'badge badge-blue', detail: `${scriptApprovedCount} topic${scriptApprovedCount !== 1 ? 's' : ''} approved`, ...base };
   }
-
-  // 6. Topics pending review (Gate 1)
   if (pendingReviewCount > 0 && pendingReviewCount === topicCount) {
-    return {
-      label: 'Topics Pending Review (Gate 1)',
-      badge: 'badge badge-purple',
-      detail: `${topicCount} topic${topicCount !== 1 ? 's' : ''}`,
-      topicCount,
-      publishedCount,
-    };
+    return { label: 'Topics Pending Review (Gate 1)', badge: 'badge badge-purple', detail: `${topicCount} topic${topicCount !== 1 ? 's' : ''}`, ...base };
   }
-
-  // 7. Mixed state: some approved, some pending
   if (pendingReviewCount > 0) {
     const approvedCount = reviewCounts.approved || 0;
-    return {
-      label: 'Topics Under Review',
-      badge: 'badge badge-purple',
-      detail: `${approvedCount} approved, ${pendingReviewCount} pending`,
-      topicCount,
-      publishedCount,
-    };
+    return { label: 'Topics Under Review', badge: 'badge badge-purple', detail: `${approvedCount} approved, ${pendingReviewCount} pending`, ...base };
   }
-
-  // 8. Some published, rest in various states
   if (publishedCount > 0) {
-    return {
-      label: `${publishedCount} Published`,
-      badge: 'badge badge-green',
-      detail: `of ${topicCount} total`,
-      topicCount,
-      publishedCount,
-    };
+    return { label: `${publishedCount} Published`, badge: 'badge badge-green', detail: `of ${topicCount} total`, ...base };
   }
 
-  // Fallback to project-level status
   const label = STATUS_LABEL[projectStatus] || projectStatus || 'Active';
   const badge = STATUS_BADGE[projectStatus] || STATUS_BADGE.created;
-  return { label, badge, detail: null, topicCount, publishedCount };
+  return { label, badge, detail: null, ...base };
 }
 
 export default function ProjectCard({ project, onRetry }) {
-  const { id, name, niche, status, created_at, topics_summary } = project;
+  const { id, name, niche, status, created_at, updated_at, topics_summary } = project;
+  const [, setTick] = useState(0);
 
   const computedStatus = useMemo(
     () => computeProjectStatus(status, topics_summary),
@@ -253,9 +212,13 @@ export default function ProjectCard({ project, onRetry }) {
   const showResearchProgress = isResearching(status);
   const accent = getCardAccent(status);
 
-  const createdDate = created_at
-    ? new Date(created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : '';
+  // Auto-refresh relative time every 60s
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const relativeTime = formatRelativeTime(updated_at || created_at);
 
   return (
     <NavLink to={route} className="card-interactive p-6 group block no-underline">
@@ -316,14 +279,28 @@ export default function ProjectCard({ project, onRetry }) {
         <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
           <div>
             <p className="text-2xs text-slate-400 dark:text-slate-500 mb-0.5">Topics</p>
-            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">
+            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums font-mono">
               {computedStatus.topicCount ?? project.topic_count ?? 0}
             </p>
           </div>
           <div>
             <p className="text-2xs text-slate-400 dark:text-slate-500 mb-0.5">Published</p>
-            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">
+            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums font-mono">
               {computedStatus.publishedCount ?? project.published_count ?? 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-2xs text-slate-400 dark:text-slate-500 mb-0.5">Spent</p>
+            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums font-mono">
+              {computedStatus.totalSpend > 0 ? `$${computedStatus.totalSpend.toFixed(0)}` : '--'}
+            </p>
+          </div>
+          <div>
+            <p className="text-2xs text-slate-400 dark:text-slate-500 mb-0.5">Revenue</p>
+            <p className={`text-sm font-bold tabular-nums font-mono ${computedStatus.totalRevenue > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+              {computedStatus.totalRevenue > 0
+                ? `$${computedStatus.totalRevenue.toFixed(0)}${computedStatus.totalSpend > 0 ? ` (${(computedStatus.totalRevenue / computedStatus.totalSpend).toFixed(1)}x)` : ''}`
+                : '--'}
             </p>
           </div>
         </div>
@@ -332,7 +309,7 @@ export default function ProjectCard({ project, onRetry }) {
       {/* Footer */}
       <div className="flex items-center justify-between mt-4">
         <p className="text-2xs text-slate-400 dark:text-slate-500">
-          {createdDate}
+          {relativeTime}
         </p>
         <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-primary dark:group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all duration-200" />
       </div>

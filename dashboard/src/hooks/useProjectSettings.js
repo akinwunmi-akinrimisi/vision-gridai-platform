@@ -5,6 +5,9 @@ import { useRealtimeSubscription } from './useRealtimeSubscription';
 import { updateProjectSettings } from '../lib/settingsApi';
 
 const SETTINGS_COLUMNS = [
+  'name',
+  'niche',
+  'niche_description',
   'script_approach',
   'images_per_video',
   'i2v_clips_per_video',
@@ -12,8 +15,11 @@ const SETTINGS_COLUMNS = [
   'target_word_count',
   'target_scene_count',
   'image_model',
+  'image_cost',
   'i2v_model',
+  'i2v_cost',
   't2v_model',
+  't2v_cost',
   'youtube_channel_id',
   'youtube_playlist1_id',
   'youtube_playlist2_id',

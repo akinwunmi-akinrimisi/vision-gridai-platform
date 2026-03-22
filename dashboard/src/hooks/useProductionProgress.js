@@ -59,6 +59,10 @@ export function useProductionProgress(topicId) {
 function computeStageProgress(scenes) {
   const total = scenes.length;
 
+  // Script stage: if scenes exist with narration_text, script is complete
+  const scriptComplete = scenes.length > 0 && scenes.every((s) => s.narration_text);
+  const scriptCompleted = scriptComplete ? total : 0;
+
   const audioCompleted = scenes.filter(
     (s) => s.audio_status === 'uploaded' || s.audio_status === 'generated'
   ).length;
@@ -78,15 +82,24 @@ function computeStageProgress(scenes) {
     (s) => s.video_status === 'uploaded' || s.video_status === 'generated'
   ).length;
 
+  // Captions: count scenes that have clip_status indicating captions are done
+  // Captions are complete when clip_status transitions beyond pending
+  const captionsScenes = scenes.filter(
+    (s) => s.clip_status === 'complete' || s.clip_status === 'uploaded' || s.clip_status === 'captioned'
+  );
+  const captionsCompleted = captionsScenes.length;
+
   const clipsCompleted = scenes.filter(
     (s) => s.clip_status === 'complete' || s.clip_status === 'uploaded'
   ).length;
 
   return {
+    script: { completed: scriptCompleted, total },
     audio: { completed: audioCompleted, total },
     images: { completed: imagesCompleted, total },
     i2v: { completed: i2vCompleted, total: i2vScenes.length },
     t2v: { completed: t2vCompleted, total: t2vScenes.length },
+    captions: { completed: captionsCompleted, total },
     clips: { completed: clipsCompleted, total },
   };
 }

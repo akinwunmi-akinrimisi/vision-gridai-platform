@@ -1,8 +1,10 @@
 import {
   Activity,
+  FileText,
   Mic,
   Image,
   Film,
+  Subtitles,
   Clapperboard,
   CheckCircle2,
   StopCircle,
@@ -30,10 +32,12 @@ function formatEta(ms) {
 }
 
 const STAGES = [
+  { key: 'script', label: 'Script', icon: FileText },
   { key: 'audio', label: 'Audio', icon: Mic },
   { key: 'images', label: 'Images', icon: Image },
   { key: 'i2v', label: 'I2V', icon: Film },
   { key: 't2v', label: 'T2V', icon: Film },
+  { key: 'captions', label: 'Captions', icon: Subtitles },
   { key: 'assembly', label: 'Assembly', icon: Clapperboard },
 ];
 
@@ -44,7 +48,7 @@ function getStageState(key, stageProgress) {
   if (stage.completed >= stage.total) return 'completed';
   if (stage.completed > 0) return 'active';
 
-  const stageOrder = ['audio', 'images', 'i2v', 't2v', 'assembly'];
+  const stageOrder = ['script', 'audio', 'images', 'i2v', 't2v', 'captions', 'assembly'];
   const idx = stageOrder.indexOf(key);
   if (idx > 0) {
     const allPriorComplete = stageOrder.slice(0, idx).every((k) => {

@@ -20,6 +20,9 @@ export default function CreateProjectModal({ isOpen, onClose }) {
   const [showSuccess, setShowSuccess] = useState(false);
   const inputRef = useRef(null);
 
+  const [nicheBlurred, setNicheBlurred] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
   const createProject = useCreateProject();
 
   // Cycle placeholder hints every 3 seconds
@@ -45,13 +48,20 @@ export default function CreateProjectModal({ isOpen, onClose }) {
       setDescription('');
       setTargetVideoCount(25);
       setShowSuccess(false);
+      setNicheBlurred(false);
+      setSubmitAttempted(false);
     }
   }, [isOpen]);
 
+  const nicheError = (nicheBlurred || submitAttempted) && niche.trim().length < 3
+    ? 'Niche name must be at least 3 characters'
+    : null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
 
-    if (!niche.trim() || niche.trim().length < 2) return;
+    if (!niche.trim() || niche.trim().length < 3) return;
 
     try {
       await createProject.mutateAsync({
@@ -70,7 +80,7 @@ export default function CreateProjectModal({ isOpen, onClose }) {
   };
 
   const isSubmitting = createProject.isPending;
-  const isValid = niche.trim().length >= 2;
+  const isValid = niche.trim().length >= 3;
 
   return (
     <Modal isOpen={isOpen} onClose={isSubmitting || showSuccess ? undefined : onClose} title="New Project">
@@ -98,23 +108,25 @@ export default function CreateProjectModal({ isOpen, onClose }) {
               ref={inputRef}
               id="niche-name"
               type="text"
-              required
-              minLength={2}
               value={niche}
               onChange={(e) => setNiche(e.target.value)}
+              onBlur={() => setNicheBlurred(true)}
               disabled={isSubmitting}
               placeholder={EXAMPLE_HINTS[hintIndex]}
-              className="
+              className={`
                 w-full px-4 py-2.5 rounded-xl text-sm
                 bg-white dark:bg-slate-800
-                border border-border dark:border-slate-700
+                border ${nicheError ? 'border-red-400 dark:border-red-500' : 'border-border dark:border-slate-700'}
                 text-slate-900 dark:text-white
                 placeholder:text-slate-400 dark:placeholder:text-slate-500
                 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
                 disabled:opacity-50 disabled:cursor-not-allowed
                 transition-all duration-200
-              "
+              `}
             />
+            {nicheError && (
+              <p className="text-red-400 text-sm mt-1">{nicheError}</p>
+            )}
           </div>
 
           {/* Description */}

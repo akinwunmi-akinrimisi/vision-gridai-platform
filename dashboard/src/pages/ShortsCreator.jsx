@@ -42,6 +42,7 @@ import {
   useReproduceClip,
 } from '../hooks/useShorts';
 import SkeletonCard from '../components/ui/SkeletonCard';
+import ClipPreviewModal from '../components/social/ClipPreviewModal';
 
 // ────────────────────────────────────────────────────────
 // STATUS helpers
@@ -186,7 +187,7 @@ function parseProgress(progressStr, productionStatus) {
 // PRODUCTION ROW (expandable table row)
 // ────────────────────────────────────────────────────────
 
-function ProductionRow({ clip, onProduce, isProducing, onCancel, onReproduce }) {
+function ProductionRow({ clip, onProduce, isProducing, onCancel, onReproduce, onPreview }) {
   const [expanded, setExpanded] = useState(false);
   const pBadge = PRODUCTION_BADGE[clip.production_status] || PRODUCTION_BADGE.pending;
   const progress = useMemo(
@@ -261,16 +262,13 @@ function ProductionRow({ clip, onProduce, isProducing, onCancel, onReproduce }) 
         </td>
         <td className="table-cell">
           {clip.portrait_drive_url ? (
-            <a
-              href={clip.portrait_drive_url}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
               className="btn-ghost btn-sm !py-0.5 !px-1.5"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onPreview && onPreview(clip); }}
             >
-              <ExternalLink className="w-3 h-3" />
-              <span className="text-2xs">View</span>
-            </a>
+              <Play className="w-3 h-3" />
+              <span className="text-2xs">Preview</span>
+            </button>
           ) : (
             <span className="text-2xs text-text-muted dark:text-text-muted-dark">--</span>
           )}
@@ -303,16 +301,13 @@ function ProductionRow({ clip, onProduce, isProducing, onCancel, onReproduce }) 
           {(clip.production_status === 'complete' || clip.production_status === 'uploaded') && (
             <div className="flex items-center gap-1">
               {clip.portrait_drive_url && (
-                <a
-                  href={clip.portrait_drive_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
                   className="btn-ghost btn-sm !py-0.5 !px-1.5"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); onPreview && onPreview(clip); }}
                 >
-                  <ExternalLink className="w-3 h-3" />
-                  <span className="text-2xs">View</span>
-                </a>
+                  <Play className="w-3 h-3" />
+                  <span className="text-2xs">Preview</span>
+                </button>
               )}
               {!clip.portrait_drive_url && (
                 <span className="flex items-center gap-1 text-2xs text-emerald-600 dark:text-emerald-400">
@@ -698,7 +693,7 @@ function TopicList({ projectId, project, shortsSummary, onSelectTopic, onBack, o
 // LEVEL 3: Clip Review Grid — Gate 4
 // ────────────────────────────────────────────────────────
 
-function ClipCard({ clip, topicId, onApprove, onSkip, onSave, isSaving, onProduce, isProducing, onReproduce }) {
+function ClipCard({ clip, topicId, onApprove, onSkip, onSave, isSaving, onProduce, isProducing, onReproduce, onPreview }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [originalScenes, setOriginalScenes] = useState(null);
   const [scenesLoading, setScenesLoading] = useState(false);
@@ -911,15 +906,13 @@ function ClipCard({ clip, topicId, onApprove, onSkip, onSave, isSaving, onProduc
                 </span>
               )}
               {clip.portrait_drive_url && (
-                <a
-                  href={clip.portrait_drive_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={(ev) => { ev.stopPropagation(); onPreview && onPreview(clip); }}
                   className="btn-ghost btn-sm ml-auto !py-0.5 !px-1.5"
                 >
-                  <ExternalLink className="w-3 h-3" />
-                  <span className="text-2xs">Drive</span>
-                </a>
+                  <Play className="w-3 h-3" />
+                  <span className="text-2xs">Preview</span>
+                </button>
               )}
             </div>
           )}
@@ -1062,54 +1055,77 @@ function ClipCard({ clip, topicId, onApprove, onSkip, onSave, isSaving, onProduc
                       )}
                     </div>
 
-                    {/* Original full narration */}
-                    <div>
-                      <span className="text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Original Script
-                      </span>
-                      <p className="text-sm text-slate-800 dark:text-slate-200 mt-1 leading-relaxed">
-                        {scene.narration_text}
-                      </p>
-                    </div>
-
-                    {/* Short-form rewrite */}
-                    {rewriteMap[scene.scene_number] && (
-                      <div className="border-l-2 border-accent/40 dark:border-accent/30 pl-3">
-                        <span className="text-2xs font-semibold text-accent dark:text-orange-400 uppercase tracking-wider">
-                          Short-Form Rewrite
+                    {/* Side-by-side narration layout */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Original full narration */}
+                      <div>
+                        <span className="text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          Original Script
                         </span>
-                        <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
-                          {rewriteMap[scene.scene_number].split(/(\s+)/).map((word, wi) => {
-                            const clean = word.replace(/[^a-zA-Z0-9$%]/g, '').toLowerCase();
-                            const matchKey = emphasisWords.find(ew => clean === ew || word.toLowerCase().includes(ew));
-                            if (matchKey) {
-                              const color = emphasisColors[matchKey];
-                              return (
-                                <span key={wi} className={`font-bold ${color === 'red' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                  {word}
-                                </span>
-                              );
-                            }
-                            return <span key={wi}>{word}</span>;
-                          })}
+                        <p className="text-sm text-slate-800 dark:text-slate-200 mt-1 leading-relaxed">
+                          {scene.narration_text}
                         </p>
                       </div>
-                    )}
+
+                      {/* Short-form rewrite */}
+                      {rewriteMap[scene.scene_number] && (
+                        <div className="border-l-2 border-accent/40 dark:border-accent/30 pl-3">
+                          <span className="text-2xs font-semibold text-accent dark:text-orange-400 uppercase tracking-wider">
+                            Short-Form Rewrite
+                          </span>
+                          <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
+                            {rewriteMap[scene.scene_number].split(/(\s+)/).map((word, wi) => {
+                              const clean = word.replace(/[^a-zA-Z0-9$%]/g, '').toLowerCase();
+                              const matchKey = emphasisWords.find(ew => clean === ew || word.toLowerCase().includes(ew));
+                              if (matchKey) {
+                                const color = emphasisColors[matchKey];
+                                return (
+                                  <span key={wi} className={`font-bold ${color === 'red' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                    {word}
+                                  </span>
+                                );
+                              }
+                              return <span key={wi}>{word}</span>;
+                            })}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ));
               })()}
 
-              {/* Emphasis words summary */}
+              {/* Emphasis words summary (clickable to toggle) */}
               {(clip.emphasis_word_map || []).length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  <span className="text-2xs text-text-muted dark:text-text-muted-dark font-medium">Caption Emphasis:</span>
+                  <span className="text-2xs text-text-muted dark:text-text-muted-dark font-medium">Caption Emphasis (click to toggle):</span>
                   {(clip.emphasis_word_map || []).map((e, i) => {
                     const word = typeof e === 'string' ? e : e.word;
                     const color = typeof e === 'object' ? e.color : 'yellow';
                     return (
-                      <span key={i} className={`inline-block px-1.5 py-0.5 rounded text-2xs font-bold ${color === 'red' ? 'bg-red-100 text-red-700 dark:bg-red-500/[0.15] dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/[0.15] dark:text-amber-400'}`}>
+                      <button
+                        key={i}
+                        className={`inline-block px-1.5 py-0.5 rounded text-2xs font-bold cursor-pointer transition-opacity hover:opacity-70 ${color === 'red' ? 'bg-red-100 text-red-700 dark:bg-red-500/[0.15] dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/[0.15] dark:text-amber-400'}`}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          // Toggle: cycle yellow -> red -> remove
+                          const currentMap = [...(clip.emphasis_word_map || [])];
+                          const entry = currentMap[i];
+                          const currentColor = (typeof entry === 'object' ? entry.color : 'yellow');
+                          if (currentColor === 'yellow') {
+                            currentMap[i] = { word, color: 'red' };
+                          } else if (currentColor === 'red') {
+                            currentMap.splice(i, 1);
+                          }
+                          onSave({
+                            clipId: clip.id,
+                            updates: { emphasis_word_map: currentMap },
+                          });
+                        }}
+                        title={`Click to cycle color (yellow -> red -> remove)`}
+                      >
                         {word}
-                      </span>
+                      </button>
                     );
                   })}
                 </div>
@@ -1132,6 +1148,7 @@ function ClipReview({ topicId, topic, onBack }) {
   const produceAllMutation = useProduceAllApproved(topicId);
   const cancelMutation = useCancelProduction(topicId);
   const reproduceMutation = useReproduceClip(topicId);
+  const [previewClip, setPreviewClip] = useState(null);
 
   const counts = useMemo(() => {
     const total = clips.length;
@@ -1389,6 +1406,7 @@ function ClipReview({ topicId, topic, onBack }) {
                 onProduce={handleProduce}
                 isProducing={produceClipMutation.isPending}
                 onReproduce={handleReproduce}
+                onPreview={setPreviewClip}
               />
             </div>
           ))}
@@ -1430,6 +1448,7 @@ function ClipReview({ topicId, topic, onBack }) {
                       isProducing={produceClipMutation.isPending}
                       onCancel={handleCancel}
                       onReproduce={handleReproduce}
+                      onPreview={setPreviewClip}
                     />
                   ))}
                 </tbody>
@@ -1438,6 +1457,12 @@ function ClipReview({ topicId, topic, onBack }) {
           </div>
         </div>
       )}
+
+      <ClipPreviewModal
+        isOpen={!!previewClip}
+        onClose={() => setPreviewClip(null)}
+        clip={previewClip}
+      />
     </div>
   );
 }

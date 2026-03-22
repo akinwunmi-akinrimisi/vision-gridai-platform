@@ -10,7 +10,7 @@
 /* ─── BASE ──────────────────────────────────────────── */
 @layer base {
   html {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Fira Sans', system-ui, -apple-system, sans-serif;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -172,7 +172,7 @@
      TYPOGRAPHY
      ══════════════════════════════════════════════════════ */
   .metric-value {
-    @apply text-3xl font-bold tracking-tight tabular-nums;
+    @apply text-3xl font-bold tracking-tight tabular-nums font-mono;
   }
 
   .page-header {

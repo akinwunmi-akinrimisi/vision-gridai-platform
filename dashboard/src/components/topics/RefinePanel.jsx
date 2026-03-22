@@ -1,6 +1,20 @@
 import { useState } from 'react';
-import { Loader2, ChevronDown } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import SidePanel from '../ui/SidePanel';
+
+function formatRelTime(dateStr) {
+  if (!dateStr) return '';
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
   const [instructions, setInstructions] = useState('');
@@ -36,6 +50,40 @@ export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
               </span>
               <span>{topic.playlist_angle}</span>
             </div>
+          </div>
+
+          {/* Previous Refinements */}
+          <div>
+            <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+              Previous Refinements
+            </h4>
+            {history.length === 0 ? (
+              <p className="text-xs text-text-muted dark:text-text-muted-dark italic">
+                No previous refinements
+              </p>
+            ) : (
+              <div className="space-y-2 mb-3">
+                {history.map((entry, i) => {
+                  const ts = entry.timestamp
+                    ? formatRelTime(entry.timestamp)
+                    : `Refinement ${i + 1}`;
+                  const instruction = entry.instruction || '';
+                  const truncated = instruction.length > 120 ? instruction.slice(0, 120) + '...' : instruction;
+                  const resultTitle = entry.result_title || (entry.result && typeof entry.result === 'string' ? entry.result.slice(0, 60) : null);
+                  return (
+                    <div key={i} className="p-3 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/20 dark:border-white/[0.03] text-xs">
+                      <p className="text-text-muted dark:text-text-muted-dark mb-1">{ts}</p>
+                      <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{truncated}</p>
+                      {resultTitle && (
+                        <p className="text-slate-500 dark:text-slate-400 truncate">
+                          Result: {resultTitle}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Instructions */}
@@ -76,39 +124,6 @@ export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
               'Submit Refinement'
             )}
           </button>
-
-          {/* Refinement history */}
-          {history.length > 0 && (
-            <div>
-              <button
-                onClick={() => setShowHistory((prev) => !prev)}
-                className="flex items-center gap-2 text-xs font-medium text-text-muted dark:text-text-muted-dark hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
-              >
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHistory ? 'rotate-180' : ''}`} />
-                Refinement History ({history.length})
-              </button>
-
-              {showHistory && (
-                <div className="mt-3 space-y-3">
-                  {history.map((entry, i) => (
-                    <div key={i} className="p-3 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/20 dark:border-white/[0.03] text-xs">
-                      <p className="text-text-muted dark:text-text-muted-dark mb-1">
-                        {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : `Refinement ${i + 1}`}
-                      </p>
-                      <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        {entry.instruction}
-                      </p>
-                      {entry.result && (
-                        <p className="text-slate-500 dark:text-slate-400 truncate">
-                          Result: {typeof entry.result === 'string' ? entry.result : JSON.stringify(entry.result)}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
     </SidePanel>

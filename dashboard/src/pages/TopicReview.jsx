@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router';
-import { CheckCircle2, Rocket, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Rocket, RefreshCw, LayoutGrid, LayoutList, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTopics, useApproveTopics, useRejectTopics, useRefineTopic, useEditTopic, useEditAvatar } from '../hooks/useTopics';
 import { webhookCall } from '../lib/api';
@@ -36,6 +36,15 @@ export default function TopicReview() {
   const editMutation = useEditTopic(projectId);
   const editAvatarMutation = useEditAvatar(projectId);
 
+  // View mode: 'grouped' (default), 'cards', 'table'
+  const [viewMode, setViewMode] = useState(() => {
+    try { return localStorage.getItem('gridai-topic-view-mode') || 'grouped'; } catch { return 'grouped'; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('gridai-topic-view-mode', viewMode); } catch {}
+  }, [viewMode]);
+
   // State
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [statusFilter, setStatusFilter] = useState('all');
@@ -70,6 +79,18 @@ export default function TopicReview() {
       groups[key].topics.push(topic);
     }
     return Object.values(groups).sort((a, b) => (a.group || 0) - (b.group || 0));
+  }, [topics, statusFilter, playlistFilter]);
+
+  // Flat filtered list for Cards/Table modes
+  const filteredTopics = useMemo(() => {
+    let filtered = topics;
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((t) => t.review_status === statusFilter);
+    }
+    if (playlistFilter !== 'all') {
+      filtered = filtered.filter((t) => String(t.playlist_group) === playlistFilter);
+    }
+    return filtered;
   }, [topics, statusFilter, playlistFilter]);
 
   const allResolved = counts.total > 0 && counts.pending === 0;
@@ -211,10 +232,31 @@ export default function TopicReview() {
       {/* Summary bar */}
       <TopicSummaryBar {...counts} />
 
-      {/* Filters */}
+      {/* Filters + View mode toggle */}
       <div className="flex items-center gap-2 sm:gap-3 mb-5 overflow-x-auto">
         <FilterDropdown label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
         <FilterDropdown label="Playlist" value={playlistFilter} onChange={setPlaylistFilter} options={PLAYLIST_OPTIONS} />
+
+        <div className="ml-auto flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg p-0.5">
+          {[
+            { mode: 'grouped', icon: Layers, title: 'Grouped' },
+            { mode: 'cards', icon: LayoutGrid, title: 'Cards' },
+            { mode: 'table', icon: LayoutList, title: 'Table' },
+          ].map(({ mode, icon: Icon, title }) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              title={title}
+              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                viewMode === mode
+                  ? 'bg-white dark:bg-white/[0.08] text-primary shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* All resolved banner */}
@@ -251,45 +293,118 @@ export default function TopicReview() {
         </div>
       )}
 
-      {/* Grouped topic cards */}
-      {!isLoading && groupedTopics.length > 0 && (
-        <div className="space-y-6">
-          {groupedTopics.map((group) => (
-            <div key={group.name}>
-              <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                <span className={`badge ${group.group === 1 ? 'badge-blue' : group.group === 2 ? 'badge-green' : 'badge-purple'}`}>
-                  {group.name}
-                </span>
-                <span className="text-xs text-text-muted dark:text-text-muted-dark font-normal">
-                  {group.topics.length} topics
-                </span>
-              </h3>
-              <div className="space-y-2">
-                {group.topics.map((topic) => (
-                  <TopicCard
-                    key={topic.id}
-                    topic={topic}
-                    isSelected={selectedIds.has(topic.id)}
-                    onToggleSelect={toggleSelect}
-                    onApprove={handleApprove}
-                    onReject={handleReject}
-                    onRefine={handleRefine}
-                    onEdit={handleEdit}
-                    onSave={(vars) => editMutation.mutateAsync(vars)}
-                    onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
-                  />
-                ))}
+      {/* Topic cards -- 3 view modes */}
+      {!isLoading && topics.length > 0 && (
+        <>
+          {/* GROUPED view (default) */}
+          {viewMode === 'grouped' && groupedTopics.length > 0 && (
+            <div className="space-y-6">
+              {groupedTopics.map((group) => (
+                <div key={group.name}>
+                  <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                    <span className={`badge ${group.group === 1 ? 'badge-blue' : group.group === 2 ? 'badge-green' : 'badge-purple'}`}>
+                      {group.name}
+                    </span>
+                    <span className="text-xs text-text-muted dark:text-text-muted-dark font-normal">
+                      {group.topics.length} topics
+                    </span>
+                  </h3>
+                  <div className="space-y-2">
+                    {group.topics.map((topic) => (
+                      <TopicCard
+                        key={topic.id}
+                        topic={topic}
+                        isSelected={selectedIds.has(topic.id)}
+                        onToggleSelect={toggleSelect}
+                        onApprove={handleApprove}
+                        onReject={handleReject}
+                        onRefine={handleRefine}
+                        onEdit={handleEdit}
+                        onSave={(vars) => editMutation.mutateAsync(vars)}
+                        onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* CARDS view (flat list) */}
+          {viewMode === 'cards' && (
+            <div className="space-y-2">
+              {filteredTopics.map((topic) => (
+                <TopicCard
+                  key={topic.id}
+                  topic={topic}
+                  isSelected={selectedIds.has(topic.id)}
+                  onToggleSelect={toggleSelect}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  onRefine={handleRefine}
+                  onEdit={handleEdit}
+                  onSave={(vars) => editMutation.mutateAsync(vars)}
+                  onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* TABLE view (compact sortable) */}
+          {viewMode === 'table' && (
+            <div className="glass-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-white/[0.04]">
+                      <th className="table-header table-cell w-10">#</th>
+                      <th className="table-header table-cell text-left">Title</th>
+                      <th className="table-header table-cell w-24">Playlist</th>
+                      <th className="table-header table-cell w-24">Status</th>
+                      <th className="table-header table-cell w-28 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTopics.map((topic) => (
+                      <tr key={topic.id} className="table-row">
+                        <td className="table-cell text-xs font-bold text-slate-400 tabular-nums font-mono">{topic.topic_number}</td>
+                        <td className="table-cell font-medium text-slate-800 dark:text-slate-200 truncate max-w-[250px]">
+                          {topic.seo_title || topic.original_title}
+                        </td>
+                        <td className="table-cell text-xs text-text-muted dark:text-text-muted-dark">{topic.playlist_angle || '--'}</td>
+                        <td className="table-cell">
+                          <span className={`badge ${topic.review_status === 'approved' ? 'badge-green' : topic.review_status === 'rejected' ? 'badge-red' : 'badge-amber'}`}>
+                            {topic.review_status}
+                          </span>
+                        </td>
+                        <td className="table-cell text-right">
+                          <div className="flex items-center gap-1 justify-end">
+                            {topic.review_status === 'pending' && (
+                              <>
+                                <button onClick={() => handleApprove(topic)} className="text-xs text-emerald-500 hover:text-emerald-600 font-medium cursor-pointer">Approve</button>
+                                <span className="text-slate-300 dark:text-slate-600">|</span>
+                                <button onClick={() => handleReject(topic)} className="text-xs text-red-500 hover:text-red-600 font-medium cursor-pointer">Reject</button>
+                                <span className="text-slate-300 dark:text-slate-600">|</span>
+                                <button onClick={() => handleRefine(topic)} className="text-xs text-primary hover:text-primary-600 font-medium cursor-pointer">Refine</button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          ))}
+          )}
 
           {/* Filtered empty */}
-          {groupedTopics.length === 0 && topics.length > 0 && (
+          {filteredTopics.length === 0 && topics.length > 0 && (
             <p className="text-center text-sm text-text-muted dark:text-text-muted-dark py-8">
               No topics match the current filters.
             </p>
           )}
-        </div>
+        </>
       )}
 
       {/* Bulk action bar */}

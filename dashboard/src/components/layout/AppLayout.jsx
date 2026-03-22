@@ -1,4 +1,5 @@
 import Sidebar from './Sidebar';
+import TopBar from './TopBar';
 import SupervisorToastProvider from '../SupervisorToastProvider';
 
 export default function AppLayout({ children, onLogout }) {
@@ -10,11 +11,14 @@ export default function AppLayout({ children, onLogout }) {
 
         <Sidebar onLogout={onLogout} />
 
-        <main className="relative flex-1 min-w-0 overflow-y-auto scrollbar-thin">
-          <div className="p-5 lg:p-8 pt-16 lg:pt-8 max-w-[1440px] mx-auto">
-            {children}
-          </div>
-        </main>
+        <div className="relative flex-1 min-w-0 flex flex-col">
+          <TopBar />
+          <main className="flex-1 overflow-y-auto scrollbar-thin">
+            <div className="p-5 lg:p-8 pt-20 lg:pt-24 max-w-[1440px] mx-auto">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
     </SupervisorToastProvider>
   );

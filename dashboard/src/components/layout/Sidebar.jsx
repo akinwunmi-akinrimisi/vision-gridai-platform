@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, useParams, useLocation, Link } from 'react-router';
+import { useState, useEffect, useMemo } from 'react';
+import { NavLink, useParams, useLocation, Link, useNavigate } from 'react-router';
 import {
   LayoutDashboard,
   Monitor,
@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Menu,
   X,
   Zap,
@@ -18,15 +19,18 @@ import {
   Search,
   Upload,
   Clapperboard,
+  Share2,
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ConnectionStatus from './ConnectionStatus';
 import { useSupervisorToasts } from '../SupervisorToastProvider';
 import { useQuotaStatus } from '../../hooks/useQuotaStatus';
+import { supabase } from '../../lib/supabase';
 
 const globalNavItems = [
   { label: 'Projects', icon: LayoutDashboard, path: '/' },
   { label: 'Shorts Creator', icon: Clapperboard, path: '/shorts' },
+  { label: 'Social Publisher', icon: Share2, path: '/social' },
 ];
 
 const projectNavItems = [
@@ -90,6 +94,116 @@ function NavItem({ item, collapsed, projectId, onClick, exact, badge }) {
   );
 }
 
+/**
+ * Project selector dropdown — shows current project name + list of all projects.
+ */
+function ProjectSelector({ currentProjectId, collapsed }) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    supabase
+      .from('projects')
+      .select('id, name, niche, status')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setProjects(data || []));
+  }, []);
+
+  const current = projects.find((p) => p.id === currentProjectId);
+
+  if (collapsed || projects.length <= 1) return null;
+
+  const statusDotColor = (status) => {
+    if (status === 'active' || status === 'in_production') return 'bg-emerald-500';
+    if (status?.startsWith('researching')) return 'bg-amber-500';
+    if (status === 'research_failed') return 'bg-red-500';
+    return 'bg-slate-400';
+  };
+
+  return (
+    <div className="relative px-3 pt-2 pb-1">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-white/[0.03] border border-border/30 dark:border-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors cursor-pointer"
+      >
+        <span className="truncate">{current?.name || current?.niche || 'Select Project'}</span>
+        <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-3 right-3 top-full mt-1 z-50 bg-white dark:bg-slate-800 border border-border/50 dark:border-white/[0.08] rounded-xl shadow-lg max-h-60 overflow-y-auto scrollbar-thin">
+          {projects.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => {
+                setOpen(false);
+                if (p.id !== currentProjectId) {
+                  navigate(`/project/${p.id}`);
+                }
+              }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors ${
+                p.id === currentProjectId ? 'font-semibold text-primary' : 'text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDotColor(p.status)}`} />
+              <span className="flex-1 truncate">{p.name || p.niche}</span>
+              <span className="text-2xs text-text-muted dark:text-text-muted-dark truncate max-w-[60px]">{p.niche}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Total spend indicator for the sidebar footer.
+ */
+function TotalSpend({ collapsed }) {
+  const [totalSpend, setTotalSpend] = useState(0);
+
+  useEffect(() => {
+    supabase
+      .from('topics')
+      .select('total_cost')
+      .then(({ data }) => {
+        const sum = (data || []).reduce((s, t) => s + (parseFloat(t.total_cost) || 0), 0);
+        setTotalSpend(sum);
+      });
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('sidebar-spend')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'topics' }, () => {
+        supabase
+          .from('topics')
+          .select('total_cost')
+          .then(({ data }) => {
+            const sum = (data || []).reduce((s, t) => s + (parseFloat(t.total_cost) || 0), 0);
+            setTotalSpend(sum);
+          });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  if (totalSpend <= 0) return null;
+
+  return (
+    <div
+      className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-slate-400 dark:text-slate-500 ${collapsed ? 'justify-center' : ''}`}
+      title={collapsed ? `$${totalSpend.toFixed(0)} spent` : undefined}
+    >
+      {!collapsed && (
+        <span className="text-xs font-mono tabular-nums">
+          ${totalSpend.toLocaleString(undefined, { maximumFractionDigits: 0 })} spent
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function Sidebar({ onLogout }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -99,6 +213,30 @@ export default function Sidebar({ onLogout }) {
 
   const isInsideProject = !!projectId && location.pathname.startsWith('/project/');
   const { remaining: quotaRemaining } = useQuotaStatus(isInsideProject ? projectId : null);
+
+  // Cmd+B / Ctrl+B keyboard shortcut to toggle collapse
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+        e.preventDefault();
+        setCollapsed((c) => !c);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Auto-collapse below 1280px
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1280px)');
+    const handler = (e) => {
+      if (e.matches) setCollapsed(true);
+    };
+    // Set initial
+    if (mql.matches) setCollapsed(true);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -137,6 +275,11 @@ export default function Sidebar({ onLogout }) {
             All Projects
           </Link>
         </div>
+      )}
+
+      {/* Project selector dropdown */}
+      {isInsideProject && (
+        <ProjectSelector currentProjectId={projectId} collapsed={collapsed} />
       )}
 
       {/* Navigation */}
@@ -201,12 +344,14 @@ export default function Sidebar({ onLogout }) {
           >
             <Upload className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.8} />
             {!collapsed && (
-              <span className="text-[13px] font-medium tabular-nums">
+              <span className="text-[13px] font-medium font-mono tabular-nums">
                 {quotaRemaining}/6
               </span>
             )}
           </div>
         )}
+
+        <TotalSpend collapsed={collapsed} />
 
         <ThemeToggle collapsed={collapsed} />
 

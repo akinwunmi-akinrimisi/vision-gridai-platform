@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { ChevronUp, ChevronDown, BarChart3 } from 'lucide-react';
+import useMediaQuery from '../../hooks/useMediaQuery';
 
 /**
  * Parse a duration string like "45:30" to total seconds.
@@ -54,6 +55,7 @@ const COLUMNS = [
  */
 export default function PerformanceTable({ topics, projectId }) {
   const navigate = useNavigate();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [sortColumn, setSortColumn] = useState('published_at');
   const [sortDirection, setSortDirection] = useState('desc');
 
@@ -118,6 +120,56 @@ export default function PerformanceTable({ topics, projectId }) {
           Video Performance
         </h3>
       </div>
+
+      {/* Mobile card view */}
+      {isMobile ? (
+        <div className="p-3 space-y-2">
+          {sorted.map((topic) => {
+            const revenue = parseFloat(topic.yt_estimated_revenue) || 0;
+            const cost = parseFloat(topic.total_cost) || 0;
+            const pl = revenue - cost;
+            return (
+              <div
+                key={topic.id}
+                onClick={() => navigate(`/project/${projectId}/topics/${topic.id}/review`)}
+                className="glass-card p-4 cursor-pointer active:scale-[0.99] transition-transform"
+              >
+                <p className="text-sm font-medium text-slate-900 dark:text-white mb-2 line-clamp-2">
+                  {topic.seo_title || topic.original_title || `Topic #${topic.topic_number}`}
+                </p>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <p className="text-text-muted dark:text-text-muted-dark">Views</p>
+                    <p className="font-bold font-mono tabular-nums">{(topic.yt_views || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-text-muted dark:text-text-muted-dark">Revenue</p>
+                    <p className="font-bold font-mono tabular-nums text-emerald-500">${revenue.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-text-muted dark:text-text-muted-dark">P/L</p>
+                    <p className={`font-bold font-mono tabular-nums ${pl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {pl >= 0 ? '+' : ''}${pl.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-text-muted dark:text-text-muted-dark">CTR</p>
+                    <p className="font-bold font-mono tabular-nums">{parseFloat(topic.yt_ctr || 0).toFixed(1)}%</p>
+                  </div>
+                  <div>
+                    <p className="text-text-muted dark:text-text-muted-dark">Watch Hrs</p>
+                    <p className="font-bold font-mono tabular-nums">{parseFloat(topic.yt_watch_hours || 0).toFixed(1)}h</p>
+                  </div>
+                  <div>
+                    <p className="text-text-muted dark:text-text-muted-dark">CPM</p>
+                    <p className="font-bold font-mono tabular-nums">${parseFloat(topic.yt_actual_cpm || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
       <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full text-sm min-w-[800px]">
           <thead>
@@ -199,6 +251,7 @@ export default function PerformanceTable({ topics, projectId }) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

@@ -28,7 +28,7 @@ export function useProjects() {
       const projectIds = projects.map((p) => p.id);
       const { data: topics, error: topicsError } = await supabase
         .from('topics')
-        .select('id, project_id, topic_number, status, review_status, script_review_status, video_review_status, seo_title, audio_progress, images_progress, i2v_progress, t2v_progress, assembly_status')
+        .select('id, project_id, topic_number, status, review_status, script_review_status, video_review_status, seo_title, audio_progress, images_progress, i2v_progress, t2v_progress, assembly_status, total_cost, yt_estimated_revenue, updated_at')
         .in('project_id', projectIds);
 
       if (topicsError) {

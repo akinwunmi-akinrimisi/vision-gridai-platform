@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router';
-import { Activity, Play, StopCircle, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Activity, Play, StopCircle, RotateCcw, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 import { useTopics } from '../hooks/useTopics';
 import { useProductionProgress } from '../hooks/useProductionProgress';
@@ -14,6 +14,8 @@ import FailedScenes from '../components/production/FailedScenes';
 import ActivityLog from '../components/production/ActivityLog';
 import CostEstimateDialog from '../components/production/CostEstimateDialog';
 import SupervisorAlert from '../components/production/SupervisorAlert';
+import SceneDetailPanel from '../components/production/SceneDetailPanel';
+import ErrorLogModal from '../components/production/ErrorLogModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 export default function ProductionMonitor() {
@@ -25,6 +27,8 @@ export default function ProductionMonitor() {
   const [restartText, setRestartText] = useState('');
   const [supervisorDismissed, setSupervisorDismissed] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [selectedScene, setSelectedScene] = useState(null);
+  const [showErrorLog, setShowErrorLog] = useState(false);
 
   const { data: topics = [], isLoading } = useTopics(projectId);
   const mutations = useProductionMutations(projectId);
@@ -199,7 +203,9 @@ export default function ProductionMonitor() {
             </div>
           )}
 
-          {scenes.length > 0 && <DotGrid scenes={scenes} />}
+          {scenes.length > 0 && (
+            <DotGrid scenes={scenes} onSceneClick={setSelectedScene} />
+          )}
 
           {failedScenes && failedScenes.length > 0 && (
             <FailedScenes
@@ -252,6 +258,19 @@ export default function ProductionMonitor() {
             </div>
           )}
 
+          {/* Error Log button */}
+          {currentTopic && (
+            <div className="flex items-center gap-2 mb-4">
+              <button
+                onClick={() => setShowErrorLog(true)}
+                className="btn-ghost btn-sm text-red-500 dark:text-red-400"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Error Log
+              </button>
+            </div>
+          )}
+
           <ActivityLog logs={logs} />
         </>
       ) : (
@@ -296,6 +315,20 @@ export default function ProductionMonitor() {
         message={`Are you sure you want to stop production for "${activeTopic?.seo_title}"? Completed scenes will be kept.${activeTopic?.total_cost ? ` $${activeTopic.total_cost.toFixed(2)} already spent.` : ''}`}
         confirmText="Stop Production"
         confirmVariant="danger"
+      />
+
+      <SceneDetailPanel
+        scene={selectedScene}
+        isOpen={!!selectedScene}
+        onClose={() => setSelectedScene(null)}
+        onRetry={handleRetryScene}
+        onSkip={handleSkipScene}
+      />
+
+      <ErrorLogModal
+        isOpen={showErrorLog}
+        onClose={() => setShowErrorLog(false)}
+        topicId={currentTopic?.id || null}
       />
     </div>
   );

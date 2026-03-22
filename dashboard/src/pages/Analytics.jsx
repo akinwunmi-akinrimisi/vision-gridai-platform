@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router';
 import {
   BarChart3,
@@ -10,9 +10,13 @@ import {
   Users,
   DollarSign,
   RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from 'lucide-react';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { refreshAnalytics } from '../lib/analyticsApi';
+import { supabase } from '../lib/supabase';
 import { SkeletonMetric } from '../components/ui/SkeletonLoader';
 import TopPerformerCard from '../components/analytics/TopPerformerCard';
 import ViewsChart from '../components/analytics/ViewsChart';
@@ -22,6 +26,108 @@ import CostDonut from '../components/analytics/CostDonut';
 import CostRevenueChart from '../components/analytics/CostRevenueChart';
 import PerformanceTable from '../components/analytics/PerformanceTable';
 import TimeRangeFilter from '../components/analytics/TimeRangeFilter';
+
+/**
+ * TrendIndicator -- shows percentage change vs previous period.
+ */
+function TrendIndicator({ value, suffix = '%' }) {
+  if (value == null || isNaN(value)) return null;
+  const isPositive = value > 0;
+  const isZero = value === 0;
+  const Icon = isZero ? Minus : isPositive ? TrendingUp : TrendingDown;
+  const color = isZero
+    ? 'text-slate-400'
+    : isPositive
+      ? 'text-emerald-500'
+      : 'text-red-500';
+
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${color}`}>
+      <Icon className="w-3 h-3" />
+      {isPositive ? '+' : ''}{value.toFixed(1)}{suffix}
+    </span>
+  );
+}
+
+/**
+ * NicheComparisonTable -- compare metrics across projects (only when 2+ exist).
+ */
+function NicheComparisonTable() {
+  const [nicheData, setNicheData] = useState([]);
+
+  useEffect(() => {
+    async function load() {
+      const { data: projects } = await supabase.from('projects').select('id, name, niche');
+      if (!projects || projects.length < 2) return;
+
+      const { data: topics } = await supabase.from('topics').select('project_id, yt_views, yt_estimated_revenue, yt_ctr, total_cost').eq('status', 'published');
+
+      if (!topics) return;
+
+      const byProject = {};
+      for (const t of topics) {
+        if (!byProject[t.project_id]) byProject[t.project_id] = [];
+        byProject[t.project_id].push(t);
+      }
+
+      const rows = projects
+        .map((p) => {
+          const pts = byProject[p.id] || [];
+          if (pts.length === 0) return null;
+          const totalViews = pts.reduce((s, t) => s + (t.yt_views || 0), 0);
+          const totalRevenue = pts.reduce((s, t) => s + (parseFloat(t.yt_estimated_revenue) || 0), 0);
+          const totalCost = pts.reduce((s, t) => s + (parseFloat(t.total_cost) || 0), 0);
+          const avgCpm = totalViews > 0 ? (totalRevenue / totalViews) * 1000 : 0;
+          return { name: p.name || p.niche, videos: pts.length, totalViews, totalRevenue, totalCost, avgCpm };
+        })
+        .filter(Boolean);
+
+      setNicheData(rows);
+    }
+    load();
+  }, []);
+
+  if (nicheData.length < 2) return null;
+
+  return (
+    <div className="glass-card overflow-hidden mt-8">
+      <div className="px-6 py-4 border-b border-white/[0.06]">
+        <h3 className="section-title">Niche Comparison</h3>
+      </div>
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full text-sm min-w-[600px]">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              <th className="table-header table-cell text-left">Niche</th>
+              <th className="table-header table-cell text-right">Videos</th>
+              <th className="table-header table-cell text-right">Views</th>
+              <th className="table-header table-cell text-right">Revenue</th>
+              <th className="table-header table-cell text-right">Avg CPM</th>
+              <th className="table-header table-cell text-right">ROI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {nicheData.map((row) => {
+              const roi = row.totalCost > 0 ? (row.totalRevenue / row.totalCost) : 0;
+              return (
+                <tr key={row.name} className="table-row">
+                  <td className="table-cell font-medium text-slate-900 dark:text-white">{row.name}</td>
+                  <td className="table-cell text-right tabular-nums font-mono">{row.videos}</td>
+                  <td className="table-cell text-right tabular-nums font-mono">{row.totalViews.toLocaleString()}</td>
+                  <td className="table-cell text-right tabular-nums font-mono text-emerald-600 dark:text-emerald-400">${row.totalRevenue.toFixed(2)}</td>
+                  <td className="table-cell text-right tabular-nums font-mono">${row.avgCpm.toFixed(2)}</td>
+                  <td className={`table-cell text-right tabular-nums font-mono font-semibold ${roi >= 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                    {roi > 0 ? `${roi.toFixed(1)}x` : '--'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Parse duration string "M:SS" to seconds.
@@ -147,30 +253,36 @@ export default function Analytics() {
     });
   }, [topics]);
 
+  const trends = analytics.trends || {};
+
   const primaryCards = [
     {
       label: 'Total Views',
       value: analytics.totalViews.toLocaleString(),
       icon: Eye,
       bgColor: 'from-blue-500 to-indigo-600',
+      trend: trends.views,
     },
     {
       label: 'Watch Hours',
       value: `${analytics.totalWatchHours.toLocaleString()}h`,
       icon: Clock,
       bgColor: 'from-purple-500 to-violet-600',
+      trend: trends.watchHours,
     },
     {
       label: 'Avg CTR',
       value: `${analytics.avgCtr}%`,
       icon: MousePointerClick,
       bgColor: 'from-emerald-500 to-teal-600',
+      trend: trends.ctr,
     },
     {
       label: 'Revenue',
       value: `$${analytics.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: DollarSign,
       bgColor: 'from-amber-500 to-orange-600',
+      trend: trends.revenue,
     },
   ];
 
@@ -237,7 +349,10 @@ export default function Analytics() {
                 <m.icon className="w-4 h-4 text-white" />
               </div>
             </div>
-            <p className="metric-value text-slate-900 dark:text-white">{m.value}</p>
+            <div className="flex items-end gap-2">
+              <p className="metric-value text-slate-900 dark:text-white">{m.value}</p>
+              <TrendIndicator value={m.trend} />
+            </div>
           </div>
         ))}
       </div>
@@ -301,6 +416,9 @@ export default function Analytics() {
           </div>
         </>
       )}
+
+      {/* Niche comparison (only when 2+ projects exist) */}
+      <NicheComparisonTable />
     </div>
   );
 }

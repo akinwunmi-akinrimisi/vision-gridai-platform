@@ -30,6 +30,45 @@ function scoreColor(score) {
   return 'bg-red-500';
 }
 
+/**
+ * VisualSplitBar -- stacked horizontal bar showing static/i2v/t2v proportions.
+ */
+function VisualSplitBar({ scriptJson }) {
+  const split = scriptJson?.metadata?.visual_split;
+  if (!split) return <p className="text-sm font-bold text-slate-900 dark:text-white">--</p>;
+
+  const staticCount = split.static_image || 0;
+  const i2vCount = split.i2v || 0;
+  const t2vCount = split.t2v || 0;
+  const total = staticCount + i2vCount + t2vCount;
+  if (total === 0) return <p className="text-sm font-bold text-slate-900 dark:text-white">--</p>;
+
+  const staticPct = (staticCount / total) * 100;
+  const i2vPct = (i2vCount / total) * 100;
+  const t2vPct = (t2vCount / total) * 100;
+
+  return (
+    <div>
+      <div className="flex h-2.5 rounded-full overflow-hidden" style={{ width: '200px' }}>
+        {staticPct > 0 && <div className="bg-slate-400 dark:bg-slate-500" style={{ width: `${staticPct}%` }} title={`Static: ${staticCount}`} />}
+        {i2vPct > 0 && <div className="bg-blue-500" style={{ width: `${i2vPct}%` }} title={`I2V: ${i2vCount}`} />}
+        {t2vPct > 0 && <div className="bg-purple-500" style={{ width: `${t2vPct}%` }} title={`T2V: ${t2vCount}`} />}
+      </div>
+      <div className="flex items-center gap-3 mt-1.5">
+        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+          <span className="w-2 h-2 rounded-sm bg-slate-400 dark:bg-slate-500 inline-block" /> Static {staticCount}
+        </span>
+        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+          <span className="w-2 h-2 rounded-sm bg-blue-500 inline-block" /> I2V {i2vCount}
+        </span>
+        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+          <span className="w-2 h-2 rounded-sm bg-purple-500 inline-block" /> T2V {t2vCount}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function formatVisualSplit(scriptJson) {
   const split = scriptJson?.metadata?.visual_split;
   if (!split) return '--';
@@ -104,8 +143,9 @@ export default function ScorePanel({ topic, onApprove, onReject, onRefine, isLoa
       <div className="space-y-3" data-testid="dimension-bars">
         {SCORE_DIMENSIONS.map((dim) => {
           const score = dimensions[dim.key];
+          const feedback = combined?.feedback?.[dim.key] || combined?.notes?.[dim.key] || null;
           return (
-            <div key={dim.key} data-testid={`dimension-${dim.key}`}>
+            <div key={dim.key} data-testid={`dimension-${dim.key}`} className="group relative">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{dim.label}</span>
                 <span className="text-xs font-bold text-slate-900 dark:text-white tabular-nums">
@@ -121,6 +161,14 @@ export default function ScorePanel({ topic, onApprove, onReject, onRefine, isLoa
                   />
                 )}
               </div>
+              {/* Hover tooltip with evaluator feedback */}
+              {feedback && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-10 hidden group-hover:block">
+                  <div className="bg-slate-800 dark:bg-slate-700 text-white text-[10px] rounded-lg px-3 py-2 shadow-lg leading-relaxed max-w-xs">
+                    {feedback}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -140,11 +188,9 @@ export default function ScorePanel({ topic, onApprove, onReject, onRefine, isLoa
             {topic.scene_count ?? '--'}
           </p>
         </div>
-        <div>
-          <p className="text-[10px] font-medium text-text-muted dark:text-text-muted-dark uppercase tracking-wider">Visual Split</p>
-          <p className="text-sm font-bold text-slate-900 dark:text-white">
-            {formatVisualSplit(topic.script_json)}
-          </p>
+        <div className="col-span-2">
+          <p className="text-[10px] font-medium text-text-muted dark:text-text-muted-dark uppercase tracking-wider mb-1.5">Visual Split</p>
+          <VisualSplitBar scriptJson={topic.script_json} />
         </div>
         <div>
           <p className="text-[10px] font-medium text-text-muted dark:text-text-muted-dark uppercase tracking-wider">Attempts</p>

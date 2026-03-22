@@ -48,7 +48,7 @@ const LEGEND = [
   { label: 'Skipped', color: 'bg-slate-400' },
 ];
 
-export default function DotGrid({ scenes = [] }) {
+export default function DotGrid({ scenes = [], onSceneClick }) {
   const [hoveredScene, setHoveredScene] = useState(null);
 
   const chapters = scenes.reduce((acc, scene) => {
@@ -102,7 +102,8 @@ export default function DotGrid({ scenes = [] }) {
                   key={scene.id}
                   data-testid={`dot-${scene.scene_number}`}
                   className={`
-                    w-2.5 h-2.5 rounded-[3px] transition-all duration-300 cursor-default
+                    w-2.5 h-2.5 rounded-[3px] transition-all duration-300
+                    ${onSceneClick ? 'cursor-pointer' : 'cursor-default'}
                     hover:scale-150 hover:z-10 hover:ring-2 hover:ring-white/50 dark:hover:ring-white/20
                     ${getDotColor(scene)}
                     ${isPartialProgress(scene) ? 'animate-pulse' : ''}
@@ -111,6 +112,7 @@ export default function DotGrid({ scenes = [] }) {
                     opacity: 0,
                     animation: `fadeIn 0.3s ease-out ${Math.min(index * 8, 500)}ms forwards${isPartialProgress(scene) ? ', pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' : ''}`,
                   }}
+                  onClick={() => onSceneClick?.(scene)}
                   onMouseEnter={() => setHoveredScene(scene)}
                   onMouseLeave={() => setHoveredScene(null)}
                 />

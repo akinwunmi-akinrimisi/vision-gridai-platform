@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Code2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code2, FlaskConical, Loader2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { testPrompt } from '../../lib/settingsApi';
 
 /**
  * Variable reference map per prompt type.
@@ -13,6 +14,7 @@ const PROMPT_VARIABLES = {
   script_pass3: ['{{seo_title}}', '{{pass1_summary}}', '{{pass2_summary}}', '{{dream_outcome}}', '{{practical_takeaways}}'],
   evaluator: ['{{combined_script}}', '{{word_count}}', '{{scene_count}}'],
   visual_director: ['{{scene_narration}}', '{{emotional_beat}}', '{{chapter}}'],
+  shorts_analyzer: ['{{seo_title}}', '{{script_json}}', '{{scene_count}}', '{{word_count}}', '{{niche}}', '{{avatar_name_age}}', '{{pain_point}}'],
 };
 
 /**
@@ -27,8 +29,112 @@ function formatTypeName(type) {
 }
 
 /**
+ * TestPromptModal — modal for testing a prompt with sample input.
+ */
+function TestPromptModal({ prompt, isOpen, onClose }) {
+  const [testInput, setTestInput] = useState('');
+  const [response, setResponse] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setTestInput('');
+      setResponse('');
+      setIsRunning(false);
+    }
+  }, [isOpen]);
+
+  const handleRun = async () => {
+    if (!testInput.trim()) return;
+    setIsRunning(true);
+    setResponse('');
+    try {
+      const result = await testPrompt(prompt.id, testInput.trim());
+      if (result?.success === false) {
+        setResponse(`Error: ${result.error || 'Unknown error'}`);
+      } else {
+        setResponse(typeof result?.data === 'string' ? result.data : JSON.stringify(result?.data || result, null, 2));
+      }
+    } catch (err) {
+      setResponse(`Error: ${err.message}`);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-2xl animate-in bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-2xl shadow-2xl shadow-black/[0.08] dark:shadow-black/[0.3]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 dark:border-white/[0.06]">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+            Test: {formatTypeName(prompt.prompt_type)}
+          </h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer" aria-label="Close">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {/* Read-only prompt preview */}
+          <div>
+            <label className="block text-xs font-medium text-text-muted dark:text-text-muted-dark mb-1.5 uppercase tracking-wider">Prompt Preview</label>
+            <div className="max-h-32 overflow-y-auto rounded-lg bg-slate-50 dark:bg-white/[0.04] border border-border/50 dark:border-white/[0.06] px-3 py-2 font-mono text-xs text-slate-600 dark:text-slate-400 scrollbar-thin">
+              {prompt.prompt_text?.slice(0, 500)}{prompt.prompt_text?.length > 500 ? '...' : ''}
+            </div>
+          </div>
+
+          {/* Test input */}
+          <div>
+            <label className="block text-xs font-medium text-text-muted dark:text-text-muted-dark mb-1.5 uppercase tracking-wider">Test Input</label>
+            <textarea
+              value={testInput}
+              onChange={(e) => setTestInput(e.target.value)}
+              rows={4}
+              placeholder="Enter test input data..."
+              className="input text-sm resize-none font-mono"
+              disabled={isRunning}
+            />
+          </div>
+
+          {/* Run button */}
+          <button
+            onClick={handleRun}
+            disabled={!testInput.trim() || isRunning}
+            className="btn-primary btn-sm"
+          >
+            {isRunning ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <FlaskConical className="w-3.5 h-3.5" />
+                Run Test
+              </>
+            )}
+          </button>
+
+          {/* Response */}
+          {response && (
+            <div>
+              <label className="block text-xs font-medium text-text-muted dark:text-text-muted-dark mb-1.5 uppercase tracking-wider">Response</label>
+              <div className="max-h-60 overflow-y-auto rounded-lg bg-slate-50 dark:bg-white/[0.04] border border-border/50 dark:border-white/[0.06] px-3 py-2 font-mono text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap scrollbar-thin">
+                {response}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Individual prompt card with expand/collapse, inline editing,
- * version history dropdown, and variable reference.
+ * version history dropdown, variable reference, and test button.
  */
 export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -37,6 +143,7 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
   const [versions, setVersions] = useState([]);
   const [viewingVersion, setViewingVersion] = useState(null);
   const [showVariables, setShowVariables] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
   const textareaRef = useRef(null);
 
   // Reset edit text when prompt changes
@@ -141,6 +248,14 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
             v{prompt.version}
           </button>
         </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowTestModal(true); }}
+          className="btn-ghost btn-sm text-xs"
+          title="Test this prompt"
+        >
+          <FlaskConical className="w-3.5 h-3.5" />
+          Test
+        </button>
       </div>
 
       {/* Version dropdown */}
@@ -252,6 +367,13 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
           )}
         </div>
       )}
+
+      {/* Test modal */}
+      <TestPromptModal
+        prompt={prompt}
+        isOpen={showTestModal}
+        onClose={() => setShowTestModal(false)}
+      />
     </div>
   );
 }

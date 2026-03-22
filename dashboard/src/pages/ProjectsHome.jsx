@@ -13,6 +13,17 @@ export default function ProjectsHome() {
   const totalProjects = projects?.length || 0;
   const publishedCount = projects?.reduce((sum, p) => sum + (p.published_count || 0), 0) || 0;
 
+  // Aggregate financials from topic summaries
+  const totalRevenue = projects?.reduce((sum, p) => {
+    const ts = p.topics_summary || [];
+    return sum + ts.reduce((s, t) => s + (parseFloat(t.yt_estimated_revenue) || 0), 0);
+  }, 0) || 0;
+  const totalSpend = projects?.reduce((sum, p) => {
+    const ts = p.topics_summary || [];
+    return sum + ts.reduce((s, t) => s + (parseFloat(t.total_cost) || 0), 0);
+  }, 0) || 0;
+  const avgRoi = totalSpend > 0 ? (totalRevenue / totalSpend).toFixed(1) : '--';
+
   const stats = [
     {
       label: 'Total Projects',
@@ -30,14 +41,14 @@ export default function ProjectsHome() {
     },
     {
       label: 'Total Revenue',
-      value: '$0',
+      value: totalRevenue > 0 ? `$${totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '$0',
       icon: DollarSign,
       iconBg: 'from-amber-500 to-orange-500',
       iconShadow: 'shadow-amber-500/20',
     },
     {
       label: 'Avg. ROI',
-      value: '--',
+      value: avgRoi === '--' ? '--' : `${avgRoi}x`,
       icon: TrendingUp,
       iconBg: 'from-violet-500 to-purple-600',
       iconShadow: 'shadow-violet-500/20',

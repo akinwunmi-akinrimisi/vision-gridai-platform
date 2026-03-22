@@ -8,6 +8,7 @@ const PROMPT_GROUPS = [
   { label: 'Core', types: ['system_prompt', 'topic_generator'] },
   { label: 'Script Pipeline', types: ['script_pass1', 'script_pass2', 'script_pass3'] },
   { label: 'Evaluation', types: ['evaluator', 'visual_director'] },
+  { label: 'Shorts', types: ['shorts_analyzer'] },
 ];
 
 /**
