@@ -465,11 +465,12 @@ function ProductionRow({ clip, onProduce, isProducing, onCancel, onReproduce, on
 // ────────────────────────────────────────────────────────
 
 const ANALYSIS_STAGES = [
-  { key: 'fetch_data', label: 'Fetching Data', icon: Film },
+  { key: 'fetch_data', label: 'Fetching Script', icon: Film },
   { key: 'claude_analysis', label: 'AI Analysis', icon: Sparkles },
   { key: 'parsing_response', label: 'Parsing Results', icon: FileText },
   { key: 'validating_clips', label: 'Validating Clips', icon: CheckCircle2 },
-  { key: 'inserting_shorts', label: 'Saving to DB', icon: Zap },
+  { key: 'inserting_shorts', label: 'Saving Clips', icon: Zap },
+  { key: 'finalizing', label: 'Finalizing', icon: CheckCircle2 },
 ];
 
 function AnalysisProgressTracker({ topicId }) {
@@ -496,8 +497,14 @@ function AnalysisProgressTracker({ topicId }) {
         const step = latest.details?.step || null;
         const message = latest.details?.message || latest.action;
 
-        if (step) setCurrentStep(step);
-        if (message) setStepMessage(message);
+        // If the last stage is complete, show "finalizing" until shorts rows appear
+        if (step === 'inserting_shorts' && latest.action === 'completed') {
+          setCurrentStep('finalizing');
+          setStepMessage('Waiting for clips to appear...');
+        } else {
+          if (step) setCurrentStep(step);
+          if (message) setStepMessage(message);
+        }
       } catch (e) { /* ignore */ }
     };
 
@@ -666,8 +673,17 @@ function AllTopicsBrowser({ projects, onSelectTopic, onAnalyze, analyzeLoading, 
 
   function canAnalyze(topic) {
     if (topic.status !== 'assembled' && topic.status !== 'published') return false;
+    // Don't show Analyze if analysis is currently running for this topic
+    if (analyzingTopicId === topic.id) return false;
     const s = shortsSummaryAll?.[topic.id];
     return !s || s.total === 0;
+  }
+
+  function canReAnalyze(topic) {
+    if (topic.status !== 'assembled' && topic.status !== 'published') return false;
+    if (analyzingTopicId === topic.id) return false;
+    const s = shortsSummaryAll?.[topic.id];
+    return s && s.total > 0;
   }
 
   function hasShorts(topicId) {
@@ -839,14 +855,30 @@ function AllTopicsBrowser({ projects, onSelectTopic, onAnalyze, analyzeLoading, 
                       </button>
                     ) : null}
                     {hasShorts(topic.id) && (
-                      <button
-                        onClick={() => onSelectTopic(topic)}
-                        className="btn-secondary btn-sm"
-                      >
-                        <span className="hidden sm:inline">Review Clips</span>
-                        <span className="sm:hidden">Review</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => onSelectTopic(topic)}
+                          className="btn-primary btn-sm"
+                        >
+                          <span className="hidden sm:inline">Review Clips</span>
+                          <span className="sm:hidden">Review</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        {canReAnalyze(topic) && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Re-analyze will delete existing clips and generate new ones. Continue?')) {
+                                onAnalyze(topic.id);
+                              }
+                            }}
+                            disabled={analyzeLoading}
+                            className="btn-ghost btn-sm text-xs"
+                            title="Re-analyze for new viral clips"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -1675,16 +1707,67 @@ export default function ShortsCreator() {
   });
 
   // Subscribe to shorts table for live updates on the summary
-  // When new shorts are inserted by n8n, this auto-refreshes and the UI updates
   useRealtimeSubscription('shorts', null, [['shorts-summary-all']]);
 
-  // Clear analyzing state when shorts appear for the analyzing topic
+  // On mount: detect if an analysis is already running (user navigated away and came back)
+  // Check production_log for recent shorts_analysis entries with no corresponding shorts rows
+  useEffect(() => {
+    async function detectRunningAnalysis() {
+      try {
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { data: logs } = await supabase
+          .from('production_log')
+          .select('topic_id, action, details, created_at')
+          .eq('stage', 'shorts_analysis')
+          .gte('created_at', fiveMinAgo)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (!logs || logs.length === 0) return;
+
+        // Find a topic that has recent analysis logs but no shorts rows yet
+        const topicIds = [...new Set(logs.map((l) => l.topic_id))];
+        for (const tid of topicIds) {
+          const latestLog = logs.find((l) => l.topic_id === tid);
+          const isComplete = latestLog?.details?.step === 'inserting_shorts' && latestLog?.action === 'completed';
+          if (isComplete) continue; // Analysis finished, don't resume tracker
+
+          // Check if shorts exist for this topic
+          const hasExisting = shortsSummaryAll?.[tid]?.total > 0;
+          if (!hasExisting) {
+            setAnalyzingTopicId(tid);
+            break;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    if (!analyzingTopicId) {
+      detectRunningAnalysis();
+    }
+  }, []); // Run once on mount
+
+  // When analysis completes (shorts rows appear), auto-transition to clip review
+  const prevAnalyzingRef = useRef(null);
   useEffect(() => {
     if (analyzingTopicId && shortsSummaryAll?.[analyzingTopicId]?.total > 0) {
+      // Find the topic object from projects for auto-transition
+      const analyzedTopicId = analyzingTopicId;
       setAnalyzingTopicId(null);
-      toast.success('Analysis complete! 20 viral clips identified. Click "Review Clips" to see them.');
+      toast.success('Analysis complete! Showing clips for review.');
+
+      // Auto-navigate to clip review
+      if (projects) {
+        for (const p of projects) {
+          const t = (p.topics_summary || []).find((t) => t.id === analyzedTopicId);
+          if (t) {
+            setSelectedTopic({ ...t, project_name: p.name || p.niche, project_id: p.id });
+            break;
+          }
+        }
+      }
     }
-  }, [analyzingTopicId, shortsSummaryAll]);
+  }, [analyzingTopicId, shortsSummaryAll, projects]);
 
   const handleAnalyze = useCallback(
     (topicId) => {
