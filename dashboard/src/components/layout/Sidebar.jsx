@@ -204,8 +204,7 @@ function TotalSpend({ collapsed }) {
   );
 }
 
-export default function Sidebar({ onLogout }) {
-  const [collapsed, setCollapsed] = useState(false);
+export default function Sidebar({ onLogout, collapsed, setCollapsed }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { id: projectId } = useParams();
   const location = useLocation();

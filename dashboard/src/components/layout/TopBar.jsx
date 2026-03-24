@@ -227,7 +227,7 @@ function NotificationDropdown({ items, onClose, onDismissAll }) {
 
 // ── TopBar ───────────────────────────────────────────
 
-export default function TopBar() {
+export default function TopBar({ sidebarCollapsed }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [dismissedAt, setDismissedAt] = useState(() => {
     try {
@@ -267,7 +267,7 @@ export default function TopBar() {
     <header
       className="
         fixed top-0 right-0 z-40 h-16
-        left-0 lg:left-[260px]
+        left-0 ${sidebarCollapsed ? 'lg:left-sidebar-collapsed' : 'lg:left-sidebar'}
         bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl
         border-b border-slate-200/60 dark:border-white/[0.06]
         transition-all duration-300

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Database, Youtube, Webhook, Shield, Palette, Pencil, Folder, Share2, AlertTriangle, Trash2, RotateCcw, XCircle } from 'lucide-react';
+import { Database, Youtube, Webhook, Shield, Palette, Pencil, Folder, Share2, AlertTriangle, Trash2, RotateCcw, XCircle, Loader2, Link2, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjectSettings, useUpdateSettings } from '../../hooks/useProjectSettings';
 import { supabase } from '../../lib/supabase';
 import { resetAllTopics, clearProductionData, deleteProject } from '../../lib/settingsApi';
+import { webhookCall } from '../../lib/api';
 
 /* ------------------------------------------------------------------
  * Model options with costs
@@ -308,8 +309,9 @@ const PLATFORMS = [
 function SocialAccountsSection({ projectId }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null); // platform key currently loading
 
-  useEffect(() => {
+  const fetchAccounts = () => {
     if (!projectId) return;
     supabase
       .from('social_accounts')
@@ -319,10 +321,55 @@ function SocialAccountsSection({ projectId }) {
         setAccounts(data || []);
         setLoading(false);
       });
-  }, [projectId]);
+  };
+
+  useEffect(() => { fetchAccounts(); }, [projectId]);
 
   const accountByPlatform = {};
   accounts.forEach((a) => { accountByPlatform[a.platform] = a; });
+
+  const handleConnect = async (platformKey) => {
+    setActionLoading(platformKey);
+    try {
+      const result = await webhookCall('social/connect', {
+        platform: platformKey,
+        project_id: projectId,
+      }, { timeoutMs: 60_000 });
+      if (result?.success === false) {
+        toast.error(result.error || `Failed to connect ${platformKey}`);
+      } else if (result?.oauth_url) {
+        window.open(result.oauth_url, '_blank', 'noopener,noreferrer');
+        toast.success('OAuth window opened. Complete the flow, then refresh.');
+      } else {
+        toast.success(`${platformKey} connection initiated`);
+        fetchAccounts();
+      }
+    } catch (err) {
+      toast.error(err.message || 'Connection failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDisconnect = async (platformKey, accountId) => {
+    setActionLoading(platformKey);
+    try {
+      const { error } = await supabase
+        .from('social_accounts')
+        .update({ is_active: false })
+        .eq('id', accountId);
+      if (error) {
+        toast.error(error.message || 'Failed to disconnect');
+      } else {
+        toast.success(`${platformKey} disconnected`);
+        fetchAccounts();
+      }
+    } catch (err) {
+      toast.error(err.message || 'Disconnect failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   return (
     <div className="glass-card p-6">
@@ -344,33 +391,60 @@ function SocialAccountsSection({ projectId }) {
         <div className="space-y-3">
           {PLATFORMS.map((platform) => {
             const acct = accountByPlatform[platform.key];
+            const isConnected = acct && acct.is_active;
+            const isBusy = actionLoading === platform.key;
+
             return (
               <div
                 key={platform.key}
                 className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.04]"
               >
-                <span className={`text-sm font-medium ${platform.color}`}>{platform.label}</span>
-                {acct && acct.is_active ? (
-                  <span className="badge badge-green">
-                    Connected: {acct.account_name || acct.account_id || 'Active'}
-                  </span>
-                ) : (
-                  <span className="badge bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">
-                    Not Connected
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${platform.color}`}>{platform.label}</span>
+                  {isConnected ? (
+                    <span className="badge badge-green">
+                      {acct.account_name || acct.account_id || 'Connected'}
+                    </span>
+                  ) : (
+                    <span className="badge bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">
+                      Not Connected
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isConnected ? (
+                    <button
+                      onClick={() => handleDisconnect(platform.key, acct.id)}
+                      disabled={isBusy}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/[0.08] hover:bg-red-100 dark:hover:bg-red-500/[0.15] border border-red-200/50 dark:border-red-500/20 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Unlink className="w-3.5 h-3.5" />}
+                      Disconnect
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleConnect(platform.key)}
+                      disabled={isBusy}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-primary dark:text-blue-400 bg-primary/5 dark:bg-primary/10 hover:bg-primary/10 dark:hover:bg-primary/20 border border-primary/20 dark:border-primary/30 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                      Connect
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
           <p className="text-xs text-text-muted dark:text-text-muted-dark mt-2">
-            Manage credentials in{' '}
+            OAuth credentials are managed via n8n.{' '}
             <a
               href="https://n8n.srv1297445.hstgr.cloud"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              n8n Settings &rarr; Credentials
+              Open n8n Credentials &rarr;
             </a>
           </p>
         </div>
