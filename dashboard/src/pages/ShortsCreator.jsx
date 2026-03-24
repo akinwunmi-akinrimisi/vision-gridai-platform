@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ArrowLeft,
   Film,
@@ -24,8 +24,10 @@ import {
   XCircle,
   StopCircle,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
+import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
 import { useProjects } from '../hooks/useProjects';
 import { useTopics } from '../hooks/useTopics';
 import {
@@ -459,181 +461,329 @@ function ProductionRow({ clip, onProduce, isProducing, onCancel, onReproduce, on
 }
 
 // ────────────────────────────────────────────────────────
-// LEVEL 1: Project Selection Grid
+// ANALYSIS PROGRESS TRACKER — Shows live stage-by-stage progress
 // ────────────────────────────────────────────────────────
 
-function ProjectGrid({ projects, shortsSummaryByProject, onSelect }) {
-  // Only show projects that have at least 1 topic with assembled/published status
-  const eligibleProjects = useMemo(() => {
-    return (projects || []).filter((p) => {
+const ANALYSIS_STAGES = [
+  { key: 'fetch_data', label: 'Fetching Data', icon: Film },
+  { key: 'claude_analysis', label: 'AI Analysis', icon: Sparkles },
+  { key: 'parsing_response', label: 'Parsing Results', icon: FileText },
+  { key: 'validating_clips', label: 'Validating Clips', icon: CheckCircle2 },
+  { key: 'inserting_shorts', label: 'Saving to DB', icon: Zap },
+];
+
+function AnalysisProgressTracker({ topicId }) {
+  const [currentStep, setCurrentStep] = useState(null);
+  const [stepMessage, setStepMessage] = useState('Starting analysis...');
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const startTimeRef = useRef(Date.now());
+
+  // Poll production_log for progress updates
+  useEffect(() => {
+    let active = true;
+    const poll = async () => {
+      try {
+        const { data } = await supabase
+          .from('production_log')
+          .select('action, details, created_at')
+          .eq('topic_id', topicId)
+          .eq('stage', 'shorts_analysis')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (!active || !data || data.length === 0) return;
+        const latest = data[0];
+        const step = latest.details?.step || null;
+        const message = latest.details?.message || latest.action;
+
+        if (step) setCurrentStep(step);
+        if (message) setStepMessage(message);
+      } catch (e) { /* ignore */ }
+    };
+
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => { active = false; clearInterval(interval); };
+  }, [topicId]);
+
+  // Elapsed timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSec(Math.round((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentIndex = ANALYSIS_STAGES.findIndex((s) => s.key === currentStep);
+  const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  return (
+    <div className="w-full max-w-[320px] px-3 py-2.5 rounded-xl bg-primary/5 dark:bg-primary/10 border border-primary/20">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary dark:text-blue-400" />
+          <span className="text-2xs font-bold text-primary dark:text-blue-400 uppercase tracking-wider">Analyzing</span>
+        </div>
+        <span className="text-2xs font-mono tabular-nums text-slate-500 dark:text-slate-400">{formatTime(elapsedSec)}</span>
+      </div>
+
+      {/* Stage indicators */}
+      <div className="space-y-1">
+        {ANALYSIS_STAGES.map((stage, i) => {
+          const Icon = stage.icon;
+          const isComplete = currentIndex > i;
+          const isActive = currentIndex === i;
+          const isPending = currentIndex < i;
+
+          return (
+            <div key={stage.key} className="flex items-center gap-2">
+              <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+                isComplete ? 'bg-emerald-500' :
+                isActive ? 'bg-primary animate-pulse' :
+                'bg-slate-300 dark:bg-slate-600'
+              }`}>
+                {isComplete ? (
+                  <CheckCircle2 className="w-2.5 h-2.5 text-white" />
+                ) : isActive ? (
+                  <Loader2 className="w-2.5 h-2.5 text-white animate-spin" />
+                ) : (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
+                )}
+              </div>
+              <span className={`text-2xs font-medium ${
+                isComplete ? 'text-emerald-600 dark:text-emerald-400 line-through' :
+                isActive ? 'text-primary dark:text-blue-400' :
+                'text-slate-400 dark:text-slate-500'
+              }`}>
+                {stage.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Current message */}
+      <p className="text-2xs text-slate-500 dark:text-slate-400 mt-2 italic truncate">
+        {stepMessage}
+      </p>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────
+// UNIFIED TOPIC BROWSER — All topics from all projects
+// ────────────────────────────────────────────────────────
+
+const ALL_STATUS_OPTIONS = [
+  { value: '', label: 'All Statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'scripting', label: 'Scripting' },
+  { value: 'producing', label: 'Producing' },
+  { value: 'assembled', label: 'Assembled' },
+  { value: 'published', label: 'Published' },
+  { value: 'failed', label: 'Failed' },
+];
+
+const FULL_STATUS_BADGE = {
+  pending: { label: 'Pending', cls: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400' },
+  approved: { label: 'Approved', cls: 'badge-blue' },
+  scripting: { label: 'Scripting', cls: 'badge-purple' },
+  script_approved: { label: 'Script OK', cls: 'badge-green' },
+  queued: { label: 'Queued', cls: 'badge-amber' },
+  producing: { label: 'Producing', cls: 'badge-amber' },
+  audio: { label: 'Audio', cls: 'badge-purple' },
+  images: { label: 'Images', cls: 'badge-purple' },
+  assembling: { label: 'Assembling', cls: 'badge-purple' },
+  assembled: { label: 'Assembled', cls: 'badge-cyan' },
+  published: { label: 'Published', cls: 'badge-green' },
+  failed: { label: 'Failed', cls: 'badge-red' },
+  rejected: { label: 'Rejected', cls: 'badge-red' },
+};
+
+function AllTopicsBrowser({ projects, onSelectTopic, onAnalyze, analyzeLoading, analyzingTopicId, shortsSummaryAll }) {
+  const [projectFilter, setProjectFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
+
+  // Flatten all topics from all projects
+  const allTopics = useMemo(() => {
+    if (!projects) return [];
+    const result = [];
+    for (const p of projects) {
       const topics = p.topics_summary || [];
-      return topics.some(
-        (t) => t.status === 'assembled' || t.status === 'published'
-      );
+      for (const t of topics) {
+        result.push({ ...t, project_name: p.name || p.niche, project_id: p.id });
+      }
+    }
+    result.sort((a, b) => {
+      if (a.project_id !== b.project_id) return (a.project_name || '').localeCompare(b.project_name || '');
+      return (a.topic_number || 0) - (b.topic_number || 0);
     });
+    return result;
   }, [projects]);
 
-  if (eligibleProjects.length === 0) {
+  // Unique projects for filter dropdown
+  const projectOptions = useMemo(() => {
+    if (!projects) return [];
+    return projects.map((p) => ({ value: p.id, label: p.name || p.niche }));
+  }, [projects]);
+
+  // Apply filters
+  const filteredTopics = useMemo(() => {
+    let result = allTopics;
+    if (projectFilter) {
+      result = result.filter((t) => t.project_id === projectFilter);
+    }
+    if (statusFilter) {
+      result = result.filter((t) => t.status === statusFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((t) =>
+        (t.seo_title || t.original_title || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [allTopics, projectFilter, statusFilter, search]);
+
+  // Counts
+  const totalCount = allTopics.length;
+  const readyCount = allTopics.filter((t) => t.status === 'assembled' || t.status === 'published').length;
+  const filteredCount = filteredTopics.length;
+
+  function getShortsLabel(topicId) {
+    const s = shortsSummaryAll?.[topicId];
+    if (!s || s.total === 0) return null;
+    if (s.pending > 0 && s.approved === 0 && s.skipped === 0)
+      return `${s.total} clips pending`;
+    const parts = [];
+    if (s.approved > 0) parts.push(`${s.approved} approved`);
+    if (s.produced > 0) parts.push(`${s.produced} produced`);
+    return parts.join(', ') || `${s.total} clips`;
+  }
+
+  function canAnalyze(topic) {
+    if (topic.status !== 'assembled' && topic.status !== 'published') return false;
+    const s = shortsSummaryAll?.[topic.id];
+    return !s || s.total === 0;
+  }
+
+  function hasShorts(topicId) {
+    const s = shortsSummaryAll?.[topicId];
+    return s && s.total > 0;
+  }
+
+  if (allTopics.length === 0) {
     return (
       <div className="glass-card p-16 text-center animate-fade-in">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 dark:from-primary/20 dark:to-accent/20 flex items-center justify-center mx-auto mb-5">
           <Film className="w-7 h-7 text-primary dark:text-blue-400" />
         </div>
         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-          No eligible projects
+          No topics found
         </h3>
         <p className="text-sm text-text-muted dark:text-text-muted-dark max-w-md mx-auto leading-relaxed">
-          Shorts can only be created from topics that have been assembled or published.
-          Complete video production first to unlock shorts creation.
+          Generate topics from the long-form video section first. All generated topics will appear here.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {eligibleProjects.map((project, i) => {
-        const topics = project.topics_summary || [];
-        const readyCount = topics.filter(
-          (t) => t.status === 'assembled' || t.status === 'published'
-        ).length;
-        const totalShorts = shortsSummaryByProject?.[project.id]?.total || 0;
-
-        return (
-          <button
-            key={project.id}
-            onClick={() => onSelect(project)}
-            className={`card-interactive p-5 text-left animate-slide-up stagger-${Math.min(i + 1, 8)}`}
-            style={{ opacity: 0 }}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center shadow-md">
-                <Clapperboard className="w-5 h-5 text-white" strokeWidth={2} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                  {project.name || project.niche}
-                </h3>
-                <p className="text-2xs text-text-muted dark:text-text-muted-dark truncate">
-                  {project.niche}
-                </p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-2xs text-text-muted dark:text-text-muted-dark font-medium uppercase tracking-wider mb-0.5">
-                  Ready Topics
-                </p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">
-                  {readyCount}
-                </p>
-              </div>
-              <div>
-                <p className="text-2xs text-text-muted dark:text-text-muted-dark font-medium uppercase tracking-wider mb-0.5">
-                  Shorts Created
-                </p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">
-                  {totalShorts}
-                </p>
-              </div>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────
-// LEVEL 2: Topic Selection List
-// ────────────────────────────────────────────────────────
-
-function TopicList({ projectId, project, shortsSummary, onSelectTopic, onBack, onAnalyze, analyzeLoading }) {
-  const { data: topics = [], isLoading } = useTopics(projectId);
-
-  // Only show topics that are assembled or published
-  const eligibleTopics = useMemo(() => {
-    return topics.filter(
-      (t) => t.status === 'assembled' || t.status === 'published'
-    );
-  }, [topics]);
-
-  function getShortsLabel(topicId) {
-    const s = shortsSummary?.[topicId];
-    if (!s || s.total === 0) return 'Not analyzed';
-    if (s.pending > 0 && s.approved === 0 && s.skipped === 0)
-      return `${s.total} clips pending review`;
-    const parts = [];
-    if (s.approved > 0) parts.push(`${s.approved} approved`);
-    if (s.skipped > 0) parts.push(`${s.skipped} skipped`);
-    if (s.produced > 0) parts.push(`${s.produced} produced`);
-    return parts.join(', ') || `${s.total} clips`;
-  }
-
-  function canAnalyze(topic) {
-    const s = shortsSummary?.[topic.id];
-    return !s || s.total === 0;
-  }
-
-  return (
     <div>
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 transition-colors duration-200 mb-5 cursor-pointer"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Projects
-      </button>
-
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-            {project?.name || project?.niche || 'Project'}
-          </h2>
-          <p className="text-sm text-text-muted dark:text-text-muted-dark mt-0.5">
-            Select a topic to create or review shorts
-          </p>
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="glass-card p-4">
+          <p className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Topics</p>
+          <p className="text-xl font-bold text-slate-900 dark:text-white font-mono tabular-nums">{totalCount}</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Ready for Shorts</p>
+          <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">{readyCount}</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Projects</p>
+          <p className="text-xl font-bold text-slate-900 dark:text-white font-mono tabular-nums">{projectOptions.length}</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Showing</p>
+          <p className="text-xl font-bold text-slate-900 dark:text-white font-mono tabular-nums">{filteredCount}</p>
         </div>
       </div>
 
-      {isLoading && (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonCard key={i} />
+      {/* Filters row */}
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px] max-w-[320px]">
+          <input
+            type="text"
+            placeholder="Search topics..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input pl-9 w-full text-sm"
+          />
+          <Film className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        </div>
+
+        {/* Project filter */}
+        <select
+          value={projectFilter}
+          onChange={(e) => setProjectFilter(e.target.value)}
+          className="px-3 py-2 rounded-xl text-sm font-semibold bg-black text-white border border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 min-w-[160px] cursor-pointer [&>option]:bg-black [&>option]:text-white [&>option]:font-semibold [&>option:hover]:bg-blue-600 [&>option:checked]:bg-blue-600"
+        >
+          <option value="">All Projects</option>
+          {projectOptions.map((p) => (
+            <option key={p.value} value={p.value}>{p.label}</option>
           ))}
-        </div>
-      )}
+        </select>
 
-      {!isLoading && eligibleTopics.length === 0 && (
-        <div className="glass-card p-12 text-center">
-          <Film className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <p className="text-base font-medium text-slate-600 dark:text-slate-400 mb-1">
-            No topics ready for shorts
-          </p>
+        {/* Status filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 rounded-xl text-sm font-semibold bg-black text-white border border-white/[0.12] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 min-w-[140px] cursor-pointer [&>option]:bg-black [&>option]:text-white [&>option]:font-semibold [&>option:hover]:bg-blue-600 [&>option:checked]:bg-blue-600"
+        >
+          {ALL_STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+
+        {/* Clear filters */}
+        {(projectFilter || statusFilter || search) && (
+          <button
+            onClick={() => { setProjectFilter(''); setStatusFilter(''); setSearch(''); }}
+            className="btn-ghost btn-sm text-2xs"
+          >
+            <X className="w-3 h-3" />
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Topic list */}
+      {filteredTopics.length === 0 ? (
+        <div className="glass-card p-10 text-center">
           <p className="text-sm text-text-muted dark:text-text-muted-dark">
-            Complete video assembly first to start creating shorts.
+            No topics match your filters.
           </p>
         </div>
-      )}
-
-      {!isLoading && eligibleTopics.length > 0 && (
+      ) : (
         <div className="space-y-2">
-          {eligibleTopics.map((topic, i) => {
-            const statusBadge = TOPIC_STATUS_BADGE[topic.status] || { label: topic.status, cls: 'badge-amber' };
+          {filteredTopics.map((topic, i) => {
+            const statusBadge = FULL_STATUS_BADGE[topic.status] || { label: topic.status, cls: 'badge-amber' };
             const shortsLabel = getShortsLabel(topic.id);
-            const hasShorts = shortsSummary?.[topic.id]?.total > 0;
+            const isReady = topic.status === 'assembled' || topic.status === 'published';
 
             return (
               <div
                 key={topic.id}
-                className={`glass-card p-4 animate-slide-up stagger-${Math.min(i + 1, 8)}`}
+                className={`glass-card p-4 animate-slide-up stagger-${Math.min(i + 1, 8)} ${!isReady ? 'opacity-75' : ''}`}
                 style={{ opacity: 0 }}
               >
                 <div className="flex items-center gap-3">
-                  {/* Topic number badge */}
+                  {/* Topic number */}
                   <span className="badge badge-blue text-2xs flex-shrink-0">
                     #{topic.topic_number}
                   </span>
@@ -643,19 +793,38 @@ function TopicList({ projectId, project, shortsSummary, onSelectTopic, onBack, o
                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                       {topic.seo_title || topic.original_title || `Topic #${topic.topic_number}`}
                     </h3>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-2xs text-slate-400 dark:text-slate-500 font-medium">
+                        {topic.project_name}
+                      </span>
+                      <span className="text-slate-300 dark:text-slate-600">·</span>
                       <span className={`badge ${statusBadge.cls} text-2xs`}>
                         {statusBadge.label}
                       </span>
-                      <span className="text-2xs text-text-muted dark:text-text-muted-dark">
-                        {shortsLabel}
-                      </span>
+                      {shortsLabel && (
+                        <>
+                          <span className="text-slate-300 dark:text-slate-600">·</span>
+                          <span className="text-2xs text-emerald-600 dark:text-emerald-400 font-medium">
+                            {shortsLabel}
+                          </span>
+                        </>
+                      )}
+                      {!isReady && !shortsLabel && (
+                        <>
+                          <span className="text-slate-300 dark:text-slate-600">·</span>
+                          <span className="text-2xs text-text-muted dark:text-text-muted-dark italic">
+                            Not ready — needs assembly
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {canAnalyze(topic) ? (
+                    {analyzingTopicId === topic.id ? (
+                      <AnalysisProgressTracker topicId={topic.id} />
+                    ) : canAnalyze(topic) ? (
                       <button
                         onClick={() => onAnalyze(topic.id)}
                         disabled={analyzeLoading}
@@ -668,7 +837,8 @@ function TopicList({ projectId, project, shortsSummary, onSelectTopic, onBack, o
                         )}
                         <span className="hidden sm:inline">Analyze</span>
                       </button>
-                    ) : hasShorts ? (
+                    ) : null}
+                    {hasShorts(topic.id) && (
                       <button
                         onClick={() => onSelectTopic(topic)}
                         className="btn-secondary btn-sm"
@@ -677,7 +847,7 @@ function TopicList({ projectId, project, shortsSummary, onSelectTopic, onBack, o
                         <span className="sm:hidden">Review</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               </div>
@@ -1472,38 +1642,68 @@ function ClipReview({ topicId, topic, onBack }) {
 // ────────────────────────────────────────────────────────
 
 export default function ShortsCreator() {
-  const [selectedProject, setSelectedProject] = useState(null);
   const [selectedTopic, setSelectedTopic] = useState(null);
+  const [analyzingTopicId, setAnalyzingTopicId] = useState(null);
 
   const { data: projects, isLoading: projectsLoading } = useProjects();
-  const { data: shortsSummary } = useShortsSummary(selectedProject?.id || null);
   const analyzeMutation = useAnalyzeForClips();
 
-  // Build a project-level shorts summary for project cards
-  const shortsSummaryByProject = useMemo(() => {
-    if (!projects) return {};
-    const result = {};
-    // We only have per-topic data for the currently selected project
-    // For project cards, we'd need to query all projects — for efficiency,
-    // show "View" instead of counts until a project is selected
-    return result;
-  }, [projects]);
+  // Query ALL shorts across ALL projects for summary counts
+  const { data: shortsSummaryAll } = useQuery({
+    queryKey: ['shorts-summary-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shorts')
+        .select('id, topic_id, review_status, production_status');
+
+      if (error) throw error;
+
+      const byTopic = {};
+      for (const s of (data || [])) {
+        if (!byTopic[s.topic_id]) {
+          byTopic[s.topic_id] = { total: 0, approved: 0, skipped: 0, produced: 0, pending: 0 };
+        }
+        const bucket = byTopic[s.topic_id];
+        bucket.total++;
+        if (s.review_status === 'approved') bucket.approved++;
+        else if (s.review_status === 'skipped') bucket.skipped++;
+        else bucket.pending++;
+        if (s.production_status === 'complete' || s.production_status === 'uploaded') bucket.produced++;
+      }
+      return byTopic;
+    },
+  });
+
+  // Subscribe to shorts table for live updates on the summary
+  // When new shorts are inserted by n8n, this auto-refreshes and the UI updates
+  useRealtimeSubscription('shorts', null, [['shorts-summary-all']]);
+
+  // Clear analyzing state when shorts appear for the analyzing topic
+  useEffect(() => {
+    if (analyzingTopicId && shortsSummaryAll?.[analyzingTopicId]?.total > 0) {
+      setAnalyzingTopicId(null);
+      toast.success('Analysis complete! 20 viral clips identified. Click "Review Clips" to see them.');
+    }
+  }, [analyzingTopicId, shortsSummaryAll]);
 
   const handleAnalyze = useCallback(
     (topicId) => {
+      setAnalyzingTopicId(topicId);
       analyzeMutation.mutate(
         { topic_id: topicId },
         {
-          onSuccess: () => toast.success('Analyzing topic for viral clips...'),
-          onError: (err) => toast.error(err?.message || 'Analysis failed'),
+          onSuccess: () => toast.success('Analysis started — finding 20 viral clips (~2 minutes)...'),
+          onError: (err) => {
+            setAnalyzingTopicId(null);
+            toast.error(err?.message || 'Analysis failed');
+          },
         }
       );
     },
     [analyzeMutation]
   );
 
-  // Determine current level
-  const level = selectedTopic ? 3 : selectedProject ? 2 : 1;
+  const inClipReview = !!selectedTopic;
 
   return (
     <div className="animate-slide-up">
@@ -1511,47 +1711,37 @@ export default function ShortsCreator() {
       <div className="page-header">
         <h1 className="page-title">Shorts Creator</h1>
         <p className="page-subtitle">
-          {level === 1 && 'Create viral short-form clips from your produced videos'}
-          {level === 2 && 'Select a topic to analyze and create shorts'}
-          {level === 3 && 'Review and approve viral clip candidates'}
+          {inClipReview
+            ? 'Review and approve viral clip candidates'
+            : 'Browse all topics across projects — filter by project and status'}
         </p>
       </div>
 
-      {/* Level 1: Project grid */}
-      {level === 1 && (
+      {/* Topic browser (default view) */}
+      {!inClipReview && (
         <>
           {projectsLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="space-y-3">
               <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
             </div>
           )}
           {!projectsLoading && (
-            <ProjectGrid
+            <AllTopicsBrowser
               projects={projects}
-              shortsSummaryByProject={shortsSummaryByProject}
-              onSelect={setSelectedProject}
+              onSelectTopic={setSelectedTopic}
+              onAnalyze={handleAnalyze}
+              analyzeLoading={analyzeMutation.isPending}
+              analyzingTopicId={analyzingTopicId}
+              shortsSummaryAll={shortsSummaryAll}
             />
           )}
         </>
       )}
 
-      {/* Level 2: Topic list */}
-      {level === 2 && (
-        <TopicList
-          projectId={selectedProject.id}
-          project={selectedProject}
-          shortsSummary={shortsSummary}
-          onSelectTopic={setSelectedTopic}
-          onBack={() => setSelectedProject(null)}
-          onAnalyze={handleAnalyze}
-          analyzeLoading={analyzeMutation.isPending}
-        />
-      )}
-
-      {/* Level 3: Clip review */}
-      {level === 3 && (
+      {/* Clip review (when a topic is selected) */}
+      {inClipReview && (
         <ClipReview
           topicId={selectedTopic.id}
           topic={selectedTopic}
