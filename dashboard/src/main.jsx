@@ -13,7 +13,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <App />
-        <Toaster position="bottom-right" richColors />
+        <Toaster
+          position="bottom-right"
+          richColors
+          toastOptions={{
+            style: {
+              background: '#110E2A',
+              border: '1px solid rgba(255,255,255,0.06)',
+              color: '#FAFAFA',
+            },
+          }}
+        />
       </BrowserRouter>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

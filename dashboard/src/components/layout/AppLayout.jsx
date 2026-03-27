@@ -1,28 +1,27 @@
 import { useState } from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
-import SupervisorToastProvider from '../SupervisorToastProvider';
 
 export default function AppLayout({ children, onLogout }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <SupervisorToastProvider>
-      <div className="flex min-h-screen bg-surface dark:bg-surface-dark">
-        {/* Subtle gradient overlay for dark mode depth */}
-        <div className="fixed inset-0 pointer-events-none dark:bg-gradient-to-br dark:from-primary-900/[0.05] dark:via-transparent dark:to-accent-600/[0.03]" />
+    <div className="flex min-h-screen bg-background text-foreground">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        setCollapsed={setSidebarCollapsed}
+        onLogout={onLogout}
+      />
 
-        <Sidebar onLogout={onLogout} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
-
-        <div className="relative flex-1 min-w-0 flex flex-col">
-          <TopBar sidebarCollapsed={sidebarCollapsed} />
-          <main className="flex-1 overflow-y-auto scrollbar-thin">
-            <div className="p-5 lg:p-8 pt-20 lg:pt-24 max-w-[1440px] mx-auto">
-              {children}
-            </div>
-          </main>
-        </div>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <TopBar
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+        />
+        <main className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className="p-7 pt-20 max-w-[1440px] mx-auto">{children}</div>
+        </main>
       </div>
-    </SupervisorToastProvider>
+    </div>
   );
 }

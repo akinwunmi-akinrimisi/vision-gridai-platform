@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useLocation, useParams, NavLink, useNavigate } from 'react-router';
+import { useLocation, useParams, Link, useNavigate } from 'react-router';
 import {
-  ChevronRight,
+  Menu,
   Bell,
-  User,
+  ChevronRight,
   ListChecks,
   FileText,
   Film,
@@ -11,8 +11,10 @@ import {
   AlertTriangle,
   X,
 } from 'lucide-react';
-import { useNotifications } from '../../hooks/useNotifications';
-import { useProjects } from '../../hooks/useProjects';
+import { Button } from '@/components/ui/button';
+import ConnectionStatus from './ConnectionStatus';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useProjects } from '@/hooks/useProjects';
 
 // ── Icon map for notification types ──────────────────
 
@@ -25,11 +27,11 @@ const ICON_MAP = {
 };
 
 const TYPE_COLORS = {
-  topics: 'text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/[0.12]',
-  scripts: 'text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/[0.12]',
-  videos: 'text-purple-500 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/[0.12]',
-  shorts: 'text-cyan-500 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/[0.12]',
-  errors: 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/[0.12]',
+  topics: 'text-warning bg-warning-bg',
+  scripts: 'text-info bg-info-bg',
+  videos: 'text-info bg-info-bg',
+  shorts: 'text-primary bg-primary/10',
+  errors: 'text-danger bg-danger-bg',
 };
 
 // ── Relative time formatter ──────────────────────────
@@ -56,49 +58,35 @@ function useBreadcrumbs(projects) {
   const { id: projectId, topicId } = useParams();
 
   return useMemo(() => {
-    const crumbs = [];
     const path = location.pathname;
 
-    // Always start with Projects
-    crumbs.push({ label: 'Projects', path: '/' });
+    if (path === '/') return [{ label: 'Projects' }];
+    if (path === '/shorts') return [{ label: 'Shorts Creator' }];
+    if (path === '/social') return [{ label: 'Social Publisher' }];
 
-    if (path === '/shorts') {
-      crumbs.push({ label: 'Shorts Creator', path: '/shorts' });
-      return crumbs;
-    }
-
-    if (path === '/social') {
-      crumbs.push({ label: 'Social Publisher', path: '/social' });
-      return crumbs;
-    }
+    const crumbs = [{ label: 'Projects', href: '/' }];
 
     if (projectId) {
-      // Find project name
       const project = (projects || []).find((p) => p.id === projectId);
       const projectName = project?.name || project?.niche || 'Project';
 
-      crumbs.push({ label: projectName, path: `/project/${projectId}` });
+      crumbs.push({ label: projectName, href: `/project/${projectId}` });
 
       if (path.includes('/research')) {
-        crumbs.push({ label: 'Research', path: `/project/${projectId}/research` });
+        crumbs.push({ label: 'Research' });
       } else if (path.includes('/topics') && topicId) {
-        crumbs.push({ label: 'Topics', path: `/project/${projectId}/topics` });
-
-        if (path.includes('/script')) {
-          crumbs.push({ label: 'Script Review', path: path });
-        } else if (path.includes('/review')) {
-          crumbs.push({ label: 'Video Review', path: path });
-        } else {
-          crumbs.push({ label: 'Topic Detail', path: path });
-        }
+        crumbs.push({ label: 'Topics', href: `/project/${projectId}/topics` });
+        if (path.includes('/script')) crumbs.push({ label: 'Script' });
+        else if (path.includes('/review')) crumbs.push({ label: 'Review' });
+        else crumbs.push({ label: 'Detail' });
       } else if (path.includes('/topics')) {
-        crumbs.push({ label: 'Topics', path: `/project/${projectId}/topics` });
+        crumbs.push({ label: 'Topics' });
       } else if (path.includes('/production')) {
-        crumbs.push({ label: 'Production', path: `/project/${projectId}/production` });
+        crumbs.push({ label: 'Production' });
       } else if (path.includes('/analytics')) {
-        crumbs.push({ label: 'Analytics', path: `/project/${projectId}/analytics` });
+        crumbs.push({ label: 'Analytics' });
       } else if (path.includes('/settings')) {
-        crumbs.push({ label: 'Settings', path: `/project/${projectId}/settings` });
+        crumbs.push({ label: 'Settings' });
       }
     }
 
@@ -135,22 +123,16 @@ function NotificationDropdown({ items, onClose, onDismissAll }) {
   return (
     <div
       ref={dropdownRef}
-      className="
-        absolute right-0 top-full mt-2 w-80 sm:w-96 z-50
-        bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl
-        border border-slate-200/60 dark:border-white/[0.08]
-        rounded-2xl shadow-elevation-4 dark:shadow-glass-lg
-        animate-slide-down overflow-hidden
-      "
+      className="absolute right-0 top-full mt-2 w-80 sm:w-96 z-50 bg-card border border-border rounded-lg shadow-card overflow-hidden animate-fade-in"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-white/[0.06]">
-        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="text-sm font-semibold text-foreground">
           Notifications
         </span>
         <button
           onClick={onClose}
-          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors duration-200 cursor-pointer"
+          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
           aria-label="Close notifications"
         >
           <X className="w-4 h-4" />
@@ -161,15 +143,17 @@ function NotificationDropdown({ items, onClose, onDismissAll }) {
       <div className="max-h-80 overflow-y-auto scrollbar-thin">
         {items.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <Bell className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              All caught up — no pending actions
+            <Bell className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              All caught up -- no pending actions
             </p>
           </div>
         ) : (
           items.map((item, idx) => {
             const Icon = ICON_MAP[item.icon] || Bell;
-            const colorCls = TYPE_COLORS[item.type] || 'text-slate-500 bg-slate-100 dark:bg-white/[0.06]';
+            const colorCls =
+              TYPE_COLORS[item.type] ||
+              'text-muted-foreground bg-secondary';
 
             return (
               <button
@@ -178,29 +162,26 @@ function NotificationDropdown({ items, onClose, onDismissAll }) {
                   navigate(item.path);
                   onClose();
                 }}
-                className="
-                  flex items-start gap-3 w-full px-4 py-3 text-left
-                  hover:bg-slate-50 dark:hover:bg-white/[0.04]
-                  transition-colors duration-150 cursor-pointer
-                  border-b border-slate-50 dark:border-white/[0.03] last:border-0
-                "
+                className="flex items-start gap-3 w-full px-4 py-3 text-left hover:bg-card-hover transition-colors cursor-pointer border-b border-border/50 last:border-0"
               >
-                <span className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${colorCls}`}>
+                <span
+                  className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center ${colorCls}`}
+                >
                   <Icon className="w-4 h-4" />
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                    <span className="text-sm font-medium text-foreground truncate">
                       {item.title}
                     </span>
-                    <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-primary/10 dark:bg-primary/20 text-primary text-xs font-bold flex items-center justify-center tabular-nums">
+                    <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center tabular-nums">
                       {item.count}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
                     {item.description}
                   </p>
-                  <span className="text-2xs text-slate-400 dark:text-slate-500 mt-0.5 block">
+                  <span className="text-2xs text-muted-foreground/60 mt-0.5 block">
                     {relativeTime(item.updatedAt)}
                   </span>
                 </div>
@@ -212,10 +193,10 @@ function NotificationDropdown({ items, onClose, onDismissAll }) {
 
       {/* Footer */}
       {items.length > 0 && (
-        <div className="px-4 py-2.5 border-t border-slate-100 dark:border-white/[0.06]">
+        <div className="px-4 py-2.5 border-t border-border">
           <button
             onClick={onDismissAll}
-            className="text-xs text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary-400 transition-colors duration-200 cursor-pointer font-medium"
+            className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer font-medium"
           >
             Mark all as seen
           </button>
@@ -227,7 +208,7 @@ function NotificationDropdown({ items, onClose, onDismissAll }) {
 
 // ── TopBar ───────────────────────────────────────────
 
-export default function TopBar({ sidebarCollapsed }) {
+export default function TopBar({ sidebarCollapsed, setSidebarCollapsed }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [dismissedAt, setDismissedAt] = useState(() => {
     try {
@@ -237,7 +218,7 @@ export default function TopBar({ sidebarCollapsed }) {
     }
   });
 
-  const { data: notificationsData, isLoading: notificationsLoading } = useNotifications();
+  const { data: notificationsData } = useNotifications();
   const { data: projects } = useProjects();
   const breadcrumbs = useBreadcrumbs(projects);
 
@@ -265,94 +246,68 @@ export default function TopBar({ sidebarCollapsed }) {
 
   return (
     <header
-      className="
-        fixed top-0 right-0 z-40 h-16
-        left-0 ${sidebarCollapsed ? 'lg:left-sidebar-collapsed' : 'lg:left-sidebar'}
-        bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl
-        border-b border-slate-200/60 dark:border-white/[0.06]
-        transition-all duration-300
-      "
+      className="fixed top-0 right-0 z-30 h-12 border-b border-border bg-background/80 backdrop-blur-xl flex items-center justify-between px-6 transition-[left] duration-300"
+      style={{ left: sidebarCollapsed ? '56px' : '240px' }}
     >
-      <div className="flex items-center justify-between h-full px-5 lg:px-8 max-w-[1440px] mx-auto">
-        {/* Left: Breadcrumbs */}
-        <nav className="flex items-center gap-1.5 min-w-0 overflow-hidden" aria-label="Breadcrumb">
-          {breadcrumbs.map((crumb, idx) => {
-            const isLast = idx === breadcrumbs.length - 1;
+      {/* Mobile menu button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="lg:hidden mr-2"
+        onClick={() => setSidebarCollapsed((c) => !c)}
+      >
+        <Menu className="w-5 h-5" />
+      </Button>
 
-            return (
-              <div key={crumb.path + idx} className="flex items-center gap-1.5 min-w-0">
-                {idx > 0 && (
-                  <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 text-slate-300 dark:text-slate-600" />
-                )}
-                {isLast ? (
-                  <span className="text-sm font-medium text-primary dark:text-primary-400 truncate">
-                    {crumb.label}
-                  </span>
-                ) : (
-                  <NavLink
-                    to={crumb.path}
-                    className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors duration-200 truncate"
-                  >
-                    {crumb.label}
-                  </NavLink>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Right: Notifications + User */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Notification bell */}
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications((prev) => !prev)}
-              className="
-                relative p-2 rounded-xl
-                text-slate-500 dark:text-slate-400
-                hover:bg-slate-100 dark:hover:bg-white/[0.06]
-                hover:text-slate-900 dark:hover:text-white
-                transition-all duration-200 cursor-pointer
-              "
-              aria-label={`Notifications${badgeCount > 0 ? ` (${badgeCount} pending)` : ''}`}
-            >
-              <Bell className="w-[18px] h-[18px]" strokeWidth={1.8} />
-              {badgeCount > 0 && (
-                <span className="
-                  absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1
-                  rounded-full bg-red-500 text-white text-[10px] font-bold
-                  flex items-center justify-center tabular-nums
-                  ring-2 ring-white dark:ring-surface-dark
-                  animate-scale-in
-                ">
-                  {badgeCount > 99 ? '99+' : badgeCount}
-                </span>
-              )}
-            </button>
-
-            {/* Dropdown */}
-            {showNotifications && (
-              <NotificationDropdown
-                items={visibleItems}
-                onClose={() => setShowNotifications(false)}
-                onDismissAll={handleDismissAll}
-              />
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground min-w-0 overflow-hidden">
+        {breadcrumbs.map((crumb, i) => (
+          <span key={i} className="flex items-center gap-1.5 min-w-0">
+            {i > 0 && (
+              <ChevronRight className="w-3 h-3 flex-shrink-0 text-muted-foreground/40" />
             )}
-          </div>
+            {crumb.href ? (
+              <Link
+                to={crumb.href}
+                className="hover:text-foreground transition-colors truncate"
+              >
+                {crumb.label}
+              </Link>
+            ) : (
+              <span className="text-foreground truncate">{crumb.label}</span>
+            )}
+          </span>
+        ))}
+      </nav>
 
-          {/* Separator */}
-          <div className="w-px h-6 bg-slate-200 dark:bg-white/[0.06]" />
+      {/* Right side */}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {/* Notification bell */}
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifications((prev) => !prev)}
+            className="relative p-2 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+            aria-label={`Notifications${badgeCount > 0 ? ` (${badgeCount} pending)` : ''}`}
+          >
+            <Bell className="w-[18px] h-[18px]" strokeWidth={1.8} />
+            {badgeCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center tabular-nums ring-2 ring-background animate-fade-in">
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </span>
+            )}
+          </button>
 
-          {/* User indicator */}
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-accent-600 flex items-center justify-center shadow-sm">
-              <User className="w-3.5 h-3.5 text-white" strokeWidth={2} />
-            </div>
-            <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Admin
-            </span>
-          </div>
+          {showNotifications && (
+            <NotificationDropdown
+              items={visibleItems}
+              onClose={() => setShowNotifications(false)}
+              onDismissAll={handleDismissAll}
+            />
+          )}
         </div>
+
+        {/* Connection status */}
+        <ConnectionStatus />
       </div>
     </header>
   );
