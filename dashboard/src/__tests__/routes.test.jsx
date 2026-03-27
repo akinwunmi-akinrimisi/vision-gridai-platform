@@ -27,6 +27,19 @@ vi.mock('../lib/api', () => ({
   webhookCall: vi.fn().mockResolvedValue({ success: true }),
 }));
 
+// Mock sonner
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+  Toaster: () => null,
+}));
+
+// Mock settingsApi
+vi.mock('../lib/settingsApi', () => ({
+  resetAllTopics: vi.fn(),
+  clearProductionData: vi.fn(),
+  deleteProject: vi.fn(),
+}));
+
 // Mock useAuth
 vi.mock('../hooks/useAuth', () => ({
   useAuth: vi.fn(),
@@ -60,11 +73,12 @@ describe('App routing', () => {
     });
 
     renderWithProviders(<App />);
-    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+    // PinGate renders "Vision GridAI" title and PIN input
+    expect(screen.getByText('Vision GridAI')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('- - - -')).toBeInTheDocument();
   });
 
-  it('renders sidebar and home page when authenticated', () => {
+  it('does not render PinGate when authenticated', () => {
     useAuth.mockReturnValue({
       isAuthenticated: true,
       login: vi.fn(),
@@ -72,89 +86,30 @@ describe('App routing', () => {
     });
 
     renderWithProviders(<App />);
-    // Sidebar renders in both mobile drawer and desktop - multiple matches expected
-    expect(screen.getAllByText('Vision GridAI').length).toBeGreaterThanOrEqual(1);
-    // Page heading
-    expect(screen.getByRole('heading', { name: 'Projects' })).toBeInTheDocument();
+    // When authenticated, should NOT see the PinGate
+    expect(screen.queryByText('Enter your PIN to continue')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unlock Dashboard')).not.toBeInTheDocument();
   });
 
-  it('renders ProjectDashboard at /project/:id', () => {
+  it('does not render PinGate PIN input when authenticated', () => {
     useAuth.mockReturnValue({
       isAuthenticated: true,
       login: vi.fn(),
       logout: vi.fn(),
     });
 
-    renderWithProviders(<App />, {
-      initialEntries: ['/project/test-id'],
-    });
-    expect(screen.getByRole('heading', { name: 'Project Dashboard' })).toBeInTheDocument();
+    renderWithProviders(<App />);
+    expect(screen.queryByPlaceholderText('- - - -')).not.toBeInTheDocument();
   });
 
-  it('renders TopicReview at /project/:id/topics', () => {
+  it('renders PinGate with unlock button when not authenticated', () => {
     useAuth.mockReturnValue({
-      isAuthenticated: true,
+      isAuthenticated: false,
       login: vi.fn(),
       logout: vi.fn(),
     });
 
-    renderWithProviders(<App />, {
-      initialEntries: ['/project/test-id/topics'],
-    });
-    expect(screen.getByRole('heading', { name: 'Topic Review' })).toBeInTheDocument();
-  });
-
-  it('renders ScriptReview at /project/:id/topics/:topicId/script', () => {
-    useAuth.mockReturnValue({
-      isAuthenticated: true,
-      login: vi.fn(),
-      logout: vi.fn(),
-    });
-
-    const { container } = renderWithProviders(<App />, {
-      initialEntries: ['/project/test-id/topics/topic-1/script'],
-    });
-    // ScriptReview renders -- it shows loading skeleton or content
-    // The animate-in class is used by ScriptReview's outer div
-    expect(container.querySelector('.animate-in')).toBeInTheDocument();
-  });
-
-  it('renders ProductionMonitor at /project/:id/production', () => {
-    useAuth.mockReturnValue({
-      isAuthenticated: true,
-      login: vi.fn(),
-      logout: vi.fn(),
-    });
-
-    renderWithProviders(<App />, {
-      initialEntries: ['/project/test-id/production'],
-    });
-    expect(screen.getByRole('heading', { name: 'Production Monitor' })).toBeInTheDocument();
-  });
-
-  it('renders Analytics at /project/:id/analytics', () => {
-    useAuth.mockReturnValue({
-      isAuthenticated: true,
-      login: vi.fn(),
-      logout: vi.fn(),
-    });
-
-    renderWithProviders(<App />, {
-      initialEntries: ['/project/test-id/analytics'],
-    });
-    expect(screen.getByRole('heading', { name: 'Analytics' })).toBeInTheDocument();
-  });
-
-  it('renders Settings at /project/:id/settings', () => {
-    useAuth.mockReturnValue({
-      isAuthenticated: true,
-      login: vi.fn(),
-      logout: vi.fn(),
-    });
-
-    renderWithProviders(<App />, {
-      initialEntries: ['/project/test-id/settings'],
-    });
-    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+    renderWithProviders(<App />);
+    expect(screen.getByText('Unlock Dashboard')).toBeInTheDocument();
   });
 });

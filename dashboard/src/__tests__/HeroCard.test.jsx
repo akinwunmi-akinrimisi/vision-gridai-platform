@@ -1,79 +1,75 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-
-const mockTopic = {
-  id: 'topic-active',
-  topic_number: 2,
-  seo_title: 'The Perfect 3-Card Wallet Strategy',
-  status: 'producing',
-  total_cost: 4.25,
-  cost_breakdown: { script: 0.75, tts: 0.30, images: 1.60, i2v: 0.85, t2v: 0.75 },
-  last_status_change: '2026-03-08T10:00:00Z',
-};
-
-const mockStageProgress = {
-  audio: { completed: 172, total: 172 },
-  images: { completed: 50, total: 100 },
-  i2v: { completed: 10, total: 25 },
-  t2v: { completed: 0, total: 72 },
-  assembly: { completed: 0, total: 1 },
-};
-
-import HeroCard from '../components/production/HeroCard';
+import HeroCard from '../components/shared/HeroCard';
+import StageProgress from '../components/production/StageProgress';
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('HeroCard -- Display', () => {
-  it('displays active topic title and topic number', () => {
-    render(<HeroCard topic={mockTopic} stageProgress={mockStageProgress} />);
-    expect(screen.getByText(/The Perfect 3-Card Wallet/)).toBeTruthy();
-    expect(screen.getByText(/#2/)).toBeTruthy();
+describe('HeroCard -- Shared Component', () => {
+  it('renders children content', () => {
+    render(
+      <HeroCard>
+        <p>Test content</p>
+      </HeroCard>
+    );
+    expect(screen.getByText('Test content')).toBeTruthy();
   });
 
-  it('shows 5 stage chips: Audio, Images, I2V, T2V, Assembly', () => {
-    render(<HeroCard topic={mockTopic} stageProgress={mockStageProgress} />);
-    expect(screen.getByTestId('stage-chip-audio')).toBeTruthy();
-    expect(screen.getByTestId('stage-chip-images')).toBeTruthy();
-    expect(screen.getByTestId('stage-chip-i2v')).toBeTruthy();
-    expect(screen.getByTestId('stage-chip-t2v')).toBeTruthy();
-    expect(screen.getByTestId('stage-chip-assembly')).toBeTruthy();
+  it('renders with gradient bar at top', () => {
+    const { container } = render(
+      <HeroCard>
+        <p>Content</p>
+      </HeroCard>
+    );
+    const gradientBar = container.querySelector('.bg-gradient-to-r');
+    expect(gradientBar).toBeTruthy();
   });
 
-  it('completed stage chip shows checkmark', () => {
-    render(<HeroCard topic={mockTopic} stageProgress={mockStageProgress} />);
-    const audioChip = screen.getByTestId('stage-chip-audio');
-    expect(audioChip.querySelector('[data-testid="stage-check"]')).toBeTruthy();
-  });
-
-  it('active stage chip has pulse/glow animation class', () => {
-    render(<HeroCard topic={mockTopic} stageProgress={mockStageProgress} />);
-    const imagesChip = screen.getByTestId('stage-chip-images');
-    expect(imagesChip.className).toMatch(/pulse|glow|animate/);
-  });
-
-  it('pending stage chips are dimmed', () => {
-    render(<HeroCard topic={mockTopic} stageProgress={mockStageProgress} />);
-    const assemblyChip = screen.getByTestId('stage-chip-assembly');
-    expect(assemblyChip.className).toMatch(/opacity|dim|muted/);
+  it('accepts custom className', () => {
+    const { container } = render(
+      <HeroCard className="custom-class">
+        <p>Content</p>
+      </HeroCard>
+    );
+    expect(container.firstChild.className).toContain('custom-class');
   });
 });
 
-describe('HeroCard -- Timing & Cost', () => {
-  it('shows elapsed time counter', () => {
-    render(<HeroCard topic={mockTopic} stageProgress={mockStageProgress} />);
-    expect(screen.getByTestId('elapsed-time')).toBeTruthy();
+describe('StageProgress -- Display', () => {
+  const mockStageProgress = {
+    audio: { completed: 172, total: 172 },
+    images: { completed: 50, total: 100 },
+    i2v: { completed: 10, total: 25 },
+    t2v: { completed: 0, total: 72 },
+    captions: { completed: 0, total: 0 },
+    assembly: { completed: 0, total: 1 },
+  };
+
+  it('renders 6 stage indicators', () => {
+    render(<StageProgress stageProgress={mockStageProgress} />);
+    expect(screen.getByTestId('stage-progress')).toBeTruthy();
+    expect(screen.getByTestId('stage-audio')).toBeTruthy();
+    expect(screen.getByTestId('stage-images')).toBeTruthy();
+    expect(screen.getByTestId('stage-i2v')).toBeTruthy();
+    expect(screen.getByTestId('stage-t2v')).toBeTruthy();
+    expect(screen.getByTestId('stage-captions')).toBeTruthy();
+    expect(screen.getByTestId('stage-assembly')).toBeTruthy();
   });
 
-  it('shows rolling-average ETA', () => {
-    render(<HeroCard topic={mockTopic} stageProgress={mockStageProgress} />);
-    expect(screen.getByTestId('eta')).toBeTruthy();
+  it('shows completed stage with success styling', () => {
+    render(<StageProgress stageProgress={mockStageProgress} />);
+    // Audio is 172/172, so completed
+    const audioStage = screen.getByTestId('stage-audio');
+    expect(audioStage.textContent).toContain('Audio');
   });
 
-  it('shows live cost counter with per-stage breakdown', () => {
-    render(<HeroCard topic={mockTopic} stageProgress={mockStageProgress} />);
-    expect(screen.getByTestId('cost-counter')).toBeTruthy();
-    expect(screen.getByText(/\$4\.25/)).toBeTruthy();
+  it('shows in-progress stages with count', () => {
+    render(<StageProgress stageProgress={mockStageProgress} />);
+    // Images is 50/100
+    expect(screen.getByText('50/100')).toBeTruthy();
+    // I2V is 10/25
+    expect(screen.getByText('10/25')).toBeTruthy();
   });
 });

@@ -27,12 +27,12 @@ beforeEach(() => {
 describe('productionApi -- trigger & control', () => {
   it('triggerProduction calls webhookCall with production/trigger', async () => {
     await triggerProduction('topic-1');
-    expect(mockWebhookCall).toHaveBeenCalledWith('production/trigger', { topic_id: 'topic-1' });
+    expect(mockWebhookCall).toHaveBeenCalledWith('production/trigger', { topic_id: 'topic-1' }, { timeoutMs: 60_000 });
   });
 
   it('triggerProductionBatch calls webhookCall with production/trigger-batch', async () => {
     await triggerProductionBatch(['topic-1', 'topic-2']);
-    expect(mockWebhookCall).toHaveBeenCalledWith('production/trigger-batch', { topic_ids: ['topic-1', 'topic-2'] });
+    expect(mockWebhookCall).toHaveBeenCalledWith('production/trigger-batch', { topic_ids: ['topic-1', 'topic-2'] }, { timeoutMs: 60_000 });
   });
 
   it('stopProduction calls webhookCall with production/stop', async () => {
@@ -42,12 +42,12 @@ describe('productionApi -- trigger & control', () => {
 
   it('resumeProduction calls webhookCall with production/resume', async () => {
     await resumeProduction('topic-1');
-    expect(mockWebhookCall).toHaveBeenCalledWith('production/resume', { topic_id: 'topic-1' });
+    expect(mockWebhookCall).toHaveBeenCalledWith('production/resume', { topic_id: 'topic-1' }, { timeoutMs: 60_000 });
   });
 
   it('restartProduction calls webhookCall with production/restart', async () => {
     await restartProduction('topic-1');
-    expect(mockWebhookCall).toHaveBeenCalledWith('production/restart', { topic_id: 'topic-1' });
+    expect(mockWebhookCall).toHaveBeenCalledWith('production/restart', { topic_id: 'topic-1' }, { timeoutMs: 60_000 });
   });
 });
 
@@ -59,7 +59,7 @@ describe('productionApi -- scene actions', () => {
 
   it('retryAllFailed calls webhookCall with production/retry-all-failed', async () => {
     await retryAllFailed('topic-1');
-    expect(mockWebhookCall).toHaveBeenCalledWith('production/retry-all-failed', { topic_id: 'topic-1' });
+    expect(mockWebhookCall).toHaveBeenCalledWith('production/retry-all-failed', { topic_id: 'topic-1' }, { timeoutMs: 60_000 });
   });
 
   it('skipScene calls webhookCall with production/skip-scene', async () => {
@@ -81,7 +81,7 @@ describe('productionApi -- scene actions', () => {
 describe('productionApi -- assembly', () => {
   it('assembleVideo calls webhookCall with production/assemble', async () => {
     await assembleVideo('topic-1');
-    expect(mockWebhookCall).toHaveBeenCalledWith('production/assemble', { topic_id: 'topic-1' });
+    expect(mockWebhookCall).toHaveBeenCalledWith('production/assemble', { topic_id: 'topic-1' }, { timeoutMs: 60_000 });
   });
 
   it('all functions return webhook response format', async () => {

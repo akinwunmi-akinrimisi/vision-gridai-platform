@@ -7,14 +7,6 @@ import CreateProjectModal from '../components/projects/CreateProjectModal';
 let mockMutateAsync = vi.fn().mockResolvedValue({ success: true });
 let mockIsPending = false;
 
-// Mock useProjects hook
-vi.mock('../../hooks/useProjects', () => ({
-  useCreateProject: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: mockIsPending,
-  }),
-}));
-
 // Mock hooks at correct relative path from component
 vi.mock('../hooks/useProjects', () => ({
   useCreateProject: () => ({
@@ -65,29 +57,29 @@ beforeEach(() => {
 });
 
 describe('CreateProjectModal (NICH-01)', () => {
-  it('renders modal when isOpen is true', () => {
-    renderWithProviders(<CreateProjectModal isOpen={true} onClose={vi.fn()} />);
+  it('renders modal when open is true', () => {
+    renderWithProviders(<CreateProjectModal open={true} onOpenChange={vi.fn()} />);
 
     expect(screen.getByText('New Project')).toBeInTheDocument();
     expect(screen.getByLabelText(/Niche Name/)).toBeInTheDocument();
-    expect(screen.getByText('Create Project')).toBeInTheDocument();
+    expect(screen.getByText('Start Research')).toBeInTheDocument();
   });
 
-  it('requires niche name to be non-empty', () => {
-    renderWithProviders(<CreateProjectModal isOpen={true} onClose={vi.fn()} />);
+  it('requires niche name to be at least 3 characters', () => {
+    renderWithProviders(<CreateProjectModal open={true} onOpenChange={vi.fn()} />);
 
-    const submitBtn = screen.getByText('Create Project');
-    // Button should be disabled when niche is empty (< 2 chars)
+    const submitBtn = screen.getByText('Start Research');
+    // Button should be disabled when niche is empty (< 3 chars)
     expect(submitBtn).toBeDisabled();
   });
 
   it('calls useCreateProject mutation on submit', async () => {
-    renderWithProviders(<CreateProjectModal isOpen={true} onClose={vi.fn()} />);
+    renderWithProviders(<CreateProjectModal open={true} onOpenChange={vi.fn()} />);
 
     const input = screen.getByLabelText(/Niche Name/);
     fireEvent.change(input, { target: { value: 'US Credit Cards' } });
 
-    const submitBtn = screen.getByText('Create Project');
+    const submitBtn = screen.getByText('Start Research');
     expect(submitBtn).not.toBeDisabled();
     fireEvent.click(submitBtn);
 
@@ -101,11 +93,11 @@ describe('CreateProjectModal (NICH-01)', () => {
   });
 
   it('shows success animation after submit', async () => {
-    renderWithProviders(<CreateProjectModal isOpen={true} onClose={vi.fn()} />);
+    renderWithProviders(<CreateProjectModal open={true} onOpenChange={vi.fn()} />);
 
     const input = screen.getByLabelText(/Niche Name/);
     fireEvent.change(input, { target: { value: 'US Credit Cards' } });
-    fireEvent.click(screen.getByText('Create Project'));
+    fireEvent.click(screen.getByText('Start Research'));
 
     await waitFor(() => {
       expect(screen.getByTestId('success-state')).toBeInTheDocument();

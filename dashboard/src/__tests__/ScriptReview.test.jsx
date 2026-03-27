@@ -192,10 +192,10 @@ describe('ScriptReview -- Chapter Accordions (SCPT-10)', () => {
 });
 
 describe('ScriptReview -- Scene Rows (SCPT-08)', () => {
-  it('renders scene rows with 3-digit padded monospace line numbers', () => {
+  it('renders scene rows with scene_id in monospace', () => {
     renderWithProviders(<ScriptReview />);
-    expect(screen.getByTestId('line-number-1').textContent).toBe('001');
-    expect(screen.getByTestId('line-number-2').textContent).toBe('002');
+    expect(screen.getByTestId('line-number-1').textContent).toBe('scene_001');
+    expect(screen.getByTestId('line-number-2').textContent).toBe('scene_002');
   });
 
   it('renders visual type badges: blue=static_image, purple=i2v, amber=t2v', () => {

@@ -44,40 +44,40 @@ describe('DotGrid -- Chapter Grouping', () => {
 });
 
 describe('DotGrid -- Dot Colors', () => {
-  it('colors dot gray for pending scenes (all statuses pending)', () => {
+  it('colors dot with muted bg for pending scenes (all statuses pending)', () => {
     render(<DotGrid scenes={[pendingScene]} />);
     const dot = screen.getByTestId('dot-1');
-    expect(dot.className).toMatch(/gray/);
+    expect(dot.className).toMatch(/bg-muted/);
   });
 
-  it('colors dot blue for audio-complete scenes (audio_status=uploaded)', () => {
+  it('colors dot with warning bg for audio-complete scenes (audio_status=uploaded)', () => {
     render(<DotGrid scenes={[audioCompleteScene]} />);
     const dot = screen.getByTestId('dot-2');
-    expect(dot.className).toMatch(/blue/);
+    expect(dot.className).toMatch(/bg-warning/);
   });
 
-  it('colors dot cyan for image-complete scenes (image_status=uploaded)', () => {
+  it('colors dot with primary bg for image-complete scenes (image_status=uploaded)', () => {
     render(<DotGrid scenes={[imageCompleteScene]} />);
     const dot = screen.getByTestId('dot-3');
-    expect(dot.className).toMatch(/cyan/);
+    expect(dot.className).toMatch(/bg-primary/);
   });
 
-  it('colors dot purple for video-complete scenes (video_status=uploaded)', () => {
+  it('colors dot with info bg for video-complete scenes (video_status=uploaded)', () => {
     render(<DotGrid scenes={[videoCompleteScene]} />);
     const dot = screen.getByTestId('dot-4');
-    expect(dot.className).toMatch(/purple/);
+    expect(dot.className).toMatch(/bg-info/);
   });
 
-  it('colors dot green for fully complete scenes (clip_status=complete)', () => {
+  it('colors dot with success bg for fully complete scenes (clip_status=complete)', () => {
     render(<DotGrid scenes={[fullyCompleteScene]} />);
     const dot = screen.getByTestId('dot-5');
-    expect(dot.className).toMatch(/green|emerald/);
+    expect(dot.className).toMatch(/bg-success/);
   });
 
-  it('colors dot red for failed scenes', () => {
+  it('colors dot with danger bg for failed scenes', () => {
     render(<DotGrid scenes={[failedScene]} />);
     const dot = screen.getByTestId('dot-6');
-    expect(dot.className).toMatch(/red/);
+    expect(dot.className).toMatch(/bg-danger/);
   });
 });
 

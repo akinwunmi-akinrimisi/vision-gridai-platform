@@ -11,6 +11,7 @@ vi.mock('react-router', async () => {
     ...actual,
     useParams: () => ({ id: 'test-project-id' }),
     useNavigate: () => mockNavigate,
+    useSearchParams: () => [new URLSearchParams(), vi.fn()],
   };
 });
 
@@ -55,7 +56,6 @@ const mockQueuedTopic = {
   project_id: 'test-project-id',
   topic_number: 3,
   seo_title: 'CSR vs CSP: 365 Days of Data',
-  playlist_angle: 'The Mathematician',
   status: 'queued',
   supervisor_alerted: false,
   total_cost: null,
@@ -63,12 +63,20 @@ const mockQueuedTopic = {
   last_status_change: null,
 };
 
+const mockScriptApprovedTopic = {
+  id: 'topic-ready',
+  project_id: 'test-project-id',
+  topic_number: 4,
+  seo_title: 'Points Maximizer Guide',
+  status: 'script_approved',
+  supervisor_alerted: false,
+};
+
 const mockCompletedTopic = {
   id: 'topic-done',
   project_id: 'test-project-id',
   topic_number: 1,
   seo_title: 'Is the Amex Platinum Worth $695?',
-  playlist_angle: 'The Mathematician',
   status: 'assembled',
   supervisor_alerted: false,
   total_cost: 16.50,
@@ -82,20 +90,10 @@ const mockSupervisorTopic = {
   supervisor_alerted: true,
 };
 
-const mockScriptApprovedTopic = {
-  id: 'topic-ready',
-  project_id: 'test-project-id',
-  topic_number: 4,
-  seo_title: 'Points Maximizer Guide',
-  playlist_angle: 'The Mathematician',
-  status: 'script_approved',
-  supervisor_alerted: false,
-};
-
 const mockScenes = [
-  { id: 's1', scene_id: 'scene_001', scene_number: 1, chapter: 'Chapter 1', audio_status: 'uploaded', image_status: 'uploaded', video_status: 'pending', clip_status: 'pending', narration_text: 'Test narration', audio_duration_ms: 5000, start_time_ms: 0, end_time_ms: 5000, skipped: false, image_prompt: 'test prompt' },
-  { id: 's2', scene_id: 'scene_002', scene_number: 2, chapter: 'Chapter 1', audio_status: 'uploaded', image_status: 'pending', video_status: 'pending', clip_status: 'pending', narration_text: 'Test narration 2', audio_duration_ms: 4500, start_time_ms: 5000, end_time_ms: 9500, skipped: false, image_prompt: 'test prompt 2' },
-  { id: 's3', scene_id: 'scene_003', scene_number: 3, chapter: 'Chapter 2', audio_status: 'uploaded', image_status: 'failed', video_status: 'pending', clip_status: 'pending', narration_text: 'Test narration 3', audio_duration_ms: 6000, start_time_ms: 9500, end_time_ms: 15500, skipped: false, image_prompt: 'test prompt 3' },
+  { id: 's1', scene_id: 'scene_001', scene_number: 1, chapter: 'Chapter 1', audio_status: 'uploaded', image_status: 'uploaded', video_status: 'pending', clip_status: 'pending', narration_text: 'Test', audio_duration_ms: 5000, start_time_ms: 0, end_time_ms: 5000, skipped: false, image_prompt: 'test' },
+  { id: 's2', scene_id: 'scene_002', scene_number: 2, chapter: 'Chapter 1', audio_status: 'uploaded', image_status: 'pending', video_status: 'pending', clip_status: 'pending', narration_text: 'Test 2', audio_duration_ms: 4500, start_time_ms: 5000, end_time_ms: 9500, skipped: false, image_prompt: 'test 2' },
+  { id: 's3', scene_id: 'scene_003', scene_number: 3, chapter: 'Chapter 2', audio_status: 'uploaded', image_status: 'failed', video_status: 'pending', clip_status: 'pending', narration_text: 'Test 3', audio_duration_ms: 6000, start_time_ms: 9500, end_time_ms: 15500, skipped: false, image_prompt: 'test 3' },
 ];
 
 // --- Mock hooks ---
@@ -118,12 +116,15 @@ vi.mock('../hooks/useProductionLog', () => ({
 vi.mock('../hooks/useProductionMutations', () => ({
   useProductionMutations: () => ({
     triggerProduction: { mutate: vi.fn(), isPending: false },
+    triggerProductionBatch: { mutate: vi.fn(), isPending: false },
     stopProduction: { mutate: vi.fn(), isPending: false },
     resumeProduction: { mutate: vi.fn(), isPending: false },
+    restartProduction: { mutate: vi.fn(), isPending: false },
     retryScene: { mutate: vi.fn(), isPending: false },
     skipScene: { mutate: vi.fn(), isPending: false },
     retryAllFailed: { mutate: vi.fn(), isPending: false },
     skipAllFailed: { mutate: vi.fn(), isPending: false },
+    editAndRetryScene: { mutate: vi.fn(), isPending: false },
   }),
 }));
 
@@ -145,7 +146,7 @@ function renderWithProviders(ui) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseTopicsReturn = { data: [], isLoading: false, error: null };
-  mockUseProductionProgressReturn = { scenes: [], stageProgress: {}, isLoading: false, error: null };
+  mockUseProductionProgressReturn = { scenes: [], stageProgress: {}, failedScenes: [], isLoading: false, error: null };
   mockUseProductionLogReturn = { logs: [], isLoading: false };
 });
 
@@ -170,30 +171,25 @@ describe('ProductionMonitor -- Empty State', () => {
 });
 
 describe('ProductionMonitor -- Active Production', () => {
-  it('renders HeroCard when active topic exists (status=producing)', () => {
+  it('renders topic title when active topic exists (status=producing)', () => {
     mockUseTopicsReturn = { data: [mockActiveTopic], isLoading: false, error: null };
-    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: { audio: 3, images: 1 }, isLoading: false, error: null };
+    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: { audio: { completed: 3, total: 3 }, images: { completed: 1, total: 3 } }, failedScenes: [], isLoading: false, error: null };
     renderWithProviders(<ProductionMonitor />);
-    expect(screen.getByTestId('hero-card')).toBeTruthy();
+    expect(screen.getByText(/The Perfect 3-Card Wallet/)).toBeTruthy();
+    expect(screen.getByText(/Now Producing/)).toBeTruthy();
   });
 
   it('renders DotGrid with scenes for active topic', () => {
     mockUseTopicsReturn = { data: [mockActiveTopic], isLoading: false, error: null };
-    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: { audio: 3, images: 1 }, isLoading: false, error: null };
+    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: { audio: { completed: 3, total: 3 }, images: { completed: 1, total: 3 } }, failedScenes: [], isLoading: false, error: null };
     renderWithProviders(<ProductionMonitor />);
     expect(screen.getByTestId('dot-grid')).toBeTruthy();
   });
 
-  it('renders QueueList with topics having status=queued', () => {
-    mockUseTopicsReturn = { data: [mockActiveTopic, mockQueuedTopic], isLoading: false, error: null };
-    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, isLoading: false, error: null };
-    renderWithProviders(<ProductionMonitor />);
-    expect(screen.getByTestId('queue-list')).toBeTruthy();
-  });
-
   it('renders FailedScenes section when any scene has failed status', () => {
     mockUseTopicsReturn = { data: [mockActiveTopic], isLoading: false, error: null };
-    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, isLoading: false, error: null };
+    const failedScenesList = mockScenes.filter((s) => s.image_status === 'failed');
+    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, failedScenes: failedScenesList, isLoading: false, error: null };
     renderWithProviders(<ProductionMonitor />);
     expect(screen.getByTestId('failed-scenes')).toBeTruthy();
   });
@@ -201,35 +197,28 @@ describe('ProductionMonitor -- Active Production', () => {
   it('does NOT render FailedScenes when no failures exist', () => {
     const noFailScenes = mockScenes.map((s) => ({ ...s, image_status: 'uploaded', video_status: 'uploaded', audio_status: 'uploaded', clip_status: 'complete' }));
     mockUseTopicsReturn = { data: [mockActiveTopic], isLoading: false, error: null };
-    mockUseProductionProgressReturn = { scenes: noFailScenes, stageProgress: {}, isLoading: false, error: null };
+    mockUseProductionProgressReturn = { scenes: noFailScenes, stageProgress: {}, failedScenes: [], isLoading: false, error: null };
     renderWithProviders(<ProductionMonitor />);
     expect(screen.queryByTestId('failed-scenes')).toBeNull();
   });
 
-  it('renders ActivityLog (collapsed by default)', () => {
-    mockUseTopicsReturn = { data: [mockActiveTopic], isLoading: false, error: null };
-    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, isLoading: false, error: null };
-    renderWithProviders(<ProductionMonitor />);
-    expect(screen.getByTestId('activity-log')).toBeTruthy();
-  });
-
-  it('renders "Recently Completed" section with last 3 completed topics', () => {
+  it('renders "Recently Completed" section with completed topics', () => {
     mockUseTopicsReturn = { data: [mockActiveTopic, mockCompletedTopic], isLoading: false, error: null };
-    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, isLoading: false, error: null };
+    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, failedScenes: [], isLoading: false, error: null };
     renderWithProviders(<ProductionMonitor />);
     expect(screen.getByTestId('recently-completed')).toBeTruthy();
   });
 
-  it('renders supervisor alert banner when any topic has supervisor_alerted=true', () => {
+  it('renders supervisor alert banner when topic has supervisor_alerted=true', () => {
     mockUseTopicsReturn = { data: [mockSupervisorTopic], isLoading: false, error: null };
-    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, isLoading: false, error: null };
+    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, failedScenes: [], isLoading: false, error: null };
     renderWithProviders(<ProductionMonitor />);
-    expect(screen.getByTestId('supervisor-alert')).toBeTruthy();
+    expect(screen.getByTestId('supervisor-alert-banner')).toBeTruthy();
   });
 
   it('Stop Production button visible on active topic', () => {
     mockUseTopicsReturn = { data: [mockActiveTopic], isLoading: false, error: null };
-    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, isLoading: false, error: null };
+    mockUseProductionProgressReturn = { scenes: mockScenes, stageProgress: {}, failedScenes: [], isLoading: false, error: null };
     renderWithProviders(<ProductionMonitor />);
     expect(screen.getByTestId('stop-production-btn')).toBeTruthy();
   });

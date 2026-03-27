@@ -1,52 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-
-// Mock react-router
-vi.mock('react-router', async () => {
-  const actual = await vi.importActual('react-router');
-  return {
-    ...actual,
-    useParams: () => ({ id: 'test-project-id' }),
-    useNavigate: () => vi.fn(),
-  };
-});
-
-// Mock supabase client
-vi.mock('../lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      in: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({ data: null, error: null }),
-    })),
-    channel: vi.fn(() => ({
-      on: vi.fn().mockReturnThis(),
-      subscribe: vi.fn(),
-    })),
-  },
-}));
-
-// Mock webhookCall
-vi.mock('../lib/api', () => ({
-  webhookCall: vi.fn().mockResolvedValue({ success: true }),
-}));
-
-function renderWithProviders(ui) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        {ui}
-      </MemoryRouter>
-    </QueryClientProvider>
-  );
-}
+import { render, screen, fireEvent } from '@testing-library/react';
+import TopicBulkBar from '../components/topics/TopicBulkBar';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -54,22 +8,67 @@ beforeEach(() => {
 
 describe('TopicBulkActions (TOPC-10)', () => {
   it('shows bulk bar when topics are selected', () => {
-    // RED: implement in plan 02-02
-    expect(true).toBe(false);
+    render(
+      <TopicBulkBar
+        selectedCount={3}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        onClearSelection={vi.fn()}
+      />
+    );
+    expect(screen.getByText('3 selected')).toBeTruthy();
+    expect(screen.getByText('Approve All')).toBeTruthy();
+    expect(screen.getByText('Reject All')).toBeTruthy();
   });
 
-  it('bulk approve calls mutation with all selected IDs', () => {
-    // RED: implement in plan 02-02
-    expect(true).toBe(false);
+  it('bulk approve calls onApprove callback', () => {
+    const onApprove = vi.fn();
+    render(
+      <TopicBulkBar
+        selectedCount={2}
+        onApprove={onApprove}
+        onReject={vi.fn()}
+        onClearSelection={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('Approve All'));
+    expect(onApprove).toHaveBeenCalledTimes(1);
   });
 
-  it('bulk reject calls mutation with all selected IDs', () => {
-    // RED: implement in plan 02-02
-    expect(true).toBe(false);
+  it('bulk reject calls onReject callback', () => {
+    const onReject = vi.fn();
+    render(
+      <TopicBulkBar
+        selectedCount={2}
+        onApprove={vi.fn()}
+        onReject={onReject}
+        onClearSelection={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('Reject All'));
+    expect(onReject).toHaveBeenCalledTimes(1);
   });
 
   it('clear selection hides bulk bar', () => {
-    // RED: implement in plan 02-02
-    expect(true).toBe(false);
+    const { rerender } = render(
+      <TopicBulkBar
+        selectedCount={3}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        onClearSelection={vi.fn()}
+      />
+    );
+    expect(screen.getByText('3 selected')).toBeTruthy();
+
+    // Re-render with 0 selected — the bar should not render
+    rerender(
+      <TopicBulkBar
+        selectedCount={0}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        onClearSelection={vi.fn()}
+      />
+    );
+    expect(screen.queryByText('Approve All')).toBeNull();
   });
 });

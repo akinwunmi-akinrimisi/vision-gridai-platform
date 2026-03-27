@@ -54,6 +54,7 @@ describe('webhookCall', () => {
   it('returns parsed JSON response on success', async () => {
     const mockResponse = { success: true, data: { id: '123' }, error: null };
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve(mockResponse),
     });
 

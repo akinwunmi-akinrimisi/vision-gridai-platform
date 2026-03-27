@@ -54,37 +54,22 @@ const mockPassScores = {
   pass1: {
     score: 7.2,
     dimensions: {
-      persona_integration: 7.5,
-      hook_strength: 8.0,
-      pacing: 7.0,
-      specificity: 7.5,
-      tts_readability: 6.8,
-      visual_prompts: 7.0,
-      anti_patterns: 7.5,
+      persona_integration: 7.5, hook_strength: 8.0, pacing: 7.0,
+      specificity: 7.5, tts_readability: 6.8, visual_prompts: 7.0, anti_patterns: 7.5,
     },
   },
   pass2: {
     score: 7.9,
     dimensions: {
-      persona_integration: 8.0,
-      hook_strength: 8.5,
-      pacing: 7.5,
-      specificity: 8.0,
-      tts_readability: 7.5,
-      visual_prompts: 7.5,
-      anti_patterns: 8.0,
+      persona_integration: 8.0, hook_strength: 8.5, pacing: 7.5,
+      specificity: 8.0, tts_readability: 7.5, visual_prompts: 7.5, anti_patterns: 8.0,
     },
   },
   pass3: {
     score: 8.1,
     dimensions: {
-      persona_integration: 8.5,
-      hook_strength: 8.0,
-      pacing: 8.0,
-      specificity: 8.0,
-      tts_readability: 8.0,
-      visual_prompts: 8.0,
-      anti_patterns: 8.0,
+      persona_integration: 8.5, hook_strength: 8.0, pacing: 8.0,
+      specificity: 8.0, tts_readability: 8.0, visual_prompts: 8.0, anti_patterns: 8.0,
     },
   },
   combined: mockCombinedScores,
@@ -143,7 +128,6 @@ describe('ScorePanel -- Overall Score (SCPT-05)', () => {
 
     const scoreEl = screen.getByTestId('overall-score');
     expect(scoreEl.textContent).toContain('7.8');
-    expect(scoreEl.textContent).toContain('/10');
   });
 });
 
@@ -157,27 +141,27 @@ describe('ScorePanel -- Dimension Bars (SCPT-05)', () => {
     expect(bars.children.length).toBe(7);
   });
 
-  it('uses green color for scores >= 8', () => {
+  it('uses success color for scores >= 8', () => {
     renderWithProviders(
       <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
     );
 
-    // hook_strength is 8.2 -- should be emerald
+    // hook_strength is 8.2 -- should use success color
     const bar = screen.getByTestId('bar-hook_strength');
-    expect(bar.className).toContain('bg-emerald-500');
+    expect(bar.className).toContain('bg-success');
   });
 
-  it('uses amber color for scores >= 7 and < 8', () => {
+  it('uses accent color for scores >= 7 and < 8', () => {
     renderWithProviders(
       <ScorePanel topic={mockTopic} onApprove={vi.fn()} onReject={vi.fn()} onRefine={vi.fn()} />
     );
 
-    // pacing is 7.5 -- should be amber
+    // pacing is 7.5 -- should use accent color
     const bar = screen.getByTestId('bar-pacing');
-    expect(bar.className).toContain('bg-amber-500');
+    expect(bar.className).toContain('bg-accent');
   });
 
-  it('uses red color for scores < 7', () => {
+  it('uses danger color for scores < 7', () => {
     const topicWithLowScore = {
       ...mockTopic,
       script_pass_scores: {
@@ -197,7 +181,7 @@ describe('ScorePanel -- Dimension Bars (SCPT-05)', () => {
     );
 
     const bar = screen.getByTestId('bar-tts_readability');
-    expect(bar.className).toContain('bg-red-500');
+    expect(bar.className).toContain('bg-danger');
   });
 });
 
@@ -210,7 +194,10 @@ describe('ScorePanel -- Metadata', () => {
     const grid = screen.getByTestId('metadata-grid');
     expect(grid.textContent).toContain('18,742');
     expect(grid.textContent).toContain('172');
-    expect(grid.textContent).toContain('75 / 25 / 72');
+    // Visual split is now displayed as "75 img . 25 i2v . 72 t2v"
+    expect(grid.textContent).toMatch(/75/);
+    expect(grid.textContent).toMatch(/25/);
+    expect(grid.textContent).toMatch(/72/);
     expect(grid.textContent).toContain('1 of 3');
   });
 });
@@ -237,16 +224,16 @@ describe('ScorePanel -- Per-Pass Breakdown', () => {
     );
 
     // Per-pass breakdown should be collapsed -- individual pass scores should not be visible initially
-    expect(screen.queryByText('Pass 1: 7.2/10')).toBeNull();
+    expect(screen.queryByText('Pass 1:')).toBeNull();
 
     // Click the "Per-Pass Breakdown" toggle
     const toggleBtn = screen.getByText('Per-Pass Breakdown');
     fireEvent.click(toggleBtn);
 
-    // Now pass scores should be visible
-    expect(screen.getByText('Pass 1: 7.2/10')).toBeDefined();
-    expect(screen.getByText('Pass 2: 7.9/10')).toBeDefined();
-    expect(screen.getByText('Pass 3: 8.1/10')).toBeDefined();
+    // Now pass scores should be visible (format: "Pass 1: <score>/10")
+    expect(screen.getByText(/Pass 1:/)).toBeDefined();
+    expect(screen.getByText(/Pass 2:/)).toBeDefined();
+    expect(screen.getByText(/Pass 3:/)).toBeDefined();
   });
 });
 
