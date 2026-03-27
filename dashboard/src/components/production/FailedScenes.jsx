@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, RefreshCw, Edit3, SkipForward, ChevronDown, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 /**
  * Extract user-friendly error summary from error_log string.
@@ -51,46 +53,38 @@ export default function FailedScenes({
   };
 
   return (
-    <div data-testid="failed-scenes" className="glass-card p-4 sm:p-6 mb-6">
+    <div data-testid="failed-scenes" className="bg-card border border-danger-border rounded-xl p-4 sm:p-6">
       {/* Header with batch actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-red-500" />
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+          <AlertTriangle className="w-4 h-4 text-danger" />
+          <h3 className="text-sm font-semibold">
             Failed Scenes ({scenes.length})
           </h3>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            data-testid="retry-all-failed"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onRetryAll}
-            className="
-              flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium
-              bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400
-              hover:bg-blue-100 dark:hover:bg-blue-900/30
-              border border-blue-200 dark:border-blue-800
-              transition-colors duration-200 cursor-pointer min-h-[36px]
-            "
+            className="gap-1.5 text-info border-info-border hover:bg-info-bg"
+            data-testid="retry-all-failed"
           >
             <RefreshCw className="w-3 h-3" />
             <span className="hidden sm:inline">Retry All Failed</span>
             <span className="sm:hidden">Retry All</span>
-          </button>
-          <button
-            data-testid="skip-all-failed"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onSkipAll}
-            className="
-              flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium
-              bg-slate-50 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400
-              hover:bg-slate-100 dark:hover:bg-white/[0.06]
-              border border-slate-200 dark:border-white/[0.06]
-              transition-colors duration-200 cursor-pointer min-h-[36px]
-            "
+            className="gap-1.5"
+            data-testid="skip-all-failed"
           >
             <SkipForward className="w-3 h-3" />
             <span className="hidden sm:inline">Skip All Failed</span>
             <span className="sm:hidden">Skip All</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -99,22 +93,18 @@ export default function FailedScenes({
         {scenes.map((scene) => (
           <div
             key={scene.id}
-            className="
-              px-4 py-3 rounded-xl
-              bg-red-50/50 dark:bg-red-900/10
-              border border-red-200/60 dark:border-red-800/30
-            "
+            className="px-4 py-3 rounded-lg bg-danger-bg border border-danger-border"
           >
             {/* Scene info row */}
             <div className="flex items-start sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                <span className="text-xs font-semibold text-red-600 dark:text-red-400 shrink-0">
+                <span className="text-xs font-semibold text-danger shrink-0">
                   Scene {scene.scene_number}
                 </span>
-                <span className="text-[10px] text-text-muted dark:text-text-muted-dark truncate hidden sm:inline">
+                <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">
                   {scene.chapter}
                 </span>
-                <span className="text-xs text-red-500 dark:text-red-400 shrink-0">
+                <span className="text-xs text-danger/80 shrink-0">
                   {friendlyError(scene)}
                 </span>
               </div>
@@ -122,37 +112,37 @@ export default function FailedScenes({
                 <button
                   data-testid={`retry-scene-${scene.id}`}
                   onClick={() => onRetry(scene.id)}
-                  className="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-info-bg transition-colors cursor-pointer"
                   title="Retry"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-blue-500" />
+                  <RefreshCw className="w-3.5 h-3.5 text-info" />
                 </button>
                 <button
                   data-testid={`edit-retry-${scene.id}`}
                   onClick={() => handleEditRetry(scene)}
-                  className="p-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-warning-bg transition-colors cursor-pointer"
                   title="Edit & Retry"
                 >
-                  <Edit3 className="w-3.5 h-3.5 text-amber-500" />
+                  <Edit3 className="w-3.5 h-3.5 text-warning" />
                 </button>
                 <button
                   data-testid={`skip-scene-${scene.id}`}
                   onClick={() => onSkip(scene.id)}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer"
                   title="Skip"
                 >
-                  <SkipForward className="w-3.5 h-3.5 text-slate-400" />
+                  <SkipForward className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
                 <button
                   data-testid={`expand-error-${scene.id}`}
                   onClick={() => toggleError(scene.id)}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer"
                   title="Error details"
                 >
                   {expandedErrors[scene.id] ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                   ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                   )}
                 </button>
               </div>
@@ -160,10 +150,10 @@ export default function FailedScenes({
 
             {/* Expandable error details */}
             {expandedErrors[scene.id] && (
-              <div className="mt-2 p-2 rounded-lg bg-red-100/50 dark:bg-red-900/20 text-[11px] font-mono text-red-700 dark:text-red-300 whitespace-pre-wrap break-all">
+              <div className="mt-2 p-2 rounded-lg bg-danger-bg/50 text-[11px] font-mono text-danger whitespace-pre-wrap break-all">
                 {scene.error_log || 'No error details available'}
                 {scene.image_prompt && (
-                  <div className="mt-1 text-slate-500 dark:text-slate-400">
+                  <div className="mt-1 text-muted-foreground">
                     Prompt: {scene.image_prompt}
                   </div>
                 )}
@@ -173,42 +163,29 @@ export default function FailedScenes({
             {/* Edit & Retry textarea */}
             {editingScene === scene.id && (
               <div className="mt-2 space-y-2">
-                <textarea
+                <Textarea
                   data-testid="edit-prompt-textarea"
                   value={editPrompt}
                   onChange={(e) => setEditPrompt(e.target.value)}
                   rows={3}
-                  className="
-                    w-full px-3 py-2 rounded-lg text-xs
-                    bg-white dark:bg-white/[0.04]
-                    border border-slate-200 dark:border-white/[0.1]
-                    text-slate-700 dark:text-slate-300
-                    focus:outline-none focus:ring-2 focus:ring-primary/30
-                    resize-none
-                  "
                   placeholder="Edit image prompt..."
+                  className="text-xs resize-none"
                 />
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
+                    size="sm"
                     onClick={() => handleEditRetry(scene)}
-                    className="
-                      px-3 py-1 rounded-lg text-xs font-medium
-                      bg-amber-500 text-white hover:bg-amber-600
-                      transition-colors cursor-pointer
-                    "
+                    className="gap-1.5"
                   >
                     Submit & Retry
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => { setEditingScene(null); setEditPrompt(''); }}
-                    className="
-                      px-3 py-1 rounded-lg text-xs font-medium
-                      text-slate-500 hover:text-slate-700 dark:text-slate-400
-                      transition-colors cursor-pointer
-                    "
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -217,8 +194,8 @@ export default function FailedScenes({
       </div>
 
       {/* Assembly gate message */}
-      <div className="mt-4 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30">
-        <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+      <div className="mt-4 px-3 py-2 rounded-lg bg-warning-bg border border-warning-border">
+        <p className="text-xs text-warning font-medium">
           {scenes.length} failed scene{scenes.length !== 1 ? 's' : ''} must be resolved before assembly
         </p>
       </div>

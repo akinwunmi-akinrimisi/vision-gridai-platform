@@ -4,14 +4,14 @@ import {
   Image,
   Film,
   Clock,
-  Play,
   RefreshCw,
   SkipForward,
-  ExternalLink,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
 import SidePanel from '../ui/SidePanel';
+import StatusBadge from '../shared/StatusBadge';
+import { Button } from '@/components/ui/button';
 
 /**
  * Format milliseconds to human-readable "HH:MM:SS.mmm" timestamp.
@@ -38,24 +38,19 @@ function formatDuration(ms) {
   return `${m}m ${s}s`;
 }
 
-const VISUAL_TYPE_BADGE = {
-  static_image: { label: 'Static Image', cls: 'badge-cyan' },
-  i2v: { label: 'I2V', cls: 'badge-purple' },
-  t2v: { label: 'T2V', cls: 'badge-amber' },
+const VISUAL_TYPE_MAP = {
+  static_image: { label: 'Static Image', status: 'scripting' },
+  i2v: { label: 'I2V', status: 'review' },
+  t2v: { label: 'T2V', status: 'assembly' },
 };
 
-const STATUS_BADGE = {
-  pending: { label: 'Pending', cls: 'badge-amber' },
-  generated: { label: 'Generated', cls: 'badge-blue' },
-  uploaded: { label: 'Uploaded', cls: 'badge-green' },
-  failed: { label: 'Failed', cls: 'badge-red' },
-  complete: { label: 'Complete', cls: 'badge-green' },
+const STATUS_TO_BADGE = {
+  pending: 'pending',
+  generated: 'scripting',
+  uploaded: 'approved',
+  failed: 'failed',
+  complete: 'published',
 };
-
-function StatusBadge({ status }) {
-  const badge = STATUS_BADGE[status] || { label: status || 'Unknown', cls: 'badge' };
-  return <span className={`badge ${badge.cls} text-2xs`}>{badge.label}</span>;
-}
 
 /**
  * Collapsible section within the panel.
@@ -63,18 +58,18 @@ function StatusBadge({ status }) {
 function PanelSection({ title, icon: Icon, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border border-slate-200/60 dark:border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-left cursor-pointer hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-left cursor-pointer hover:bg-card-hover transition-colors"
       >
         {open ? (
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
         ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
         )}
-        <Icon className="w-3.5 h-3.5 text-primary dark:text-blue-400" />
-        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{title}</span>
+        <Icon className="w-3.5 h-3.5 text-primary" />
+        <span className="text-xs font-semibold">{title}</span>
       </button>
       {open && (
         <div className="px-3 pb-3 pt-0">
@@ -87,19 +82,13 @@ function PanelSection({ title, icon: Icon, defaultOpen = true, children }) {
 
 /**
  * Scene detail side panel, shown when a dot is clicked in the DotGrid.
- *
- * @param {object|null} scene - The selected scene data
- * @param {boolean} isOpen - Whether to show the panel
- * @param {Function} onClose - Close callback
- * @param {Function} onRetry - Retry callback (scene_id)
- * @param {Function} onSkip - Skip callback (scene_id)
  */
 export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSkip }) {
   const [showFullPrompt, setShowFullPrompt] = useState(false);
 
   if (!scene) return <SidePanel isOpen={false} onClose={onClose} title="" />;
 
-  const visualBadge = VISUAL_TYPE_BADGE[scene.visual_type] || { label: scene.visual_type || 'Unknown', cls: 'badge' };
+  const visualType = VISUAL_TYPE_MAP[scene.visual_type] || { label: scene.visual_type || 'Unknown', status: 'pending' };
   const isFailed = scene.audio_status === 'failed' || scene.image_status === 'failed' || scene.video_status === 'failed';
   const isSkipped = scene.skipped;
   const hasVideo = scene.visual_type === 'i2v' || scene.visual_type === 't2v';
@@ -114,9 +103,9 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
       <div className="space-y-4">
         {/* Header badges */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`badge ${visualBadge.cls} text-2xs`}>{visualBadge.label}</span>
-          {isFailed && <span className="badge badge-red text-2xs">Failed</span>}
-          {isSkipped && <span className="badge text-2xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Skipped</span>}
+          <StatusBadge status={visualType.status} label={visualType.label} />
+          {isFailed && <StatusBadge status="failed" label="Failed" />}
+          {isSkipped && <StatusBadge status="pending" label="Skipped" />}
         </div>
 
         {/* Chapter & Emotional Beat */}
@@ -124,20 +113,20 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
           <div className="space-y-1.5">
             {scene.chapter && (
               <div>
-                <span className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <span className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Chapter
                 </span>
-                <p className="text-sm text-slate-800 dark:text-slate-200 mt-0.5">
+                <p className="text-sm mt-0.5">
                   {scene.chapter}
                 </p>
               </div>
             )}
             {scene.emotional_beat && (
               <div>
-                <span className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <span className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Emotional Beat
                 </span>
-                <p className="text-sm text-slate-700 dark:text-slate-300 mt-0.5 italic">
+                <p className="text-sm text-foreground/70 mt-0.5 italic">
                   {scene.emotional_beat}
                 </p>
               </div>
@@ -148,10 +137,10 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
         {/* Narration text */}
         {scene.narration_text && (
           <div>
-            <span className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <span className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider">
               Narration
             </span>
-            <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 leading-relaxed line-clamp-4">
+            <p className="text-sm text-foreground/70 mt-1 leading-relaxed line-clamp-4">
               {scene.narration_text}
             </p>
           </div>
@@ -161,21 +150,21 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
         <PanelSection title="Audio" icon={Mic}>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-2xs text-slate-500 dark:text-slate-400">Status</span>
-              <StatusBadge status={scene.audio_status} />
+              <span className="text-2xs text-muted-foreground">Status</span>
+              <StatusBadge status={STATUS_TO_BADGE[scene.audio_status] || 'pending'} label={scene.audio_status} />
             </div>
             {scene.audio_duration_ms != null && (
               <div className="flex items-center justify-between">
-                <span className="text-2xs text-slate-500 dark:text-slate-400">Duration</span>
-                <span className="text-xs font-medium text-slate-700 dark:text-slate-300 tabular-nums">
+                <span className="text-2xs text-muted-foreground">Duration</span>
+                <span className="text-xs font-medium tabular-nums">
                   {formatDuration(scene.audio_duration_ms)}
                 </span>
               </div>
             )}
             {scene.audio_file_drive_id && (
               <div className="flex items-center justify-between">
-                <span className="text-2xs text-slate-500 dark:text-slate-400">Drive ID</span>
-                <span className="text-2xs text-slate-400 dark:text-slate-500 font-mono truncate max-w-[140px]" title={scene.audio_file_drive_id}>
+                <span className="text-2xs text-muted-foreground">Drive ID</span>
+                <span className="text-2xs text-muted-foreground font-mono truncate max-w-[140px]" title={scene.audio_file_drive_id}>
                   {scene.audio_file_drive_id}
                 </span>
               </div>
@@ -195,11 +184,11 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
         <PanelSection title="Image" icon={Image}>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-2xs text-slate-500 dark:text-slate-400">Status</span>
-              <StatusBadge status={scene.image_status} />
+              <span className="text-2xs text-muted-foreground">Status</span>
+              <StatusBadge status={STATUS_TO_BADGE[scene.image_status] || 'pending'} label={scene.image_status} />
             </div>
             {scene.image_url && (
-              <div className="mt-2 rounded-lg overflow-hidden border border-slate-200/60 dark:border-white/[0.06]">
+              <div className="mt-2 rounded-lg overflow-hidden border border-border">
                 <img
                   src={scene.image_url}
                   alt={`Scene ${scene.scene_number} image`}
@@ -212,12 +201,12 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
               <div>
                 <button
                   onClick={() => setShowFullPrompt(!showFullPrompt)}
-                  className="text-2xs font-medium text-primary dark:text-blue-400 hover:underline cursor-pointer"
+                  className="text-2xs font-medium text-primary hover:text-primary-hover transition-colors cursor-pointer"
                 >
                   {showFullPrompt ? 'Hide prompt' : 'Show prompt'}
                 </button>
                 {showFullPrompt && (
-                  <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed bg-slate-50 dark:bg-white/[0.02] p-2 rounded-lg">
+                  <p className="text-2xs text-muted-foreground mt-1 leading-relaxed bg-muted p-2 rounded-lg">
                     {scene.image_prompt}
                   </p>
                 )}
@@ -231,11 +220,11 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
           <PanelSection title="Video" icon={Film}>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-2xs text-slate-500 dark:text-slate-400">Status</span>
-                <StatusBadge status={scene.video_status} />
+                <span className="text-2xs text-muted-foreground">Status</span>
+                <StatusBadge status={STATUS_TO_BADGE[scene.video_status] || 'pending'} label={scene.video_status} />
               </div>
               {scene.video_url && (
-                <div className="mt-2 rounded-lg overflow-hidden border border-slate-200/60 dark:border-white/[0.06] bg-black">
+                <div className="mt-2 rounded-lg overflow-hidden border border-border bg-black">
                   <video
                     src={scene.video_url}
                     controls
@@ -249,8 +238,8 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
               )}
               {scene.video_drive_id && (
                 <div className="flex items-center justify-between">
-                  <span className="text-2xs text-slate-500 dark:text-slate-400">Drive ID</span>
-                  <span className="text-2xs text-slate-400 dark:text-slate-500 font-mono truncate max-w-[140px]" title={scene.video_drive_id}>
+                  <span className="text-2xs text-muted-foreground">Drive ID</span>
+                  <span className="text-2xs text-muted-foreground font-mono truncate max-w-[140px]" title={scene.video_drive_id}>
                     {scene.video_drive_id}
                   </span>
                 </div>
@@ -263,21 +252,21 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
         <PanelSection title="Timeline" icon={Clock} defaultOpen={false}>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-2xs text-slate-500 dark:text-slate-400">Start</span>
-              <span className="text-xs font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+              <span className="text-2xs text-muted-foreground">Start</span>
+              <span className="text-xs font-mono tabular-nums">
                 {formatTimestamp(scene.start_time_ms)}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-2xs text-slate-500 dark:text-slate-400">End</span>
-              <span className="text-xs font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+              <span className="text-2xs text-muted-foreground">End</span>
+              <span className="text-xs font-mono tabular-nums">
                 {formatTimestamp(scene.end_time_ms)}
               </span>
             </div>
             {scene.audio_duration_ms != null && (
               <div className="flex items-center justify-between">
-                <span className="text-2xs text-slate-500 dark:text-slate-400">Duration</span>
-                <span className="text-xs font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+                <span className="text-2xs text-muted-foreground">Duration</span>
+                <span className="text-xs font-mono tabular-nums">
                   {formatDuration(scene.audio_duration_ms)}
                 </span>
               </div>
@@ -287,32 +276,26 @@ export default function SceneDetailPanel({ scene, isOpen, onClose, onRetry, onSk
 
         {/* Skip reason */}
         {scene.skipped && scene.skip_reason && (
-          <div className="p-3 rounded-lg bg-slate-100/80 dark:bg-white/[0.03]">
-            <span className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          <div className="p-3 rounded-lg bg-muted">
+            <span className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider">
               Skip Reason
             </span>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-foreground/70 mt-0.5">
               {scene.skip_reason}
             </p>
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
-          <button
-            onClick={() => onRetry(scene.id)}
-            className="btn-primary btn-sm"
-          >
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          <Button size="sm" onClick={() => onRetry(scene.id)} className="gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" />
             Retry Scene
-          </button>
-          <button
-            onClick={() => onSkip(scene.id)}
-            className="btn-ghost btn-sm"
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onSkip(scene.id)} className="gap-1.5">
             <SkipForward className="w-3.5 h-3.5" />
             Skip Scene
-          </button>
+          </Button>
         </div>
       </div>
     </SidePanel>

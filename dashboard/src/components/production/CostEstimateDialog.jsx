@@ -1,4 +1,13 @@
-import ConfirmDialog from '../ui/ConfirmDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Play } from 'lucide-react';
 
 /**
  * Cost estimate confirmation dialog before starting production.
@@ -25,76 +34,91 @@ export default function CostEstimateDialog({
   const totalCost = perTopicCost * topics.length;
 
   return (
-    <ConfirmDialog
-      isOpen={isOpen}
-      onClose={onClose}
-      onConfirm={onConfirm}
-      title="Start Production"
-      confirmText="Start Production"
-      confirmVariant="primary"
-      loading={loading}
-    >
-      <div className="space-y-4">
-        {/* Topic list */}
-        <div>
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
-            Topics to produce ({topics.length})
-          </p>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {topics.map((t) => (
-              <div key={t.id} className="flex items-center gap-2 text-xs">
-                <span className="badge badge-primary text-[9px] px-1.5 py-0.5">
-                  #{t.topic_number}
-                </span>
-                <span className="text-slate-700 dark:text-slate-300 truncate">
-                  {t.seo_title || 'Untitled'}
-                </span>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Start Production</DialogTitle>
+          <DialogDescription>
+            Review estimated costs before starting the production pipeline.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Topic list */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              Topics to produce ({topics.length})
+            </p>
+            <div className="space-y-1 max-h-32 overflow-y-auto scrollbar-thin">
+              {topics.map((t) => (
+                <div key={t.id} className="flex items-center gap-2 text-xs">
+                  <span className="text-2xs font-bold text-muted-foreground tabular-nums">
+                    #{t.topic_number}
+                  </span>
+                  <span className="text-foreground/80 truncate">
+                    {t.seo_title || 'Untitled'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Cost breakdown */}
+          <div className="p-3 rounded-lg bg-muted border border-border">
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              Estimated cost per topic
+            </p>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">TTS Audio ({sceneCount} scenes)</span>
+                <span className="tabular-nums font-medium">${ttsCost.toFixed(2)}</span>
               </div>
-            ))}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Images ({imagesCount} x Seedream)</span>
+                <span className="tabular-nums font-medium">${imagesCost.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">I2V ({i2vCount} x Wan 2.5)</span>
+                <span className="tabular-nums font-medium">${i2vCost.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">T2V ({t2vCount} x Wan 2.5)</span>
+                <span className="tabular-nums font-medium">${t2vCost.toFixed(2)}</span>
+              </div>
+              <div className="h-px bg-border my-1" />
+              <div className="flex justify-between font-semibold">
+                <span>Per topic</span>
+                <span className="tabular-nums">${perTopicCost.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Total */}
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Total estimated cost</p>
+            <p className="text-2xl font-bold text-primary tabular-nums">
+              ${totalCost.toFixed(2)}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              for {topics.length} topic{topics.length !== 1 ? 's' : ''}
+            </p>
           </div>
         </div>
 
-        {/* Cost breakdown */}
-        <div className="p-3 rounded-lg bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
-            Estimated cost per topic
-          </p>
-          <div className="space-y-1 text-xs">
-            <div className="flex justify-between">
-              <span className="text-slate-600 dark:text-slate-400">TTS Audio ({sceneCount} scenes)</span>
-              <span className="tabular-nums font-medium">${ttsCost.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600 dark:text-slate-400">Images ({imagesCount} x Seedream)</span>
-              <span className="tabular-nums font-medium">${imagesCost.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600 dark:text-slate-400">I2V ({i2vCount} x Wan 2.5)</span>
-              <span className="tabular-nums font-medium">${i2vCost.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600 dark:text-slate-400">T2V ({t2vCount} x Wan 2.5)</span>
-              <span className="tabular-nums font-medium">${t2vCost.toFixed(2)}</span>
-            </div>
-            <div className="h-px bg-slate-200 dark:bg-white/[0.06] my-1" />
-            <div className="flex justify-between font-semibold">
-              <span>Per topic</span>
-              <span className="tabular-nums">${perTopicCost.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Total */}
-        <div className="text-center">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Total estimated cost</p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
-            ${totalCost.toFixed(2)}
-          </p>
-          <p className="text-[10px] text-text-muted dark:text-text-muted-dark">
-            for {topics.length} topic{topics.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-      </div>
-    </ConfirmDialog>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} disabled={loading} className="gap-2">
+            {loading ? (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}
+            Start Production
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

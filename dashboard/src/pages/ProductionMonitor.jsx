@@ -7,16 +7,39 @@ import { useProductionProgress } from '../hooks/useProductionProgress';
 import { useProductionMutations } from '../hooks/useProductionMutations';
 import { useProductionLog } from '../hooks/useProductionLog';
 
-import HeroCard from '../components/production/HeroCard';
+import PageHeader from '../components/shared/PageHeader';
+import HeroCard from '../components/shared/HeroCard';
+import StageProgress from '../components/production/StageProgress';
 import DotGrid from '../components/production/DotGrid';
+import CostBreakdown from '../components/production/CostBreakdown';
 import QueueList from '../components/production/QueueList';
 import FailedScenes from '../components/production/FailedScenes';
 import ActivityLog from '../components/production/ActivityLog';
-import CostEstimateDialog from '../components/production/CostEstimateDialog';
 import SupervisorAlert from '../components/production/SupervisorAlert';
 import SceneDetailPanel from '../components/production/SceneDetailPanel';
 import ErrorLogModal from '../components/production/ErrorLogModal';
+import CostEstimateDialog from '../components/production/CostEstimateDialog';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+function formatElapsed(ms) {
+  if (!ms || ms < 0) return '00:00:00';
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function formatEta(ms) {
+  if (!ms || ms <= 0) return '--';
+  const totalMin = Math.ceil(ms / 60000);
+  if (totalMin < 60) return `~${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `~${h}h ${m}m`;
+}
 
 export default function ProductionMonitor() {
   const { id: projectId } = useParams();
@@ -87,6 +110,15 @@ export default function ProductionMonitor() {
     return ((totalScenes - doneScenes) / doneScenes) * elapsed;
   }, [stageProgress, elapsed, scenes]);
 
+  // Overall progress
+  const overallPct = useMemo(() => {
+    if (!scenes.length) return 0;
+    const done = scenes.filter(
+      (s) => s.clip_status === 'complete' || s.clip_status === 'uploaded'
+    ).length;
+    return Math.round((done / scenes.length) * 100);
+  }, [scenes]);
+
   // Handlers
   const handleStartProduction = () => {
     if (scriptApprovedTopics.length > 0) {
@@ -143,70 +175,110 @@ export default function ProductionMonitor() {
   };
 
   return (
-    <div className="animate-slide-up">
-      <div className="page-header">
-        <h1 className="page-title">Production Monitor</h1>
-        <p className="page-subtitle">Real-time pipeline progress with scene-level tracking</p>
-      </div>
+    <div className="animate-slide-up space-y-6">
+      <PageHeader
+        title="Production Monitor"
+        subtitle="Real-time pipeline progress with scene-level tracking"
+      />
 
       {/* Supervisor Alert */}
       {supervisorAlerted && (
-        <div data-testid="supervisor-alert">
-          <SupervisorAlert visible={true} onDismiss={() => setSupervisorDismissed(true)} />
-        </div>
+        <SupervisorAlert visible={true} onDismiss={() => setSupervisorDismissed(true)} />
       )}
 
       {/* ACTIVE / STOPPED PRODUCTION */}
       {currentTopic ? (
         <>
-          <HeroCard
-            topic={currentTopic}
-            stageProgress={stageProgress}
-            elapsed={elapsed}
-            eta={eta}
-            cost={currentTopic.total_cost}
-            onStop={activeTopic ? () => setShowStopDialog(true) : undefined}
-          />
+          {/* Active Production Hero */}
+          <HeroCard>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] uppercase tracking-wider text-primary font-semibold">
+                    Now Producing
+                  </span>
+                  <span className="text-2xs text-muted-foreground tabular-nums">
+                    #{currentTopic.topic_number}
+                  </span>
+                </div>
+                <h2 className="text-base font-bold tracking-tight truncate">
+                  {currentTopic.seo_title || 'Untitled Topic'}
+                </h2>
+              </div>
+
+              {activeTopic && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowStopDialog(true)}
+                  className="gap-1.5 flex-shrink-0"
+                  data-testid="stop-production-btn"
+                >
+                  <StopCircle className="w-3.5 h-3.5" />
+                  Stop
+                </Button>
+              )}
+            </div>
+
+            {/* Overall progress */}
+            <div className="flex items-baseline gap-2 mb-3">
+              <span className="text-xl font-bold text-primary tabular-nums">
+                {overallPct}%
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {formatEta(eta)} remaining
+              </span>
+              <span className="text-xs text-muted-foreground ml-auto tabular-nums">
+                {formatElapsed(elapsed)}
+              </span>
+            </div>
+
+            {/* Stage progress bar */}
+            <StageProgress stageProgress={stageProgress} />
+          </HeroCard>
 
           {/* Stopped state controls */}
           {stoppedTopic && !activeTopic && (
-            <div className="glass-card p-4 sm:p-6 mb-6">
+            <div className="bg-card border border-danger-border rounded-xl p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
-                  <StopCircle className="w-4 h-4 text-red-500" />
+                <div className="w-8 h-8 rounded-lg bg-danger-bg flex items-center justify-center">
+                  <StopCircle className="w-4 h-4 text-danger" />
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Production Stopped</h3>
+                <h3 className="text-sm font-bold">Production Stopped</h3>
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
-                <button onClick={handleResumeProduction} className="btn-primary btn-sm">
+                <Button size="sm" onClick={handleResumeProduction} className="gap-1.5">
                   <Play className="w-3.5 h-3.5" />
                   Resume
-                </button>
+                </Button>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="text"
+                  <Input
                     value={restartText}
                     onChange={(e) => setRestartText(e.target.value)}
                     placeholder="Type RESTART"
-                    className="input w-32 sm:w-40 !py-1.5 text-xs"
+                    className="w-32 sm:w-40 h-9 text-xs"
                   />
-                  <button
+                  <Button
+                    variant="destructive"
+                    size="sm"
                     onClick={handleRestartProduction}
                     disabled={restartText !== 'RESTART'}
-                    className="btn-danger btn-sm"
+                    className="gap-1.5"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     Restart
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
           )}
 
+          {/* DotGrid */}
           {scenes.length > 0 && (
             <DotGrid scenes={scenes} onSceneClick={setSelectedScene} />
           )}
 
+          {/* Failed Scenes */}
           {failedScenes && failedScenes.length > 0 && (
             <FailedScenes
               scenes={failedScenes}
@@ -218,37 +290,41 @@ export default function ProductionMonitor() {
             />
           )}
 
-          {queuedTopics.length > 0 && (
+          {/* 2-column grid: Cost + Queue */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CostBreakdown
+              cost={currentTopic.total_cost}
+              breakdown={currentTopic.cost_breakdown || {}}
+            />
             <QueueList queuedTopics={queuedTopics} onRemove={handleRemoveFromQueue} />
-          )}
+          </div>
 
+          {/* Recently completed */}
           {completedTopics.length > 0 && (
-            <div data-testid="recently-completed" className="glass-card p-6 mb-6">
+            <div className="bg-card border border-border rounded-xl p-4 sm:p-6" data-testid="recently-completed">
               <div className="flex items-center gap-2 mb-4">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <h3 className="section-title text-sm">Recently Completed</h3>
+                <CheckCircle2 className="w-4 h-4 text-success" />
+                <h3 className="text-sm font-semibold">Recently Completed</h3>
               </div>
               <div className="space-y-2">
                 {completedTopics.map((t) => (
                   <div
                     key={t.id}
-                    className="
-                      flex items-center gap-3 px-3 py-2.5 rounded-xl
-                      bg-emerald-50/50 dark:bg-emerald-500/[0.04]
-                      border border-emerald-200/40 dark:border-emerald-500/10
-                    "
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-success-bg border border-success-border"
                   >
-                    <span className="badge badge-green text-2xs">#{t.topic_number}</span>
-                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex-1 truncate">
+                    <span className="text-2xs font-bold text-success tabular-nums">
+                      #{t.topic_number}
+                    </span>
+                    <span className="text-xs font-medium text-foreground/80 flex-1 truncate">
                       {t.seo_title}
                     </span>
                     {t.total_cost != null && (
-                      <span className="text-2xs tabular-nums text-slate-400 dark:text-slate-500">
+                      <span className="text-2xs tabular-nums text-muted-foreground">
                         ${t.total_cost.toFixed(2)}
                       </span>
                     )}
                     {t.scene_count && (
-                      <span className="text-2xs text-slate-400 dark:text-slate-500">
+                      <span className="text-2xs text-muted-foreground">
                         {t.scene_count} scenes
                       </span>
                     )}
@@ -260,42 +336,46 @@ export default function ProductionMonitor() {
 
           {/* Error Log button */}
           {currentTopic && (
-            <div className="flex items-center gap-2 mb-4">
-              <button
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowErrorLog(true)}
-                className="btn-ghost btn-sm text-red-500 dark:text-red-400"
+                className="gap-1.5 text-danger"
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
                 Error Log
-              </button>
+              </Button>
             </div>
           )}
 
+          {/* Activity log */}
           <ActivityLog logs={logs} />
         </>
       ) : (
         /* EMPTY STATE */
-        <div className="glass-card p-12 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 dark:from-primary/15 dark:to-accent/15 flex items-center justify-center mx-auto mb-5">
+        <div className="bg-card border border-border rounded-xl p-12 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
             <Activity className="w-7 h-7 text-primary" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+          <h2 className="text-lg font-bold mb-2">
             No Active Production
           </h2>
-          <p className="text-sm text-text-muted dark:text-text-muted-dark mb-6">
+          <p className="text-sm text-muted-foreground mb-6">
             {scriptApprovedTopics.length > 0
               ? `${scriptApprovedTopics.length} topic${scriptApprovedTopics.length !== 1 ? 's' : ''} ready for production`
               : 'Approve topics and scripts to start production'}
           </p>
           {scriptApprovedTopics.length > 0 && (
-            <button
+            <Button
               data-testid="start-production-cta"
               onClick={() => setShowCostDialog(true)}
-              className="btn-primary btn-lg"
+              size="lg"
+              className="gap-2"
             >
               <Play className="w-5 h-5" />
               Start Production
-            </button>
+            </Button>
           )}
         </div>
       )}
