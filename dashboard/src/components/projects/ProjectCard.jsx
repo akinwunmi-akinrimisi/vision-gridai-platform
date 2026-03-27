@@ -1,21 +1,32 @@
 import { useMemo, useState, useEffect } from 'react';
-import { NavLink } from 'react-router';
-import { Folder, CheckCircle2, Circle, Loader2, RotateCcw, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import {
+  Folder,
+  CheckCircle2,
+  Circle,
+  Loader2,
+  RotateCcw,
+  ArrowRight,
+} from 'lucide-react';
+import StatusBadge from '../shared/StatusBadge';
+import { Button } from '@/components/ui/button';
 
-const STATUS_BADGE = {
-  created: 'badge bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400',
-  researching: 'badge badge-amber',
-  researching_competitors: 'badge badge-amber',
-  researching_pain_points: 'badge badge-amber',
-  researching_keywords: 'badge badge-amber',
-  researching_blue_ocean: 'badge badge-amber',
-  researching_prompts: 'badge badge-amber',
-  ready_for_topics: 'badge badge-blue',
-  topics_pending_review: 'badge badge-purple',
-  active: 'badge badge-green',
-  in_production: 'badge badge-green',
-  paused: 'badge badge-red',
-  research_failed: 'badge badge-red',
+/* ── Status → StatusBadge mapping ─────────────────────────────── */
+
+const STATUS_TO_BADGE = {
+  created: 'pending',
+  researching: 'active',
+  researching_competitors: 'active',
+  researching_pain_points: 'active',
+  researching_keywords: 'active',
+  researching_blue_ocean: 'active',
+  researching_prompts: 'active',
+  ready_for_topics: 'scripting',
+  topics_pending_review: 'review',
+  active: 'approved',
+  in_production: 'active',
+  paused: 'failed',
+  research_failed: 'failed',
 };
 
 const STATUS_LABEL = {
@@ -71,18 +82,6 @@ function isResearching(status) {
   return status && (status.startsWith('researching') || status === 'created');
 }
 
-// Icon gradient based on status
-function getCardAccent(status) {
-  if (status === 'active' || status === 'in_production') return 'from-emerald-500 to-teal-600';
-  if (status === 'topics_pending_review') return 'from-violet-500 to-purple-600';
-  if (status === 'research_failed') return 'from-red-500 to-rose-600';
-  if (status?.startsWith('researching')) return 'from-amber-500 to-orange-500';
-  return 'from-primary-500 to-indigo-600';
-}
-
-/**
- * Format a relative time string from a date.
- */
 function formatRelativeTime(dateStr) {
   if (!dateStr) return '';
   const now = Date.now();
@@ -101,9 +100,6 @@ function formatRelativeTime(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-/**
- * Parse progress string like "done:45/132" into { done: 45, total: 132 }
- */
 function parseProgress(progStr) {
   if (!progStr || progStr === 'pending' || progStr === 'complete') return null;
   const match = progStr.match(/done:(\d+)\/(\d+)/);
@@ -113,24 +109,21 @@ function parseProgress(progStr) {
 
 /**
  * Compute an accurate project status from the topics_summary array.
- * Returns { label: string, badge: string, detail?: string }
  */
 function computeProjectStatus(projectStatus, topics) {
   if (!topics || topics.length === 0) {
     const label = STATUS_LABEL[projectStatus] || projectStatus || 'Unknown';
-    const badge = STATUS_BADGE[projectStatus] || STATUS_BADGE.created;
-    return { label, badge, detail: null, topicCount: 0, publishedCount: 0, totalSpend: 0, totalRevenue: 0 };
+    const badgeStatus = STATUS_TO_BADGE[projectStatus] || 'pending';
+    return { label, badgeStatus, detail: null, topicCount: 0, publishedCount: 0, totalSpend: 0, totalRevenue: 0 };
   }
 
   const topicCount = topics.length;
 
-  // Count by status
   const statusCounts = {};
   for (const t of topics) {
     statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
   }
 
-  // Count by review status
   const reviewCounts = {};
   for (const t of topics) {
     reviewCounts[t.review_status] = (reviewCounts[t.review_status] || 0) + 1;
@@ -145,21 +138,19 @@ function computeProjectStatus(projectStatus, topics) {
   const scriptApprovedCount = statusCounts.script_approved || 0;
   const pendingReviewCount = topics.filter((t) => t.review_status === 'pending').length;
 
-  // Aggregate financials
   const totalSpend = topics.reduce((s, t) => s + (parseFloat(t.total_cost) || 0), 0);
   const totalRevenue = topics.reduce((s, t) => s + (parseFloat(t.yt_estimated_revenue) || 0), 0);
 
   const base = { topicCount, publishedCount, totalSpend, totalRevenue };
 
-  // Priority order: most advanced active state first
   if (publishedCount === topicCount) {
-    return { label: 'All Published', badge: 'badge badge-green', detail: `${topicCount} video${topicCount !== 1 ? 's' : ''}`, ...base };
+    return { label: 'All Published', badgeStatus: 'published', detail: `${topicCount} video${topicCount !== 1 ? 's' : ''}`, ...base };
   }
   if (producingTopics.length > 0) {
     const activeTopic = producingTopics.find((t) => t.status === 'producing') || producingTopics[0];
     const topicNum = activeTopic.topic_number;
     let progressDetail = '';
-    if (activeTopic.status === 'producing' || activeTopic.status === 'audio' || activeTopic.status === 'images') {
+    if (['producing', 'audio', 'images'].includes(activeTopic.status)) {
       const imgProg = parseProgress(activeTopic.images_progress);
       const audioProg = parseProgress(activeTopic.audio_progress);
       if (imgProg && imgProg.done < imgProg.total && audioProg && audioProg.done >= audioProg.total) {
@@ -170,36 +161,61 @@ function computeProjectStatus(projectStatus, topics) {
         progressDetail = ` (Images ${imgProg.done}/${imgProg.total})`;
       }
     }
-    return { label: `Production: Topic #${topicNum}${progressDetail}`, badge: 'badge badge-amber animate-pulse', detail: producingTopics.length > 1 ? `+${producingTopics.length - 1} queued` : null, ...base };
+    return { label: `Production: Topic #${topicNum}${progressDetail}`, badgeStatus: 'active', detail: producingTopics.length > 1 ? `+${producingTopics.length - 1} queued` : null, ...base };
   }
   if (assembledCount > 0) {
     const reviewTopic = topics.find((t) => t.status === 'ready_review' || t.status === 'assembled');
-    return { label: 'Video Review Pending (Gate 3)', badge: 'badge badge-purple', detail: reviewTopic ? `Topic #${reviewTopic.topic_number}` : `${assembledCount} topic${assembledCount !== 1 ? 's' : ''}`, ...base };
+    return { label: 'Video Review (Gate 3)', badgeStatus: 'review', detail: reviewTopic ? `Topic #${reviewTopic.topic_number}` : `${assembledCount} topic${assembledCount !== 1 ? 's' : ''}`, ...base };
   }
   if (scriptingTopics.length > 0) {
     const t = scriptingTopics[0];
-    return { label: `Script Generation: Topic #${t.topic_number}`, badge: 'badge badge-cyan animate-pulse', detail: scriptingTopics.length > 1 ? `+${scriptingTopics.length - 1} more` : null, ...base };
+    return { label: `Script Gen: Topic #${t.topic_number}`, badgeStatus: 'scripting', detail: scriptingTopics.length > 1 ? `+${scriptingTopics.length - 1} more` : null, ...base };
   }
   if (scriptApprovedCount > 0) {
-    return { label: 'Ready for Production', badge: 'badge badge-blue', detail: `${scriptApprovedCount} topic${scriptApprovedCount !== 1 ? 's' : ''} approved`, ...base };
+    return { label: 'Ready for Production', badgeStatus: 'approved', detail: `${scriptApprovedCount} topic${scriptApprovedCount !== 1 ? 's' : ''} approved`, ...base };
   }
   if (pendingReviewCount > 0 && pendingReviewCount === topicCount) {
-    return { label: 'Topics Pending Review (Gate 1)', badge: 'badge badge-purple', detail: `${topicCount} topic${topicCount !== 1 ? 's' : ''}`, ...base };
+    return { label: 'Topics Pending Review', badgeStatus: 'review', detail: `${topicCount} topic${topicCount !== 1 ? 's' : ''}`, ...base };
   }
   if (pendingReviewCount > 0) {
     const approvedCount = reviewCounts.approved || 0;
-    return { label: 'Topics Under Review', badge: 'badge badge-purple', detail: `${approvedCount} approved, ${pendingReviewCount} pending`, ...base };
+    return { label: 'Topics Under Review', badgeStatus: 'review', detail: `${approvedCount} approved, ${pendingReviewCount} pending`, ...base };
   }
   if (publishedCount > 0) {
-    return { label: `${publishedCount} Published`, badge: 'badge badge-green', detail: `of ${topicCount} total`, ...base };
+    return { label: `${publishedCount} Published`, badgeStatus: 'published', detail: `of ${topicCount} total`, ...base };
   }
 
   const label = STATUS_LABEL[projectStatus] || projectStatus || 'Active';
-  const badge = STATUS_BADGE[projectStatus] || STATUS_BADGE.created;
-  return { label, badge, detail: null, ...base };
+  const badgeStatus = STATUS_TO_BADGE[projectStatus] || 'pending';
+  return { label, badgeStatus, detail: null, ...base };
 }
 
+/* ── Niche emoji picker ──────────────────────────────────────── */
+
+function getNicheEmoji(niche) {
+  if (!niche) return '\uD83D\uDCCA';
+  const n = niche.toLowerCase();
+  if (n.includes('credit') || n.includes('finance') || n.includes('money')) return '\uD83D\uDCB3';
+  if (n.includes('crypto') || n.includes('bitcoin')) return '\u20BF';
+  if (n.includes('stoic') || n.includes('philosophy')) return '\uD83E\uDDD8';
+  if (n.includes('crime') || n.includes('mystery')) return '\uD83D\uDD0D';
+  if (n.includes('space') || n.includes('astro')) return '\uD83D\uDE80';
+  if (n.includes('health') || n.includes('fitness')) return '\uD83D\uDCAA';
+  if (n.includes('cook') || n.includes('food')) return '\uD83C\uDF73';
+  if (n.includes('tech') || n.includes('ai') || n.includes('code')) return '\uD83E\uDD16';
+  if (n.includes('travel')) return '\u2708\uFE0F';
+  if (n.includes('music')) return '\uD83C\uDFB5';
+  if (n.includes('game') || n.includes('gaming')) return '\uD83C\uDFAE';
+  if (n.includes('history')) return '\uD83C\uDFDB\uFE0F';
+  if (n.includes('science')) return '\uD83E\uDDEC';
+  if (n.includes('psych') || n.includes('relationship')) return '\uD83E\uDDE0';
+  return '\uD83D\uDCCA';
+}
+
+/* ── Component ───────────────────────────────────────────────── */
+
 export default function ProjectCard({ project, onRetry }) {
+  const navigate = useNavigate();
   const { id, name, niche, status, created_at, updated_at, topics_summary } = project;
   const [, setTick] = useState(0);
 
@@ -210,7 +226,7 @@ export default function ProjectCard({ project, onRetry }) {
 
   const route = getSmartRoute(status, id);
   const showResearchProgress = isResearching(status);
-  const accent = getCardAccent(status);
+  const emoji = getNicheEmoji(niche);
 
   // Auto-refresh relative time every 60s
   useEffect(() => {
@@ -220,52 +236,73 @@ export default function ProjectCard({ project, onRetry }) {
 
   const relativeTime = formatRelativeTime(updated_at || created_at);
 
+  // Progress ratio for mini bar
+  const progressRatio = computedStatus.topicCount > 0
+    ? computedStatus.publishedCount / computedStatus.topicCount
+    : 0;
+
   return (
-    <NavLink to={route} className="card-interactive p-6 group block no-underline">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-4">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${accent} flex items-center justify-center shadow-md transition-transform duration-300 group-hover:scale-110 flex-shrink-0`}>
-          <Folder className="w-5 h-5 text-white" strokeWidth={1.8} />
+    <div
+      onClick={() => navigate(route)}
+      className="bg-card border border-border rounded-xl cursor-pointer hover:border-border-hover transition-colors group overflow-hidden"
+    >
+      {/* Top gradient bar */}
+      <div className="h-0.5 bg-gradient-to-r from-primary to-destructive" />
+
+      {/* Card content */}
+      <div className="p-5">
+
+      {/* Header: emoji + name + counts + status badge */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-2xl flex-shrink-0" role="img" aria-label={niche}>
+            {emoji}
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold tracking-tight truncate">
+              {name || niche}
+            </h3>
+            <p className="text-xs text-muted-foreground truncate">
+              {computedStatus.topicCount} topics
+              {computedStatus.publishedCount > 0 && (
+                <span className="text-success"> / {computedStatus.publishedCount} published</span>
+              )}
+            </p>
+          </div>
         </div>
-        <span className={`${computedStatus.badge} text-right max-w-[60%] truncate`}>{computedStatus.label}</span>
+        <StatusBadge
+          status={computedStatus.badgeStatus}
+          label={computedStatus.label}
+          className="flex-shrink-0 max-w-[140px] truncate"
+        />
       </div>
 
-      {/* Title */}
-      <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1 tracking-tight line-clamp-2">
-        {name || niche}
-      </h3>
-      <p className="text-sm text-text-muted dark:text-text-muted-dark mb-1">
-        {niche}
-      </p>
       {/* Computed status detail */}
       {computedStatus.detail && (
-        <p className="text-xs text-text-muted dark:text-text-muted-dark mb-3">
-          {computedStatus.detail}
-        </p>
+        <p className="text-xs text-muted-foreground mb-3">{computedStatus.detail}</p>
       )}
 
-      {/* Research progress */}
+      {/* Research progress stepper */}
       {showResearchProgress && (
-        <div className="space-y-1.5 mb-4 mt-3" data-testid="research-progress">
+        <div className="space-y-1.5 mb-4" data-testid="research-progress">
           {RESEARCH_STEPS.map((step) => {
             const stepStatus = getStepStatus(status, step.key);
             return (
               <div key={step.key} className="flex items-center gap-2.5 text-xs">
                 {stepStatus === 'done' && (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-success flex-shrink-0" />
                 )}
                 {stepStatus === 'active' && (
-                  <Loader2 className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 text-accent flex-shrink-0 animate-spin" />
                 )}
                 {stepStatus === 'pending' && (
-                  <Circle className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 flex-shrink-0" />
+                  <Circle className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
                 )}
-                <span className={`
-                  transition-colors duration-200
-                  ${stepStatus === 'done' ? 'text-emerald-600 dark:text-emerald-400' : ''}
-                  ${stepStatus === 'active' ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}
-                  ${stepStatus === 'pending' ? 'text-slate-400 dark:text-slate-500' : ''}
-                `}>
+                <span className={
+                  stepStatus === 'done' ? 'text-success' :
+                  stepStatus === 'active' ? 'text-accent font-medium' :
+                  'text-muted-foreground/60'
+                }>
                   {step.label}
                 </span>
               </div>
@@ -274,61 +311,65 @@ export default function ProjectCard({ project, onRetry }) {
         </div>
       )}
 
-      {/* Stats */}
+      {/* Metrics row + progress bar (only when not researching) */}
       {!showResearchProgress && (
-        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
-          <div>
-            <p className="text-2xs text-slate-400 dark:text-slate-500 mb-0.5">Topics</p>
-            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums font-mono">
-              {computedStatus.topicCount ?? project.topic_count ?? 0}
-            </p>
-          </div>
-          <div>
-            <p className="text-2xs text-slate-400 dark:text-slate-500 mb-0.5">Published</p>
-            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums font-mono">
-              {computedStatus.publishedCount ?? project.published_count ?? 0}
-            </p>
-          </div>
-          <div>
-            <p className="text-2xs text-slate-400 dark:text-slate-500 mb-0.5">Spent</p>
-            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums font-mono">
-              {computedStatus.totalSpend > 0 ? `$${computedStatus.totalSpend.toFixed(0)}` : '--'}
-            </p>
-          </div>
-          <div>
-            <p className="text-2xs text-slate-400 dark:text-slate-500 mb-0.5">Revenue</p>
-            <p className={`text-sm font-bold tabular-nums font-mono ${computedStatus.totalRevenue > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+        <>
+          {/* Metrics inline */}
+          <div className="flex items-center gap-4 text-xs mb-3">
+            <span className="text-accent font-semibold tabular-nums">
               {computedStatus.totalRevenue > 0
-                ? `$${computedStatus.totalRevenue.toFixed(0)}${computedStatus.totalSpend > 0 ? ` (${(computedStatus.totalRevenue / computedStatus.totalSpend).toFixed(1)}x)` : ''}`
-                : '--'}
-            </p>
+                ? `$${computedStatus.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                : '$0'}
+              <span className="text-muted-foreground font-normal ml-1">rev</span>
+            </span>
+            {computedStatus.totalSpend > 0 && computedStatus.totalRevenue > 0 && (
+              <span className="text-success font-semibold tabular-nums">
+                {(computedStatus.totalRevenue / computedStatus.totalSpend).toFixed(1)}x
+                <span className="text-muted-foreground font-normal ml-1">ROI</span>
+              </span>
+            )}
+            <span className="tabular-nums">
+              {computedStatus.totalSpend > 0
+                ? `$${computedStatus.totalSpend.toFixed(0)}`
+                : '$0'}
+              <span className="text-muted-foreground ml-1">spent</span>
+            </span>
           </div>
-        </div>
+
+          {/* Mini progress bar */}
+          <div className="h-1 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
+              style={{ width: `${Math.max(progressRatio * 100, 0)}%` }}
+            />
+          </div>
+        </>
       )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-4">
-        <p className="text-2xs text-slate-400 dark:text-slate-500">
-          {relativeTime}
-        </p>
-        <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-primary dark:group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all duration-200" />
+      {/* Footer: time + arrow */}
+      <div className="flex items-center justify-between mt-3">
+        <p className="text-2xs text-muted-foreground">{relativeTime}</p>
+        <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-200" />
       </div>
 
-      {/* Retry button */}
+      {/* Retry button for failed research */}
       {status === 'research_failed' && onRetry && (
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           data-testid={`retry-research-${id}`}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onRetry({ project_id: id });
           }}
-          className="mt-3 w-full btn-sm btn text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/[0.08] border border-amber-200/50 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/[0.12]"
+          className="mt-3 w-full border-danger/30 text-danger hover:bg-danger-bg"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           Retry Research
-        </button>
+        </Button>
       )}
-    </NavLink>
+      </div>
+    </div>
   );
 }

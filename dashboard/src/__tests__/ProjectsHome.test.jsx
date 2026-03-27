@@ -74,8 +74,8 @@ beforeEach(() => {
 describe('ProjectsHome (NICH-07)', () => {
   it('renders project cards from useProjects data', () => {
     mockProjectsData = [
-      { id: 'p1', name: 'Credit Cards', niche: 'US Credit Cards', status: 'active', created_at: '2026-01-01T00:00:00Z' },
-      { id: 'p2', name: 'Stoic Philosophy', niche: 'Stoicism', status: 'researching_competitors', created_at: '2026-02-01T00:00:00Z' },
+      { id: 'p1', name: 'Credit Cards', niche: 'US Credit Cards', status: 'active', created_at: '2026-01-01T00:00:00Z', topics_summary: [] },
+      { id: 'p2', name: 'Stoic Philosophy', niche: 'Stoicism', status: 'researching_competitors', created_at: '2026-02-01T00:00:00Z', topics_summary: [] },
     ];
     renderWithProviders(<ProjectsHome />);
 
@@ -87,7 +87,6 @@ describe('ProjectsHome (NICH-07)', () => {
     mockProjectsData = [];
     renderWithProviders(<ProjectsHome />);
 
-    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
     expect(screen.getByText('No projects yet')).toBeInTheDocument();
     expect(screen.getByText('Create Your First Project')).toBeInTheDocument();
   });
@@ -103,14 +102,14 @@ describe('ProjectsHome (NICH-07)', () => {
     expect(screen.getByLabelText(/Niche Name/)).toBeInTheDocument();
   });
 
-  it('shows skeleton cards while loading', () => {
+  it('shows loading skeleton while loading', () => {
     mockProjectsLoading = true;
     mockProjectsData = undefined;
     const { container } = renderWithProviders(<ProjectsHome />);
 
-    // SkeletonCard renders animate-shimmer elements
-    const shimmers = container.querySelectorAll('.animate-shimmer');
-    expect(shimmers.length).toBeGreaterThan(0);
+    // Loading state renders animate-pulse skeleton cards
+    const pulseCards = container.querySelectorAll('.animate-pulse');
+    expect(pulseCards.length).toBeGreaterThan(0);
   });
 
   it('shows Retry Research button when project status is research_failed', () => {
@@ -121,6 +120,7 @@ describe('ProjectsHome (NICH-07)', () => {
         niche: 'Some Niche',
         status: 'research_failed',
         created_at: '2026-01-01T00:00:00Z',
+        topics_summary: [],
       },
     ];
     renderWithProviders(<ProjectsHome />);
@@ -138,6 +138,7 @@ describe('ProjectsHome (NICH-07)', () => {
         niche: 'Some Niche',
         status: 'research_failed',
         created_at: '2026-01-01T00:00:00Z',
+        topics_summary: [],
       },
     ];
     renderWithProviders(<ProjectsHome />);
