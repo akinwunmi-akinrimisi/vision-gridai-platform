@@ -112,24 +112,25 @@ beforeEach(() => {
 });
 
 describe('PipelineTable -- Rows', () => {
-  it('renders table with topic rows showing topic #, title, playlist angle', () => {
+  it('renders table with topic rows showing topic number, title, playlist angle', () => {
     renderWithProviders(<PipelineTable topics={mockTopics} />);
-    expect(screen.getByText('#1')).toBeTruthy();
+    // Topic number column renders the number
+    expect(screen.getByText('1')).toBeTruthy();
     expect(screen.getByText(/Amex Platinum Worth/)).toBeTruthy();
     expect(screen.getAllByText('The Mathematician').length).toBeGreaterThan(0);
   });
 
-  it('shows color-coded status badge per topic', () => {
+  it('shows status badge per topic', () => {
     renderWithProviders(<PipelineTable topics={mockTopics} />);
-    // Published should have green badge
+    // Published badge should show "Published" label
     const publishedBadge = screen.getByTestId('status-badge-topic-1');
-    expect(publishedBadge.className).toMatch(/green|emerald/);
-    // Pending should have gray badge
+    expect(publishedBadge.textContent).toMatch(/Published/);
+    // Pending badge should show "Pending" label
     const pendingBadge = screen.getByTestId('status-badge-topic-4');
-    expect(pendingBadge.className).toMatch(/gray|slate/);
-    // Failed should have red badge
+    expect(pendingBadge.textContent).toMatch(/Pending/);
+    // Failed badge should show "Failed" label
     const failedBadge = screen.getByTestId('status-badge-topic-5');
-    expect(failedBadge.className).toMatch(/red/);
+    expect(failedBadge.textContent).toMatch(/Failed/);
   });
 
   it('shows progress percentage for producing topics', () => {

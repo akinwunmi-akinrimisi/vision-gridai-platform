@@ -10,9 +10,8 @@ import {
   TrendingUp,
   AlertCircle,
   Upload,
-  XCircle,
-  RefreshCw,
   Download,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTopics } from '../hooks/useTopics';
@@ -20,18 +19,18 @@ import { useProjectMetrics } from '../hooks/useProjectMetrics';
 import { useQuotaStatus } from '../hooks/useQuotaStatus';
 import { useBatchPublish } from '../hooks/usePublishMutations';
 import { webhookCall } from '../lib/api';
-import { SkeletonMetric } from '../components/ui/SkeletonLoader';
+import PageHeader from '../components/shared/PageHeader';
+import KPICard from '../components/shared/KPICard';
 import PipelineTable from '../components/dashboard/PipelineTable';
 import BatchPublishDialog from '../components/video/BatchPublishDialog';
+import { Button } from '@/components/ui/button';
 
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 function formatCurrency(num) {
   if (num == null || num === 0) return '$0.00';
   return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function computeROI(revenue, spend) {
-  if (!spend || spend === 0) return '--';
-  return `${((revenue / spend) * 100).toFixed(1)}%`;
 }
 
 function exportTopicsCSV(topics) {
@@ -56,6 +55,21 @@ function exportTopicsCSV(topics) {
   URL.revokeObjectURL(url);
 }
 
+/* ------------------------------------------------------------------ */
+/*  Loading skeleton for KPI row                                       */
+/* ------------------------------------------------------------------ */
+function KPISkeleton() {
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 animate-pulse">
+      <div className="h-3 w-16 bg-muted rounded mb-3" />
+      <div className="h-7 w-20 bg-muted rounded" />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ProjectDashboard                                                   */
+/* ------------------------------------------------------------------ */
 export default function ProjectDashboard() {
   const { id: projectId } = useParams();
   const queryClient = useQueryClient();
@@ -118,137 +132,116 @@ export default function ProjectDashboard() {
     toast.success('Refreshing data...');
   }, [queryClient, projectId]);
 
-  const failedCount = metrics.failed ?? 0;
-
-  const metricCards = [
-    { label: 'Topics', value: metrics.totalTopics, icon: Video, gradient: 'from-blue-500 to-indigo-600', shadow: 'shadow-blue-500/20' },
-    { label: 'Published', value: metrics.published, icon: CheckCircle2, gradient: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/20' },
-    { label: 'In Progress', value: metrics.inProgress, icon: Clock, gradient: 'from-amber-500 to-orange-500', shadow: 'shadow-amber-500/20' },
+  /* ---- KPI card data ---- */
+  const kpis = [
     {
-      label: 'Failed',
-      value: failedCount,
-      icon: XCircle,
-      gradient: 'from-red-500 to-rose-600',
-      shadow: 'shadow-red-500/20',
-      clickable: failedCount > 0,
-      onClick: () => setStatusFilter((prev) => (prev === 'failed' ? null : 'failed')),
-      ring: statusFilter === 'failed' ? 'ring-2 ring-red-500/30' : '',
+      label: 'Topics',
+      value: metrics.totalTopics,
+      delta: metrics.approved > 0 ? `${metrics.approved} approved` : undefined,
+      deltaType: 'positive',
+      icon: Video,
     },
     {
-      label: 'Total Spent',
-      value: formatCurrency(metrics.totalSpend),
-      icon: DollarSign,
-      gradient: 'from-slate-500 to-slate-600',
-      shadow: '',
-      mono: true,
+      label: 'Published',
+      value: metrics.published,
+      icon: CheckCircle2,
+    },
+    {
+      label: 'In Progress',
+      value: metrics.inProgress,
+      icon: Clock,
     },
     {
       label: 'Revenue',
       value: formatCurrency(metrics.totalRevenue),
       icon: TrendingUp,
-      gradient: 'from-emerald-500 to-teal-600',
-      shadow: 'shadow-emerald-500/20',
-      sub: `ROI: ${computeROI(metrics.totalRevenue, metrics.totalSpend)}`,
+      className: '[&>div:nth-child(2)]:text-accent',
+    },
+    {
+      label: 'Total Spend',
+      value: formatCurrency(metrics.totalSpend),
+      icon: DollarSign,
     },
   ];
 
   return (
     <div className="animate-slide-up">
-      <div className="page-header">
-        <h1 className="page-title">Project Dashboard</h1>
-        <p className="page-subtitle">Command center for your video production pipeline</p>
-      </div>
+      {/* Page header with actions */}
+      <PageHeader
+        title="Project Dashboard"
+        subtitle="Command center for your video production pipeline"
+      >
+        {firstPendingTopic && (
+          <Button onClick={handleStartNext} size="sm">
+            <Play className="w-3.5 h-3.5" />
+            Start Production
+          </Button>
+        )}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => exportTopicsCSV(topics)}
+          disabled={!topics || topics.length === 0}
+        >
+          <Download className="w-3.5 h-3.5" />
+          Export
+        </Button>
+      </PageHeader>
 
-      {/* 6 Metric cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4 mb-6">
+      {/* KPI row -- 5-column responsive grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         {isLoading
-          ? Array.from({ length: 6 }).map((_, i) => <SkeletonMetric key={i} />)
-          : metricCards.map((m, i) => (
-              <div
-                key={m.label}
-                className={`glass-card p-5 animate-slide-up stagger-${i + 1} ${m.clickable ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''} ${m.ring || ''}`}
-                style={{ opacity: 0 }}
-                onClick={m.onClick || undefined}
-                role={m.clickable ? 'button' : undefined}
-                tabIndex={m.clickable ? 0 : undefined}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-2xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    {m.label}
-                  </span>
-                  <div className={`metric-card-icon bg-gradient-to-br ${m.gradient} ${m.shadow} shadow-md`}>
-                    <m.icon className="w-4 h-4 text-white" strokeWidth={2} />
-                  </div>
-                </div>
-                <p className={`metric-value ${m.mono ? 'font-mono' : ''} text-slate-900 dark:text-white`}>
-                  {m.value}
-                </p>
-                {m.sub && (
-                  <p className="text-2xs text-emerald-600 dark:text-emerald-400 font-medium mt-1">
-                    {m.sub}
-                  </p>
-                )}
-              </div>
+          ? Array.from({ length: 5 }).map((_, i) => <KPISkeleton key={i} />)
+          : kpis.map((kpi) => (
+              <KPICard
+                key={kpi.label}
+                label={kpi.label}
+                value={kpi.value}
+                delta={kpi.delta}
+                deltaType={kpi.deltaType}
+                icon={kpi.icon}
+                className={kpi.className}
+              />
             ))
         }
       </div>
 
-      {/* Quick Actions */}
-      <div className="glass-card p-4 mb-6">
-        <div className="flex items-center gap-2 flex-wrap">
-          {firstPendingTopic && (
-            <button onClick={handleStartNext} className="btn-primary btn-sm">
-              <Play className="w-3.5 h-3.5" />
-              Start Next Pending
-            </button>
-          )}
-          {pendingTopics.length > 1 && (
-            <button onClick={handleStartAll} className="btn-secondary btn-sm">
-              <Play className="w-3.5 h-3.5" />
-              Start All Pending ({pendingTopics.length})
-            </button>
-          )}
-          <button onClick={() => exportTopicsCSV(topics)} className="btn-ghost btn-sm" disabled={!topics || topics.length === 0}>
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
-          </button>
-          <button onClick={handleRefresh} className="btn-ghost btn-sm">
-            <RefreshCw className="w-3.5 h-3.5" />
-            Refresh
-          </button>
-
-          {approvedForPublish.length > 0 && (
-            <>
-              <span className="w-px h-5 bg-slate-200 dark:bg-white/[0.08] mx-1" />
-              <button onClick={() => setBatchDialogOpen(true)} className="btn-success btn-sm">
-                <Upload className="w-3.5 h-3.5" />
-                Publish All ({approvedForPublish.length})
-              </button>
-            </>
-          )}
-        </div>
+      {/* Quick actions bar */}
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        {pendingTopics.length > 1 && (
+          <Button variant="secondary" size="sm" onClick={handleStartAll}>
+            <Play className="w-3.5 h-3.5" />
+            Start All Pending ({pendingTopics.length})
+          </Button>
+        )}
+        <Button variant="ghost" size="sm" onClick={handleRefresh}>
+          <RefreshCw className="w-3.5 h-3.5" />
+          Refresh
+        </Button>
+        {approvedForPublish.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => setBatchDialogOpen(true)}>
+            <Upload className="w-3.5 h-3.5" />
+            Publish All ({approvedForPublish.length})
+          </Button>
+        )}
+        {metrics.pendingReview > 0 && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-warning-bg text-warning border border-warning-border">
+            <AlertCircle className="w-3 h-3" />
+            {metrics.pendingReview} Pending Review
+          </span>
+        )}
+        {metrics.scheduled > 0 && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-info-bg text-info border border-info-border">
+            <Clock className="w-3 h-3" />
+            {metrics.scheduled} Scheduled
+          </span>
+        )}
       </div>
 
-      {/* Pipeline header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <h2 className="section-title">Pipeline Status</h2>
-          {metrics.pendingReview > 0 && (
-            <span className="badge badge-amber">
-              <AlertCircle className="w-3 h-3" />
-              {metrics.pendingReview} Pending Review
-            </span>
-          )}
-          {metrics.scheduled > 0 && (
-            <span className="badge badge-purple">
-              <Clock className="w-3 h-3" />
-              {metrics.scheduled} Scheduled
-            </span>
-          )}
-        </div>
-      </div>
+      {/* Pipeline table */}
       <PipelineTable topics={topics || []} projectId={projectId} statusFilter={statusFilter} />
 
+      {/* Batch publish dialog */}
       <BatchPublishDialog
         open={batchDialogOpen}
         onClose={() => setBatchDialogOpen(false)}

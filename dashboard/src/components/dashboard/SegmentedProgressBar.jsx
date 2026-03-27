@@ -5,13 +5,13 @@ import { useState } from 'react';
  * Each segment maps to a production phase with its own color and weight.
  */
 const SEGMENTS = [
-  { key: 'script',   label: 'Script',   color: 'bg-purple-500', darkGlow: 'rgba(168,85,247,0.4)', weight: 0.10 },
-  { key: 'audio',    label: 'Audio',    color: 'bg-blue-500',   darkGlow: 'rgba(59,130,246,0.4)', weight: 0.15 },
-  { key: 'images',   label: 'Images',   color: 'bg-cyan-500',   darkGlow: 'rgba(6,182,212,0.4)',  weight: 0.15 },
-  { key: 'i2v',      label: 'I2V',      color: 'bg-teal-500',   darkGlow: 'rgba(20,184,166,0.4)', weight: 0.15 },
-  { key: 't2v',      label: 'T2V',      color: 'bg-indigo-500', darkGlow: 'rgba(99,102,241,0.4)', weight: 0.15 },
-  { key: 'captions', label: 'Captions', color: 'bg-amber-500',  darkGlow: 'rgba(245,158,11,0.4)', weight: 0.15 },
-  { key: 'assembly', label: 'Assembly', color: 'bg-emerald-500',darkGlow: 'rgba(16,185,129,0.4)', weight: 0.15 },
+  { key: 'script',   label: 'Script',   color: 'bg-info',       weight: 0.10 },
+  { key: 'audio',    label: 'Audio',    color: 'bg-primary',    weight: 0.15 },
+  { key: 'images',   label: 'Images',   color: 'bg-accent',     weight: 0.15 },
+  { key: 'i2v',      label: 'I2V',      color: 'bg-success',    weight: 0.15 },
+  { key: 't2v',      label: 'T2V',      color: 'bg-info',       weight: 0.15 },
+  { key: 'captions', label: 'Captions', color: 'bg-warning',    weight: 0.15 },
+  { key: 'assembly', label: 'Assembly', color: 'bg-success',    weight: 0.15 },
 ];
 
 /** Statuses that mean scripting is fully complete */
@@ -82,7 +82,6 @@ function computeSegments(topic) {
   let captions = 0;
   if (POST_CAPTIONS_STATUSES.includes(status)) captions = 100;
   else if (status === 'images' || status === 'producing') {
-    // Captions happen after media generation
     const mediaComplete = audio === 100 && images === 100 && i2v === 100 && t2v === 100;
     captions = mediaComplete ? 50 : 0;
   }
@@ -123,6 +122,7 @@ export function computeWeightedProgress(topic) {
 /**
  * SegmentedProgressBar - Shows a 7-segment pipeline progress bar.
  * Each segment represents a production stage with independent fill levels.
+ * Uses Neon Pipeline design tokens.
  *
  * @param {{ topic: object }} props
  */
@@ -148,7 +148,7 @@ export default function SegmentedProgressBar({ topic }) {
               onMouseLeave={() => setHoveredSegment(null)}
             >
               {/* Track */}
-              <div className="h-1.5 rounded-full overflow-hidden bg-slate-200/60 dark:bg-white/[0.06]">
+              <div className="h-1.5 rounded-full overflow-hidden bg-muted">
                 {/* Fill */}
                 <div
                   className={`h-full rounded-full transition-all duration-700 ease-out ${
@@ -166,17 +166,17 @@ export default function SegmentedProgressBar({ topic }) {
               {hoveredSegment === seg.key && (
                 <div
                   className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50
-                             px-2.5 py-1.5 rounded-lg text-2xs font-medium whitespace-nowrap
-                             bg-slate-900 dark:bg-slate-800 text-white
-                             border border-slate-700 dark:border-white/10
-                             shadow-lg pointer-events-none animate-fade-in"
+                             px-2.5 py-1.5 rounded-md text-2xs font-medium whitespace-nowrap
+                             bg-card text-foreground
+                             border border-border
+                             shadow-card pointer-events-none animate-fade-in"
                   style={{ animationDuration: '150ms' }}
                 >
                   <span className="font-semibold">{seg.label}:</span>{' '}
                   {data.pct}%{data.label ? ` (${data.label})` : ''}
                   {/* Arrow */}
                   <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
-                    <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
+                    <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-card" />
                   </div>
                 </div>
               )}
