@@ -24,24 +24,24 @@ export default function ProductionSummary({ topic, scenes = [] }) {
   ];
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden" data-testid="production-summary">
+    <div className="bg-card border border-border rounded-xl overflow-hidden" data-testid="production-summary">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors cursor-pointer"
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-card-hover transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-slate-400" />
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <DollarSign className="w-4 h-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">
             Production Summary
           </h3>
-          <span className="text-xs font-bold text-slate-900 dark:text-white">
+          <span className="text-xs font-bold text-primary tabular-nums">
             ${Number(totalCost).toFixed(2)}
           </span>
         </div>
         {expanded ? (
-          <ChevronUp className="w-4 h-4 text-slate-400" />
+          <ChevronUp className="w-4 h-4 text-muted-foreground" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-slate-400" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
         )}
       </button>
 
@@ -53,36 +53,36 @@ export default function ProductionSummary({ topic, scenes = [] }) {
               const pct = totalCost > 0 ? ((cost / totalCost) * 100).toFixed(0) : 0;
               return (
                 <div key={key} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 dark:text-slate-400">{label}</span>
-                  <span className="text-slate-700 dark:text-slate-300 tabular-nums">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="text-foreground/80 tabular-nums">
                     ${Number(cost).toFixed(2)}
-                    <span className="text-slate-400 dark:text-slate-500 ml-1">({pct}%)</span>
+                    <span className="text-muted-foreground ml-1">({pct}%)</span>
                   </span>
                 </div>
               );
             })}
-            <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-border/50 dark:border-white/[0.06]">
-              <span className="text-slate-700 dark:text-slate-300">Total</span>
-              <span className="text-slate-900 dark:text-white tabular-nums">
+            <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-border">
+              <span>Total</span>
+              <span className="tabular-nums">
                 ${Number(totalCost).toFixed(2)}
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border/50 dark:border-white/[0.06]">
+          <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border">
             <div className="text-center">
-              <div className="text-lg font-bold text-slate-900 dark:text-white">{sceneCount}</div>
-              <div className="text-[10px] text-text-muted dark:text-text-muted-dark">Scenes</div>
+              <div className="text-lg font-bold">{sceneCount}</div>
+              <div className="text-[10px] text-muted-foreground">Scenes</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="text-lg font-bold">
                 {formatDuration(durationMs)}
               </div>
-              <div className="text-[10px] text-text-muted dark:text-text-muted-dark">Duration</div>
+              <div className="text-[10px] text-muted-foreground">Duration</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-slate-900 dark:text-white">{skippedCount}</div>
-              <div className="text-[10px] text-text-muted dark:text-text-muted-dark">Skipped</div>
+              <div className="text-lg font-bold">{skippedCount}</div>
+              <div className="text-[10px] text-muted-foreground">Skipped</div>
             </div>
           </div>
         </div>

@@ -10,37 +10,37 @@ export default function CaptionPreview({ scenes = [] }) {
   if (!scenes.length) return null;
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden" data-testid="caption-preview">
+    <div className="bg-card border border-border rounded-xl overflow-hidden" data-testid="caption-preview">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors cursor-pointer"
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-card-hover transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-2">
-          <Subtitles className="w-4 h-4 text-slate-400" />
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <Subtitles className="w-4 h-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">
             Captions
           </h3>
-          <span className="text-xs text-text-muted dark:text-text-muted-dark">
+          <span className="text-xs text-muted-foreground">
             ({scenes.length} scenes)
           </span>
         </div>
         {expanded ? (
-          <ChevronUp className="w-4 h-4 text-slate-400" />
+          <ChevronUp className="w-4 h-4 text-muted-foreground" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-slate-400" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
         )}
       </button>
 
       {expanded && (
         <div className="px-4 pb-4">
-          <div className="max-h-64 overflow-y-auto rounded-lg bg-slate-50 dark:bg-white/[0.03] p-3 font-mono text-xs leading-relaxed text-slate-600 dark:text-slate-400 scrollbar-thin">
+          <div className="max-h-64 overflow-y-auto rounded-lg bg-muted p-3 font-mono text-xs leading-relaxed text-muted-foreground scrollbar-thin">
             {scenes.map((scene, i) => (
               <div key={scene.id || i} className="mb-3">
-                <div className="text-slate-400 dark:text-slate-500">{i + 1}</div>
-                <div className="text-slate-500 dark:text-slate-400">
+                <div className="text-muted-foreground/60">{i + 1}</div>
+                <div className="text-muted-foreground">
                   {formatSrtTime(scene.start_time_ms)} {'-->'} {formatSrtTime(scene.end_time_ms)}
                 </div>
-                <div className="text-slate-700 dark:text-slate-300">
+                <div className="text-foreground/80">
                   {scene.narration_text || '(no text)'}
                 </div>
               </div>

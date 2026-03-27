@@ -8,6 +8,9 @@ import {
   X,
   Save,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 /**
  * MetadataPanel - Sticky left panel showing video metadata with inline editing.
@@ -117,23 +120,22 @@ export default function MetadataPanel({
   const isFailed = topic?.publish_progress === 'failed';
 
   return (
-    <div className="glass-card rounded-xl" data-testid="metadata-panel">
+    <div className="bg-card border border-border rounded-xl" data-testid="metadata-panel">
       <div className="p-4 space-y-4">
         {/* Title */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1 block">
+          <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 block">
             Title
           </label>
           {isEditing ? (
-            <input
-              type="text"
+            <Input
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              className="text-sm"
               data-testid="edit-title-input"
             />
           ) : (
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
+            <h2 className="text-sm font-bold leading-snug">
               {topic?.seo_title || topic?.original_title}
             </h2>
           )}
@@ -141,18 +143,18 @@ export default function MetadataPanel({
 
         {/* Description */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1 block">
+          <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 block">
             Description
           </label>
           {isEditing ? (
-            <textarea
+            <Textarea
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               rows={8}
-              className="w-full px-3 py-2 rounded-lg text-xs font-mono resize-y bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              className="text-xs font-mono resize-y"
             />
           ) : (
-            <pre className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto scrollbar-thin">
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto scrollbar-thin">
               {description}
             </pre>
           )}
@@ -160,20 +162,20 @@ export default function MetadataPanel({
 
         {/* Tags */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1 block">
+          <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 block">
             Tags
           </label>
           <div className="flex flex-wrap gap-1.5">
             {(isEditing ? editTags : tags).map((tag, i) => (
               <span
                 key={i}
-                className="rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-medium inline-flex items-center gap-1"
+                className="rounded-sm bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium inline-flex items-center gap-1"
               >
                 {tag}
                 {isEditing && (
                   <button
                     onClick={() => removeTag(i)}
-                    className="hover:text-red-500 transition-colors cursor-pointer"
+                    className="hover:text-danger transition-colors cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -187,7 +189,7 @@ export default function MetadataPanel({
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={handleTagKeyDown}
                 placeholder="Add tag..."
-                className="rounded-full bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-600 px-3 py-1 text-xs w-24 focus:outline-none focus:border-primary transition-all"
+                className="rounded-sm bg-background border border-dashed border-border px-2.5 py-0.5 text-xs w-24 focus:outline-none focus:border-primary transition-colors"
                 data-testid="add-tag-input"
               />
             )}
@@ -196,7 +198,7 @@ export default function MetadataPanel({
 
         {/* Chapters */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1 block">
+          <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 block">
             Chapters
           </label>
           <div className="space-y-1">
@@ -212,7 +214,7 @@ export default function MetadataPanel({
                         updated[i] = { ...updated[i], timestamp: e.target.value };
                         setEditChapters(updated);
                       }}
-                      className="w-16 px-2 py-1 rounded bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-500 dark:text-slate-400 font-mono text-[11px] focus:outline-none focus:border-primary"
+                      className="w-16 px-2 py-1 rounded-sm bg-background border border-input text-muted-foreground font-mono text-[11px] focus:outline-none focus:border-primary"
                     />
                     <input
                       type="text"
@@ -222,42 +224,42 @@ export default function MetadataPanel({
                         updated[i] = { ...updated[i], name: e.target.value };
                         setEditChapters(updated);
                       }}
-                      className="flex-1 px-2 py-1 rounded bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs focus:outline-none focus:border-primary"
+                      className="flex-1 px-2 py-1 rounded-sm bg-background border border-input text-foreground text-xs focus:outline-none focus:border-primary"
                     />
                   </>
                 ) : (
                   <>
-                    <span className="text-slate-400 dark:text-slate-500 font-mono w-16 flex-shrink-0">
+                    <span className="text-muted-foreground font-mono w-16 flex-shrink-0">
                       {ch.timestamp}
                     </span>
-                    <span className="text-slate-700 dark:text-slate-300">{ch.name}</span>
+                    <span className="text-foreground/80">{ch.name}</span>
                   </>
                 )}
               </div>
             ))}
             {chapters.length === 0 && !isEditing && (
-              <span className="text-xs text-slate-400 italic">No chapters detected</span>
+              <span className="text-xs text-muted-foreground italic">No chapters detected</span>
             )}
           </div>
         </div>
 
         {/* Playlist */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1 block">
+          <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 block">
             Playlist
           </label>
           {isEditing ? (
             <select
               value={editPlaylist}
               onChange={(e) => setEditPlaylist(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg text-sm bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary cursor-pointer"
+              className="w-full h-10 px-3 rounded-md text-sm bg-background border border-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
             >
               <option value={1}>Playlist 1</option>
               <option value={2}>Playlist 2</option>
               <option value={3}>Playlist 3</option>
             </select>
           ) : (
-            <span className="text-sm text-slate-700 dark:text-slate-300">
+            <span className="text-sm text-foreground/80">
               Playlist {topic?.playlist_group || '-'}
             </span>
           )}
@@ -266,25 +268,26 @@ export default function MetadataPanel({
         {/* Thumbnail prompt (edit mode only) */}
         {isEditing && (
           <div>
-            <label className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1 block">
+            <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 block">
               Thumbnail Prompt
             </label>
-            <textarea
+            <Textarea
               value={editThumbnailPrompt}
               onChange={(e) => setEditThumbnailPrompt(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 rounded-lg text-xs resize-y bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              className="text-xs resize-y"
             />
           </div>
         )}
 
         {/* Save/Cancel buttons (edit mode) */}
         {isEditing && (
-          <div className="flex items-center gap-2 pt-2 border-t border-border/50 dark:border-white/[0.06]">
-            <button
+          <div className="flex items-center gap-2 pt-2 border-t border-border">
+            <Button
               onClick={handleSave}
               disabled={isUpdatePending}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="flex-1 gap-2"
+              size="sm"
             >
               {isUpdatePending ? (
                 <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -292,73 +295,80 @@ export default function MetadataPanel({
                 <Save className="w-3.5 h-3.5" />
               )}
               Save
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={cancelEditing}
               disabled={isUpdatePending}
-              className="px-3 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] disabled:opacity-50 transition-colors cursor-pointer"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
       {/* Action buttons */}
       {!isPublished && (
-        <div className="p-4 border-t border-border/50 dark:border-white/[0.06] space-y-2">
+        <div className="p-4 border-t border-border space-y-2">
           {!isEditing && (
-            <button
+            <Button
+              variant="secondary"
+              className="w-full gap-2"
+              size="sm"
               onClick={startEditing}
-              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
               data-testid="edit-metadata-btn"
             >
               <Pencil className="w-3.5 h-3.5" />
               Edit Metadata
-            </button>
+            </Button>
           )}
 
-          <button
+          <Button
             onClick={onApprove}
-            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all cursor-pointer"
+            className="w-full gap-2 bg-gradient-to-r from-primary to-accent text-accent-foreground shadow-glow-primary hover:shadow-glow-primary-lg transition-all"
             data-testid="approve-btn"
           >
             <CheckCircle className="w-4 h-4" />
             Approve
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="destructive"
+            className="w-full gap-2"
             onClick={onReject}
-            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/[0.05] hover:bg-red-100 dark:hover:bg-red-500/[0.1] transition-all cursor-pointer"
             data-testid="reject-btn"
           >
             <XCircle className="w-4 h-4" />
             Reject
-          </button>
+          </Button>
 
           {isFailed && (
-            <button
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-warning border-warning-border hover:bg-warning-bg"
               onClick={onRetryUpload}
               disabled={isRetryPending}
-              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/[0.08] hover:bg-amber-100 dark:hover:bg-amber-500/[0.15] disabled:opacity-50 transition-colors cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRetryPending ? 'animate-spin' : ''}`} />
               Retry Upload
-            </button>
+            </Button>
           )}
 
-          <button
+          <Button
+            variant="ghost"
+            className="w-full gap-2 text-muted-foreground"
+            size="sm"
             onClick={() => onRegenThumbnail(metadata.thumbnail_prompt || '')}
             disabled={isRegenPending}
-            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 border border-border/50 dark:border-white/[0.06] hover:bg-slate-50 dark:hover:bg-white/[0.03] disabled:opacity-50 transition-colors cursor-pointer"
           >
             {isRegenPending ? (
-              <span className="w-3.5 h-3.5 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin" />
+              <span className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
             ) : (
               <ImageIcon className="w-3.5 h-3.5" />
             )}
             Regenerate Thumbnail
-          </button>
+          </Button>
         </div>
       )}
     </div>

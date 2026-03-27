@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import ConfirmDialog from '../ui/ConfirmDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 const ROLLBACK_OPTIONS = [
   {
@@ -41,72 +50,90 @@ export default function RejectDialog({ isOpen, onClose, onConfirm, loading }) {
   const isValid = feedback.trim().length >= 10;
 
   return (
-    <ConfirmDialog
-      isOpen={isOpen}
-      onClose={handleClose}
-      onConfirm={handleConfirm}
-      title="Reject Video"
-      confirmText="Reject & Rollback"
-      confirmVariant="danger"
-      loading={loading}
-    >
-      <div className="space-y-4 mt-1">
-        {/* Feedback */}
-        <div>
-          <label className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1 block">
-            What needs to change? <span className="text-red-400">(required, min 10 chars)</span>
-          </label>
-          <textarea
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            rows={3}
-            placeholder="Describe what needs to be fixed..."
-            className="w-full px-3 py-2 rounded-lg text-sm resize-none bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-            data-testid="reject-feedback"
-          />
-          {feedback.length > 0 && feedback.trim().length < 10 && (
-            <p className="text-[10px] text-red-400 mt-1">
-              {10 - feedback.trim().length} more characters needed
-            </p>
-          )}
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Reject Video</DialogTitle>
+          <DialogDescription>
+            Provide feedback and choose how far back to roll production.
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Rollback stage */}
-        <div>
-          <label className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 block">
-            Rollback to
-          </label>
-          <div className="space-y-2">
-            {ROLLBACK_OPTIONS.map((option) => (
-              <label
-                key={option.value}
-                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                  rollbackStage === option.value
-                    ? 'border-red-300 dark:border-red-500/30 bg-red-50/50 dark:bg-red-500/[0.05]'
-                    : 'border-border/50 dark:border-white/[0.06] hover:bg-slate-50 dark:hover:bg-white/[0.03]'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="rollback-stage"
-                  value={option.value}
-                  checked={rollbackStage === option.value}
-                  onChange={() => setRollbackStage(option.value)}
-                  className="mt-0.5 accent-red-500 cursor-pointer"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-900 dark:text-white">
-                    {option.label}
-                  </span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {option.description}
-                  </p>
-                </div>
-              </label>
-            ))}
+        <div className="space-y-4">
+          {/* Feedback */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              What needs to change? <span className="text-danger">(required, min 10 chars)</span>
+            </label>
+            <Textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              rows={3}
+              placeholder="Describe what needs to be fixed..."
+              className="resize-none"
+              data-testid="reject-feedback"
+            />
+            {feedback.length > 0 && feedback.trim().length < 10 && (
+              <p className="text-[10px] text-danger mt-1">
+                {10 - feedback.trim().length} more characters needed
+              </p>
+            )}
+          </div>
+
+          {/* Rollback stage */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">
+              Rollback to
+            </label>
+            <div className="space-y-2">
+              {ROLLBACK_OPTIONS.map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                    rollbackStage === option.value
+                      ? 'border-danger bg-danger-bg'
+                      : 'border-border hover:border-border-hover hover:bg-card-hover'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="rollback-stage"
+                    value={option.value}
+                    checked={rollbackStage === option.value}
+                    onChange={() => setRollbackStage(option.value)}
+                    className="mt-0.5 accent-destructive cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-sm font-medium">
+                      {option.label}
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {option.description}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    </ConfirmDialog>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={handleClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={loading || !isValid}
+            className="gap-2"
+          >
+            {loading && (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            )}
+            Reject & Rollback
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

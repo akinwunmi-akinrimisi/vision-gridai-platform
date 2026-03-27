@@ -1,4 +1,5 @@
 import { Check, Circle, Loader2, XCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const STEPS = [
   { key: 'uploading_video', label: 'Uploading video' },
@@ -20,8 +21,8 @@ export default function UploadProgress({ publishProgress, onRetry }) {
   const activeIndex = STEPS.findIndex((s) => s.key === publishProgress);
 
   return (
-    <div className="glass-card rounded-xl p-4" data-testid="upload-progress">
-      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+    <div className="bg-card border border-border rounded-xl p-4" data-testid="upload-progress">
+      <h3 className="text-sm font-semibold mb-3">
         {isComplete ? 'Published to YouTube' : isFailed ? 'Upload Failed' : 'Publishing to YouTube...'}
       </h3>
 
@@ -45,12 +46,12 @@ export default function UploadProgress({ publishProgress, onRetry }) {
               <span
                 className={`text-sm ${
                   status === 'complete'
-                    ? 'text-emerald-600 dark:text-emerald-400'
+                    ? 'text-success'
                     : status === 'active'
-                    ? 'text-slate-900 dark:text-white font-medium'
+                    ? 'text-foreground font-medium'
                     : status === 'failed'
-                    ? 'text-red-500 dark:text-red-400'
-                    : 'text-slate-400 dark:text-slate-500'
+                    ? 'text-danger'
+                    : 'text-muted-foreground'
                 }`}
               >
                 {step.label}
@@ -61,19 +62,19 @@ export default function UploadProgress({ publishProgress, onRetry }) {
       </div>
 
       {isFailed && onRetry && (
-        <div className="mt-4 pt-3 border-t border-border/50 dark:border-white/[0.06]">
-          <p className="text-xs text-red-500 dark:text-red-400 mb-2">
+        <div className="mt-4 pt-3 border-t border-border">
+          <p className="text-xs text-danger mb-2">
             Upload failed. Please try again.
           </p>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onRetry}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold
-              text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/[0.08]
-              hover:bg-amber-100 dark:hover:bg-amber-500/[0.15] transition-colors cursor-pointer"
+            className="gap-2 text-warning border-warning-border hover:bg-warning-bg"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Retry Upload
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -84,8 +85,8 @@ function StepIcon({ status }) {
   switch (status) {
     case 'complete':
       return (
-        <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-          <Check className="w-3 h-3 text-emerald-500" />
+        <div className="w-5 h-5 rounded-full bg-success-bg flex items-center justify-center flex-shrink-0">
+          <Check className="w-3 h-3 text-success" />
         </div>
       );
     case 'active':
@@ -96,14 +97,14 @@ function StepIcon({ status }) {
       );
     case 'failed':
       return (
-        <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-          <XCircle className="w-3 h-3 text-red-500" />
+        <div className="w-5 h-5 rounded-full bg-danger-bg flex items-center justify-center flex-shrink-0">
+          <XCircle className="w-3 h-3 text-danger" />
         </div>
       );
     default:
       return (
         <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-          <Circle className="w-3 h-3 text-slate-300 dark:text-slate-600" />
+          <Circle className="w-3 h-3 text-muted-foreground/40" />
         </div>
       );
   }

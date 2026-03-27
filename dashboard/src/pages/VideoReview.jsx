@@ -24,31 +24,17 @@ import UploadProgress from '../components/video/UploadProgress';
 import MetadataPanel from '../components/video/MetadataPanel';
 import PublishDialog from '../components/video/PublishDialog';
 import RejectDialog from '../components/video/RejectDialog';
+import StatusBadge from '../components/shared/StatusBadge';
+import { Button } from '@/components/ui/button';
 
-const STATUS_BADGE = {
-  assembled: 'badge badge-blue',
-  video_approved: 'badge badge-blue',
-  publishing: 'badge badge-amber animate-shimmer',
-  scheduled: 'badge badge-purple',
-  published: 'badge badge-green',
-  upload_failed: 'badge badge-red',
-  rejected: 'badge badge-red',
-};
-
-const STATUS_LABEL = {
-  assembled: 'Ready for Review',
-  video_approved: 'Approved',
-  publishing: 'Publishing',
-  scheduled: 'Scheduled',
-  published: 'Published',
-  upload_failed: 'Upload Failed',
-  rejected: 'Rejected',
-};
-
-const PLAYLIST_BADGE = {
-  1: 'badge badge-blue',
-  2: 'badge badge-purple',
-  3: 'badge badge-amber',
+const STATUS_MAP = {
+  assembled: { status: 'assembled', label: 'Ready for Review' },
+  video_approved: { status: 'approved', label: 'Approved' },
+  publishing: { status: 'active', label: 'Publishing' },
+  scheduled: { status: 'review', label: 'Scheduled' },
+  published: { status: 'published', label: 'Published' },
+  upload_failed: { status: 'failed', label: 'Upload Failed' },
+  rejected: { status: 'rejected', label: 'Rejected' },
 };
 
 const REVIEWABLE_STATUSES = [
@@ -113,14 +99,12 @@ export default function VideoReview() {
 
   if (isLoading) {
     return (
-      <div className="animate-in" data-testid="video-review-page">
-        <div className="page-header">
-          <div className="h-6 w-64 bg-slate-200 dark:bg-white/[0.06] rounded-lg animate-pulse" />
-          <div className="h-4 w-48 bg-slate-100 dark:bg-white/[0.03] rounded-lg animate-pulse mt-2" />
-        </div>
+      <div className="animate-fade-in space-y-4" data-testid="video-review-page">
+        <div className="h-6 w-64 bg-muted rounded-lg animate-pulse" />
+        <div className="h-4 w-48 bg-muted/50 rounded-lg animate-pulse" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-4 glass-card p-6 h-96 animate-pulse" />
-          <div className="lg:col-span-8 glass-card p-6 h-96 animate-pulse" />
+          <div className="lg:col-span-4 bg-card border border-border rounded-xl h-96 animate-pulse" />
+          <div className="lg:col-span-8 bg-card border border-border rounded-xl h-96 animate-pulse" />
         </div>
       </div>
     );
@@ -128,14 +112,14 @@ export default function VideoReview() {
 
   if (!topic) {
     return (
-      <div className="animate-in" data-testid="video-review-page">
-        <div className="glass-card p-8 text-center">
-          <p className="text-sm text-text-muted dark:text-text-muted-dark">
+      <div className="animate-fade-in" data-testid="video-review-page">
+        <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <p className="text-sm text-muted-foreground">
             {error ? 'Error loading topic.' : 'Topic not found.'}
           </p>
           <Link
             to={`/project/${projectId}`}
-            className="inline-flex items-center gap-1.5 mt-3 text-sm text-primary hover:underline"
+            className="inline-flex items-center gap-1.5 mt-3 text-sm text-primary hover:text-primary-hover transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
@@ -145,17 +129,19 @@ export default function VideoReview() {
     );
   }
 
+  const mappedStatus = STATUS_MAP[videoReviewStatus] || { status: 'pending', label: videoReviewStatus };
+
   return (
-    <div className="animate-in" data-testid="video-review-page">
+    <div className="animate-slide-up space-y-4" data-testid="video-review-page">
       {/* Published banner */}
       {isPublished && (
         <div
-          className="mb-4 px-4 py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-500/[0.08] border border-emerald-200 dark:border-emerald-500/20 animate-in"
+          className="px-4 py-3 rounded-xl bg-success-bg border border-success-border"
           data-testid="published-banner"
         >
           <div className="flex items-center gap-2 flex-wrap">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+            <span className="text-sm font-semibold text-success">
               Published on{' '}
               {topic.published_at
                 ? new Date(topic.published_at).toLocaleDateString('en-US', {
@@ -170,45 +156,45 @@ export default function VideoReview() {
                 href={topic.youtube_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-ghost btn-sm ml-auto"
+                className="ml-auto"
               >
-                View on YouTube
-                <ExternalLink className="w-3.5 h-3.5" />
+                <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                  View on YouTube
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Button>
               </a>
             )}
           </div>
         </div>
       )}
 
-      {/* Full-width header bar */}
-      <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
+      {/* Header bar */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
         <Link
           to={`/project/${projectId}`}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
           title="Back to Dashboard"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
 
-        <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-white/[0.08] dark:to-white/[0.04] flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">
+        <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0">
           {topic.topic_number}
         </span>
 
-        <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight flex-1 min-w-0 truncate">
+        <h1 className="text-sm sm:text-base font-bold tracking-tight flex-1 min-w-0 truncate">
           {topic.seo_title || topic.original_title}
         </h1>
 
         {topic.playlist_group && (
-          <span className={`${PLAYLIST_BADGE[topic.playlist_group] || 'badge badge-blue'} hidden sm:inline-flex`}>
-            Playlist {topic.playlist_group}
-          </span>
+          <StatusBadge
+            status="review"
+            label={`Playlist ${topic.playlist_group}`}
+            className="hidden sm:inline-flex"
+          />
         )}
 
-        {videoReviewStatus && (
-          <span className={STATUS_BADGE[videoReviewStatus] || 'badge badge-amber'}>
-            {STATUS_LABEL[videoReviewStatus] || videoReviewStatus}
-          </span>
-        )}
+        <StatusBadge status={mappedStatus.status} label={mappedStatus.label} />
 
         {/* Prev/Next arrows */}
         <div className="flex items-center gap-1 ml-auto sm:ml-2">
@@ -218,13 +204,13 @@ export default function VideoReview() {
               navigate(`/project/${projectId}/topics/${prevTopic.id}/review`)
             }
             disabled={!prevTopic}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-card disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             title="Previous topic"
             data-testid="prev-topic-btn"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-[10px] text-text-muted dark:text-text-muted-dark tabular-nums">
+          <span className="text-[10px] text-muted-foreground tabular-nums">
             {currentIndex >= 0 ? currentIndex + 1 : '-'}/{reviewableTopics.length}
           </span>
           <button
@@ -233,7 +219,7 @@ export default function VideoReview() {
               navigate(`/project/${projectId}/topics/${nextTopic.id}/review`)
             }
             disabled={!nextTopic}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-card disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             title="Next topic"
             data-testid="next-topic-btn"
           >
@@ -243,27 +229,28 @@ export default function VideoReview() {
       </div>
 
       {/* Mobile action bar */}
-      <div className="lg:hidden mb-4">
-        <div className="glass-card p-4 flex items-center justify-between flex-wrap gap-3">
-          <span className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[200px]">
+      <div className="lg:hidden">
+        <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
+          <span className="text-sm font-bold truncate max-w-[200px]">
             {topic.seo_title || topic.original_title}
           </span>
           {!isPublished && (
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                size="sm"
                 onClick={() => setShowPublishDialog(true)}
                 disabled={approveVideo.isPending}
-                className="btn-success btn-sm"
               >
                 Approve
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={() => setShowRejectDialog(true)}
                 disabled={rejectVideo.isPending}
-                className="btn-danger btn-sm"
               >
                 Reject
-              </button>
+              </Button>
             </div>
           )}
         </div>
