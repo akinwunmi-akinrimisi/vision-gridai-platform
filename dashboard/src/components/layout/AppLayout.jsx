@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import CommandPalette from './CommandPalette';
 
 export default function AppLayout({ children, onLogout }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -22,6 +23,8 @@ export default function AppLayout({ children, onLogout }) {
           <div className="p-7 pt-20 max-w-[1440px] mx-auto">{children}</div>
         </main>
       </div>
+
+      <CommandPalette />
     </div>
   );
 }
