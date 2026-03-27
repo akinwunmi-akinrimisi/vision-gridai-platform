@@ -1,16 +1,21 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router';
-import { CheckCircle2, Rocket, RefreshCw, LayoutGrid, LayoutList, Layers } from 'lucide-react';
+import { CheckCircle2, Rocket, RefreshCw, LayoutGrid, LayoutList, Layers, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTopics, useApproveTopics, useRejectTopics, useRefineTopic, useEditTopic, useEditAvatar } from '../hooks/useTopics';
 import { webhookCall } from '../lib/api';
+import PageHeader from '../components/shared/PageHeader';
 import TopicCard from '../components/topics/TopicCard';
 import TopicSummaryBar from '../components/topics/TopicSummaryBar';
 import TopicBulkBar from '../components/topics/TopicBulkBar';
 import RefinePanel from '../components/topics/RefinePanel';
-import SkeletonCard from '../components/ui/SkeletonCard';
 import FilterDropdown from '../components/ui/FilterDropdown';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { Button } from '@/components/ui/button';
+
+/* ------------------------------------------------------------------ */
+/*  Filter options                                                     */
+/* ------------------------------------------------------------------ */
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -26,6 +31,29 @@ const PLAYLIST_OPTIONS = [
   { value: '3', label: 'Playlist 3' },
 ];
 
+/* ------------------------------------------------------------------ */
+/*  Skeleton loader                                                    */
+/* ------------------------------------------------------------------ */
+
+function TopicSkeleton() {
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-muted" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-3/4 bg-muted rounded" />
+          <div className="h-3 w-1/2 bg-muted rounded" />
+        </div>
+        <div className="h-5 w-16 bg-muted rounded" />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  TopicReview Page                                                   */
+/* ------------------------------------------------------------------ */
+
 export default function TopicReview() {
   const { id: projectId } = useParams();
   const { data: topics = [], isLoading } = useTopics(projectId);
@@ -36,7 +64,7 @@ export default function TopicReview() {
   const editMutation = useEditTopic(projectId);
   const editAvatarMutation = useEditAvatar(projectId);
 
-  // View mode: 'grouped' (default), 'cards', 'table'
+  // View mode persisted in localStorage
   const [viewMode, setViewMode] = useState(() => {
     try { return localStorage.getItem('gridai-topic-view-mode') || 'grouped'; } catch { return 'grouped'; }
   });
@@ -49,9 +77,9 @@ export default function TopicReview() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [statusFilter, setStatusFilter] = useState('all');
   const [playlistFilter, setPlaylistFilter] = useState('all');
-  const [panelType, setPanelType] = useState(null); // 'refine' only (edit is inline in TopicCard)
+  const [panelType, setPanelType] = useState(null);
   const [panelTopic, setPanelTopic] = useState(null);
-  const [confirmAction, setConfirmAction] = useState(null); // { type, topic?, topics? }
+  const [confirmAction, setConfirmAction] = useState(null);
   const [rejectFeedback, setRejectFeedback] = useState('');
 
   // Counts
@@ -65,12 +93,8 @@ export default function TopicReview() {
   // Filtered + grouped
   const groupedTopics = useMemo(() => {
     let filtered = topics;
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((t) => t.review_status === statusFilter);
-    }
-    if (playlistFilter !== 'all') {
-      filtered = filtered.filter((t) => String(t.playlist_group) === playlistFilter);
-    }
+    if (statusFilter !== 'all') filtered = filtered.filter((t) => t.review_status === statusFilter);
+    if (playlistFilter !== 'all') filtered = filtered.filter((t) => String(t.playlist_group) === playlistFilter);
 
     const groups = {};
     for (const topic of filtered) {
@@ -81,15 +105,11 @@ export default function TopicReview() {
     return Object.values(groups).sort((a, b) => (a.group || 0) - (b.group || 0));
   }, [topics, statusFilter, playlistFilter]);
 
-  // Flat filtered list for Cards/Table modes
+  // Flat filtered list
   const filteredTopics = useMemo(() => {
     let filtered = topics;
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((t) => t.review_status === statusFilter);
-    }
-    if (playlistFilter !== 'all') {
-      filtered = filtered.filter((t) => String(t.playlist_group) === playlistFilter);
-    }
+    if (statusFilter !== 'all') filtered = filtered.filter((t) => t.review_status === statusFilter);
+    if (playlistFilter !== 'all') filtered = filtered.filter((t) => String(t.playlist_group) === playlistFilter);
     return filtered;
   }, [topics, statusFilter, playlistFilter]);
 
@@ -107,33 +127,13 @@ export default function TopicReview() {
   }, []);
 
   // Actions
-  const handleApprove = (topic) => {
-    setConfirmAction({ type: 'approve', topic });
-  };
+  const handleApprove = (topic) => setConfirmAction({ type: 'approve', topic });
+  const handleReject = (topic) => { setRejectFeedback(''); setConfirmAction({ type: 'reject', topic }); };
+  const handleRefine = (topic) => { setPanelType('refine'); setPanelTopic(topic); };
+  const handleEdit = () => {};
 
-  const handleReject = (topic) => {
-    setRejectFeedback('');
-    setConfirmAction({ type: 'reject', topic });
-  };
-
-  const handleRefine = (topic) => {
-    setPanelType('refine');
-    setPanelTopic(topic);
-  };
-
-  // Edit is now handled inline in TopicCard — no SidePanel needed
-  const handleEdit = () => {
-    // no-op: TopicCard handles edit mode internally via isEditing state
-  };
-
-  const handleBulkApprove = () => {
-    setConfirmAction({ type: 'bulk-approve', topics: [...selectedIds] });
-  };
-
-  const handleBulkReject = () => {
-    setRejectFeedback('');
-    setConfirmAction({ type: 'bulk-reject', topics: [...selectedIds] });
-  };
+  const handleBulkApprove = () => setConfirmAction({ type: 'bulk-approve', topics: [...selectedIds] });
+  const handleBulkReject = () => { setRejectFeedback(''); setConfirmAction({ type: 'bulk-reject', topics: [...selectedIds] }); };
 
   const handleApproveAll = () => {
     const pendingIds = topics.filter((t) => t.review_status === 'pending').map((t) => t.id);
@@ -143,7 +143,6 @@ export default function TopicReview() {
   const confirmExecute = async () => {
     const action = confirmAction;
     if (!action) return;
-
     try {
       if (action.type === 'approve') {
         await approveMutation.mutateAsync({ topic_ids: [action.topic.id] });
@@ -197,47 +196,44 @@ export default function TopicReview() {
     return {};
   }, [confirmAction, counts.rejected]);
 
-  return (
-    <div className="animate-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div className="page-header mb-0">
-          <h1 className="page-title">Topic Review</h1>
-          <p className="page-subtitle">Review, approve, or refine generated topics</p>
-        </div>
+  // Subtitle string
+  const subtitle = `${counts.total} topics \u00B7 ${counts.approved} approved \u00B7 ${counts.pending} pending \u00B7 ${counts.rejected} rejected`;
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {hasRejected && (
-            <button
-              onClick={() => setConfirmAction({ type: 'regenerate-rejected' })}
-              className="btn-secondary btn-sm"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
-              <span className="hidden sm:inline">Regenerate Rejected</span>
-              <span className="sm:hidden">Regen</span>
-            </button>
-          )}
-          {counts.pending > 0 && (
-            <button
-              onClick={handleApproveAll}
-              className="btn-success btn-sm"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Approve All
-            </button>
-          )}
-        </div>
-      </div>
+  return (
+    <div className="animate-slide-up">
+      {/* Header */}
+      <PageHeader title="Topics" subtitle={subtitle}>
+        {hasRejected && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConfirmAction({ type: 'regenerate-rejected' })}
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-warning" />
+            Regenerate Rejected
+          </Button>
+        )}
+        {counts.pending > 0 && (
+          <Button
+            size="sm"
+            onClick={handleApproveAll}
+            className="bg-success text-success-foreground hover:bg-success/90 shadow-glow-success"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Approve All Pending
+          </Button>
+        )}
+      </PageHeader>
 
       {/* Summary bar */}
       <TopicSummaryBar {...counts} />
 
-      {/* Filters + View mode toggle */}
+      {/* Filters + view mode toggle */}
       <div className="flex items-center gap-2 sm:gap-3 mb-5 overflow-x-auto">
         <FilterDropdown label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
         <FilterDropdown label="Playlist" value={playlistFilter} onChange={setPlaylistFilter} options={PLAYLIST_OPTIONS} />
 
-        <div className="ml-auto flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg p-0.5">
+        <div className="ml-auto flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
           {[
             { mode: 'grouped', icon: Layers, title: 'Grouped' },
             { mode: 'cards', icon: LayoutGrid, title: 'Cards' },
@@ -249,8 +245,8 @@ export default function TopicReview() {
               title={title}
               className={`p-1.5 rounded-md transition-colors cursor-pointer ${
                 viewMode === mode
-                  ? 'bg-white dark:bg-white/[0.08] text-primary shadow-sm'
-                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -261,16 +257,16 @@ export default function TopicReview() {
 
       {/* All resolved banner */}
       {allResolved && (
-        <div className="flex items-center justify-between px-5 py-4 mb-5 rounded-2xl bg-emerald-50 dark:bg-emerald-500/[0.08] border border-emerald-200/50 dark:border-emerald-500/20 gradient-border-visible">
+        <div className="flex items-center justify-between px-5 py-4 mb-5 rounded-xl bg-success-bg border border-success-border animate-fade-in">
           <div className="flex items-center gap-3">
-            <Rocket className="w-5 h-5 text-emerald-500" />
-            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-              All topics reviewed! Start production for {counts.approved} approved topics
+            <Rocket className="w-5 h-5 text-success" />
+            <span className="text-sm font-semibold text-success">
+              All topics reviewed! Start production for {counts.approved} approved topics.
             </span>
           </div>
-          <button className="btn-success btn-sm">
+          <Button size="sm" className="bg-success text-success-foreground hover:bg-success/90">
             Start Production
-          </button>
+          </Button>
         </div>
       )}
 
@@ -278,16 +274,17 @@ export default function TopicReview() {
       {isLoading && (
         <div className="space-y-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <SkeletonCard key={i} />
+            <TopicSkeleton key={i} />
           ))}
         </div>
       )}
 
       {/* Empty state */}
       {!isLoading && topics.length === 0 && (
-        <div className="text-center py-16">
-          <p className="text-lg font-semibold text-slate-500 dark:text-slate-400 mb-2">No topics yet</p>
-          <p className="text-sm text-text-muted dark:text-text-muted-dark">
+        <div className="bg-card border border-border rounded-xl p-12 text-center">
+          <AlertCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm font-semibold mb-1">No topics yet</p>
+          <p className="text-xs text-muted-foreground">
             Generate topics from the Research page to get started.
           </p>
         </div>
@@ -301,28 +298,34 @@ export default function TopicReview() {
             <div className="space-y-6">
               {groupedTopics.map((group) => (
                 <div key={group.name}>
-                  <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                    <span className={`badge ${group.group === 1 ? 'badge-blue' : group.group === 2 ? 'badge-green' : 'badge-purple'}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded ${
+                      group.group === 1 ? 'bg-info-bg text-info' :
+                      group.group === 2 ? 'bg-success-bg text-success' :
+                      'bg-warning-bg text-warning'
+                    }`}>
                       {group.name}
                     </span>
-                    <span className="text-xs text-text-muted dark:text-text-muted-dark font-normal">
+                    <span className="text-xs text-muted-foreground">
                       {group.topics.length} topics
                     </span>
-                  </h3>
+                  </div>
                   <div className="space-y-2">
-                    {group.topics.map((topic) => (
-                      <TopicCard
-                        key={topic.id}
-                        topic={topic}
-                        isSelected={selectedIds.has(topic.id)}
-                        onToggleSelect={toggleSelect}
-                        onApprove={handleApprove}
-                        onReject={handleReject}
-                        onRefine={handleRefine}
-                        onEdit={handleEdit}
-                        onSave={(vars) => editMutation.mutateAsync(vars)}
-                        onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
-                      />
+                    {group.topics.map((topic, i) => (
+                      <div key={topic.id} className={`stagger-${Math.min(i + 1, 8)} animate-slide-up`}>
+                        <TopicCard
+                          topic={topic}
+                          projectId={projectId}
+                          isSelected={selectedIds.has(topic.id)}
+                          onToggleSelect={toggleSelect}
+                          onApprove={handleApprove}
+                          onReject={handleReject}
+                          onRefine={handleRefine}
+                          onEdit={handleEdit}
+                          onSave={(vars) => editMutation.mutateAsync(vars)}
+                          onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -333,59 +336,65 @@ export default function TopicReview() {
           {/* CARDS view (flat list) */}
           {viewMode === 'cards' && (
             <div className="space-y-2">
-              {filteredTopics.map((topic) => (
-                <TopicCard
-                  key={topic.id}
-                  topic={topic}
-                  isSelected={selectedIds.has(topic.id)}
-                  onToggleSelect={toggleSelect}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                  onRefine={handleRefine}
-                  onEdit={handleEdit}
-                  onSave={(vars) => editMutation.mutateAsync(vars)}
-                  onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
-                />
+              {filteredTopics.map((topic, i) => (
+                <div key={topic.id} className={`stagger-${Math.min(i + 1, 8)} animate-slide-up`}>
+                  <TopicCard
+                    topic={topic}
+                    projectId={projectId}
+                    isSelected={selectedIds.has(topic.id)}
+                    onToggleSelect={toggleSelect}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    onRefine={handleRefine}
+                    onEdit={handleEdit}
+                    onSave={(vars) => editMutation.mutateAsync(vars)}
+                    onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
+                  />
+                </div>
               ))}
             </div>
           )}
 
-          {/* TABLE view (compact sortable) */}
+          {/* TABLE view (compact) */}
           {viewMode === 'table' && (
-            <div className="glass-card overflow-hidden">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[600px]">
                   <thead>
-                    <tr className="border-b border-slate-100 dark:border-white/[0.04]">
-                      <th className="table-header table-cell w-10">#</th>
-                      <th className="table-header table-cell text-left">Title</th>
-                      <th className="table-header table-cell w-24">Playlist</th>
-                      <th className="table-header table-cell w-24">Status</th>
-                      <th className="table-header table-cell w-28 text-right">Actions</th>
+                    <tr className="border-b border-border">
+                      <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-10">#</th>
+                      <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Title</th>
+                      <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-28">Playlist</th>
+                      <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-24">Status</th>
+                      <th className="px-4 py-3 text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-32">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredTopics.map((topic) => (
-                      <tr key={topic.id} className="table-row">
-                        <td className="table-cell text-xs font-bold text-slate-400 tabular-nums font-mono">{topic.topic_number}</td>
-                        <td className="table-cell font-medium text-slate-800 dark:text-slate-200 truncate max-w-[250px]">
+                      <tr key={topic.id} className="border-b border-border last:border-b-0 hover:bg-card-hover transition-colors">
+                        <td className="px-4 py-3 text-xs font-bold text-muted-foreground tabular-nums font-mono">{topic.topic_number}</td>
+                        <td className="px-4 py-3 font-medium truncate max-w-[250px]">
                           {topic.seo_title || topic.original_title}
                         </td>
-                        <td className="table-cell text-xs text-text-muted dark:text-text-muted-dark">{topic.playlist_angle || '--'}</td>
-                        <td className="table-cell">
-                          <span className={`badge ${topic.review_status === 'approved' ? 'badge-green' : topic.review_status === 'rejected' ? 'badge-red' : 'badge-amber'}`}>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{topic.playlist_angle || '--'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium border ${
+                            topic.review_status === 'approved' ? 'bg-success-bg text-success border-success-border' :
+                            topic.review_status === 'rejected' ? 'bg-danger-bg text-danger border-danger-border' :
+                            'bg-warning-bg text-warning border-warning-border'
+                          }`}>
                             {topic.review_status}
                           </span>
                         </td>
-                        <td className="table-cell text-right">
+                        <td className="px-4 py-3 text-right">
                           <div className="flex items-center gap-1 justify-end">
                             {topic.review_status === 'pending' && (
                               <>
-                                <button onClick={() => handleApprove(topic)} className="text-xs text-emerald-500 hover:text-emerald-600 font-medium cursor-pointer">Approve</button>
-                                <span className="text-slate-300 dark:text-slate-600">|</span>
-                                <button onClick={() => handleReject(topic)} className="text-xs text-red-500 hover:text-red-600 font-medium cursor-pointer">Reject</button>
-                                <span className="text-slate-300 dark:text-slate-600">|</span>
-                                <button onClick={() => handleRefine(topic)} className="text-xs text-primary hover:text-primary-600 font-medium cursor-pointer">Refine</button>
+                                <button onClick={() => handleApprove(topic)} className="text-xs text-success hover:text-success/80 font-medium cursor-pointer">Approve</button>
+                                <span className="text-border">|</span>
+                                <button onClick={() => handleReject(topic)} className="text-xs text-danger hover:text-danger/80 font-medium cursor-pointer">Reject</button>
+                                <span className="text-border">|</span>
+                                <button onClick={() => handleRefine(topic)} className="text-xs text-primary hover:text-primary-hover font-medium cursor-pointer">Refine</button>
                               </>
                             )}
                           </div>
@@ -400,7 +409,7 @@ export default function TopicReview() {
 
           {/* Filtered empty */}
           {filteredTopics.length === 0 && topics.length > 0 && (
-            <p className="text-center text-sm text-text-muted dark:text-text-muted-dark py-8">
+            <p className="text-center text-sm text-muted-foreground py-8">
               No topics match the current filters.
             </p>
           )}
@@ -437,7 +446,10 @@ export default function TopicReview() {
             onChange={(e) => setRejectFeedback(e.target.value)}
             placeholder="Rejection feedback (optional)"
             rows={3}
-            className="input mt-3 resize-none"
+            className="w-full mt-3 px-3 py-2 rounded-lg text-sm bg-muted border border-border
+              text-foreground placeholder:text-muted-foreground
+              focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40
+              transition-all resize-none"
           />
         )}
       </ConfirmDialog>

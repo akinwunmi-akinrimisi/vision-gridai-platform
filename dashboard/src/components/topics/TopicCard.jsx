@@ -1,56 +1,50 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { CheckCircle2, XCircle, RefreshCw, Pencil, FileText, ChevronDown, Play, Save, X, Loader2 } from 'lucide-react';
+import {
+  CheckCircle2, XCircle, RefreshCw, Pencil, FileText,
+  ChevronDown, Play, Save, X, Loader2, User, Briefcase, Frown, MessageCircle,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import StatusBadge from '../shared/StatusBadge';
 
-const STATUS_BADGE = {
-  pending: 'badge badge-amber',
-  approved: 'badge badge-green',
-  rejected: 'badge badge-red',
-  refining: 'badge badge-amber animate-shimmer',
-};
-
-const STATUS_TINT = {
-  approved: 'bg-green-500/5',
-  rejected: 'bg-red-500/5',
-  refined: 'bg-amber-500/5',
-};
-
-const PLAYLIST_BADGE = {
-  1: 'badge badge-blue',
-  2: 'badge badge-green',
-  3: 'badge badge-purple',
-};
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
 
 const AVATAR_FIELDS = [
-  { key: 'avatar_name_age', label: 'Name & Age' },
-  { key: 'occupation_income', label: 'Occupation & Income' },
+  { key: 'avatar_name_age', label: 'Name & Age', icon: User },
+  { key: 'occupation_income', label: 'Occupation & Income', icon: Briefcase },
   { key: 'life_stage', label: 'Life Stage' },
-  { key: 'pain_point', label: 'Pain Point' },
+  { key: 'pain_point', label: 'Pain Point', icon: Frown },
   { key: 'spending_profile', label: 'Spending Profile' },
   { key: 'knowledge_level', label: 'Knowledge Level' },
-  { key: 'emotional_driver', label: 'Emotional Driver' },
+  { key: 'emotional_driver', label: 'Emotional Driver', icon: MessageCircle },
   { key: 'online_hangouts', label: 'Online Hangouts' },
   { key: 'objection', label: 'Objection' },
   { key: 'dream_outcome', label: 'Dream Outcome' },
 ];
 
 const SCRIPT_STATUS_BADGE = {
-  generating: { cls: 'badge badge-amber animate-shimmer', label: 'Generating' },
-  review: { cls: 'badge badge-amber', label: 'Review' },
-  approved: { cls: 'badge badge-green', label: 'Script Approved' },
-  rejected: { cls: 'badge badge-red', label: 'Script Rejected' },
+  generating: { status: 'scripting', label: 'Generating' },
+  review:     { status: 'review', label: 'Review' },
+  approved:   { status: 'approved', label: 'Script Approved' },
+  rejected:   { status: 'rejected', label: 'Script Rejected' },
 };
 
-const PRODUCTION_STATUS_BADGE = {
-  queued:     { cls: 'badge badge-amber', label: 'Queued' },
-  producing:  { cls: 'badge badge-amber animate-pulse', label: 'Producing' },
-  audio:      { cls: 'badge badge-purple', label: 'Audio' },
-  images:     { cls: 'badge badge-purple', label: 'Images' },
-  assembling: { cls: 'badge badge-purple', label: 'Assembling' },
-  assembled:  { cls: 'badge badge-blue', label: 'Assembled' },
-  stopped:    { cls: 'badge bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300', label: 'Stopped' },
-  failed:     { cls: 'badge badge-red', label: 'Failed' },
+const PRODUCTION_STATUS_MAP = {
+  queued:     { status: 'pending', label: 'Queued' },
+  producing:  { status: 'active', label: 'Producing' },
+  audio:      { status: 'scripting', label: 'Audio' },
+  images:     { status: 'scripting', label: 'Images' },
+  assembling: { status: 'assembly', label: 'Assembling' },
+  assembled:  { status: 'assembled', label: 'Assembled' },
+  stopped:    { status: 'pending', label: 'Stopped' },
+  failed:     { status: 'failed', label: 'Failed' },
 };
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 
 function getScriptBadge(topic) {
   if (topic.script_review_status === 'approved') return SCRIPT_STATUS_BADGE.approved;
@@ -61,7 +55,7 @@ function getScriptBadge(topic) {
 }
 
 function getProductionBadge(topic) {
-  return PRODUCTION_STATUS_BADGE[topic.status] || null;
+  return PRODUCTION_STATUS_MAP[topic.status] || null;
 }
 
 function parseProgress(val) {
@@ -79,12 +73,10 @@ function computeProductionProgress(topic) {
   const { status, audio_progress, images_progress, i2v_progress, t2v_progress } = topic;
   const PRODUCING_STATUSES = ['producing', 'audio', 'images', 'assembling'];
   if (!PRODUCING_STATUSES.includes(status)) return null;
-
   const audio = parseProgress(audio_progress);
   const images = parseProgress(images_progress);
   const i2v = parseProgress(i2v_progress);
   const t2v = parseProgress(t2v_progress);
-
   return Math.round(audio * 0.25 + images * 0.25 + i2v * 0.25 + t2v * 0.25);
 }
 
@@ -92,23 +84,30 @@ function canStartProduction(topic) {
   return topic.script_review_status === 'approved' && topic.status === 'script_approved';
 }
 
-const inputClass = 'input';
+/* ------------------------------------------------------------------ */
+/*  TopicCard                                                          */
+/* ------------------------------------------------------------------ */
 
-const textareaClass = 'input resize-none';
-
-export default function TopicCard({ topic, projectId, isSelected, onToggleSelect, onApprove, onReject, onRefine, onEdit, onSave, onSaveAvatar }) {
+export default function TopicCard({
+  topic, projectId, isSelected, onToggleSelect,
+  onApprove, onReject, onRefine, onEdit, onSave, onSaveAvatar,
+}) {
   const [expanded, setExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editTopicFields, setEditTopicFields] = useState({});
   const [editAvatarFields, setEditAvatarFields] = useState({});
   const navigate = useNavigate();
+
   const avatar = topic.avatars?.[0] || {};
   const status = topic.review_status || 'pending';
-  const tintClass = STATUS_TINT[status] || '';
+  const isPending = status === 'pending' || status === 'refining';
+  const isApproved = status === 'approved';
+  const isRejected = status === 'rejected';
   const productionBadge = getProductionBadge(topic);
   const productionProgress = computeProductionProgress(topic);
 
+  /* -- Edit handlers -- */
   const handleEnterEdit = (e) => {
     e.stopPropagation();
     setEditTopicFields({
@@ -118,12 +117,9 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
     });
     const av = topic.avatars?.[0] || {};
     const af = {};
-    for (const { key } of AVATAR_FIELDS) {
-      af[key] = av[key] || '';
-    }
+    for (const { key } of AVATAR_FIELDS) af[key] = av[key] || '';
     setEditAvatarFields(af);
     setIsEditing(true);
-    // Ensure card is expanded in edit mode
     setExpanded(true);
   };
 
@@ -131,12 +127,12 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
     setIsSaving(true);
     try {
       await Promise.all([
-        onSave && onSave({ topic_id: topic.id, project_id: topic.project_id || projectId, fields: editTopicFields }),
-        onSaveAvatar && onSaveAvatar({ topic_id: topic.id, project_id: topic.project_id || projectId, fields: editAvatarFields }),
+        onSave?.({ topic_id: topic.id, project_id: topic.project_id || projectId, fields: editTopicFields }),
+        onSaveAvatar?.({ topic_id: topic.id, project_id: topic.project_id || projectId, fields: editAvatarFields }),
       ]);
       setIsEditing(false);
     } catch {
-      // error stays visible — isSaving state returns to false
+      // error visible to user via toast
     } finally {
       setIsSaving(false);
     }
@@ -148,148 +144,249 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
   };
 
   const handleHeaderClick = () => {
-    // Don't collapse while editing
-    if (!isEditing) {
-      setExpanded((prev) => !prev);
-    }
+    if (!isEditing) setExpanded((prev) => !prev);
   };
 
-  return (
-    <div
-      className={`glass-card overflow-hidden transition-all duration-200 ${tintClass}`}
-      data-testid={`topic-card-${topic.topic_number}`}
-    >
-      {/* Collapsed row */}
+  /* ---- COLLAPSED (approved) card ---- */
+  if (isApproved && !expanded && !isEditing) {
+    return (
       <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
-        onClick={handleHeaderClick}
+        className="bg-card border border-border rounded-xl px-5 py-3.5 flex items-center gap-3 transition-all hover:border-border-hover cursor-pointer group"
+        onClick={() => setExpanded(true)}
+        data-testid={`topic-card-${topic.topic_number}`}
       >
         {/* Checkbox */}
         <input
           type="checkbox"
           checked={isSelected}
-          onChange={(e) => {
-            e.stopPropagation();
-            onToggleSelect(topic.id);
-          }}
+          onChange={(e) => { e.stopPropagation(); onToggleSelect(topic.id); }}
           onClick={(e) => e.stopPropagation()}
-          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary focus:ring-primary/30 cursor-pointer"
+          className="w-4 h-4 rounded border-border accent-primary cursor-pointer flex-shrink-0"
         />
 
-        {/* Topic number */}
-        <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">
+        {/* Number badge -- success */}
+        <span className="bg-success-bg text-success font-bold rounded-lg w-8 h-8 flex items-center justify-center text-xs flex-shrink-0">
           {topic.topic_number}
         </span>
 
         {/* Title */}
-        <span className="flex-1 text-sm font-medium text-slate-900 dark:text-white truncate">
-          {isEditing ? (editTopicFields.seo_title || topic.seo_title || topic.original_title) : (topic.seo_title || topic.original_title)}
+        <span className="flex-1 text-sm font-medium truncate">
+          {topic.seo_title || topic.original_title}
         </span>
 
-        {/* Playlist badge */}
-        <span className={PLAYLIST_BADGE[topic.playlist_group] || 'badge badge-blue'}>
-          {topic.playlist_angle || `Playlist ${topic.playlist_group}`}
+        {/* Angle */}
+        <span className="text-xs text-muted-foreground hidden sm:inline">
+          {topic.playlist_angle || '--'}
         </span>
 
-        {/* Status badge */}
-        <span className={STATUS_BADGE[status] || 'badge badge-amber'}>
-          {status === 'refining' ? 'Refining...' : status}
-        </span>
-
-        {/* Script status badge */}
+        {/* Script badge */}
         {(() => {
-          const scriptBadge = getScriptBadge(topic);
-          return scriptBadge ? (
-            <span className={scriptBadge.cls}>{scriptBadge.label}</span>
-          ) : null;
+          const sb = getScriptBadge(topic);
+          return sb ? <StatusBadge status={sb.status} label={sb.label} /> : null;
         })()}
 
-        {/* Production status badge */}
+        {/* Production badge */}
         {productionBadge && (
-          <span className={productionBadge.cls} data-testid={`production-badge-${topic.id}`}>
-            {productionBadge.label}
-          </span>
+          <StatusBadge status={productionBadge.status} label={productionBadge.label} />
         )}
 
-        {/* CPM */}
-        <span className="text-xs text-text-muted dark:text-text-muted-dark hidden sm:inline">
-          {topic.estimated_cpm}
-        </span>
+        {/* Status badge */}
+        <StatusBadge status="approved" />
 
-        {/* Viral potential */}
-        <span className="text-xs text-text-muted dark:text-text-muted-dark hidden md:inline">
-          {topic.viral_potential}
-        </span>
+        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform flex-shrink-0 group-hover:text-foreground" />
+      </div>
+    );
+  }
 
-        {/* Avatar preview */}
-        <span className="text-xs text-slate-500 dark:text-slate-400 hidden lg:inline">
-          {avatar.avatar_name_age?.split(',')[0] || ''}
-        </span>
+  /* ---- EXPANDED card (pending, rejected, or approved-expanded) ---- */
+  return (
+    <div
+      className={cn(
+        'bg-card border rounded-xl overflow-hidden transition-all',
+        isRejected ? 'border-danger/20' : 'border-border hover:border-border-hover'
+      )}
+      data-testid={`topic-card-${topic.topic_number}`}
+    >
+      {/* Header row */}
+      <div className="p-5 pb-0">
+        <div className="flex items-start gap-3">
+          {/* Checkbox */}
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => { e.stopPropagation(); onToggleSelect(topic.id); }}
+            className="w-4 h-4 rounded border-border accent-primary cursor-pointer flex-shrink-0 mt-1"
+          />
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
-          {canStartProduction(topic) && (
+          {/* Number badge */}
+          <span className={cn(
+            'font-bold rounded-lg w-8 h-8 flex items-center justify-center text-xs flex-shrink-0',
+            isApproved ? 'bg-success-bg text-success' :
+            isRejected ? 'bg-danger-bg text-danger' :
+            'bg-warning-bg text-accent'
+          )}>
+            {topic.topic_number}
+          </span>
+
+          {/* Badges cluster */}
+          <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+            {/* Angle badge */}
+            <span className="bg-info-bg text-info text-[9px] px-1.5 py-0.5 rounded font-medium">
+              {topic.playlist_angle || `Playlist ${topic.playlist_group}`}
+            </span>
+
+            {/* CPM badge */}
+            {topic.estimated_cpm && (
+              <span className="bg-success-bg text-success text-[9px] px-1.5 py-0.5 rounded font-medium">
+                {topic.estimated_cpm}
+              </span>
+            )}
+
+            {/* Viral badge */}
+            {topic.viral_potential && (
+              <span className="bg-warning-bg text-warning text-[9px] px-1.5 py-0.5 rounded font-medium">
+                {topic.viral_potential?.toLowerCase().includes('high') ? '\uD83D\uDD25 ' : ''}
+                {topic.viral_potential}
+              </span>
+            )}
+
+            {/* Script badge */}
+            {(() => {
+              const sb = getScriptBadge(topic);
+              return sb ? <StatusBadge status={sb.status} label={sb.label} /> : null;
+            })()}
+
+            {/* Production badge */}
+            {productionBadge && (
+              <StatusBadge status={productionBadge.status} label={productionBadge.label} />
+            )}
+
+            {/* Review status badge */}
+            <StatusBadge
+              status={status === 'refining' ? 'active' : status}
+              label={status === 'refining' ? 'Refining...' : status}
+            />
+          </div>
+
+          {/* Action buttons (right-aligned) */}
+          <div className="flex items-center gap-1 flex-shrink-0 min-w-[90px] justify-end" onClick={(e) => e.stopPropagation()}>
+            {isPending && (
+              <>
+                <button
+                  onClick={() => onApprove(topic)}
+                  className="bg-success-bg border border-success-border text-success rounded-lg py-1.5 px-2.5 text-[11px] font-semibold
+                    hover:bg-success/20 transition-colors cursor-pointer"
+                  title="Approve"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => onReject(topic)}
+                  className="bg-danger-bg border border-danger-border text-danger rounded-lg py-1.5 px-2.5 text-[11px] font-semibold
+                    hover:bg-danger/20 transition-colors cursor-pointer"
+                  title="Reject"
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={() => onRefine(topic)}
+                  className="bg-secondary border border-border text-secondary-foreground rounded-lg py-1.5 px-2.5 text-[11px] font-semibold
+                    hover:bg-muted transition-colors cursor-pointer"
+                  title="Refine"
+                >
+                  Refine
+                </button>
+              </>
+            )}
+
+            {isApproved && (
+              <>
+                {canStartProduction(topic) && (
+                  <button
+                    onClick={() => navigate(`/project/${projectId || topic.project_id}/production?trigger=${topic.id}`)}
+                    className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                    title="Start Production"
+                  >
+                    <Play className="w-4 h-4" />
+                  </button>
+                )}
+                <Link
+                  to={`/project/${projectId || topic.project_id}/topics/${topic.id}/script`}
+                  className="p-1.5 rounded-lg text-info hover:bg-info-bg transition-colors cursor-pointer"
+                  title="View Script"
+                >
+                  <FileText className="w-4 h-4" />
+                </Link>
+              </>
+            )}
+
+            {!isApproved && (
+              <button
+                onClick={handleEnterEdit}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                title="Edit"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Collapse toggle */}
             <button
-              onClick={() => navigate(`/project/${projectId || topic.project_id}/production?trigger=${topic.id}`)}
-              className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-              title="Start Production"
-              data-testid={`start-production-${topic.id}`}
+              onClick={handleHeaderClick}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
-              <Play className="w-4 h-4" />
+              <ChevronDown className={cn(
+                'w-4 h-4 transition-transform duration-200',
+                expanded && 'rotate-180'
+              )} />
             </button>
-          )}
-          <button
-            onClick={() => onApprove(topic)}
-            className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-500/10 hover:scale-110 transition-all cursor-pointer"
-            title="Approve"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onReject(topic)}
-            className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 hover:scale-110 transition-all cursor-pointer"
-            title="Reject"
-          >
-            <XCircle className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onRefine(topic)}
-            className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-500/10 hover:scale-110 transition-all cursor-pointer"
-            title="Refine"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          {topic.review_status === 'approved' ? (
-            <Link
-              to={`/project/${projectId || topic.project_id}/topics/${topic.id}/script`}
-              className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-              title="View Script"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <FileText className="w-4 h-4" />
-            </Link>
-          ) : (
-            <button
-              onClick={handleEnterEdit}
-              className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
-              title="Edit"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
+          </div>
+        </div>
+
+        {/* Title */}
+        <div className="mt-2 ml-[52px]">
+          <h3 className="text-sm font-semibold tracking-tight mb-1">
+            {isEditing
+              ? (editTopicFields.seo_title || topic.seo_title || topic.original_title)
+              : (topic.seo_title || topic.original_title)
+            }
+          </h3>
+
+          {/* Hook text */}
+          {topic.narrative_hook && !isEditing && (
+            <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+              {topic.narrative_hook}
+            </p>
           )}
         </div>
 
-        <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0 ${expanded ? 'rotate-180' : ''}`}
-        />
+        {/* Mini avatar row (visible when NOT expanded, NOT editing) */}
+        {!expanded && !isEditing && avatar.avatar_name_age && (
+          <div className="ml-[52px] mt-2 mb-4">
+            <div className="bg-muted/50 border border-border rounded-lg p-2.5 flex gap-4 text-[10px] text-muted-foreground overflow-x-auto">
+              {avatar.avatar_name_age && (
+                <span className="whitespace-nowrap"><span className="opacity-60 mr-0.5">&#x1F464;</span> {avatar.avatar_name_age}</span>
+              )}
+              {avatar.occupation_income && (
+                <span className="whitespace-nowrap"><span className="opacity-60 mr-0.5">&#x1F4BC;</span> {avatar.occupation_income}</span>
+              )}
+              {avatar.pain_point && (
+                <span className="whitespace-nowrap"><span className="opacity-60 mr-0.5">&#x1F624;</span> {avatar.pain_point}</span>
+              )}
+              {avatar.emotional_driver && (
+                <span className="whitespace-nowrap"><span className="opacity-60 mr-0.5">&#x1F4AD;</span> {avatar.emotional_driver}</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Mini production progress bar */}
+      {/* Production progress bar */}
       {productionProgress != null && (
-        <div className="px-4 pb-2" data-testid={`production-progress-${topic.id}`}>
-          <div className="progress-bar">
+        <div className="px-5 pb-2">
+          <div className="h-1 rounded-full bg-muted overflow-hidden">
             <div
-              className="progress-bar-fill"
+              className="h-full bg-primary rounded-full transition-all duration-500"
               style={{ width: `${productionProgress}%` }}
             />
           </div>
@@ -297,69 +394,61 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
       )}
 
       {/* Expanded content */}
-      {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-border/30 dark:border-white/[0.04] animate-in space-y-4">
+      {(expanded || isEditing) && (
+        <div className="px-5 pb-5 pt-2 border-t border-border ml-0 animate-fade-in space-y-4">
           {isEditing ? (
             /* ---- EDIT MODE ---- */
             <>
-              {/* Topic fields */}
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">
-                    SEO Title
-                  </label>
+                  <label className="block text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1.5">SEO Title</label>
                   <input
                     data-testid="edit-seo-title"
                     type="text"
                     value={editTopicFields.seo_title || ''}
-                    onChange={(e) => setEditTopicFields((prev) => ({ ...prev, seo_title: e.target.value }))}
-                    className={inputClass}
-                    placeholder="SEO Title"
+                    onChange={(e) => setEditTopicFields((p) => ({ ...p, seo_title: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg text-sm bg-muted border border-border text-foreground
+                      focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">
-                    Narrative Hook
-                  </label>
+                  <label className="block text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1.5">Narrative Hook</label>
                   <textarea
                     data-testid="edit-narrative-hook"
                     value={editTopicFields.narrative_hook || ''}
-                    onChange={(e) => setEditTopicFields((prev) => ({ ...prev, narrative_hook: e.target.value }))}
+                    onChange={(e) => setEditTopicFields((p) => ({ ...p, narrative_hook: e.target.value }))}
                     rows={3}
-                    className={textareaClass}
-                    placeholder="Narrative hook..."
+                    className="w-full px-3 py-2 rounded-lg text-sm bg-muted border border-border text-foreground
+                      focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all resize-none"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">
-                    Key Segments
-                  </label>
+                  <label className="block text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1.5">Key Segments</label>
                   <textarea
                     data-testid="edit-key-segments"
                     value={editTopicFields.key_segments || ''}
-                    onChange={(e) => setEditTopicFields((prev) => ({ ...prev, key_segments: e.target.value }))}
+                    onChange={(e) => setEditTopicFields((p) => ({ ...p, key_segments: e.target.value }))}
                     rows={3}
-                    className={textareaClass}
-                    placeholder="Key segments..."
+                    className="w-full px-3 py-2 rounded-lg text-sm bg-muted border border-border text-foreground
+                      focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all resize-none"
                   />
                 </div>
               </div>
 
               {/* Avatar fields */}
               <div>
-                <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-2">Customer Avatar</p>
+                <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-2">Customer Avatar</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   {AVATAR_FIELDS.map(({ key, label }) => (
                     <div key={key}>
-                      <label className="block text-xs text-text-muted dark:text-text-muted-dark mb-1">{label}</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">{label}</label>
                       <input
                         data-testid={`edit-avatar-${key}`}
                         type="text"
                         value={editAvatarFields[key] || ''}
-                        onChange={(e) => setEditAvatarFields((prev) => ({ ...prev, [key]: e.target.value }))}
-                        className={inputClass}
+                        onChange={(e) => setEditAvatarFields((p) => ({ ...p, [key]: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg text-sm bg-muted border border-border text-foreground
+                          focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all"
                         placeholder={label}
                       />
                     </div>
@@ -367,13 +456,15 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
                 </div>
               </div>
 
-              {/* Save / Cancel buttons */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/30 dark:border-white/[0.04]">
+              {/* Save / Cancel */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
                 <button
                   data-testid="edit-cancel"
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className="btn-ghost btn-sm"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                    text-muted-foreground hover:text-foreground hover:bg-muted border border-border
+                    transition-colors cursor-pointer disabled:opacity-50"
                 >
                   <X className="w-3.5 h-3.5" />
                   Cancel
@@ -382,52 +473,50 @@ export default function TopicCard({ topic, projectId, isSelected, onToggleSelect
                   data-testid="edit-save"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="btn-primary btn-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold
+                    bg-primary text-primary-foreground hover:bg-primary-hover
+                    transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  {isSaving ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Save className="w-3.5 h-3.5" />
-                  )}
+                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                   {isSaving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </>
           ) : (
-            /* ---- READ-ONLY MODE ---- */
+            /* ---- READ-ONLY EXPANDED ---- */
             <>
               {/* Narrative hook */}
               {topic.narrative_hook && (
                 <div>
-                  <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">Narrative Hook</p>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">{topic.narrative_hook}</p>
+                  <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1">Narrative Hook</p>
+                  <p className="text-sm leading-relaxed">{topic.narrative_hook}</p>
                 </div>
               )}
 
               {/* Key segments */}
               {topic.key_segments && (
                 <div>
-                  <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-1">Key Segments</p>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">{topic.key_segments}</p>
+                  <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1">Key Segments</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-line">{topic.key_segments}</p>
                 </div>
               )}
 
               {/* Metadata row */}
-              <div className="flex gap-4 text-xs">
-                <span><strong className="text-slate-600 dark:text-slate-400">CPM:</strong> {topic.estimated_cpm || '\u2014'}</span>
-                <span><strong className="text-slate-600 dark:text-slate-400">Viral:</strong> {topic.viral_potential || '\u2014'}</span>
-                <span><strong className="text-slate-600 dark:text-slate-400">Playlist:</strong> {topic.playlist_angle || '\u2014'}</span>
+              <div className="flex gap-4 text-xs text-muted-foreground">
+                <span><strong className="text-foreground/70">CPM:</strong> {topic.estimated_cpm || '\u2014'}</span>
+                <span><strong className="text-foreground/70">Viral:</strong> {topic.viral_potential || '\u2014'}</span>
+                <span><strong className="text-foreground/70">Playlist:</strong> {topic.playlist_angle || '\u2014'}</span>
               </div>
 
-              {/* Avatar */}
+              {/* Full avatar */}
               {avatar.avatar_name_age && (
                 <div>
-                  <p className="text-xs font-semibold text-text-muted dark:text-text-muted-dark mb-2">Customer Avatar</p>
+                  <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-2">Customer Avatar</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {AVATAR_FIELDS.map(({ key, label }) => (
                       <div key={key}>
-                        <p className="text-xs text-text-muted dark:text-text-muted-dark">{label}</p>
-                        <p className="text-sm text-slate-700 dark:text-slate-300">{avatar[key] || '\u2014'}</p>
+                        <p className="text-[10px] text-muted-foreground">{label}</p>
+                        <p className="text-sm">{avatar[key] || '\u2014'}</p>
                       </div>
                     ))}
                   </div>

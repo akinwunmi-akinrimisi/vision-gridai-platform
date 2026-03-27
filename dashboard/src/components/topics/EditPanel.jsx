@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Save, X } from 'lucide-react';
 import SidePanel from '../ui/SidePanel';
 
 const TOPIC_FIELDS = [
@@ -29,7 +29,6 @@ export default function EditPanel({ topic, onClose, onSubmit, isLoading }) {
 
   const isOpen = !!topic;
 
-  // Initialize form when topic changes
   useEffect(() => {
     if (topic) {
       const tf = {};
@@ -49,7 +48,6 @@ export default function EditPanel({ topic, onClose, onSubmit, isLoading }) {
 
   const handleSubmit = () => {
     const fields = { ...topicFields };
-    // Include avatar fields under a nested key
     const avatarChanges = {};
     let hasAvatarChanges = false;
     const avatar = topic?.avatars?.[0] || {};
@@ -65,12 +63,6 @@ export default function EditPanel({ topic, onClose, onSubmit, isLoading }) {
     onSubmit(fields);
   };
 
-  const inputClass = `w-full px-3 py-2 rounded-xl text-sm
-    bg-white dark:bg-slate-800 border border-border dark:border-slate-700
-    text-slate-900 dark:text-white placeholder:text-slate-400
-    focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-    disabled:opacity-50 transition-all duration-200`;
-
   return (
     <SidePanel isOpen={isOpen} onClose={onClose} title="Edit Topic">
       {topic && (
@@ -78,7 +70,7 @@ export default function EditPanel({ topic, onClose, onSubmit, isLoading }) {
           {/* Topic fields */}
           {TOPIC_FIELDS.map((field) => (
             <div key={field.key}>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+              <label className="block text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1.5">
                 {field.label}
               </label>
               {field.type === 'textarea' ? (
@@ -87,7 +79,10 @@ export default function EditPanel({ topic, onClose, onSubmit, isLoading }) {
                   onChange={(e) => setTopicFields((prev) => ({ ...prev, [field.key]: e.target.value }))}
                   disabled={isLoading}
                   rows={3}
-                  className={`${inputClass} resize-none`}
+                  className="w-full px-3 py-2 rounded-lg text-sm bg-muted border border-border
+                    text-foreground placeholder:text-muted-foreground
+                    focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40
+                    disabled:opacity-50 transition-all resize-none"
                 />
               ) : (
                 <input
@@ -95,19 +90,22 @@ export default function EditPanel({ topic, onClose, onSubmit, isLoading }) {
                   value={topicFields[field.key] || ''}
                   onChange={(e) => setTopicFields((prev) => ({ ...prev, [field.key]: e.target.value }))}
                   disabled={isLoading}
-                  className={inputClass}
+                  className="w-full px-3 py-2 rounded-lg text-sm bg-muted border border-border
+                    text-foreground placeholder:text-muted-foreground
+                    focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40
+                    disabled:opacity-50 transition-all"
                 />
               )}
             </div>
           ))}
 
           {/* Avatar section */}
-          <div className="pt-4 border-t border-border/50 dark:border-white/[0.06]">
-            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Customer Avatar</h3>
+          <div className="pt-4 border-t border-border">
+            <h3 className="text-xs font-semibold mb-3">Customer Avatar</h3>
             <div className="space-y-3">
               {AVATAR_FIELDS.map((field) => (
                 <div key={field.key}>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1.5">
                     {field.label}
                   </label>
                   <input
@@ -115,7 +113,10 @@ export default function EditPanel({ topic, onClose, onSubmit, isLoading }) {
                     value={avatarFields[field.key] || ''}
                     onChange={(e) => setAvatarFields((prev) => ({ ...prev, [field.key]: e.target.value }))}
                     disabled={isLoading}
-                    className={inputClass}
+                    className="w-full px-3 py-2 rounded-lg text-sm bg-muted border border-border
+                      text-foreground placeholder:text-muted-foreground
+                      focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40
+                      disabled:opacity-50 transition-all"
                   />
                 </div>
               ))}
@@ -123,33 +124,32 @@ export default function EditPanel({ topic, onClose, onSubmit, isLoading }) {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
             <button
               onClick={onClose}
               disabled={isLoading}
-              className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium
-                text-slate-600 dark:text-slate-400
-                hover:bg-slate-100 dark:hover:bg-white/[0.06]
-                disabled:opacity-50 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
+                text-muted-foreground hover:text-foreground hover:bg-muted
+                border border-border transition-colors cursor-pointer
+                disabled:opacity-50 disabled:cursor-not-allowed"
             >
+              <X className="w-3.5 h-3.5" />
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
-                text-white bg-gradient-to-r from-primary to-indigo-600
-                shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5
-                disabled:opacity-50 disabled:hover:translate-y-0 transition-all duration-200 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold
+                bg-primary text-primary-foreground hover:bg-primary-hover
+                transition-colors cursor-pointer shadow-glow-primary
+                disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                'Save Changes'
+                <Save className="w-3.5 h-3.5" />
               )}
+              {isLoading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>

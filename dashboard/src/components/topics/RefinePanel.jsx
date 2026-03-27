@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Send } from 'lucide-react';
 import SidePanel from '../ui/SidePanel';
+import StatusBadge from '../shared/StatusBadge';
 
 function formatRelTime(dateStr) {
   if (!dateStr) return '';
@@ -18,7 +19,6 @@ function formatRelTime(dateStr) {
 
 export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
   const [instructions, setInstructions] = useState('');
-  const [showHistory, setShowHistory] = useState(false);
 
   const isOpen = !!topic;
   const history = topic?.refinement_history || [];
@@ -31,7 +31,6 @@ export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
 
   const handleClose = () => {
     setInstructions('');
-    setShowHistory(false);
     onClose();
   };
 
@@ -40,29 +39,27 @@ export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
       {topic && (
         <div className="space-y-5">
           {/* Topic summary */}
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-border/30 dark:border-white/[0.04]">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+          <div className="bg-muted border border-border rounded-lg p-3.5">
+            <p className="text-sm font-semibold mb-1.5">
               {topic.seo_title || topic.original_title}
             </p>
-            <div className="flex items-center gap-2 text-xs text-text-muted dark:text-text-muted-dark">
-              <span className={`badge ${topic.review_status === 'approved' ? 'badge-green' : topic.review_status === 'rejected' ? 'badge-red' : 'badge-amber'}`}>
-                {topic.review_status}
-              </span>
-              <span>{topic.playlist_angle}</span>
+            <div className="flex items-center gap-2">
+              <StatusBadge status={topic.review_status} />
+              <span className="text-xs text-muted-foreground">{topic.playlist_angle}</span>
             </div>
           </div>
 
-          {/* Previous Refinements */}
+          {/* Previous refinements */}
           <div>
-            <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+            <h4 className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-2">
               Previous Refinements
             </h4>
             {history.length === 0 ? (
-              <p className="text-xs text-text-muted dark:text-text-muted-dark italic">
+              <p className="text-xs text-muted-foreground italic">
                 No previous refinements
               </p>
             ) : (
-              <div className="space-y-2 mb-3">
+              <div className="space-y-2">
                 {history.map((entry, i) => {
                   const ts = entry.timestamp
                     ? formatRelTime(entry.timestamp)
@@ -71,11 +68,11 @@ export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
                   const truncated = instruction.length > 120 ? instruction.slice(0, 120) + '...' : instruction;
                   const resultTitle = entry.result_title || (entry.result && typeof entry.result === 'string' ? entry.result.slice(0, 60) : null);
                   return (
-                    <div key={i} className="p-3 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/20 dark:border-white/[0.03] text-xs">
-                      <p className="text-text-muted dark:text-text-muted-dark mb-1">{ts}</p>
-                      <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{truncated}</p>
+                    <div key={i} className="bg-muted border border-border rounded-lg p-3 text-xs">
+                      <p className="text-muted-foreground mb-1">{ts}</p>
+                      <p className="font-medium mb-1">{truncated}</p>
                       {resultTitle && (
-                        <p className="text-slate-500 dark:text-slate-400 truncate">
+                        <p className="text-muted-foreground truncate">
                           Result: {resultTitle}
                         </p>
                       )}
@@ -88,7 +85,7 @@ export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
 
           {/* Instructions */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1.5">
               Refinement Instructions
             </label>
             <textarea
@@ -97,11 +94,10 @@ export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
               disabled={isLoading}
               rows={5}
               placeholder="e.g., Make this more focused on millennials, change the angle from investigative to data-driven..."
-              className="w-full px-4 py-2.5 rounded-xl text-sm resize-none
-                bg-white dark:bg-slate-800 border border-border dark:border-slate-700
-                text-slate-900 dark:text-white placeholder:text-slate-400
-                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-                disabled:opacity-50 transition-all duration-200"
+              className="w-full px-3 py-2.5 rounded-lg text-sm bg-muted border border-border
+                text-foreground placeholder:text-muted-foreground
+                focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40
+                disabled:opacity-50 transition-all resize-none"
             />
           </div>
 
@@ -109,11 +105,10 @@ export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
           <button
             onClick={handleSubmit}
             disabled={!instructions.trim() || isLoading}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
-              text-white bg-gradient-to-r from-primary to-indigo-600
-              shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5
-              disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
-              transition-all duration-200 cursor-pointer"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold
+              bg-primary text-primary-foreground hover:bg-primary-hover
+              transition-colors cursor-pointer shadow-glow-primary
+              disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
@@ -121,7 +116,10 @@ export default function RefinePanel({ topic, onClose, onSubmit, isLoading }) {
                 Refining...
               </>
             ) : (
-              'Submit Refinement'
+              <>
+                <Send className="w-4 h-4" />
+                Submit Refinement
+              </>
             )}
           </button>
         </div>
