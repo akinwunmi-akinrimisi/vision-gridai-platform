@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { MessageCircle, HelpCircle, Users, ChevronDown, ChevronUp } from 'lucide-react';
 
 const SOURCE_CONFIG = {
-  reddit: { icon: MessageCircle, label: 'Reddit', color: 'text-orange-500' },
-  quora: { icon: HelpCircle, label: 'Quora', color: 'text-red-500' },
-  forums: { icon: Users, label: 'Forums', color: 'text-blue-500' },
+  reddit: { icon: MessageCircle, label: 'Reddit', color: 'text-warning' },
+  quora: { icon: HelpCircle, label: 'Quora', color: 'text-danger' },
+  forums: { icon: Users, label: 'Forums', color: 'text-info' },
 };
 
 /**
  * Audience pain points grouped by source (Reddit, Quora, Forums).
- * Each pain point displayed as quoted block with left border accent.
+ * Tags use warning color: bg-warning-bg text-warning.
  * @param {Object} painPoints - { reddit: [...], quora: [...], forums: [...] }
  */
 export default function PainPoints({ painPoints }) {
@@ -21,12 +21,12 @@ export default function PainPoints({ painPoints }) {
 
   if (sources.length === 0) {
     return (
-      <div className="glass-card p-5">
-        <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
+      <div className="bg-card border border-border rounded-xl p-4">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <MessageCircle className="w-4 h-4" />
           <h3 className="text-sm font-semibold">Audience Pain Points</h3>
         </div>
-        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">No pain point data yet</p>
+        <p className="mt-1 text-xs text-muted-foreground">No pain point data yet</p>
       </div>
     );
   }
@@ -36,12 +36,10 @@ export default function PainPoints({ painPoints }) {
   };
 
   return (
-    <div className="glass-card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <MessageCircle className="w-4 h-4 text-orange-500" />
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-          Audience Pain Points
-        </h3>
+    <div className="bg-card border border-border rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <MessageCircle className="w-4 h-4 text-warning" />
+        <h3 className="text-sm font-semibold">Audience Pain Points</h3>
       </div>
 
       <div className="space-y-4">
@@ -49,7 +47,7 @@ export default function PainPoints({ painPoints }) {
           const config = SOURCE_CONFIG[source] || {
             icon: MessageCircle,
             label: source,
-            color: 'text-slate-500',
+            color: 'text-muted-foreground',
           };
           const Icon = config.icon;
           const isExpanded = expanded[source];
@@ -59,26 +57,24 @@ export default function PainPoints({ painPoints }) {
             <div key={source}>
               <div className="flex items-center gap-2 mb-2">
                 <Icon className={`w-3.5 h-3.5 ${config.color}`} />
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {config.label}
                 </span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                <span className="text-2xs text-muted-foreground">
                   ({items.length})
                 </span>
               </div>
 
-              <div className="space-y-2 pl-1">
+              <div className="flex flex-wrap gap-1.5 pl-1">
                 {displayItems.map((point, i) => {
                   const text = typeof point === 'string' ? point : point.text || point.question || point.complaint || JSON.stringify(point);
                   return (
-                    <div
+                    <span
                       key={i}
-                      className="border-l-2 border-blue-500/40 pl-3 py-1"
+                      className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-warning-bg text-warning"
                     >
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                        "{text}"
-                      </p>
-                    </div>
+                      {text}
+                    </span>
                   );
                 })}
               </div>
@@ -86,7 +82,7 @@ export default function PainPoints({ painPoints }) {
               {items.length > 3 && (
                 <button
                   onClick={() => toggleSource(source)}
-                  className="mt-2 ml-1 flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                  className="mt-2 ml-1 flex items-center gap-1 text-2xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
                   {isExpanded ? (
                     <>

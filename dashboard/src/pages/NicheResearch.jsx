@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useProject, useNicheProfile } from '../hooks/useNicheProfile';
 import { generateTopics, webhookCall } from '../lib/api';
+import PageHeader from '../components/shared/PageHeader';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { SkeletonCard, SkeletonLine } from '../components/ui/SkeletonLoader';
 import BlueOceanHero from '../components/research/BlueOceanHero';
@@ -17,10 +18,12 @@ import PainPoints from '../components/research/PainPoints';
 import KeywordCloud from '../components/research/KeywordCloud';
 import PlaylistCards from '../components/research/PlaylistCards';
 import RedOceanList from '../components/research/RedOceanList';
+import StatusBadge from '../components/shared/StatusBadge';
+import { Button } from '@/components/ui/button';
 
 /**
  * Niche Research page -- displays all research results after project research completes.
- * Two-column layout: Left (blue-ocean hero, playlists, CTA) | Right (competitors, pain points, keywords, red ocean).
+ * Layout: PageHeader, BlueOceanHero, 2-column (Competitors + PainPoints), PlaylistCards, RedOcean, Keywords.
  * Route: /project/:id/research
  */
 export default function NicheResearch() {
@@ -45,21 +48,20 @@ export default function NicheResearch() {
   // --- Loading skeleton ---
   if (isLoading) {
     return (
-      <div className="animate-in">
-        <div className="page-header">
+      <div className="animate-slide-up">
+        <div className="mb-6">
           <SkeletonLine width="w-1/3" height="h-7" />
           <SkeletonLine width="w-1/2" height="h-4" className="mt-2" />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <SkeletonCard className="h-48" />
-            <SkeletonCard className="h-36" />
-          </div>
-          <div className="space-y-6">
-            <SkeletonCard className="h-44" />
-            <SkeletonCard className="h-32" />
-            <SkeletonCard className="h-28" />
-          </div>
+        <SkeletonCard className="h-48 mb-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SkeletonCard className="h-44" />
+          <SkeletonCard className="h-44" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+          <SkeletonCard className="h-24" />
+          <SkeletonCard className="h-24" />
+          <SkeletonCard className="h-24" />
         </div>
       </div>
     );
@@ -68,21 +70,16 @@ export default function NicheResearch() {
   // --- Error state ---
   if (error) {
     return (
-      <div className="animate-in">
-        <div className="page-header">
-          <h1 className="page-title">Niche Research</h1>
-        </div>
-        <div className="glass-card p-8 text-center">
-          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-          <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+      <div className="animate-slide-up">
+        <PageHeader title="Niche Research" />
+        <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <AlertCircle className="w-10 h-10 text-danger mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground mb-4">
             {error.message || 'Failed to load research data.'}
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="btn-primary btn-sm"
-          >
+          <Button onClick={() => window.location.reload()} size="sm">
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -91,23 +88,23 @@ export default function NicheResearch() {
   // --- Research in progress ---
   if (isResearching) {
     return (
-      <div className="animate-in">
-        <div className="page-header">
-          <h1 className="page-title">{project?.name || 'Niche Research'}</h1>
-          <p className="page-subtitle">Researching: {project?.niche}</p>
-        </div>
-        <div className="glass-card p-10 text-center">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+      <div className="animate-slide-up">
+        <PageHeader
+          title={project?.name || 'Niche Research'}
+          subtitle={`Researching: ${project?.niche}`}
+        />
+        <div className="bg-card border border-border rounded-xl p-10 text-center">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-lg font-semibold mb-2">
             Research in progress...
           </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Auditing competitors, mining pain points, and analyzing blue-ocean opportunities.
           </p>
           <div className="mt-6 flex flex-col items-center gap-2">
             {['Creating project', 'Auditing competitors', 'Mining pain points', 'Blue-ocean analysis', 'Generating prompts'].map((step, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                <span className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+              <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                 {step}
               </div>
             ))}
@@ -176,97 +173,86 @@ export default function NicheResearch() {
 
   // --- Main render ---
   return (
-    <div className="animate-in">
+    <div className="animate-slide-up">
       {/* Page Header */}
-      <div className="page-header">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="page-title">{project?.name || 'Niche Research'}</h1>
-          {project?.niche && (
-            <span className="badge badge-purple">
-              <Globe className="w-3 h-3" />
-              {project.niche}
-            </span>
-          )}
-          {project?.status && (
-            <span className={`badge ${statusBadge(project.status)}`}>
-              {formatStatus(project.status)}
-            </span>
-          )}
-        </div>
-        <p className="page-subtitle">
-          Review niche analysis, competitors, and blue-ocean opportunities
-        </p>
+      <PageHeader
+        title="Niche Research"
+        subtitle={project?.niche || 'Review niche analysis and blue-ocean opportunities'}
+      >
+        {project?.status && (
+          <StatusBadge status={statusToVariant(project.status)} label={formatStatus(project.status)} />
+        )}
+      </PageHeader>
+
+      {/* 1. Blue-Ocean Hero (full width, most prominent) */}
+      <div className="animate-slide-up stagger-1 mb-6" style={{ opacity: 0 }}>
+        <BlueOceanHero
+          strategy={project?.niche_blue_ocean_strategy}
+          expertiseProfile={project?.niche_expertise_profile}
+          valueGaps={blueOcean.value_curve_gaps || blueOcean.unoccupied_angles || []}
+        />
       </div>
 
-      {/* Two-column grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT COLUMN */}
-        <div className="space-y-6">
-          {/* Blue-Ocean Hero (most prominent) */}
-          <div className="animate-slide-up stagger-1" style={{ opacity: 0 }}>
-          <BlueOceanHero
-            strategy={project?.niche_blue_ocean_strategy}
-            expertiseProfile={project?.niche_expertise_profile}
-            valueGaps={blueOcean.value_curve_gaps || blueOcean.unoccupied_angles || []}
-          />
-          </div>
-
-          {/* Playlist Cards */}
-          <div className="animate-slide-up stagger-2" style={{ opacity: 0 }}>
-          <PlaylistCards
-            playlists={playlists}
-            onRegenerate={handleRegeneratePlaylists}
-          />
-          </div>
-
-          {/* Generate Topics CTA */}
-          {canGenerateTopics && (
-            <button
-              onClick={handleGenerateTopics}
-              disabled={generating}
-              className="btn-primary btn-lg w-full"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating Topics...
-                </>
-              ) : (
-                <>
-                  Generate Topics
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Re-research button */}
-          <div className="flex justify-center">
-            <button
-              onClick={() => setReresearchOpen(true)}
-              className="btn-ghost btn-sm"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Re-research Niche
-            </button>
-          </div>
+      {/* 2. Two-column grid: Competitors (left) + PainPoints (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div className="animate-slide-up stagger-2" style={{ opacity: 0 }}>
+          <CompetitorCards competitors={competitors} />
         </div>
-
-        {/* RIGHT COLUMN */}
-        <div className="space-y-6">
-          <div className="animate-slide-up stagger-3" style={{ opacity: 0 }}>
-            <CompetitorCards competitors={competitors} />
-          </div>
-          <div className="animate-slide-up stagger-4" style={{ opacity: 0 }}>
-            <PainPoints painPoints={painPoints} />
-          </div>
-          <div className="animate-slide-up stagger-5" style={{ opacity: 0 }}>
-            <KeywordCloud keywords={keywords} />
-          </div>
-          <div className="animate-slide-up stagger-6" style={{ opacity: 0 }}>
-            <RedOceanList topics={redOceanTopics} />
-          </div>
+        <div className="animate-slide-up stagger-3" style={{ opacity: 0 }}>
+          <PainPoints painPoints={painPoints} />
         </div>
+      </div>
+
+      {/* 3. Playlist Cards (3 in a row) */}
+      <div className="animate-slide-up stagger-4 mb-6" style={{ opacity: 0 }}>
+        <PlaylistCards
+          playlists={playlists}
+          onRegenerate={handleRegeneratePlaylists}
+        />
+      </div>
+
+      {/* 4. RedOcean (collapsible) */}
+      <div className="animate-slide-up stagger-5 mb-6" style={{ opacity: 0 }}>
+        <RedOceanList topics={redOceanTopics} />
+      </div>
+
+      {/* 5. Keyword Cloud */}
+      <div className="animate-slide-up stagger-6 mb-6" style={{ opacity: 0 }}>
+        <KeywordCloud keywords={keywords} />
+      </div>
+
+      {/* Generate Topics CTA */}
+      {canGenerateTopics && (
+        <div className="animate-slide-up stagger-7 mb-4" style={{ opacity: 0 }}>
+          <Button
+            onClick={handleGenerateTopics}
+            disabled={generating}
+            className="w-full bg-gradient-to-r from-primary to-destructive hover:from-primary-hover hover:to-destructive/90 text-white shadow-glow-primary h-11"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating Topics...
+              </>
+            ) : (
+              <>
+                Generate Topics
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Re-research button */}
+      <div className="flex justify-center">
+        <button
+          onClick={() => setReresearchOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Re-research Niche
+        </button>
       </div>
 
       {/* Re-research confirmation dialog */}
@@ -281,7 +267,7 @@ export default function NicheResearch() {
         loading={reresearching}
       />
 
-      {/* Topics exist — generate more confirmation dialog */}
+      {/* Topics exist -- generate more confirmation dialog */}
       <ConfirmDialog
         isOpen={generateMoreOpen}
         onClose={() => setGenerateMoreOpen(false)}
@@ -296,17 +282,17 @@ export default function NicheResearch() {
   );
 }
 
-function statusBadge(status) {
+function statusToVariant(status) {
   const map = {
-    created: 'badge-blue',
-    researching: 'badge-amber',
-    researching_complete: 'badge-green',
-    ready_for_topics: 'badge-green',
-    topics_pending_review: 'badge-amber',
-    active: 'badge-green',
-    paused: 'badge-red',
+    created: 'pending',
+    researching: 'active',
+    researching_complete: 'approved',
+    ready_for_topics: 'approved',
+    topics_pending_review: 'review',
+    active: 'published',
+    paused: 'failed',
   };
-  return map[status] || 'badge-blue';
+  return map[status] || 'pending';
 }
 
 function formatStatus(status) {

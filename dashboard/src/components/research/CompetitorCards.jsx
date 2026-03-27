@@ -3,7 +3,7 @@ import { Users, Eye, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
 
 /**
  * Competitor audit channel cards.
- * Shows channel name, subscriber count, avg views, coverage tags (blue), gap tags (green).
+ * Each competitor: channel name, sub count, gaps as small badges.
  * @param {Object} competitors - { channels: Array, top_videos?: Array, gaps?: Array }
  */
 export default function CompetitorCards({ competitors }) {
@@ -13,12 +13,12 @@ export default function CompetitorCards({ competitors }) {
 
   if (channels.length === 0) {
     return (
-      <div className="glass-card p-5">
-        <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 mb-1">
+      <div className="bg-card border border-border rounded-xl p-4">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <TrendingUp className="w-4 h-4" />
           <h3 className="text-sm font-semibold">Competitor Audit</h3>
         </div>
-        <p className="text-xs text-slate-400 dark:text-slate-500">No competitor data yet</p>
+        <p className="mt-1 text-xs text-muted-foreground">No competitor data yet</p>
       </div>
     );
   }
@@ -26,28 +26,28 @@ export default function CompetitorCards({ competitors }) {
   const displayChannels = expanded ? channels : channels.slice(0, 4);
 
   return (
-    <div className="glass-card p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-card border border-border rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-blue-500" />
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-            Competitor Audit
-          </h3>
-          <span className="badge badge-blue">{channels.length}</span>
+          <TrendingUp className="w-4 h-4 text-info" />
+          <h3 className="text-sm font-semibold">Competitor Audit</h3>
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-info-bg text-info border border-info-border">
+            {channels.length}
+          </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5">
         {displayChannels.map((channel, i) => (
           <div
             key={i}
-            className="card-elevated p-3"
+            className="bg-card border border-border rounded-lg p-3 hover:border-border-hover transition-colors"
           >
-            <p className="text-sm font-semibold text-slate-900 dark:text-white mb-1.5 truncate">
+            <p className="text-sm font-semibold mb-1.5 truncate">
               {channel.name || channel.channel_name || `Channel ${i + 1}`}
             </p>
 
-            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mb-2.5">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
               {channel.subscribers && (
                 <span className="flex items-center gap-1">
                   <Users className="w-3 h-3" />
@@ -66,7 +66,9 @@ export default function CompetitorCards({ competitors }) {
             {(channel.coverage || channel.topics_covered) && (
               <div className="flex flex-wrap gap-1 mb-1.5">
                 {(channel.coverage || channel.topics_covered || []).slice(0, 3).map((tag, j) => (
-                  <span key={j} className="badge badge-blue text-[10px]">{tag}</span>
+                  <span key={j} className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-info-bg text-info border border-info-border">
+                    {tag}
+                  </span>
                 ))}
               </div>
             )}
@@ -75,7 +77,9 @@ export default function CompetitorCards({ competitors }) {
             {(channel.gaps || channel.missing_topics) && (
               <div className="flex flex-wrap gap-1">
                 {(channel.gaps || channel.missing_topics || []).slice(0, 3).map((tag, j) => (
-                  <span key={j} className="badge badge-green text-[10px]">{tag}</span>
+                  <span key={j} className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-success-bg text-success border border-success-border">
+                    {tag}
+                  </span>
                 ))}
               </div>
             )}
@@ -86,7 +90,7 @@ export default function CompetitorCards({ competitors }) {
       {channels.length > 4 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="btn-ghost btn-sm mt-3"
+          className="mt-3 flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           {expanded ? (
             <>
