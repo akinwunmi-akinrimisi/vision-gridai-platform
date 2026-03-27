@@ -8,20 +8,21 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { useTheme } from '../../hooks/useTheme';
 
-const COLORS = {
-  amber: '#F59E0B',
-  green: '#10B981',
+const CHART = {
+  amber: '#FBBF24',
+  success: '#34D399',
+  grid: 'rgba(255,255,255,0.04)',
+  axis: '#71717A',
 };
 
-function CustomTooltip({ active, payload, label }) {
+function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass-card px-3 py-2 text-xs shadow-lg">
-      <p className="text-text-muted dark:text-text-muted-dark mb-1">{label}</p>
+    <div className="bg-card border border-border rounded-md px-3 py-2 text-xs shadow-lg">
+      <p className="text-muted-foreground mb-1">{label}</p>
       {payload.map((p) => (
-        <p key={p.dataKey} className="font-semibold text-slate-900 dark:text-white tabular-nums">
+        <p key={p.dataKey} className="font-semibold text-foreground tabular-nums">
           <span style={{ color: p.color }}>{p.name}:</span> ${p.value.toFixed(2)}
         </p>
       ))}
@@ -34,34 +35,33 @@ function CustomTooltip({ active, payload, label }) {
  * @param {{ data: Array<{ title: string, cost: number, revenue: number }> }} props
  */
 export default function CostRevenueChart({ data }) {
-  const { isDark } = useTheme();
-  const grid = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const text = isDark ? '#94A3B8' : '#64748B';
-
   return (
-    <div className="glass-card p-4 sm:p-6" data-testid="cost-revenue-chart">
-      <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight mb-4">
+    <div className="bg-card border border-border rounded-xl p-4 sm:p-6" data-testid="cost-revenue-chart">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
         Cost vs Revenue per Video
       </h3>
       <div className="h-48 sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke={grid} />
+            <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" />
             <XAxis
               dataKey="title"
-              tick={{ fontSize: 11, fill: text }}
+              tick={{ fontSize: 10, fill: CHART.axis }}
               angle={-45}
               textAnchor="end"
               height={80}
             />
             <YAxis
-              tick={{ fontSize: 12, fill: text }}
+              tick={{ fontSize: 11, fill: CHART.axis }}
               tickFormatter={(val) => `$${val}`}
             />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend verticalAlign="top" />
-            <Bar dataKey="cost" name="Cost" fill={COLORS.amber} radius={[4, 4, 0, 0]} />
-            <Bar dataKey="revenue" name="Revenue" fill={COLORS.green} radius={[4, 4, 0, 0]} />
+            <Tooltip content={<ChartTooltip />} />
+            <Legend
+              verticalAlign="top"
+              wrapperStyle={{ fontSize: 11, color: CHART.axis }}
+            />
+            <Bar dataKey="cost" name="Cost" fill={CHART.amber} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="revenue" name="Revenue" fill={CHART.success} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

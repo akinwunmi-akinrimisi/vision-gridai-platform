@@ -10,14 +10,14 @@ import {
   Users,
   DollarSign,
   RefreshCw,
-  TrendingUp,
-  TrendingDown,
-  Minus,
 } from 'lucide-react';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { refreshAnalytics } from '../lib/analyticsApi';
 import { supabase } from '../lib/supabase';
-import { SkeletonMetric } from '../components/ui/SkeletonLoader';
+
+import PageHeader from '../components/shared/PageHeader';
+import KPICard from '../components/shared/KPICard';
+import EmptyState from '../components/shared/EmptyState';
 import TopPerformerCard from '../components/analytics/TopPerformerCard';
 import ViewsChart from '../components/analytics/ViewsChart';
 import RevenueChart from '../components/analytics/RevenueChart';
@@ -26,32 +26,50 @@ import CostDonut from '../components/analytics/CostDonut';
 import CostRevenueChart from '../components/analytics/CostRevenueChart';
 import PerformanceTable from '../components/analytics/PerformanceTable';
 import TimeRangeFilter from '../components/analytics/TimeRangeFilter';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 
-/**
- * TrendIndicator -- shows percentage change vs previous period.
- */
-function TrendIndicator({ value, suffix = '%' }) {
-  if (value == null || isNaN(value)) return null;
-  const isPositive = value > 0;
-  const isZero = value === 0;
-  const Icon = isZero ? Minus : isPositive ? TrendingUp : TrendingDown;
-  const color = isZero
-    ? 'text-slate-400'
-    : isPositive
-      ? 'text-emerald-500'
-      : 'text-red-500';
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-  return (
-    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${color}`}>
-      <Icon className="w-3 h-3" />
-      {isPositive ? '+' : ''}{value.toFixed(1)}{suffix}
-    </span>
-  );
+function parseDurationToSeconds(dur) {
+  if (!dur) return 0;
+  if (typeof dur === 'number') return dur;
+  if (typeof dur === 'string' && dur.includes(':')) {
+    const parts = dur.split(':');
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  }
+  return parseFloat(dur) || 0;
 }
 
-/**
- * NicheComparisonTable -- compare metrics across projects (only when 2+ exist).
- */
+function truncate(str, maxLen = 20) {
+  if (!str) return '';
+  return str.length > maxLen ? str.slice(0, maxLen) + '...' : str;
+}
+
+function formatDelta(value, suffix = '%') {
+  if (value == null || isNaN(value)) return null;
+  const prefix = value > 0 ? '+' : '';
+  return `${prefix}${value.toFixed(1)}${suffix}`;
+}
+
+function deltaType(value) {
+  if (value == null || isNaN(value) || value === 0) return undefined;
+  return value > 0 ? 'positive' : 'negative';
+}
+
+// ---------------------------------------------------------------------------
+// NicheComparisonTable
+// ---------------------------------------------------------------------------
+
 function NicheComparisonTable() {
   const [nicheData, setNicheData] = useState([]);
 
@@ -60,7 +78,10 @@ function NicheComparisonTable() {
       const { data: projects } = await supabase.from('projects').select('id, name, niche');
       if (!projects || projects.length < 2) return;
 
-      const { data: topics } = await supabase.from('topics').select('project_id, yt_views, yt_estimated_revenue, yt_ctr, total_cost').eq('status', 'published');
+      const { data: topics } = await supabase
+        .from('topics')
+        .select('project_id, yt_views, yt_estimated_revenue, yt_ctr, total_cost')
+        .eq('status', 'published');
 
       if (!topics) return;
 
@@ -90,65 +111,48 @@ function NicheComparisonTable() {
   if (nicheData.length < 2) return null;
 
   return (
-    <div className="glass-card overflow-hidden mt-8">
-      <div className="px-6 py-4 border-b border-white/[0.06]">
-        <h3 className="section-title">Niche Comparison</h3>
+    <div className="bg-card border border-border rounded-xl overflow-hidden mt-8">
+      <div className="px-5 py-3.5 border-b border-border">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Niche Comparison
+        </h3>
       </div>
-      <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full text-sm min-w-[600px]">
-          <thead>
-            <tr className="border-b border-white/[0.06]">
-              <th className="table-header table-cell text-left">Niche</th>
-              <th className="table-header table-cell text-right">Videos</th>
-              <th className="table-header table-cell text-right">Views</th>
-              <th className="table-header table-cell text-right">Revenue</th>
-              <th className="table-header table-cell text-right">Avg CPM</th>
-              <th className="table-header table-cell text-right">ROI</th>
-            </tr>
-          </thead>
-          <tbody>
-            {nicheData.map((row) => {
-              const roi = row.totalCost > 0 ? (row.totalRevenue / row.totalCost) : 0;
-              return (
-                <tr key={row.name} className="table-row">
-                  <td className="table-cell font-medium text-slate-900 dark:text-white">{row.name}</td>
-                  <td className="table-cell text-right tabular-nums font-mono">{row.videos}</td>
-                  <td className="table-cell text-right tabular-nums font-mono">{row.totalViews.toLocaleString()}</td>
-                  <td className="table-cell text-right tabular-nums font-mono text-emerald-600 dark:text-emerald-400">${row.totalRevenue.toFixed(2)}</td>
-                  <td className="table-cell text-right tabular-nums font-mono">${row.avgCpm.toFixed(2)}</td>
-                  <td className={`table-cell text-right tabular-nums font-mono font-semibold ${roi >= 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                    {roi > 0 ? `${roi.toFixed(1)}x` : '--'}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow className="border-border hover:bg-transparent">
+            <TableHead className="text-left text-[11px] uppercase tracking-wider">Niche</TableHead>
+            <TableHead className="text-right text-[11px] uppercase tracking-wider">Videos</TableHead>
+            <TableHead className="text-right text-[11px] uppercase tracking-wider">Views</TableHead>
+            <TableHead className="text-right text-[11px] uppercase tracking-wider">Revenue</TableHead>
+            <TableHead className="text-right text-[11px] uppercase tracking-wider">Avg CPM</TableHead>
+            <TableHead className="text-right text-[11px] uppercase tracking-wider">ROI</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {nicheData.map((row) => {
+            const roi = row.totalCost > 0 ? row.totalRevenue / row.totalCost : 0;
+            return (
+              <TableRow key={row.name} className="border-border hover:bg-card-hover">
+                <TableCell className="font-medium text-foreground text-xs">{row.name}</TableCell>
+                <TableCell className="text-right tabular-nums font-mono text-xs">{row.videos}</TableCell>
+                <TableCell className="text-right tabular-nums font-mono text-xs">{row.totalViews.toLocaleString()}</TableCell>
+                <TableCell className="text-right tabular-nums font-mono text-xs text-success">${row.totalRevenue.toFixed(2)}</TableCell>
+                <TableCell className="text-right tabular-nums font-mono text-xs">${row.avgCpm.toFixed(2)}</TableCell>
+                <TableCell className={`text-right tabular-nums font-mono text-xs font-semibold ${roi >= 1 ? 'text-success' : 'text-danger'}`}>
+                  {roi > 0 ? `${roi.toFixed(1)}x` : '--'}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }
 
-/**
- * Parse duration string "M:SS" to seconds.
- */
-function parseDurationToSeconds(dur) {
-  if (!dur) return 0;
-  if (typeof dur === 'number') return dur;
-  if (typeof dur === 'string' && dur.includes(':')) {
-    const parts = dur.split(':');
-    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-  }
-  return parseFloat(dur) || 0;
-}
-
-/**
- * Truncate a string to maxLen characters.
- */
-function truncate(str, maxLen = 20) {
-  if (!str) return '';
-  return str.length > maxLen ? str.slice(0, maxLen) + '...' : str;
-}
+// ---------------------------------------------------------------------------
+// Main Analytics page
+// ---------------------------------------------------------------------------
 
 export default function Analytics() {
   const { id } = useParams();
@@ -167,7 +171,8 @@ export default function Analytics() {
     }
   }, [id]);
 
-  // Transform topics to chart data
+  // -- Chart data transforms (unchanged logic) --
+
   const viewsData = useMemo(() => {
     if (!topics?.length) return [];
     const byDate = {};
@@ -236,7 +241,6 @@ export default function Analytics() {
     }));
   }, [topics]);
 
-  // Format last updated from most recent yt_last_updated
   const lastUpdated = useMemo(() => {
     if (!topics?.length) return null;
     const dates = topics
@@ -255,53 +259,55 @@ export default function Analytics() {
 
   const trends = analytics.trends || {};
 
-  const primaryCards = [
+  // -- KPI card config --
+
+  const kpiCards = [
     {
       label: 'Total Views',
       value: analytics.totalViews.toLocaleString(),
       icon: Eye,
-      bgColor: 'from-blue-500 to-indigo-600',
-      trend: trends.views,
+      delta: formatDelta(trends.views),
+      deltaType: deltaType(trends.views),
     },
     {
       label: 'Watch Hours',
       value: `${analytics.totalWatchHours.toLocaleString()}h`,
       icon: Clock,
-      bgColor: 'from-purple-500 to-violet-600',
-      trend: trends.watchHours,
+      delta: formatDelta(trends.watchHours),
+      deltaType: deltaType(trends.watchHours),
     },
     {
       label: 'Avg CTR',
       value: `${analytics.avgCtr}%`,
       icon: MousePointerClick,
-      bgColor: 'from-emerald-500 to-teal-600',
-      trend: trends.ctr,
+      delta: formatDelta(trends.ctr),
+      deltaType: deltaType(trends.ctr),
     },
     {
       label: 'Revenue',
       value: `$${analytics.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: DollarSign,
-      bgColor: 'from-amber-500 to-orange-600',
-      trend: trends.revenue,
+      delta: formatDelta(trends.revenue),
+      deltaType: deltaType(trends.revenue),
     },
   ];
 
   const secondaryCards = [
     { label: 'Likes', value: analytics.totalLikes.toLocaleString(), icon: ThumbsUp },
     { label: 'Comments', value: analytics.totalComments.toLocaleString(), icon: MessageSquare },
-    { label: 'Subscribers Gained', value: analytics.totalSubscribers.toLocaleString(), icon: Users },
-    { label: 'Avg View Duration', value: analytics.avgDuration, icon: Clock },
+    { label: 'Subscribers', value: analytics.totalSubscribers.toLocaleString(), icon: Users },
+    { label: 'Avg Duration', value: analytics.avgDuration, icon: Clock },
   ];
+
+  // -- Loading skeleton --
 
   if (isLoading) {
     return (
-      <div className="animate-in">
-        <div className="page-header">
-          <h1 className="page-title">Analytics</h1>
-        </div>
+      <div className="animate-fade-in">
+        <PageHeader title="Analytics" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
           {[1, 2, 3, 4].map((i) => (
-            <SkeletonMetric key={i} />
+            <div key={i} className="bg-card border border-border rounded-lg p-4 h-[88px] animate-pulse" />
           ))}
         </div>
       </div>
@@ -309,50 +315,44 @@ export default function Analytics() {
   }
 
   return (
-    <div className="animate-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6">
-        <div className="page-header mb-0">
-          <h1 className="page-title">Analytics</h1>
-          <p className="page-subtitle">
-            {lastUpdated
-              ? `Last updated: ${lastUpdated}`
-              : 'YouTube performance tracking across all videos'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="btn-secondary btn-sm"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Refresh Now</span>
-            <span className="sm:hidden">Refresh</span>
-          </button>
-          <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
-        </div>
-      </div>
+    <div className="animate-fade-in">
+      {/* Header with TimeRangeFilter + Refresh */}
+      <PageHeader
+        title="Analytics"
+        subtitle={
+          lastUpdated
+            ? `Last updated: ${lastUpdated}`
+            : 'YouTube performance tracking across all videos'
+        }
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="gap-1.5"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">Refresh</span>
+        </Button>
+        <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+      </PageHeader>
 
-      {/* Primary metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
-        {primaryCards.map((m, i) => (
-          <div key={m.label} className={`metric-card animate-slide-up stagger-${i + 1}`} style={{ opacity: 0 }}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-text-muted dark:text-text-muted-dark uppercase tracking-wider">
-                {m.label}
-              </span>
-              <div
-                className={`metric-card-icon bg-gradient-to-br ${m.bgColor}`}
-                style={{ '--icon-glow': m.bgColor.includes('blue') ? 'rgba(37,99,235,0.4)' : m.bgColor.includes('purple') ? 'rgba(139,92,246,0.4)' : m.bgColor.includes('emerald') ? 'rgba(16,185,129,0.4)' : 'rgba(245,158,11,0.4)' }}
-              >
-                <m.icon className="w-4 h-4 text-white" />
-              </div>
-            </div>
-            <div className="flex items-end gap-2">
-              <p className="metric-value text-slate-900 dark:text-white">{m.value}</p>
-              <TrendIndicator value={m.trend} />
-            </div>
+      {/* Primary KPIs with delta indicators */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4">
+        {kpiCards.map((card, i) => (
+          <div
+            key={card.label}
+            className={`animate-slide-up stagger-${i + 1}`}
+            style={{ opacity: 0 }}
+          >
+            <KPICard
+              label={card.label}
+              value={card.value}
+              icon={card.icon}
+              delta={card.delta}
+              deltaType={card.deltaType}
+            />
           </div>
         ))}
       </div>
@@ -360,14 +360,18 @@ export default function Analytics() {
       {/* Secondary metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8">
         {secondaryCards.map((m, i) => (
-          <div key={m.label} className={`card-elevated p-4 animate-slide-up stagger-${i + 5}`} style={{ opacity: 0 }}>
+          <div
+            key={m.label}
+            className={`bg-card border border-border rounded-lg p-4 animate-slide-up stagger-${i + 5}`}
+            style={{ opacity: 0 }}
+          >
             <div className="flex items-center gap-2 mb-1.5">
-              <m.icon className="w-3.5 h-3.5 text-text-muted dark:text-text-muted-dark" />
-              <span className="text-xs text-text-muted dark:text-text-muted-dark font-medium">
+              <m.icon className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                 {m.label}
               </span>
             </div>
-            <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">
+            <p className="text-lg font-bold text-foreground tabular-nums">
               {m.value}
             </p>
           </div>
@@ -383,21 +387,21 @@ export default function Analytics() {
 
       {/* Empty state */}
       {topics.length === 0 && (
-        <div className="glass-card p-12 mb-8 text-center">
-          <BarChart3 className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <p className="text-base font-medium text-slate-600 dark:text-slate-400 mb-1">
-            No published videos yet
-          </p>
-          <p className="text-sm text-text-muted dark:text-text-muted-dark">
-            Analytics data will appear once videos are published to YouTube
-          </p>
+        <div className="bg-card border border-border rounded-xl mb-8">
+          <EmptyState
+            icon={BarChart3}
+            title="No published videos yet"
+            description="Analytics data will appear once videos are published to YouTube"
+          />
         </div>
       )}
 
       {/* Charts grid */}
       {topics.length > 0 && (
         <>
-          <h2 className="section-title mb-4">Charts & Insights</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+            Charts & Insights
+          </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
             <div data-testid="views-chart">
               <ViewsChart data={viewsData} />
@@ -417,7 +421,7 @@ export default function Analytics() {
         </>
       )}
 
-      {/* Niche comparison (only when 2+ projects exist) */}
+      {/* Niche comparison */}
       <NicheComparisonTable />
     </div>
   );

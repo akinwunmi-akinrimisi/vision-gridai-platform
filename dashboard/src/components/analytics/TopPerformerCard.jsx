@@ -1,8 +1,9 @@
 import { Trophy, Eye, Clock, DollarSign, MousePointerClick } from 'lucide-react';
+import HeroCard from '../shared/HeroCard';
 
 /**
  * Highlight card for the top performing video by views.
- * Shows gradient top border, thumbnail, title, and key metrics.
+ * Uses shared HeroCard with amber accent gradient.
  *
  * @param {{ topic: object|null }} props
  */
@@ -33,46 +34,42 @@ export default function TopPerformerCard({ topic }) {
   ];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl gradient-border-visible">
-      <div className="glass-card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy className="w-5 h-5 text-amber-500" />
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-            Top Performer
-          </h3>
-        </div>
+    <HeroCard>
+      <div className="flex items-center gap-2 mb-4">
+        <Trophy className="w-5 h-5 text-primary" />
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Top Performer
+        </h3>
+      </div>
 
-        <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-          {/* Thumbnail */}
-          {topic.thumbnail_url && (
-            <img
-              src={topic.thumbnail_url}
-              alt=""
-              className="w-full sm:w-20 h-32 sm:h-12 rounded-lg object-cover flex-shrink-0"
-            />
-          )}
+      <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+        {topic.thumbnail_url && (
+          <img
+            src={topic.thumbnail_url}
+            alt=""
+            className="w-full sm:w-20 h-32 sm:h-12 rounded-lg object-cover flex-shrink-0"
+          />
+        )}
 
-          <div className="flex-1 min-w-0">
-            <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white truncate mb-3">
-              {topic.seo_title || topic.original_title || `Topic #${topic.topic_number}`}
-            </p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground truncate mb-3">
+            {topic.seo_title || topic.original_title || `Topic #${topic.topic_number}`}
+          </p>
 
-            {/* Metric chips */}
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {stats.map((s) => (
-                <div
-                  key={s.label}
-                  className="badge badge-blue"
-                >
-                  <s.icon className="w-3 h-3 text-text-muted dark:text-text-muted-dark" />
-                  <span className="text-text-muted dark:text-text-muted-dark hidden sm:inline">{s.label}:</span>
-                  <span className="tabular-nums">{s.value}</span>
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {stats.map((s) => (
+              <div
+                key={s.label}
+                className="inline-flex items-center gap-1.5 bg-muted rounded-md px-2 py-1 text-xs"
+              >
+                <s.icon className="w-3 h-3 text-muted-foreground" />
+                <span className="text-muted-foreground hidden sm:inline">{s.label}:</span>
+                <span className="font-semibold tabular-nums text-foreground">{s.value}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-    </div>
+    </HeroCard>
   );
 }

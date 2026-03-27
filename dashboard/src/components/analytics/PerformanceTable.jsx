@@ -1,11 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { ChevronUp, ChevronDown, BarChart3 } from 'lucide-react';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
+import EmptyState from '../shared/EmptyState';
 import useMediaQuery from '../../hooks/useMediaQuery';
 
-/**
- * Parse a duration string like "45:30" to total seconds.
- */
 function parseDurationToSeconds(dur) {
   if (!dur) return 0;
   if (typeof dur === 'number') return dur;
@@ -16,9 +22,6 @@ function parseDurationToSeconds(dur) {
   return parseFloat(dur) || 0;
 }
 
-/**
- * Format seconds as M:SS.
- */
 function formatDuration(secs) {
   if (!secs) return '--';
   const m = Math.floor(secs / 60);
@@ -26,9 +29,6 @@ function formatDuration(secs) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-/**
- * Format a date string as "MMM DD, YYYY".
- */
 function formatDate(dateStr) {
   if (!dateStr) return '--';
   const d = new Date(dateStr);
@@ -36,21 +36,21 @@ function formatDate(dateStr) {
 }
 
 const COLUMNS = [
-  { key: 'topic_number', label: '#', width: 'w-10' },
-  { key: 'seo_title', label: 'Title', width: 'max-w-[200px]' },
-  { key: 'yt_views', label: 'Views', width: 'w-20', align: 'right' },
-  { key: 'yt_watch_hours', label: 'Watch Hrs', width: 'w-20', align: 'right' },
-  { key: 'yt_ctr', label: 'CTR', width: 'w-16', align: 'right' },
-  { key: 'yt_avg_view_duration', label: 'Avg Dur', width: 'w-18', align: 'right' },
-  { key: 'yt_estimated_revenue', label: 'Revenue', width: 'w-20', align: 'right' },
-  { key: 'total_cost', label: 'Cost', width: 'w-18', align: 'right' },
-  { key: 'pl', label: 'P/L', width: 'w-20', align: 'right' },
-  { key: 'yt_actual_cpm', label: 'CPM', width: 'w-16', align: 'right' },
-  { key: 'published_at', label: 'Published', width: 'w-28', align: 'right' },
+  { key: 'topic_number', label: '#', align: 'left' },
+  { key: 'seo_title', label: 'Title', align: 'left' },
+  { key: 'yt_views', label: 'Views', align: 'right' },
+  { key: 'yt_watch_hours', label: 'Watch Hrs', align: 'right' },
+  { key: 'yt_ctr', label: 'CTR', align: 'right' },
+  { key: 'yt_avg_view_duration', label: 'Avg Dur', align: 'right' },
+  { key: 'yt_estimated_revenue', label: 'Revenue', align: 'right' },
+  { key: 'total_cost', label: 'Cost', align: 'right' },
+  { key: 'pl', label: 'P/L', align: 'right' },
+  { key: 'yt_actual_cpm', label: 'CPM', align: 'right' },
+  { key: 'published_at', label: 'Published', align: 'right' },
 ];
 
 /**
- * Sortable per-video performance table.
+ * Sortable per-video performance table using shadcn Table primitives.
  * @param {{ topics: Array, projectId: string }} props
  */
 export default function PerformanceTable({ topics, projectId }) {
@@ -99,159 +99,155 @@ export default function PerformanceTable({ topics, projectId }) {
 
   if (!topics || topics.length === 0) {
     return (
-      <div className="glass-card p-8" data-testid="performance-table">
-        <div className="text-center">
-          <BarChart3 className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-            No published videos yet
-          </p>
-          <p className="text-xs text-text-muted dark:text-text-muted-dark mt-1">
-            Analytics will appear once videos are published to YouTube
-          </p>
-        </div>
+      <div className="bg-card border border-border rounded-xl" data-testid="performance-table">
+        <EmptyState
+          icon={BarChart3}
+          title="No published videos yet"
+          description="Analytics will appear once videos are published to YouTube"
+        />
+      </div>
+    );
+  }
+
+  // Mobile card view
+  if (isMobile) {
+    return (
+      <div className="space-y-2" data-testid="performance-table">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          Video Performance
+        </h3>
+        {sorted.map((topic) => {
+          const revenue = parseFloat(topic.yt_estimated_revenue) || 0;
+          const cost = parseFloat(topic.total_cost) || 0;
+          const pl = revenue - cost;
+          return (
+            <div
+              key={topic.id}
+              onClick={() => navigate(`/project/${projectId}/topics/${topic.id}/review`)}
+              className="bg-card border border-border rounded-xl p-4 cursor-pointer active:scale-[0.99] transition-transform hover:border-border-hover"
+            >
+              <p className="text-sm font-medium text-foreground mb-2 line-clamp-2">
+                {topic.seo_title || topic.original_title || `Topic #${topic.topic_number}`}
+              </p>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <p className="text-muted-foreground">Views</p>
+                  <p className="font-bold font-mono tabular-nums">{(topic.yt_views || 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Revenue</p>
+                  <p className="font-bold font-mono tabular-nums text-success">${revenue.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">P/L</p>
+                  <p className={`font-bold font-mono tabular-nums ${pl >= 0 ? 'text-success' : 'text-danger'}`}>
+                    {pl >= 0 ? '+' : ''}${pl.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">CTR</p>
+                  <p className="font-bold font-mono tabular-nums">{parseFloat(topic.yt_ctr || 0).toFixed(1)}%</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Watch Hrs</p>
+                  <p className="font-bold font-mono tabular-nums">{parseFloat(topic.yt_watch_hours || 0).toFixed(1)}h</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">CPM</p>
+                  <p className="font-bold font-mono tabular-nums">${parseFloat(topic.yt_actual_cpm || 0).toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   }
 
   return (
-    <div className="glass-card overflow-hidden" data-testid="performance-table">
-      <div className="px-6 py-4 border-b border-white/[0.06]">
-        <h3 className="section-title">
+    <div className="bg-card border border-border rounded-xl overflow-hidden" data-testid="performance-table">
+      <div className="px-5 py-3.5 border-b border-border">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Video Performance
         </h3>
       </div>
 
-      {/* Mobile card view */}
-      {isMobile ? (
-        <div className="p-3 space-y-2">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-border hover:bg-transparent">
+            {COLUMNS.map((col) => (
+              <TableHead
+                key={col.key}
+                onClick={() => handleSort(col.key)}
+                className={`cursor-pointer select-none hover:text-foreground transition-colors text-[11px] uppercase tracking-wider ${
+                  col.align === 'right' ? 'text-right' : 'text-left'
+                } ${col.key === 'seo_title' ? 'max-w-[200px]' : ''}`}
+              >
+                <span className="inline-flex items-center gap-1">
+                  {col.label}
+                  {sortColumn === col.key && (
+                    sortDirection === 'asc'
+                      ? <ChevronUp className="w-3 h-3" />
+                      : <ChevronDown className="w-3 h-3" />
+                  )}
+                </span>
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {sorted.map((topic) => {
             const revenue = parseFloat(topic.yt_estimated_revenue) || 0;
             const cost = parseFloat(topic.total_cost) || 0;
             const pl = revenue - cost;
+            const durationSecs = parseDurationToSeconds(topic.yt_avg_view_duration);
+
             return (
-              <div
+              <TableRow
                 key={topic.id}
                 onClick={() => navigate(`/project/${projectId}/topics/${topic.id}/review`)}
-                className="glass-card p-4 cursor-pointer active:scale-[0.99] transition-transform"
+                className="cursor-pointer border-border hover:bg-card-hover"
               >
-                <p className="text-sm font-medium text-slate-900 dark:text-white mb-2 line-clamp-2">
+                <TableCell className="text-muted-foreground tabular-nums text-xs">
+                  {topic.topic_number}
+                </TableCell>
+                <TableCell className="truncate max-w-[200px] font-medium text-foreground text-xs">
                   {topic.seo_title || topic.original_title || `Topic #${topic.topic_number}`}
-                </p>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <p className="text-text-muted dark:text-text-muted-dark">Views</p>
-                    <p className="font-bold font-mono tabular-nums">{(topic.yt_views || 0).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-text-muted dark:text-text-muted-dark">Revenue</p>
-                    <p className="font-bold font-mono tabular-nums text-emerald-500">${revenue.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-text-muted dark:text-text-muted-dark">P/L</p>
-                    <p className={`font-bold font-mono tabular-nums ${pl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {pl >= 0 ? '+' : ''}${pl.toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-text-muted dark:text-text-muted-dark">CTR</p>
-                    <p className="font-bold font-mono tabular-nums">{parseFloat(topic.yt_ctr || 0).toFixed(1)}%</p>
-                  </div>
-                  <div>
-                    <p className="text-text-muted dark:text-text-muted-dark">Watch Hrs</p>
-                    <p className="font-bold font-mono tabular-nums">{parseFloat(topic.yt_watch_hours || 0).toFixed(1)}h</p>
-                  </div>
-                  <div>
-                    <p className="text-text-muted dark:text-text-muted-dark">CPM</p>
-                    <p className="font-bold font-mono tabular-nums">${parseFloat(topic.yt_actual_cpm || 0).toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-xs">
+                  {(topic.yt_views || 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-xs">
+                  {parseFloat(topic.yt_watch_hours || 0).toFixed(1)}h
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-xs">
+                  {parseFloat(topic.yt_ctr || 0).toFixed(1)}%
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-xs">
+                  {formatDuration(durationSecs)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-xs text-success">
+                  ${revenue.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-xs text-warning">
+                  ${cost.toFixed(2)}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums text-xs font-semibold ${
+                  pl >= 0 ? 'text-success' : 'text-danger'
+                }`}>
+                  {pl >= 0 ? '+' : ''}${pl.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-xs">
+                  ${parseFloat(topic.yt_actual_cpm || 0).toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground whitespace-nowrap text-xs">
+                  {formatDate(topic.published_at)}
+                </TableCell>
+              </TableRow>
             );
           })}
-        </div>
-      ) : (
-      <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full text-sm min-w-[800px]">
-          <thead>
-            <tr className="border-b border-white/[0.06]">
-              {COLUMNS.map((col) => (
-                <th
-                  key={col.key}
-                  onClick={() => handleSort(col.key)}
-                  className={`table-header cursor-pointer select-none
-                    hover:text-slate-900 dark:hover:text-white transition-colors
-                    ${col.align === 'right' ? 'text-right' : 'text-left'}
-                    ${col.width || ''}`}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    {col.label}
-                    {sortColumn === col.key && (
-                      sortDirection === 'asc'
-                        ? <ChevronUp className="w-3 h-3" />
-                        : <ChevronDown className="w-3 h-3" />
-                    )}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((topic) => {
-              const revenue = parseFloat(topic.yt_estimated_revenue) || 0;
-              const cost = parseFloat(topic.total_cost) || 0;
-              const pl = revenue - cost;
-              const durationSecs = parseDurationToSeconds(topic.yt_avg_view_duration);
-
-              return (
-                <tr
-                  key={topic.id}
-                  onClick={() => navigate(`/project/${projectId}/topics/${topic.id}/review`)}
-                  className="table-row-interactive cursor-pointer"
-                >
-                  <td className="table-cell text-text-muted dark:text-text-muted-dark tabular-nums">
-                    {topic.topic_number}
-                  </td>
-                  <td className="table-cell truncate max-w-[200px] font-medium text-slate-900 dark:text-white">
-                    {topic.seo_title || topic.original_title || `Topic #${topic.topic_number}`}
-                  </td>
-                  <td className="table-cell text-right tabular-nums">
-                    {(topic.yt_views || 0).toLocaleString()}
-                  </td>
-                  <td className="table-cell text-right tabular-nums">
-                    {parseFloat(topic.yt_watch_hours || 0).toFixed(1)}h
-                  </td>
-                  <td className="table-cell text-right tabular-nums">
-                    {parseFloat(topic.yt_ctr || 0).toFixed(1)}%
-                  </td>
-                  <td className="table-cell text-right tabular-nums">
-                    {formatDuration(durationSecs)}
-                  </td>
-                  <td className="table-cell text-right tabular-nums text-emerald-600 dark:text-emerald-400">
-                    ${revenue.toFixed(2)}
-                  </td>
-                  <td className="table-cell text-right tabular-nums text-amber-600 dark:text-amber-400">
-                    ${cost.toFixed(2)}
-                  </td>
-                  <td className={`table-cell text-right tabular-nums font-semibold ${
-                    pl >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-red-500 dark:text-red-400'
-                  }`}>
-                    {pl >= 0 ? '+' : ''}${pl.toFixed(2)}
-                  </td>
-                  <td className="table-cell text-right tabular-nums">
-                    ${parseFloat(topic.yt_actual_cpm || 0).toFixed(2)}
-                  </td>
-                  <td className="table-cell text-right text-text-muted dark:text-text-muted-dark whitespace-nowrap">
-                    {formatDate(topic.published_at)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      )}
+        </TableBody>
+      </Table>
     </div>
   );
 }
