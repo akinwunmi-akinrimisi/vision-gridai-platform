@@ -1,29 +1,44 @@
 import { useState, useMemo } from 'react';
 import { Clock, Calendar, Link2, Send, Loader2 } from 'lucide-react';
-import Modal from '../ui/Modal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
-// ── Platform config ──────────────────────────────────
+// -- Platform config ----------------------------------------------------------
 
 const PLATFORMS = [
   {
     key: 'tiktok',
     label: 'TikTok',
-    color: 'text-pink-500 dark:text-pink-400',
-    bgColor: 'bg-pink-50 dark:bg-pink-500/[0.12]',
+    initial: 'T',
+    accentCls: 'text-[hsl(var(--chart-4))]',
+    bgCls: 'bg-[hsl(var(--chart-4))]/10',
     maxCaption: 2200,
   },
   {
     key: 'instagram',
     label: 'Instagram',
-    color: 'text-fuchsia-500 dark:text-fuchsia-400',
-    bgColor: 'bg-fuchsia-50 dark:bg-fuchsia-500/[0.12]',
+    initial: 'I',
+    accentCls: 'text-[hsl(var(--chart-5))]',
+    bgCls: 'bg-[hsl(var(--chart-5))]/10',
     maxCaption: 2200,
   },
   {
     key: 'youtube_shorts',
     label: 'YouTube Shorts',
-    color: 'text-red-500 dark:text-red-400',
-    bgColor: 'bg-red-50 dark:bg-red-500/[0.12]',
+    initial: 'Y',
+    accentCls: 'text-danger',
+    bgCls: 'bg-danger/10',
     maxCaption: 5000,
   },
 ];
@@ -31,7 +46,6 @@ const PLATFORMS = [
 function defaultDateTime(offsetHours = 0) {
   const d = new Date();
   d.setHours(d.getHours() + offsetHours);
-  // Round to next hour
   d.setMinutes(0, 0, 0);
   d.setHours(d.getHours() + 1);
   return {
@@ -73,9 +87,8 @@ export default function ScheduleModal({ isOpen, onClose, clip, onSubmit, isSubmi
   });
 
   const [stagger, setStagger] = useState(true);
-  const [mode, setMode] = useState('schedule'); // 'schedule' | 'now'
+  const [mode, setMode] = useState('schedule');
 
-  // When stagger is toggled, auto-offset Instagram by 24h from TikTok
   function handleStaggerChange(checked) {
     setStagger(checked);
     if (checked && platformState.tiktok.enabled) {
@@ -128,152 +141,129 @@ export default function ScheduleModal({ isOpen, onClose, clip, onSubmit, isSubmi
   if (!clip) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Schedule Post" maxWidth="max-w-xl">
-      <div className="space-y-5">
-        {/* Mode toggle */}
-        <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.04]">
-          <button
-            onClick={() => setMode('schedule')}
-            className={`
-              flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
-              ${mode === 'schedule'
-                ? 'bg-white dark:bg-white/[0.08] text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}
-            `}
-          >
-            <Calendar className="w-4 h-4" />
-            Schedule
-          </button>
-          <button
-            onClick={() => setMode('now')}
-            className={`
-              flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
-              ${mode === 'now'
-                ? 'bg-white dark:bg-white/[0.08] text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}
-            `}
-          >
-            <Send className="w-4 h-4" />
-            Post Now
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Schedule Post</DialogTitle>
+          <DialogDescription>
+            {clip.clip_title || `Clip #${clip.clip_number || '?'}`}
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Platform rows */}
-        {PLATFORMS.map((platform) => {
-          const state = platformState[platform.key];
-          return (
-            <div
-              key={platform.key}
-              className={`
-                rounded-xl border transition-all duration-200
-                ${state.enabled
-                  ? 'border-slate-200/60 dark:border-white/[0.08] bg-white dark:bg-white/[0.02]'
-                  : 'border-slate-100 dark:border-white/[0.03] bg-slate-50/50 dark:bg-white/[0.01] opacity-60'}
-              `}
-            >
-              {/* Platform header */}
-              <div className="flex items-center gap-3 px-4 py-3">
-                <label className="flex items-center gap-3 flex-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={state.enabled}
-                    onChange={(e) => updatePlatform(platform.key, 'enabled', e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary focus:ring-primary/30 cursor-pointer"
-                  />
-                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center ${platform.bgColor}`}>
-                    <span className={`text-xs font-bold ${platform.color}`}>
-                      {platform.label[0]}
+        <div className="space-y-5">
+          {/* Mode tabs */}
+          <Tabs value={mode} onValueChange={setMode}>
+            <TabsList className="w-full">
+              <TabsTrigger value="schedule" className="flex-1 gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                Schedule
+              </TabsTrigger>
+              <TabsTrigger value="now" className="flex-1 gap-1.5">
+                <Send className="w-3.5 h-3.5" />
+                Post Now
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Platform rows */}
+          {PLATFORMS.map((platform) => {
+            const state = platformState[platform.key];
+            return (
+              <div
+                key={platform.key}
+                className={`rounded-lg border transition-all ${
+                  state.enabled
+                    ? 'border-border bg-card'
+                    : 'border-border/50 bg-muted/30 opacity-60'
+                }`}
+              >
+                {/* Platform header */}
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                    <Switch
+                      checked={state.enabled}
+                      onCheckedChange={(checked) => updatePlatform(platform.key, 'enabled', checked)}
+                    />
+                    <span className={`w-7 h-7 rounded-md flex items-center justify-center ${platform.bgCls}`}>
+                      <span className={`text-xs font-bold ${platform.accentCls}`}>
+                        {platform.initial}
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-sm font-medium text-slate-900 dark:text-white">
-                    {platform.label}
-                  </span>
-                </label>
-              </div>
+                    <span className="text-sm font-medium">{platform.label}</span>
+                  </label>
+                </div>
 
-              {/* Schedule controls */}
-              {state.enabled && (
-                <div className="px-4 pb-4 space-y-3">
-                  {mode === 'schedule' && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <input
+                {/* Schedule controls */}
+                {state.enabled && (
+                  <div className="px-4 pb-4 space-y-3">
+                    {mode === 'schedule' && (
+                      <div className="flex items-center gap-2">
+                        <Input
                           type="date"
                           value={state.date}
                           onChange={(e) => updatePlatform(platform.key, 'date', e.target.value)}
-                          className="input text-xs"
+                          className="flex-1 h-9 text-xs"
                         />
-                      </div>
-                      <div className="flex-1">
-                        <input
+                        <Input
                           type="time"
                           value={state.time}
                           onChange={(e) => updatePlatform(platform.key, 'time', e.target.value)}
-                          className="input text-xs"
+                          className="flex-1 h-9 text-xs"
                         />
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Caption */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        Caption
-                      </label>
-                      <span className={`text-2xs tabular-nums ${
-                        (state.caption || '').length > platform.maxCaption
-                          ? 'text-red-500'
-                          : 'text-slate-400 dark:text-slate-500'
-                      }`}>
-                        {(state.caption || '').length}/{platform.maxCaption}
-                      </span>
+                    {/* Caption */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Caption</label>
+                        <span className={`text-[10px] tabular-nums ${
+                          (state.caption || '').length > platform.maxCaption
+                            ? 'text-danger'
+                            : 'text-muted-foreground'
+                        }`}>
+                          {(state.caption || '').length}/{platform.maxCaption}
+                        </span>
+                      </div>
+                      <Textarea
+                        value={state.caption || ''}
+                        onChange={(e) => updatePlatform(platform.key, 'caption', e.target.value)}
+                        rows={3}
+                        className="text-xs resize-none"
+                        placeholder={`Caption for ${platform.label}...`}
+                      />
                     </div>
-                    <textarea
-                      value={state.caption || ''}
-                      onChange={(e) => updatePlatform(platform.key, 'caption', e.target.value)}
-                      rows={3}
-                      className="input text-xs resize-none"
-                      placeholder={`Caption for ${platform.label}...`}
-                    />
                   </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                )}
+              </div>
+            );
+          })}
 
-        {/* Stagger toggle */}
-        {mode === 'schedule' && (
-          <label className="flex items-center gap-3 px-1 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={stagger}
-              onChange={(e) => handleStaggerChange(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary focus:ring-primary/30 cursor-pointer"
-            />
-            <div>
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Link2 className="w-3.5 h-3.5" />
-                Cross-platform stagger
-              </span>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Instagram auto-offsets 24h from TikTok
-              </p>
+          {/* Stagger toggle */}
+          {mode === 'schedule' && (
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={stagger}
+                onCheckedChange={handleStaggerChange}
+              />
+              <div>
+                <span className="text-sm font-medium flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5" />
+                  Cross-platform stagger
+                </span>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Instagram auto-offsets 24h from TikTok
+                </p>
+              </div>
             </div>
-          </label>
-        )}
+          )}
+        </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-white/[0.06]">
-          <button onClick={onClose} className="btn-ghost btn-sm" disabled={isSubmitting}>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
             Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="btn-primary btn-sm"
-            disabled={enabledCount === 0 || isSubmitting}
-          >
+          </Button>
+          <Button onClick={handleSubmit} disabled={enabledCount === 0 || isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -290,9 +280,9 @@ export default function ScheduleModal({ isOpen, onClose, clip, onSubmit, isSubmi
                 Post Now to {enabledCount}
               </>
             )}
-          </button>
-        </div>
-      </div>
-    </Modal>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

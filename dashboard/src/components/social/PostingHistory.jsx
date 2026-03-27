@@ -1,21 +1,38 @@
 import { useState, useMemo } from 'react';
 import {
-  ChevronDown,
-  ChevronUp,
+  ArrowUpDown,
   Eye,
   Heart,
   MessageCircle,
   Share2,
-  ExternalLink,
   Inbox,
 } from 'lucide-react';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import EmptyState from '../shared/EmptyState';
 
-// ── Platform labels + colors ─────────────────────────
+// -- Platform labels + badge colors -------------------------------------------
 
 const PLATFORM_CONFIG = {
-  tiktok: { label: 'TikTok', color: 'badge-pink', badgeCls: 'bg-pink-50 text-pink-700 dark:bg-pink-500/[0.12] dark:text-pink-400 ring-1 ring-inset ring-pink-600/10 dark:ring-pink-400/20' },
-  instagram: { label: 'Instagram', color: 'badge-fuchsia', badgeCls: 'bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-500/[0.12] dark:text-fuchsia-400 ring-1 ring-inset ring-fuchsia-600/10 dark:ring-fuchsia-400/20' },
-  youtube_shorts: { label: 'YT Shorts', color: 'badge-red', badgeCls: 'bg-red-50 text-red-700 dark:bg-red-500/[0.12] dark:text-red-400 ring-1 ring-inset ring-red-600/10 dark:ring-red-400/20' },
+  tiktok: {
+    label: 'TikTok',
+    cls: 'bg-[hsl(var(--chart-4))]/10 text-[hsl(var(--chart-4))] border border-[hsl(var(--chart-4))]/20',
+  },
+  instagram: {
+    label: 'Instagram',
+    cls: 'bg-[hsl(var(--chart-5))]/10 text-[hsl(var(--chart-5))] border border-[hsl(var(--chart-5))]/20',
+  },
+  youtube_shorts: {
+    label: 'YT Shorts',
+    cls: 'bg-danger-bg text-danger border border-danger-border',
+  },
 };
 
 function formatNumber(n) {
@@ -120,122 +137,96 @@ export default function PostingHistory({ postedClips }) {
     }
   }
 
-  function SortHeader({ field, children }) {
-    const isActive = sortField === field;
+  function SortableHead({ field, children, className }) {
     return (
-      <button
-        onClick={() => handleSort(field)}
-        className="flex items-center gap-1 text-2xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors duration-200 cursor-pointer"
-      >
-        {children}
-        {isActive && (
-          sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-        )}
-      </button>
+      <TableHead className={className}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-auto p-0 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground font-medium"
+          onClick={() => handleSort(field)}
+        >
+          {children}
+          <ArrowUpDown className="w-3 h-3 ml-1" />
+        </Button>
+      </TableHead>
     );
   }
 
   if (sorted.length === 0) {
     return (
-      <div className="glass-card p-8 text-center">
-        <Inbox className="w-10 h-10 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-          No posts yet
-        </p>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-          Published clips will appear here with engagement metrics.
-        </p>
-      </div>
+      <EmptyState
+        icon={Inbox}
+        title="No posts yet"
+        description="Published clips will appear here with engagement metrics."
+      />
     );
   }
 
   return (
-    <div className="glass-card overflow-hidden">
-      <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full min-w-[640px]">
-          <thead>
-            <tr className="border-b border-slate-100 dark:border-white/[0.06]">
-              <th className="text-left px-4 py-3">
-                <SortHeader field="clipTitle">Clip</SortHeader>
-              </th>
-              <th className="text-left px-4 py-3">
-                <SortHeader field="platform">Platform</SortHeader>
-              </th>
-              <th className="text-left px-4 py-3">
-                <SortHeader field="postedAt">Posted</SortHeader>
-              </th>
-              <th className="text-right px-4 py-3">
-                <SortHeader field="views">Views</SortHeader>
-              </th>
-              <th className="text-right px-4 py-3">
-                <SortHeader field="likes">Likes</SortHeader>
-              </th>
-              <th className="text-right px-4 py-3">
-                <SortHeader field="comments">Comments</SortHeader>
-              </th>
-              <th className="text-right px-4 py-3">
-                <SortHeader field="shares">Shares</SortHeader>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((row) => {
-              const platformCfg = PLATFORM_CONFIG[row.platform];
-              return (
-                <tr
-                  key={row.id}
-                  className="border-b border-slate-50 dark:border-white/[0.03] last:border-0 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors duration-150"
-                >
-                  <td className="px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate max-w-[200px]">
-                        {row.clipTitle}
-                      </p>
-                      <p className="text-2xs text-slate-400 dark:text-slate-500 truncate max-w-[200px]">
-                        {row.projectName}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`badge text-2xs ${platformCfg?.badgeCls || 'badge-blue'}`}>
-                      {platformCfg?.label || row.platform}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      {formatDate(row.postedAt)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white tabular-nums flex items-center justify-end gap-1">
-                      <Eye className="w-3 h-3 text-slate-400" />
-                      {formatNumber(row.views)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white tabular-nums flex items-center justify-end gap-1">
-                      <Heart className="w-3 h-3 text-red-400" />
-                      {formatNumber(row.likes)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white tabular-nums flex items-center justify-end gap-1">
-                      <MessageCircle className="w-3 h-3 text-blue-400" />
-                      {formatNumber(row.comments)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white tabular-nums flex items-center justify-end gap-1">
-                      <Share2 className="w-3 h-3 text-emerald-400" />
-                      {formatNumber(row.shares)}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+    <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <SortableHead field="clipTitle">Clip</SortableHead>
+            <SortableHead field="platform">Platform</SortableHead>
+            <SortableHead field="postedAt">Posted</SortableHead>
+            <SortableHead field="views" className="text-right">Views</SortableHead>
+            <SortableHead field="likes" className="text-right">Likes</SortableHead>
+            <SortableHead field="comments" className="text-right">Comments</SortableHead>
+            <SortableHead field="shares" className="text-right">Shares</SortableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((row) => {
+            const platformCfg = PLATFORM_CONFIG[row.platform];
+            return (
+              <TableRow key={row.id}>
+                <TableCell>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate max-w-[200px]">{row.clipTitle}</p>
+                    <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">{row.projectName}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium ${platformCfg?.cls || ''}`}>
+                    {platformCfg?.label || row.platform}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatDate(row.postedAt)}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <span className="text-sm font-medium tabular-nums inline-flex items-center gap-1">
+                    <Eye className="w-3 h-3 text-muted-foreground" />
+                    {formatNumber(row.views)}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <span className="text-sm font-medium tabular-nums inline-flex items-center gap-1">
+                    <Heart className="w-3 h-3 text-danger" />
+                    {formatNumber(row.likes)}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <span className="text-sm font-medium tabular-nums inline-flex items-center gap-1">
+                    <MessageCircle className="w-3 h-3 text-info" />
+                    {formatNumber(row.comments)}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <span className="text-sm font-medium tabular-nums inline-flex items-center gap-1">
+                    <Share2 className="w-3 h-3 text-success" />
+                    {formatNumber(row.shares)}
+                  </span>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }
