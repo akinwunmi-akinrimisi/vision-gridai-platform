@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 import { usePromptConfigs, usePromptMutations } from '../../hooks/usePromptConfigs';
 import PromptCard from './PromptCard';
 import ConfirmDialog from '../ui/ConfirmDialog';
+
+import { Button } from '@/components/ui/button';
 
 const PROMPT_GROUPS = [
   { label: 'Core', types: ['system_prompt', 'topic_generator'] },
@@ -13,7 +15,7 @@ const PROMPT_GROUPS = [
 
 /**
  * Prompts tab for Settings page.
- * Renders 7 prompt cards grouped into 3 categories with a Regenerate All button.
+ * Renders prompt cards grouped into 4 categories with a Regenerate All button.
  */
 export default function PromptsTab({ projectId }) {
   const { data: prompts, isLoading, error } = usePromptConfigs(projectId);
@@ -43,8 +45,10 @@ export default function PromptsTab({ projectId }) {
 
   if (error) {
     return (
-      <div data-testid="prompts-tab" className="glass-card p-6 text-center text-red-500">
-        Failed to load prompts: {error.message}
+      <div data-testid="prompts-tab" className="bg-danger-bg border border-danger-border rounded-lg p-6 text-center">
+        <AlertCircle className="w-8 h-8 mx-auto mb-2 text-danger" />
+        <p className="text-sm font-medium text-danger">Failed to load prompts</p>
+        <p className="text-xs text-muted-foreground mt-1">{error.message}</p>
       </div>
     );
   }
@@ -56,25 +60,31 @@ export default function PromptsTab({ projectId }) {
   });
 
   return (
-    <div data-testid="prompts-tab" className="space-y-6">
+    <div data-testid="prompts-tab" className="space-y-6 max-w-2xl">
       {/* Header with Regenerate All button */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Prompts</h2>
-        <button
+        <div>
+          <h3 className="text-sm font-semibold">Prompt Templates</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            AI-generated prompts for each pipeline stage
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => setShowRegenConfirm(true)}
-          className="btn-secondary"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-3.5 h-3.5" />
           Regenerate All
-        </button>
+        </Button>
       </div>
 
       {/* Prompt groups */}
       {PROMPT_GROUPS.map((group) => (
         <div key={group.label} className="space-y-2">
-          <h3 className="section-title px-1 mb-1">
+          <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-1">
             {group.label}
-          </h3>
+          </h4>
           {group.types.map((type) => {
             const prompt = promptsByType[type];
             if (!prompt) {
@@ -82,9 +92,9 @@ export default function PromptsTab({ projectId }) {
                 <div
                   key={type}
                   data-testid="prompt-card"
-                  className="glass-card px-4 py-3 opacity-50"
+                  className="bg-card border border-border rounded-lg px-4 py-3 opacity-50"
                 >
-                  <span className="text-sm text-text-muted dark:text-text-muted-dark">
+                  <span className="text-sm text-muted-foreground">
                     {type.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} -- Not generated yet
                   </span>
                 </div>

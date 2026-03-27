@@ -1,46 +1,46 @@
-import { useState } from 'react';
 import { useParams } from 'react-router';
+
+import PageHeader from '../components/shared/PageHeader';
 import ConfigTab from '../components/settings/ConfigTab';
 import PromptsTab from '../components/settings/PromptsTab';
 
-const TABS = [
-  { key: 'config', label: 'Configuration' },
-  { key: 'prompts', label: 'Prompts' },
-];
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 export default function Settings() {
   const { id: projectId } = useParams();
-  const [activeTab, setActiveTab] = useState('config');
 
   return (
-    <div className="animate-in max-w-4xl">
-      <div className="page-header">
-        <h1 className="page-title">Settings</h1>
-        <p className="page-subtitle">Per-project configuration and prompts</p>
-      </div>
+    <div className="max-w-4xl">
+      <PageHeader
+        title="Settings"
+        subtitle="Per-project configuration, models, and prompts"
+      />
 
-      {/* Tab bar */}
-      <div className="glass-card p-1 inline-flex gap-1 mb-6">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            role="tab"
-            aria-selected={activeTab === tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-              activeTab === tab.key
-                ? 'bg-white dark:bg-white/[0.08] shadow-sm shadow-black/5 dark:shadow-black/20 text-slate-900 dark:text-white'
-                : 'text-text-muted dark:text-text-muted-dark hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/[0.04]'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs defaultValue="general">
+        <TabsList className="mb-6">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="models">Models</TabsTrigger>
+          <TabsTrigger value="youtube">YouTube</TabsTrigger>
+          <TabsTrigger value="social">Social</TabsTrigger>
+          <TabsTrigger value="prompts">Prompts</TabsTrigger>
+        </TabsList>
 
-      {/* Tab content */}
-      {activeTab === 'config' && <ConfigTab projectId={projectId} />}
-      {activeTab === 'prompts' && <PromptsTab projectId={projectId} />}
+        <TabsContent value="general">
+          <ConfigTab projectId={projectId} section="general" />
+        </TabsContent>
+        <TabsContent value="models">
+          <ConfigTab projectId={projectId} section="models" />
+        </TabsContent>
+        <TabsContent value="youtube">
+          <ConfigTab projectId={projectId} section="youtube" />
+        </TabsContent>
+        <TabsContent value="social">
+          <ConfigTab projectId={projectId} section="social" />
+        </TabsContent>
+        <TabsContent value="prompts">
+          <PromptsTab projectId={projectId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

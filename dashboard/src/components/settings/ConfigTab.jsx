@@ -1,15 +1,43 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Database, Youtube, Webhook, Shield, Palette, Pencil, Folder, Share2, AlertTriangle, Trash2, RotateCcw, XCircle, Loader2, Link2, Unlink } from 'lucide-react';
+import {
+  Database,
+  Youtube,
+  Webhook,
+  Shield,
+  Palette,
+  Pencil,
+  Folder,
+  Share2,
+  AlertTriangle,
+  Trash2,
+  RotateCcw,
+  XCircle,
+  Loader2,
+  Link2,
+  Unlink,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjectSettings, useUpdateSettings } from '../../hooks/useProjectSettings';
 import { supabase } from '../../lib/supabase';
 import { resetAllTopics, clearProductionData, deleteProject } from '../../lib/settingsApi';
 import { webhookCall } from '../../lib/api';
 
-/* ------------------------------------------------------------------
- * Model options with costs
- * ----------------------------------------------------------------*/
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
+import AccountCard from '../social/AccountCard';
+
+// -- Model options with costs -------------------------------------------------
+
 const IMAGE_MODEL_OPTIONS = [
   { value: 'fal-ai/bytedance/seedream/v4/text-to-image', label: 'Seedream 4.0', cost: 0.03 },
   { value: 'fal-ai/flux/schnell', label: 'FLUX Schnell', cost: 0.003 },
@@ -26,28 +54,27 @@ const T2V_MODEL_OPTIONS = [
   { value: 'fal-ai/kling-video/v2.1/standard/text-to-video', label: 'Kling 2.1', cost: 0.125 },
 ];
 
-/* ------------------------------------------------------------------
- * Field definitions
- * ----------------------------------------------------------------*/
-const projectInfoFields = [
+// -- Field definitions --------------------------------------------------------
+
+const generalFields = [
   { key: 'name', label: 'Project Name', type: 'text' },
   { key: 'niche', label: 'Niche', type: 'text' },
   { key: 'niche_description', label: 'Niche Description', type: 'textarea' },
-];
-
-const productionFields = [
-  { key: 'script_approach', label: 'Script Approach', type: 'select', options: [
+  { key: 'script_approach', label: 'Script Approach', type: 'switch', options: [
     { value: '3_pass', label: '3-Pass' },
     { value: 'single_call', label: 'Single Call' },
   ]},
-  { key: 'images_per_video', label: 'Images Per Video', type: 'number', min: 10, max: 200 },
-  { key: 'i2v_clips_per_video', label: 'I2V Clips Per Video', type: 'number', min: 5, max: 100 },
-  { key: 't2v_clips_per_video', label: 'T2V Clips Per Video', type: 'number', min: 10, max: 200 },
   { key: 'target_word_count', label: 'Target Word Count', type: 'number', min: 5000, max: 30000 },
   { key: 'target_scene_count', label: 'Target Scene Count', type: 'number', min: 50, max: 300 },
+];
+
+const modelFields = [
   { key: 'image_model', label: 'Image Model', type: 'model-select', modelOptions: IMAGE_MODEL_OPTIONS, costKey: 'image_cost' },
+  { key: 'images_per_video', label: 'Images Per Video', type: 'number', min: 10, max: 200 },
   { key: 'i2v_model', label: 'I2V Model', type: 'model-select', modelOptions: I2V_MODEL_OPTIONS, costKey: 'i2v_cost' },
+  { key: 'i2v_clips_per_video', label: 'I2V Clips Per Video', type: 'number', min: 5, max: 100 },
   { key: 't2v_model', label: 'T2V Model', type: 'model-select', modelOptions: T2V_MODEL_OPTIONS, costKey: 't2v_cost' },
+  { key: 't2v_clips_per_video', label: 'T2V Clips Per Video', type: 'number', min: 10, max: 200 },
 ];
 
 const youtubeFields = [
@@ -59,12 +86,11 @@ const youtubeFields = [
   { key: 'drive_assets_folder_id', label: 'Drive Assets Folder ID', type: 'text' },
 ];
 
-/* ------------------------------------------------------------------
- * Display value helper
- * ----------------------------------------------------------------*/
+// -- Display helpers ----------------------------------------------------------
+
 function displayValue(field, value) {
   if (value == null || value === '') return '--';
-  if (field.type === 'select') {
+  if (field.type === 'switch') {
     const opt = field.options?.find((o) => o.value === value);
     return opt ? opt.label : String(value);
   }
@@ -75,23 +101,99 @@ function displayValue(field, value) {
   return String(value);
 }
 
-/* ------------------------------------------------------------------
- * Gradient color picker for sections
- * ----------------------------------------------------------------*/
-function sectionGradient(title) {
-  if (title === 'Project Info') return 'from-blue-500/20 to-indigo-500/20';
-  if (title === 'Production Config') return 'from-primary/20 to-indigo-500/20';
-  if (title === 'YouTube & Drive') return 'from-red-500/20 to-rose-500/20';
-  if (title === 'API & Webhooks') return 'from-emerald-500/20 to-teal-500/20';
-  if (title === 'Social Media Accounts') return 'from-pink-500/20 to-rose-500/20';
-  if (title === 'Security') return 'from-amber-500/20 to-orange-500/20';
-  return 'from-violet-500/20 to-purple-500/20';
+// -- FieldRow -----------------------------------------------------------------
+
+function FieldRow({ field, value, isEditing, editValue, onChange }) {
+  return (
+    <div className="flex items-center justify-between py-3 border-b border-border last:border-0">
+      <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium shrink-0 mr-4">
+        {field.label}
+      </label>
+      {isEditing ? (
+        <FieldInput field={field} value={editValue} onChange={onChange} />
+      ) : (
+        <span className="text-sm font-medium text-right">
+          {displayValue(field, value)}
+        </span>
+      )}
+    </div>
+  );
 }
 
-/* ------------------------------------------------------------------
- * EditableSection
- * ----------------------------------------------------------------*/
-function EditableSection({ icon: Icon, title, desc, fields, data, onSave, onFieldChange, isPending }) {
+// -- FieldInput ---------------------------------------------------------------
+
+function FieldInput({ field, value, onChange }) {
+  if (field.type === 'switch') {
+    const isThreePass = value === '3_pass';
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Single</span>
+        <Switch
+          checked={isThreePass}
+          onCheckedChange={(checked) => onChange(field.key, checked ? '3_pass' : 'single_call', field)}
+        />
+        <span className="text-xs text-muted-foreground">3-Pass</span>
+      </div>
+    );
+  }
+
+  if (field.type === 'model-select') {
+    return (
+      <Select
+        value={value ?? ''}
+        onValueChange={(val) => onChange(field.key, val, field)}
+      >
+        <SelectTrigger className="w-64 h-9 text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {field.modelOptions.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label} (${opt.cost}/unit)
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
+  if (field.type === 'number') {
+    return (
+      <Input
+        type="number"
+        value={value ?? ''}
+        min={field.min}
+        max={field.max}
+        onChange={(e) => onChange(field.key, e.target.value, field)}
+        className="w-32 h-9 text-sm text-right"
+      />
+    );
+  }
+
+  if (field.type === 'textarea') {
+    return (
+      <Textarea
+        value={value ?? ''}
+        onChange={(e) => onChange(field.key, e.target.value, field)}
+        rows={2}
+        className="w-64 text-sm resize-none"
+      />
+    );
+  }
+
+  return (
+    <Input
+      type="text"
+      value={value ?? ''}
+      onChange={(e) => onChange(field.key, e.target.value, field)}
+      className="w-64 h-9 text-sm"
+    />
+  );
+}
+
+// -- EditableSection ----------------------------------------------------------
+
+function EditableSection({ title, description, fields, data, onSave, isPending }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValues, setEditValues] = useState({});
 
@@ -121,7 +223,6 @@ function EditableSection({ icon: Icon, title, desc, fields, data, onSave, onFiel
   const handleFieldChange = (key, value, field) => {
     setEditValues((prev) => {
       const next = { ...prev, [key]: value };
-      // Auto-update cost when model changes
       if (field?.type === 'model-select' && field.costKey) {
         const selectedModel = field.modelOptions?.find((o) => o.value === value);
         if (selectedModel) {
@@ -130,186 +231,60 @@ function EditableSection({ icon: Icon, title, desc, fields, data, onSave, onFiel
       }
       return next;
     });
-    if (onFieldChange) onFieldChange(key, value, field);
   };
 
   return (
-    <div className="glass-card p-6">
-      <div className="flex items-center gap-3 mb-5">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${sectionGradient(title)} flex items-center justify-center`}>
-          <Icon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{title}</h2>
-          <p className="text-xs text-text-muted dark:text-text-muted-dark">{desc}</p>
+    <div className="space-y-1">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          {title && <h3 className="text-sm font-semibold">{title}</h3>}
+          {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
         <div className="flex items-center gap-2">
           {isEditing ? (
             <>
-              <button
-                onClick={cancelEditing}
-                className="btn-ghost btn-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isPending}
-                className="btn-primary btn-sm"
-              >
+              <Button variant="ghost" size="sm" onClick={cancelEditing}>Cancel</Button>
+              <Button size="sm" onClick={handleSave} disabled={isPending}>
                 {isPending ? 'Saving...' : 'Save'}
-              </button>
+              </Button>
             </>
           ) : (
-            <button
-              onClick={startEditing}
-              className="btn-secondary btn-sm"
-            >
+            <Button variant="outline" size="sm" onClick={startEditing}>
               <Pencil className="w-3.5 h-3.5" />
               Edit
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="bg-card border border-border rounded-lg px-4">
         {fields.map((field) => (
-          <div
+          <FieldRow
             key={field.key}
-            className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.04] hover:bg-slate-100/50 dark:hover:bg-white/[0.03] transition-colors"
-          >
-            <span className="text-sm text-text-muted dark:text-text-muted-dark">{field.label}</span>
-            {isEditing ? (
-              <FieldInput field={field} value={editValues[field.key]} onChange={handleFieldChange} />
-            ) : (
-              <span className="text-sm font-medium text-slate-900 dark:text-white">
-                {displayValue(field, data?.[field.key])}
-              </span>
-            )}
-          </div>
+            field={field}
+            value={data?.[field.key]}
+            isEditing={isEditing}
+            editValue={editValues[field.key]}
+            onChange={handleFieldChange}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------
- * FieldInput
- * ----------------------------------------------------------------*/
-function FieldInput({ field, value, onChange }) {
-  const baseClass =
-    'input text-sm font-medium text-right';
+// -- SocialAccountsSection ----------------------------------------------------
 
-  if (field.type === 'select') {
-    return (
-      <select
-        value={value ?? ''}
-        onChange={(e) => onChange(field.key, e.target.value, field)}
-        className={`${baseClass} w-40`}
-      >
-        {field.options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  if (field.type === 'model-select') {
-    return (
-      <select
-        value={value ?? ''}
-        onChange={(e) => onChange(field.key, e.target.value, field)}
-        className={`${baseClass} w-64`}
-      >
-        {field.modelOptions.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label} (${opt.cost}/unit)
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  if (field.type === 'number') {
-    return (
-      <input
-        type="number"
-        value={value ?? ''}
-        min={field.min}
-        max={field.max}
-        onChange={(e) => onChange(field.key, e.target.value, field)}
-        className={`${baseClass} w-32`}
-      />
-    );
-  }
-
-  if (field.type === 'textarea') {
-    return (
-      <textarea
-        value={value ?? ''}
-        onChange={(e) => onChange(field.key, e.target.value, field)}
-        rows={2}
-        className={`${baseClass} w-64 text-left resize-none`}
-      />
-    );
-  }
-
-  return (
-    <input
-      type="text"
-      value={value ?? ''}
-      onChange={(e) => onChange(field.key, e.target.value, field)}
-      className={`${baseClass} w-64`}
-    />
-  );
-}
-
-/* ------------------------------------------------------------------
- * ReadOnlySection
- * ----------------------------------------------------------------*/
-function ReadOnlySection({ icon: Icon, title, desc, items }) {
-  return (
-    <div className="glass-card p-6">
-      <div className="flex items-center gap-3 mb-5">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${sectionGradient(title)} flex items-center justify-center`}>
-          <Icon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-        </div>
-        <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{title}</h2>
-          <p className="text-xs text-text-muted dark:text-text-muted-dark">{desc}</p>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {items.map((item) => (
-          <div
-            key={item.label}
-            className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.04] hover:bg-slate-100/50 dark:hover:bg-white/[0.03] transition-colors"
-          >
-            <span className="text-sm text-text-muted dark:text-text-muted-dark">{item.label}</span>
-            <span className="text-sm font-medium text-slate-900 dark:text-white">{item.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------
- * SocialAccountsSection
- * ----------------------------------------------------------------*/
 const PLATFORMS = [
-  { key: 'tiktok', label: 'TikTok', color: 'text-pink-500' },
-  { key: 'instagram', label: 'Instagram', color: 'text-purple-500' },
-  { key: 'youtube_shorts', label: 'YouTube Shorts', color: 'text-red-500' },
+  { key: 'tiktok', label: 'TikTok' },
+  { key: 'instagram', label: 'Instagram' },
+  { key: 'youtube_shorts', label: 'YouTube Shorts' },
 ];
 
 function SocialAccountsSection({ projectId }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(null); // platform key currently loading
+  const [actionLoading, setActionLoading] = useState(null);
 
   const fetchAccounts = () => {
     if (!projectId) return;
@@ -371,91 +346,53 @@ function SocialAccountsSection({ projectId }) {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="glass-card p-6">
-      <div className="flex items-center gap-3 mb-5">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${sectionGradient('Social Media Accounts')} flex items-center justify-center`}>
-          <Share2 className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-        </div>
-        <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Social Media Accounts</h2>
-          <p className="text-xs text-text-muted dark:text-text-muted-dark">Connected accounts for shorts distribution</p>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold">Connected Accounts</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Manage social media accounts for shorts distribution
+        </p>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-6">
-          <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {PLATFORMS.map((platform) => {
-            const acct = accountByPlatform[platform.key];
-            const isConnected = acct && acct.is_active;
-            const isBusy = actionLoading === platform.key;
+      <div className="space-y-3">
+        {PLATFORMS.map((platform) => (
+          <AccountCard
+            key={platform.key}
+            platform={platform.key}
+            account={accountByPlatform[platform.key]}
+            isLoading={actionLoading === platform.key}
+            onConnect={handleConnect}
+            onDisconnect={handleDisconnect}
+          />
+        ))}
+      </div>
 
-            return (
-              <div
-                key={platform.key}
-                className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.04]"
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm font-medium ${platform.color}`}>{platform.label}</span>
-                  {isConnected ? (
-                    <span className="badge badge-green">
-                      {acct.account_name || acct.account_id || 'Connected'}
-                    </span>
-                  ) : (
-                    <span className="badge bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">
-                      Not Connected
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {isConnected ? (
-                    <button
-                      onClick={() => handleDisconnect(platform.key, acct.id)}
-                      disabled={isBusy}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/[0.08] hover:bg-red-100 dark:hover:bg-red-500/[0.15] border border-red-200/50 dark:border-red-500/20 transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Unlink className="w-3.5 h-3.5" />}
-                      Disconnect
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleConnect(platform.key)}
-                      disabled={isBusy}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-primary dark:text-blue-400 bg-primary/5 dark:bg-primary/10 hover:bg-primary/10 dark:hover:bg-primary/20 border border-primary/20 dark:border-primary/30 transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-                      Connect
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          <p className="text-xs text-text-muted dark:text-text-muted-dark mt-2">
-            OAuth credentials are managed via n8n.{' '}
-            <a
-              href="https://n8n.srv1297445.hstgr.cloud"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Open n8n Credentials &rarr;
-            </a>
-          </p>
-        </div>
-      )}
+      <p className="text-xs text-muted-foreground">
+        OAuth credentials are managed via n8n.{' '}
+        <a
+          href="https://n8n.srv1297445.hstgr.cloud"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          Open n8n Credentials &rarr;
+        </a>
+      </p>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------
- * DangerZone - typed confirmation actions
- * ----------------------------------------------------------------*/
+// -- DangerZone ---------------------------------------------------------------
+
 function DangerZoneAction({ label, description, confirmWord, variant, onExecute }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [typed, setTyped] = useState('');
@@ -482,43 +419,46 @@ function DangerZoneAction({ label, description, confirmWord, variant, onExecute 
     <div className="py-3">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-900 dark:text-white">{label}</p>
-          <p className="text-xs text-text-muted dark:text-text-muted-dark">{description}</p>
+          <p className="text-sm font-medium">{label}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
         </div>
-        <button
+        <Button
+          variant={variant === 'danger' ? 'destructive' : 'outline'}
+          size="sm"
           onClick={() => setShowConfirm(!showConfirm)}
-          className={`btn-sm ${variant === 'danger' ? 'btn-danger' : 'btn-secondary'}`}
         >
           {label}
-        </button>
+        </Button>
       </div>
       {showConfirm && (
-        <div className="mt-3 p-3 rounded-xl bg-red-50 dark:bg-red-500/[0.06] border border-red-200 dark:border-red-500/20">
-          <p className="text-xs text-red-700 dark:text-red-300 mb-2">
+        <div className="mt-3 p-3 rounded-lg bg-danger-bg border border-danger-border">
+          <p className="text-xs text-danger mb-2">
             Type <strong className="font-mono">{confirmWord}</strong> to confirm:
           </p>
-          <input
+          <Input
             type="text"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
-            className="input text-sm mb-2"
+            className="mb-2 h-9 text-sm"
             placeholder={`Type "${confirmWord}" to confirm`}
             autoFocus
           />
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={handleExecute}
               disabled={!isMatch || executing}
-              className="btn-danger btn-sm"
             >
               {executing ? 'Processing...' : 'Confirm'}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => { setShowConfirm(false); setTyped(''); }}
-              className="btn-ghost btn-sm"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -530,18 +470,13 @@ function DangerZone({ projectId, projectName }) {
   const navigate = useNavigate();
 
   return (
-    <div className="glass-card p-6 border-red-500/30 dark:border-red-500/20" style={{ borderColor: 'rgba(239,68,68,0.3)' }}>
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500/20 to-rose-500/20 flex items-center justify-center">
-          <AlertTriangle className="w-5 h-5 text-red-500" />
-        </div>
-        <div>
-          <h2 className="text-base font-bold text-red-600 dark:text-red-400 tracking-tight">Danger Zone</h2>
-          <p className="text-xs text-text-muted dark:text-text-muted-dark">Irreversible actions</p>
-        </div>
+    <div className="mt-8 bg-danger-bg border border-danger-border rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-4">
+        <AlertTriangle className="w-4 h-4 text-danger" />
+        <h3 className="text-sm font-semibold text-danger">Danger Zone</h3>
       </div>
 
-      <div className="divide-y divide-red-100 dark:divide-red-500/10">
+      <div className="divide-y divide-danger-border">
         <DangerZoneAction
           label="Reset All Topics"
           description="Delete all topics, avatars, scenes, shorts, and production logs"
@@ -571,10 +506,30 @@ function DangerZone({ projectId, projectName }) {
   );
 }
 
-/* ------------------------------------------------------------------
- * ConfigTab
- * ----------------------------------------------------------------*/
-export default function ConfigTab({ projectId }) {
+// -- ReadOnlySection ----------------------------------------------------------
+
+function ReadOnlySection({ title, items }) {
+  return (
+    <div className="space-y-1">
+      {title && <h3 className="text-sm font-semibold mb-3">{title}</h3>}
+      <div className="bg-card border border-border rounded-lg px-4">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center justify-between py-3 border-b border-border last:border-0"
+          >
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{item.label}</span>
+            <span className="text-sm font-medium">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// -- ConfigTab ----------------------------------------------------------------
+
+export default function ConfigTab({ projectId, section = 'general' }) {
   const { data, isLoading } = useProjectSettings(projectId);
   const updateMutation = useUpdateSettings(projectId);
 
@@ -586,78 +541,83 @@ export default function ConfigTab({ projectId }) {
     );
   }
 
-  return (
-    <div data-testid="config-tab" className="space-y-4">
-      {/* Editable: Project Info */}
-      <EditableSection
-        icon={Folder}
-        title="Project Info"
-        desc="Project name, niche, and description"
-        fields={projectInfoFields}
-        data={data}
-        onSave={(fields) => updateMutation.mutate(fields)}
-        isPending={updateMutation.isPending}
-      />
+  const handleSave = (fields) => updateMutation.mutate(fields);
+  const isPending = updateMutation.isPending;
 
-      {/* Editable: Production Config */}
-      <EditableSection
-        icon={Database}
-        title="Production Config"
-        desc="Script approach, model selection, word count targets"
-        fields={productionFields}
-        data={data}
-        onSave={(fields) => updateMutation.mutate(fields)}
-        isPending={updateMutation.isPending}
-      />
+  // -- General tab
+  if (section === 'general') {
+    return (
+      <div data-testid="config-tab" className="space-y-6 max-w-2xl">
+        <EditableSection
+          fields={generalFields}
+          data={data}
+          onSave={handleSave}
+          isPending={isPending}
+        />
 
-      {/* Editable: YouTube & Drive */}
-      <EditableSection
-        icon={Youtube}
-        title="YouTube & Drive"
-        desc="Channel ID, playlist IDs, Drive folder configuration"
-        fields={youtubeFields}
-        data={data}
-        onSave={(fields) => updateMutation.mutate(fields)}
-        isPending={updateMutation.isPending}
-      />
+        <ReadOnlySection
+          title="System Info"
+          items={[
+            { label: 'n8n URL', value: 'n8n.srv1297445.hstgr.cloud' },
+            { label: 'Supabase URL', value: 'supabase.operscale.cloud' },
+            { label: 'Webhook Status', value: 'Connected' },
+            { label: 'Session Duration', value: '30 days' },
+            { label: 'Theme', value: 'System (toggle in sidebar)' },
+          ]}
+        />
 
-      {/* Social Media Accounts */}
-      <SocialAccountsSection projectId={projectId} />
+        <DangerZone projectId={projectId} projectName={data?.name || data?.niche || ''} />
+      </div>
+    );
+  }
 
-      {/* Read-only: API & Webhooks */}
-      <ReadOnlySection
-        icon={Webhook}
-        title="API & Webhooks"
-        desc="n8n webhook base, Supabase connection, API tokens"
-        items={[
-          { label: 'n8n URL', value: 'n8n.srv1297445.hstgr.cloud' },
-          { label: 'Supabase URL', value: 'supabase.operscale.cloud' },
-          { label: 'Webhook Status', value: 'Connected' },
-        ]}
-      />
+  // -- Models tab
+  if (section === 'models') {
+    return (
+      <div data-testid="config-tab" className="space-y-6 max-w-2xl">
+        <EditableSection
+          title="Model Selection"
+          description="Image and video generation models with per-unit costs"
+          fields={modelFields}
+          data={data}
+          onSave={handleSave}
+          isPending={isPending}
+        />
+      </div>
+    );
+  }
 
-      {/* Read-only: Security */}
-      <ReadOnlySection
-        icon={Shield}
-        title="Security"
-        desc="PIN and session management"
-        items={[
-          { label: 'Session Duration', value: '30 days' },
-        ]}
-      />
+  // -- YouTube tab
+  if (section === 'youtube') {
+    return (
+      <div data-testid="config-tab" className="space-y-6 max-w-2xl">
+        <EditableSection
+          title="YouTube & Drive"
+          description="Channel ID, playlist IDs, and Google Drive folder configuration"
+          fields={youtubeFields}
+          data={data}
+          onSave={handleSave}
+          isPending={isPending}
+        />
 
-      {/* Read-only: Appearance */}
-      <ReadOnlySection
-        icon={Palette}
-        title="Appearance"
-        desc="Theme and display preferences"
-        items={[
-          { label: 'Theme', value: 'System (toggle in sidebar)' },
-        ]}
-      />
+        <ReadOnlySection
+          title="Quota"
+          items={[
+            { label: 'Daily Upload Quota', value: '10,000 units (max 6 uploads/day)' },
+          ]}
+        />
+      </div>
+    );
+  }
 
-      {/* Danger Zone */}
-      <DangerZone projectId={projectId} projectName={data?.name || data?.niche || ''} />
-    </div>
-  );
+  // -- Social tab
+  if (section === 'social') {
+    return (
+      <div data-testid="config-tab" className="space-y-6 max-w-2xl">
+        <SocialAccountsSection projectId={projectId} />
+      </div>
+    );
+  }
+
+  return null;
 }

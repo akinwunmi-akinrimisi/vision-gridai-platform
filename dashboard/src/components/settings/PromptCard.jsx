@@ -3,6 +3,16 @@ import { ChevronDown, ChevronRight, Code2, FlaskConical, Loader2, X } from 'luci
 import { supabase } from '../../lib/supabase';
 import { testPrompt } from '../../lib/settingsApi';
 
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+
 /**
  * Variable reference map per prompt type.
  */
@@ -19,7 +29,6 @@ const PROMPT_VARIABLES = {
 
 /**
  * Format prompt type key to display name.
- * e.g., "script_pass1" -> "Script Pass 1"
  */
 function formatTypeName(type) {
   return type
@@ -29,7 +38,7 @@ function formatTypeName(type) {
 }
 
 /**
- * TestPromptModal — modal for testing a prompt with sample input.
+ * TestPromptModal -- shadcn Dialog for testing a prompt with sample input.
  */
 function TestPromptModal({ prompt, isOpen, onClose }) {
   const [testInput, setTestInput] = useState('');
@@ -62,47 +71,43 @@ function TestPromptModal({ prompt, isOpen, onClose }) {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl animate-in bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-2xl shadow-2xl shadow-black/[0.08] dark:shadow-black/[0.3]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 dark:border-white/[0.06]">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-            Test: {formatTypeName(prompt.prompt_type)}
-          </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer" aria-label="Close">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="px-6 py-5 space-y-4">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Test: {formatTypeName(prompt.prompt_type)}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Test prompt with sample input
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
           {/* Read-only prompt preview */}
           <div>
-            <label className="block text-xs font-medium text-text-muted dark:text-text-muted-dark mb-1.5 uppercase tracking-wider">Prompt Preview</label>
-            <div className="max-h-32 overflow-y-auto rounded-lg bg-slate-50 dark:bg-white/[0.04] border border-border/50 dark:border-white/[0.06] px-3 py-2 font-mono text-xs text-slate-600 dark:text-slate-400 scrollbar-thin">
+            <label className="block text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Prompt Preview</label>
+            <div className="max-h-32 overflow-y-auto rounded-md bg-muted border border-border px-3 py-2 font-mono text-xs text-muted-foreground">
               {prompt.prompt_text?.slice(0, 500)}{prompt.prompt_text?.length > 500 ? '...' : ''}
             </div>
           </div>
 
           {/* Test input */}
           <div>
-            <label className="block text-xs font-medium text-text-muted dark:text-text-muted-dark mb-1.5 uppercase tracking-wider">Test Input</label>
-            <textarea
+            <label className="block text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Test Input</label>
+            <Textarea
               value={testInput}
               onChange={(e) => setTestInput(e.target.value)}
               rows={4}
               placeholder="Enter test input data..."
-              className="input text-sm resize-none font-mono"
+              className="text-sm resize-none font-mono"
               disabled={isRunning}
             />
           </div>
 
           {/* Run button */}
-          <button
+          <Button
+            size="sm"
             onClick={handleRun}
             disabled={!testInput.trim() || isRunning}
-            className="btn-primary btn-sm"
           >
             {isRunning ? (
               <>
@@ -115,20 +120,20 @@ function TestPromptModal({ prompt, isOpen, onClose }) {
                 Run Test
               </>
             )}
-          </button>
+          </Button>
 
           {/* Response */}
           {response && (
             <div>
-              <label className="block text-xs font-medium text-text-muted dark:text-text-muted-dark mb-1.5 uppercase tracking-wider">Response</label>
-              <div className="max-h-60 overflow-y-auto rounded-lg bg-slate-50 dark:bg-white/[0.04] border border-border/50 dark:border-white/[0.06] px-3 py-2 font-mono text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap scrollbar-thin">
+              <label className="block text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Response</label>
+              <div className="max-h-60 overflow-y-auto rounded-md bg-muted border border-border px-3 py-2 font-mono text-xs whitespace-pre-wrap">
                 {response}
               </div>
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -146,13 +151,11 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
   const [showTestModal, setShowTestModal] = useState(false);
   const textareaRef = useRef(null);
 
-  // Reset edit text when prompt changes
   useEffect(() => {
     setEditText(prompt.prompt_text);
     setViewingVersion(null);
   }, [prompt.prompt_text]);
 
-  // Auto-resize textarea
   const autoResize = useCallback(() => {
     const ta = textareaRef.current;
     if (ta) {
@@ -163,7 +166,6 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
 
   useEffect(() => {
     if (isExpanded) {
-      // Small delay so DOM is ready
       setTimeout(autoResize, 0);
     }
   }, [isExpanded, editText, viewingVersion, autoResize]);
@@ -182,7 +184,6 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
       setShowVersions(false);
       return;
     }
-    // Show dropdown immediately, load data in background
     setShowVersions(true);
     supabase
       .from('prompt_configs')
@@ -223,60 +224,61 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
     : 'Empty prompt';
 
   return (
-    <div data-testid="prompt-card" className="glass-card overflow-hidden">
-      {/* Header - always visible */}
+    <div data-testid="prompt-card" className="bg-card border border-border rounded-lg overflow-hidden">
+      {/* Header -- always visible */}
       <div
         data-testid="prompt-card-header"
         onClick={() => setIsExpanded(!isExpanded)}
         title={firstLine}
-        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors"
+        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
           {isExpanded ? (
-            <ChevronDown className="w-4 h-4 text-text-muted dark:text-text-muted-dark shrink-0" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-text-muted dark:text-text-muted-dark shrink-0" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
           )}
-          <span className="font-medium text-sm text-slate-900 dark:text-white">
+          <span className="font-medium text-sm">
             {formatTypeName(prompt.prompt_type)}
           </span>
           <button
             data-testid="version-badge"
             onClick={loadVersions}
-            className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors relative"
+            className="px-2 py-0.5 text-[10px] font-medium rounded-sm bg-primary/10 text-primary hover:bg-primary/20 transition-colors relative"
           >
             v{prompt.version}
           </button>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
           onClick={(e) => { e.stopPropagation(); setShowTestModal(true); }}
-          className="btn-ghost btn-sm text-xs"
-          title="Test this prompt"
         >
           <FlaskConical className="w-3.5 h-3.5" />
           Test
-        </button>
+        </Button>
       </div>
 
       {/* Version dropdown */}
       {showVersions && (
-        <div data-testid="version-dropdown" className="mx-4 mb-2 border border-border/50 dark:border-white/[0.06] rounded-lg bg-white dark:bg-slate-800 shadow-lg max-h-48 overflow-y-auto">
+        <div data-testid="version-dropdown" className="mx-4 mb-2 border border-border rounded-md bg-background shadow-lg max-h-48 overflow-y-auto">
           {versions.map((ver) => (
             <button
               key={ver.version}
               onClick={() => handleVersionClick(ver)}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors flex items-center justify-between ${
-                ver.version === prompt.version ? 'font-semibold text-primary' : 'text-slate-700 dark:text-slate-300'
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center justify-between ${
+                ver.version === prompt.version ? 'font-semibold text-primary' : 'text-foreground'
               }`}
             >
               <span>v{ver.version}</span>
-              <span className="text-xs text-text-muted dark:text-text-muted-dark">
+              <span className="text-xs text-muted-foreground">
                 {new Date(ver.created_at).toLocaleDateString()}
               </span>
             </button>
           ))}
           {versions.length === 0 && (
-            <div className="px-3 py-2 text-sm text-text-muted dark:text-text-muted-dark">No versions found</div>
+            <div className="px-3 py-2 text-sm text-muted-foreground">No versions found</div>
           )}
         </div>
       )}
@@ -286,13 +288,13 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
         <div className="px-4 pb-4 space-y-3">
           {/* Viewing old version banner */}
           {viewingVersion && (
-            <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-lg px-3 py-2">
-              <span className="text-xs text-amber-800 dark:text-amber-300">
+            <div className="flex items-center justify-between bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+              <span className="text-xs text-warning">
                 Viewing v{viewingVersion.version} (read-only)
               </span>
               <button
                 onClick={handleRevert}
-                className="text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline"
+                className="text-xs font-medium text-warning hover:underline"
               >
                 Revert to this version
               </button>
@@ -310,34 +312,23 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
             readOnly={!!viewingVersion}
             className={`
               w-full font-mono text-sm leading-relaxed resize-none overflow-hidden
-              bg-slate-50 dark:bg-white/[0.04] border border-border/50 dark:border-white/[0.06]
-              rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/30
-              text-slate-800 dark:text-slate-200
+              bg-muted border border-border
+              rounded-md px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring
               ${viewingVersion ? 'opacity-75 cursor-not-allowed' : ''}
             `}
             style={{ minHeight: '120px' }}
           />
 
           {/* Char / word count */}
-          <div className="text-xs text-text-muted dark:text-text-muted-dark">
+          <div className="text-xs text-muted-foreground">
             {charCount} characters / {wordCount} words
           </div>
 
           {/* Save / Cancel buttons */}
           {hasChanges && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={handleSave}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
-              >
-                Save
-              </button>
-              <button
-                onClick={handleCancel}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] transition-colors"
-              >
-                Cancel
-              </button>
+              <Button size="sm" onClick={handleSave}>Save</Button>
+              <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
             </div>
           )}
 
@@ -346,7 +337,7 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
             <div>
               <button
                 onClick={() => setShowVariables(!showVariables)}
-                className="flex items-center gap-1.5 text-xs text-text-muted dark:text-text-muted-dark hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Code2 className="w-3.5 h-3.5" />
                 {showVariables ? 'Hide variables' : 'Show variables'}
@@ -356,7 +347,7 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
                   {variables.map((v) => (
                     <span
                       key={v}
-                      className="bg-slate-100 dark:bg-white/[0.06] px-2 py-0.5 rounded font-mono text-xs text-slate-600 dark:text-slate-400"
+                      className="bg-muted px-2 py-0.5 rounded-sm font-mono text-[10px] text-muted-foreground border border-border"
                     >
                       {v}
                     </span>
