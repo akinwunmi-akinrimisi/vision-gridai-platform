@@ -17,20 +17,15 @@ import ForcePassBanner from '../components/script/ForcePassBanner';
 import ScriptContent from '../components/script/ScriptContent';
 import ScriptRefinePanel from '../components/script/ScriptRefinePanel';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import StatusBadge from '../components/shared/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
-const STATUS_BADGE = {
-  pending: 'badge badge-amber',
-  scripting: 'badge badge-amber animate-shimmer',
-  scripting_complete: 'badge badge-blue',
-  approved: 'badge badge-green',
-  rejected: 'badge badge-red',
-};
-
-const SCRIPT_STATUS_BADGE = {
-  pending: 'badge badge-amber',
-  approved: 'badge badge-green',
-  rejected: 'badge badge-red',
-  refining: 'badge badge-amber animate-shimmer',
+const SCRIPT_STATUS_MAP = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  refining: 'scripting',
 };
 
 export default function ScriptReview() {
@@ -116,14 +111,14 @@ export default function ScriptReview() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="animate-in">
-        <div className="page-header">
-          <div className="h-6 w-64 bg-slate-200 dark:bg-white/[0.06] rounded-lg animate-pulse" />
-          <div className="h-4 w-48 bg-slate-100 dark:bg-white/[0.03] rounded-lg animate-pulse mt-2" />
+      <div className="animate-fade-in">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-5 w-5 rounded bg-muted animate-pulse" />
+          <div className="h-6 w-64 bg-muted rounded animate-pulse" />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-4 glass-card p-6 h-96 animate-pulse" />
-          <div className="lg:col-span-8 glass-card p-6 h-96 animate-pulse" />
+        <div className="flex gap-0">
+          <div className="w-[240px] flex-shrink-0 bg-card/50 border-r border-border p-5 h-[calc(100vh-8rem)] animate-pulse rounded-l-lg" />
+          <div className="flex-1 bg-card/30 p-5 h-[calc(100vh-8rem)] animate-pulse rounded-r-lg" />
         </div>
       </div>
     );
@@ -131,9 +126,9 @@ export default function ScriptReview() {
 
   if (!topic) {
     return (
-      <div className="animate-in">
-        <div className="glass-card p-8 text-center">
-          <p className="text-sm text-text-muted dark:text-text-muted-dark">Topic not found.</p>
+      <div className="animate-fade-in">
+        <div className="bg-card border border-border rounded-lg p-8 text-center">
+          <p className="text-sm text-muted-foreground">Topic not found.</p>
           <Link
             to={`/project/${projectId}/topics`}
             className="inline-flex items-center gap-1.5 mt-3 text-sm text-primary hover:underline"
@@ -150,40 +145,36 @@ export default function ScriptReview() {
   const displayScenes = scenes && scenes.length > 0 ? scenes : (topic.script_json?.scenes || []);
 
   return (
-    <div className="animate-in">
-      {/* Full-width header bar */}
+    <div className="animate-fade-in">
+      {/* Header bar */}
       <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
         {/* Back arrow */}
         <Link
           to={`/project/${projectId}/topics`}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
+          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           title="Back to Topics"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
 
         {/* Topic number */}
-        <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-white/[0.08] dark:to-white/[0.04] flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">
+        <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0">
           {topic.topic_number}
         </span>
 
         {/* SEO Title */}
-        <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight flex-1 min-w-0 truncate">
+        <h1 className="text-sm sm:text-base font-bold tracking-tight flex-1 min-w-0 truncate">
           {topic.seo_title || topic.original_title}
         </h1>
 
         {/* Playlist angle badge */}
         {topic.playlist_angle && (
-          <span className="badge badge-blue hidden sm:inline-flex">
-            {topic.playlist_angle}
-          </span>
+          <StatusBadge status="scripting" label={topic.playlist_angle} className="hidden sm:inline-flex" />
         )}
 
         {/* Script review status badge */}
         {topic.script_review_status && (
-          <span className={SCRIPT_STATUS_BADGE[topic.script_review_status] || 'badge badge-amber'}>
-            {topic.script_review_status}
-          </span>
+          <StatusBadge status={SCRIPT_STATUS_MAP[topic.script_review_status] || 'pending'} label={topic.script_review_status} />
         )}
 
         {/* Prev/Next arrows */}
@@ -191,19 +182,19 @@ export default function ScriptReview() {
           <button
             onClick={() => prevTopic && navigate(`/project/${projectId}/topics/${prevTopic.id}/script`)}
             disabled={!prevTopic}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             title="Previous topic"
             data-testid="prev-topic-btn"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-[10px] text-text-muted dark:text-text-muted-dark tabular-nums">
+          <span className="text-[10px] text-muted-foreground tabular-nums">
             {currentIndex + 1}/{approvedTopics.length}
           </span>
           <button
             onClick={() => nextTopic && navigate(`/project/${projectId}/topics/${nextTopic.id}/script`)}
             disabled={!nextTopic}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             title="Next topic"
             data-testid="next-topic-btn"
           >
@@ -214,25 +205,25 @@ export default function ScriptReview() {
 
       {/* Generate Script CTA -- when topic approved but no script */}
       {!hasScript && !isGenerating && topic.review_status === 'approved' && (
-        <div className="glass-card p-8 text-center mb-4" data-testid="generate-script-cta">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-indigo-500/20 flex items-center justify-center mx-auto mb-4">
+        <div className="bg-card border border-border rounded-lg p-8 text-center mb-4" data-testid="generate-script-cta">
+          <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <Sparkles className="w-7 h-7 text-primary" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+          <h2 className="text-lg font-bold mb-2">
             Generate Script
           </h2>
-          <p className="text-sm text-text-muted dark:text-text-muted-dark max-w-md mx-auto mb-5">
+          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-5">
             This will generate a 3-pass script (Foundation, Depth, Resolution). Each pass is
             independently scored on 7 dimensions. Estimated time: 8-10 minutes.
           </p>
-          <button
+          <Button
             onClick={handleGenerate}
             disabled={generateScript.isPending}
-            className="btn-primary btn-lg"
+            size="lg"
           >
             {generateScript.isPending ? (
               <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                 Starting...
               </>
             ) : (
@@ -241,7 +232,7 @@ export default function ScriptReview() {
                 Generate 3-Pass Script
               </>
             )}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -256,7 +247,7 @@ export default function ScriptReview() {
         </div>
       )}
 
-      {/* Two-column layout -- when script exists */}
+      {/* Split-panel layout -- when script exists */}
       {hasScript && (
         <>
           {/* Force Pass Banner */}
@@ -265,48 +256,50 @@ export default function ScriptReview() {
             isVisible={topic.script_force_passed === true}
           />
 
-          {/* Desktop: two columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Mobile score summary (compact) */}
-            <div className="lg:hidden">
-              <div className="glass-card p-4 flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl font-bold text-slate-900 dark:text-white">
-                    {topic.script_quality_score ?? '--'}
-                    <span className="text-xs font-normal text-text-muted dark:text-text-muted-dark">/10</span>
-                  </span>
-                  <span className="text-xs text-text-muted dark:text-text-muted-dark">
-                    {topic.word_count?.toLocaleString() || '--'} words
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleApprove}
-                    disabled={anyMutationPending || topic.script_review_status === 'approved'}
-                    className="btn-success btn-sm"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => setShowRejectDialog(true)}
-                    disabled={anyMutationPending || topic.script_review_status === 'approved'}
-                    className="btn-danger btn-sm"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => setShowRefinePanel(true)}
-                    disabled={anyMutationPending || topic.script_review_status === 'approved'}
-                    className="btn-secondary btn-sm"
-                  >
-                    Refine
-                  </button>
-                </div>
+          {/* Mobile score summary */}
+          <div className="md:hidden mb-4">
+            <div className="bg-card/50 border border-border rounded-lg p-4 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
+                  {topic.script_quality_score ?? '--'}
+                  <span className="text-xs font-normal text-muted-foreground">/10</span>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {topic.word_count?.toLocaleString() || '--'} words
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleApprove}
+                  disabled={anyMutationPending || topic.script_review_status === 'approved'}
+                  size="sm"
+                >
+                  Approve
+                </Button>
+                <Button
+                  onClick={() => setShowRejectDialog(true)}
+                  disabled={anyMutationPending || topic.script_review_status === 'approved'}
+                  variant="destructive"
+                  size="sm"
+                >
+                  Reject
+                </Button>
+                <Button
+                  onClick={() => setShowRefinePanel(true)}
+                  disabled={anyMutationPending || topic.script_review_status === 'approved'}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Refine
+                </Button>
               </div>
             </div>
+          </div>
 
-            {/* Left: Score Panel (sticky, desktop only) */}
-            <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto scrollbar-thin">
+          {/* Desktop: split-panel flex layout */}
+          <div className="flex gap-0 rounded-lg overflow-hidden border border-border bg-card/30">
+            {/* Left: Score Panel (fixed width, border-r, hidden on mobile) */}
+            <div className="hidden md:flex md:flex-col md:w-[240px] md:flex-shrink-0 border-r border-border overflow-y-auto scrollbar-thin max-h-[calc(100vh-8rem)]">
               <ScorePanel
                 topic={topic}
                 onApprove={handleApprove}
@@ -316,8 +309,8 @@ export default function ScriptReview() {
               />
             </div>
 
-            {/* Right: Script Content */}
-            <div className="lg:col-span-8">
+            {/* Right: Script Content (flex-1) */}
+            <div className="flex-1 overflow-y-auto max-h-[calc(100vh-8rem)] scrollbar-thin">
               <ScriptContent
                 scenes={displayScenes}
                 topic={topic}
@@ -343,12 +336,12 @@ export default function ScriptReview() {
         confirmVariant="danger"
         loading={rejectScript.isPending}
       >
-        <textarea
+        <Textarea
           value={rejectFeedback}
           onChange={(e) => setRejectFeedback(e.target.value)}
           rows={3}
           placeholder="Optional feedback for regeneration..."
-          className="input mt-3 resize-none"
+          className="mt-3 resize-none bg-muted border-border"
         />
       </ConfirmDialog>
 

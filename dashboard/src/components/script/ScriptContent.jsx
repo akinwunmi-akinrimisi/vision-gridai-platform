@@ -28,14 +28,8 @@ function groupByChapter(scenes) {
 }
 
 /**
- * ScriptContent -- Right column container for the Script Review page.
+ * ScriptContent -- Right column container for the Script Review split-panel.
  * Groups scenes by chapter, manages accordion state, editing, and search.
- *
- * @param {object} props
- * @param {Array} props.scenes - Scene array from useScenes hook
- * @param {object} props.topic - Topic data
- * @param {Function} props.onSceneEdit - Save edited scene callback
- * @param {Function} props.onRegenPrompts - Trigger batch regen for edited scenes
  */
 export default function ScriptContent({ scenes, topic, onSceneEdit, onRegenPrompts }) {
   const chapters = useMemo(() => groupByChapter(scenes || []), [scenes]);
@@ -150,8 +144,8 @@ export default function ScriptContent({ scenes, topic, onSceneEdit, onRegenPromp
 
   if (!scenes || scenes.length === 0) {
     return (
-      <div className="glass-card p-8 text-center">
-        <p className="text-sm text-text-muted dark:text-text-muted-dark">
+      <div className="p-8 text-center">
+        <p className="text-sm text-muted-foreground">
           No scenes available yet.
         </p>
       </div>
@@ -159,7 +153,7 @@ export default function ScriptContent({ scenes, topic, onSceneEdit, onRegenPromp
   }
 
   return (
-    <div data-testid="script-content">
+    <div className="p-4" data-testid="script-content">
       <ScriptToolbar
         onExpandAll={expandAll}
         onCollapseAll={collapseAll}
@@ -172,7 +166,7 @@ export default function ScriptContent({ scenes, topic, onSceneEdit, onRegenPromp
         }}
       />
 
-      <div className="space-y-3">
+      <div className="space-y-1 mt-2">
         {filteredChapters.map((chapter) => (
           <ChapterAccordion
             key={chapter.name}
@@ -207,8 +201,8 @@ export default function ScriptContent({ scenes, topic, onSceneEdit, onRegenPromp
         ))}
 
         {searchQuery && filteredChapters.length === 0 && (
-          <div className="glass-card p-6 text-center">
-            <p className="text-sm text-text-muted dark:text-text-muted-dark">
+          <div className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">
               No scenes match &ldquo;{searchQuery}&rdquo;
             </p>
           </div>

@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 
 /**
- * Glass-card accordion per chapter in the Script Review page.
+ * Accordion per chapter in the Script Review page.
  * @param {object} props
  * @param {object} props.chapter - { name, scenes: [], wordCount }
  * @param {boolean} props.isExpanded - Whether chapter content is visible
@@ -12,35 +12,32 @@ export default function ChapterAccordion({ chapter, isExpanded, onToggle, childr
   const sceneCount = chapter.scenes?.length || 0;
 
   return (
-    <div className="glass-card overflow-hidden" data-testid={`chapter-${chapter.name}`}>
+    <div data-testid={`chapter-${chapter.name}`}>
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-5 py-3.5 text-left transition-colors duration-200 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] cursor-pointer"
+        className="w-full flex items-center gap-2 cursor-pointer py-2 text-left group"
         aria-expanded={isExpanded}
       >
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate pr-4">
+        <ChevronDown
+          className={`w-4 h-4 text-accent transition-transform duration-200 flex-shrink-0 ${
+            isExpanded ? 'rotate-0' : '-rotate-90'
+          }`}
+        />
+        <span className="text-sm font-semibold truncate pr-2 group-hover:text-accent transition-colors">
           {chapter.name}
         </span>
-
-        <span className="flex items-center gap-3 flex-shrink-0">
+        <span className="ml-auto flex items-center gap-3 flex-shrink-0 text-[10px] text-muted-foreground">
           {chapter.wordCount != null && (
-            <span className="text-xs text-text-muted dark:text-text-muted-dark tabular-nums">
-              {chapter.wordCount.toLocaleString()} words
-            </span>
+            <span className="tabular-nums">{chapter.wordCount.toLocaleString()} words</span>
           )}
-          <span className="text-xs text-text-muted dark:text-text-muted-dark tabular-nums">
+          <span className="tabular-nums">
             {sceneCount} {sceneCount === 1 ? 'scene' : 'scenes'}
           </span>
-          <ChevronDown
-            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-              isExpanded ? 'rotate-180' : ''
-            }`}
-          />
         </span>
       </button>
 
       {isExpanded && (
-        <div className="border-t border-border/30 dark:border-white/[0.04] animate-in">
+        <div className="space-y-2 pl-6 pb-2 animate-fade-in">
           {children}
         </div>
       )}
