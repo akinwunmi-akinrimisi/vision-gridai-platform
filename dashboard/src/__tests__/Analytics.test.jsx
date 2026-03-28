@@ -13,16 +13,26 @@ vi.mock('react-router', async () => {
   };
 });
 
-// Mock supabase client
+// Mock supabase client — every chained method returns a thenable so that
+// `await supabase.from('x').select().eq()` resolves to { data, error } even
+// when the chain doesn't end with `.order()` or `.single()`.
+function createChainMock(resolvedValue = { data: [], error: null }) {
+  const chain = {
+    select: vi.fn(() => chain),
+    eq: vi.fn(() => chain),
+    order: vi.fn(() => chain),
+    single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    gte: vi.fn(() => chain),
+    in: vi.fn(() => chain),
+    // Make the chain itself thenable so `await chain` works
+    then: vi.fn((resolve) => resolve(resolvedValue)),
+  };
+  return chain;
+}
+
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockResolvedValue({ data: [], error: null }),
-      single: vi.fn().mockResolvedValue({ data: null, error: null }),
-      gte: vi.fn().mockReturnThis(),
-    })),
+    from: vi.fn(() => createChainMock()),
     channel: vi.fn(() => ({
       on: vi.fn().mockReturnThis(),
       subscribe: vi.fn(),
@@ -148,10 +158,11 @@ beforeEach(() => {
 describe('Analytics -- Metric cards', () => {
   it('renders metric summary cards with data', () => {
     renderWithProviders(<Analytics />);
-    expect(screen.getByText(/67,000/)).toBeTruthy();
-    expect(screen.getByText(/1,780.8/)).toBeTruthy();
+    // Views total may appear in both KPI cards and Platform Breakdown, so use getAllByText
+    expect(screen.getAllByText(/67,000/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/1,780.8/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/7.4%/)).toBeTruthy();
-    expect(screen.getByText(/\$2,301/)).toBeTruthy();
+    expect(screen.getAllByText(/\$2,301/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders top performer card', () => {
