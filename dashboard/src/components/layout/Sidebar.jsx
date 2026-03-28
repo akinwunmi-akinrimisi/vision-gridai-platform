@@ -19,6 +19,7 @@ import {
   Share2,
   Upload,
   Zap,
+  CalendarDays,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -59,6 +60,7 @@ const projectNavItems = [
   { label: 'Scripts', icon: FileText, path: '/project/:id/topics' }, // scripts route doesn't exist yet
   { label: 'Production', icon: Activity, path: '/project/:id/production' },
   { label: 'Analytics', icon: BarChart3, path: '/project/:id/analytics' },
+  { label: 'Calendar', icon: CalendarDays, path: '/project/:id/calendar' },
   { label: 'Settings', icon: Settings, path: '/project/:id/settings' },
 ];
 
