@@ -139,7 +139,7 @@ echo "    - TikTok account (OAuth2) — for shorts social posting"
 echo "    - Instagram account (OAuth2 via Facebook) — for shorts social posting"
 echo "    - Apify API Token (httpHeaderAuth) — for TikTok + Quora scraping"
 echo "    - SerpAPI Key (httpHeaderAuth) — for People Also Ask extraction"
-echo "    - OpenRouter API Key (httpHeaderAuth) — for AI categorization via Haiku"
+echo "    - Anthropic API Key (httpHeaderAuth) — for AI categorization via Haiku (direct, no proxy)"
 echo "    - Reddit API credentials (client_id + secret) — for PRAW"
 echo "  Verify all exist in n8n → Settings → Credentials"
 
@@ -936,7 +936,8 @@ done
 # API keys
 [ -n "${APIFY_TOKEN:-}" ] && echo "  ✅ APIFY_TOKEN set" || echo "  ⚠️  APIFY_TOKEN not set"
 [ -n "${SERPAPI_KEY:-}" ] && echo "  ✅ SERPAPI_KEY set" || echo "  ⚠️  SERPAPI_KEY not set"
-[ -n "${OPENROUTER_API_KEY:-}" ] && echo "  ✅ OPENROUTER_API_KEY set" || echo "  ⚠️  OPENROUTER_API_KEY not set"
+# Note: OpenRouter is NOT used. All AI calls go direct to Anthropic API.
+[ -n "${ANTHROPIC_API_KEY:-}" ] && echo "  ✅ ANTHROPIC_API_KEY set" || echo "  ⚠️  ANTHROPIC_API_KEY not set"
 
 # Research + cinematic tables
 echo ""

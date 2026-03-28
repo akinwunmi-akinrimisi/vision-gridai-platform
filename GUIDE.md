@@ -33,7 +33,7 @@ Read AGENT_MERGE_SECTIONS in VisionGridAI_Platform_Agent.md for exact SQL.
 
 1. Migration 002_research_tables.sql — 3 tables (research_runs, research_results, research_categories) + RLS
 2. Migration 003_cinematic_fields.sql — ALTER scenes table: add color_mood, zoom_direction, caption_highlight_word, transition_to_next, b_roll_insert, composition_prefix, selective_color_element, pipeline_stage. ALTER topics: add pipeline_stage. UPDATE all existing scenes SET visual_type = 'static_image'.
-3. Migration 004_calendar_engagement_music.sql — 6 new tables: scheduled_posts, platform_metadata, comments, music_library, renders, production_logs. ALTER projects: add auto_pilot fields + budget fields.
+3. Migration 004_calendar_engagement_music.sql — 6 new tables: scheduled_posts, platform_metadata, comments, music_library (for Lyria-generated + optional manual tracks), renders, production_logs. ALTER projects: add auto_pilot fields + budget fields.
 
 Apply all to live Supabase at https://supabase.operscale.cloud.
 Use /careful for schema changes.
@@ -69,7 +69,7 @@ Add 3 niche adapter prompts (Finance, Historical, Tech) — exact text in Agent.
 Add Image Prompt Enhancer prompt.
 Add Keyword Extraction prompt.
 Add YouTube SEO Metadata Generator prompt.
-Add Background Music Mood Descriptor prompt.
+Add Background Music Mood Descriptor prompt (used by WF_MUSIC_GENERATE for Lyria generation).
 
 Use /careful — these prompts determine ALL downstream quality.
 ```
@@ -173,27 +173,28 @@ Use /careful for offset calculation — off-by-one errors cause audio desync.
 
 ---
 
-## Phase 3: Audio — Background Music + End Cards
+## Phase 3: Audio — Background Music (Lyria) + End Cards
 
-**Objective:** Music library, mood-based selection, FFmpeg ducking, end card generation.
+**Objective:** AI music generation via Vertex AI Lyria, FFmpeg ducking, end card generation.
 
 **Agents:** `@api-developer` (workflows), `@prompt-engineer` (music mood prompt)
 
-### Prompt 3.1: Background Music System
+### Prompt 3.1: Background Music System (Lyria)
 
 ```
-Use @api-developer and @prompt-engineer. Build WF_MUSIC_SELECT.
+Use @api-developer and @prompt-engineer. Build WF_MUSIC_GENERATE.
 
 1. During script generation, the music_sections array specifies mood per chapter
-2. WF_MUSIC_SELECT queries music_library table: match mood_tags to requested mood
-3. If no match, use AI (Haiku via OpenRouter) with the Background Music Mood Descriptor prompt to generate a music description, then do best-match from library
-4. Mix voiceover + selected track:
+2. WF_MUSIC_GENERATE uses Anthropic API (Claude Haiku) to analyze the script and determine mood/tempo/instruments per section
+3. Vertex AI Lyria (lyria-002) generates custom 30-second clips per mood section
+4. FFmpeg merges + loops Lyria clips to match video duration
+5. Mix voiceover + generated track:
    ffmpeg -i voiceover.wav -i music.mp3 \
      -filter_complex "[1:a]volume=0.12[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=2[out]" \
      -map "[out]" -c:a aac -b:a 192k mixed.m4a
-5. For long-form with multiple music sections: crossfade between tracks at chapter boundaries
+6. For long-form with multiple music sections: crossfade between Lyria clips at chapter boundaries
 
-Store as WF_MUSIC_SELECT.json.
+Store as WF_MUSIC_GENERATE.json.
 ```
 
 ### Prompt 3.2: End Card + Thumbnail

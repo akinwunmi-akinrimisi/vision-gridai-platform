@@ -7,13 +7,13 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - **Database:** Supabase (self-hosted PostgreSQL) at `https://supabase.operscale.cloud`
 - **Orchestration:** n8n (self-hosted Docker) at `https://n8n.srv1297445.hstgr.cloud`
 - **Dashboard:** React 18 + Tailwind CSS + Supabase JS client
-- **Scripts:** Claude Sonnet via Anthropic API direct (NOT OpenRouter)
+- **Scripts:** Claude Sonnet via Anthropic API direct
 - **Voiceover:** Google Cloud TTS (Chirp 3 HD)
 - **Images:** Fal.ai → Seedream 4.0 ($0.03/image, supports 16:9 + 9:16)
 - **Ken Burns Motion:** FFmpeg zoompan (6 direction templates, $0/scene)
 - **Color Grading:** FFmpeg eq + colorbalance (7 mood profiles per scene)
 - **Transitions:** FFmpeg xfade (5 transition types between scenes)
-- **Background Music:** Royalty-free library + FFmpeg voice-ducking
+- **Background Music:** Google Vertex AI Lyria (lyria-002, custom AI-generated music per video) + FFmpeg voice-ducking
 - **Assembly:** FFmpeg (in n8n Docker container)
 - **Kinetic Captions:** Remotion (React-based video renderer, free, local on VPS)
 - **Thumbnails:** Fal.ai image + text overlay via Sharp/Jimp, auto-uploaded
@@ -92,7 +92,7 @@ vision-gridai-platform/
     ├── WF_COMMENT_ANALYZE.json
     ├── WF_QA_CHECK.json
     ├── WF_RETRY_WRAPPER.json
-    ├── WF_MUSIC_SELECT.json
+    ├── WF_MUSIC_GENERATE.json
     └── WF_ENDCARD.json
 ```
 

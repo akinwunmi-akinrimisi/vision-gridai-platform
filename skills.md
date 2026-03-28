@@ -53,7 +53,7 @@
 | Apify Actors | Cloud scraping (TikTok, Quora, Reddit fallback) |
 | pytrends | Google Trends interest data, breakout detection |
 | SerpAPI | People Also Ask extraction |
-| OpenRouter (Claude Haiku) | AI categorization, keyword derivation, title generation |
+| Anthropic API (Claude Haiku) | AI categorization, keyword derivation, title generation — direct, no proxy |
 
 ### Cinematic Production Pipeline
 | Skill | Purpose |

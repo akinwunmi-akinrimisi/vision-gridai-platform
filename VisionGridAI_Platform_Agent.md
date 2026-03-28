@@ -232,6 +232,8 @@ ffmpeg -loop 1 -i {INPUT}.png -vf "
 
 ### Background Music System
 
+**Music is generated via Google Vertex AI Lyria (lyria-002), not from a static library.** The workflow WF_MUSIC_GENERATE uses: Anthropic API (Claude Haiku) for script analysis to determine mood/tempo/instruments per chapter, then Vertex AI Lyria generates custom 30-second clips per mood section, then FFmpeg merges + loops clips to match video duration.
+
 **Music mixing FFmpeg:**
 ```
 ffmpeg -i voiceover.wav -i music.mp3 \
@@ -331,7 +333,7 @@ async function withRetry(fn, maxRetries = 4, baseDelay = 1000, maxDelay = 30000)
 }
 ```
 
-Applied to: Fal.ai, Anthropic Claude, Google Cloud TTS, YouTube API, Apify, SerpAPI, OpenRouter.
+Applied to: Fal.ai, Anthropic Claude, Google Cloud TTS, YouTube API, Apify, SerpAPI.
 
 ### Structured Production Logs
 
@@ -827,7 +829,7 @@ CREATE TABLE comments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Music library
+-- Music library (available for pre-made tracks, but primary music is AI-generated via Vertex AI Lyria lyria-002)
 CREATE TABLE music_library (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
@@ -837,6 +839,7 @@ CREATE TABLE music_library (
   file_url TEXT NOT NULL,
   file_drive_id TEXT,
   instrument_palette TEXT,  -- 'low cello drone, sparse piano'
+  source TEXT DEFAULT 'lyria',  -- 'lyria' (AI-generated) or 'manual' (uploaded)
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -1156,9 +1159,9 @@ OUTPUT (JSON):
 { "title": "...", "description": "...", "tags": [...], "thumbnail_text": "...", "thumbnail_emotion": "shock|curiosity|disbelief|excitement" }
 ```
 
-**Background Music Mood Descriptor:**
+**Background Music Mood Descriptor (used by WF_MUSIC_GENERATE — Anthropic analysis step before Lyria generation):**
 ```
-Given the following video script with emotional arc, describe ideal background music.
+Given the following video script with emotional arc, describe ideal background music for Vertex AI Lyria generation.
 
 VIDEO TOPIC: {TOPIC}
 TOTAL DURATION: {DURATION}
@@ -1191,7 +1194,7 @@ WF04: Images (172 Seedream 4.0 on Fal.ai, ALL scenes)      → writes to scenes 
 WF_KEN_BURNS: FFmpeg zoompan + color grade (172 scenes)     → writes to scenes table
 WF06: Captions (ASS files with highlight words)             → writes to scenes table
 WF07: FFmpeg Assembly (xfade transitions, batch 15-20)      → writes to topics table
-WF_MUSIC_SELECT: AI mood match → track selection → ducking  → mixed audio
+WF_MUSIC_GENERATE: Anthropic analysis → Lyria generation → FFmpeg merge + ducking → mixed audio
 WF_ENDCARD: Generate branded end card                       → appended to assembly
 WF08: Drive Upload                                          → writes to scenes table
 WF_PLATFORM_METADATA: AI per-platform title/desc/tags       → writes to platform_metadata table
@@ -1367,7 +1370,7 @@ Max 3 regeneration attempts total across all passes. Force-pass on attempt 3.
 | Shorts Creator | `/shorts` | Gate 4 — analyze scripts, review viral clips, produce 9:16 shorts |
 | Social Media Publisher | `/social` | Post/schedule clips to TikTok, Instagram, YouTube Shorts |
 | Analytics | `/project/:id/analytics` | YouTube + social media performance, revenue, CPM, cross-platform comparison, engagement rate, cost vs revenue waterfall |
-| Settings | `/project/:id/settings` | Per-project config, prompt editor, model selection, social accounts, auto-pilot config, API health, music library manager, schedule templates |
+| Settings | `/project/:id/settings` | Per-project config, prompt editor, model selection, social accounts, auto-pilot config, API health, Lyria music config, schedule templates |
 | Topic Research | `/research` | Topic Intelligence — 5-source scrape results, ranked categories, run research |
 | Content Calendar | `/project/:id/calendar` | Visual monthly/weekly grid of scheduled + published content across YouTube, TikTok, Instagram. Drag-and-drop reschedule. Color-coded by platform and status. |
 | Engagement Hub | `/project/:id/engagement` | Unified comment feed from YouTube, TikTok, Instagram. AI-flagged high-conversion comments. AI-suggested replies. Sentiment chart per video. |
@@ -1388,7 +1391,7 @@ Max 3 regeneration attempts total across all passes. Force-pass on attempt 3.
 
 **ProjectDashboard** — added: auto-pilot toggle, pipeline health indicator, quick actions, recent activity feed
 
-**Settings** — added: auto-pilot config (thresholds, visibility, budget), platform connection status, API health dashboard, music library manager, default schedule templates, first-run setup wizard
+**Settings** — added: auto-pilot config (thresholds, visibility, budget), platform connection status, API health dashboard, Lyria music config, default schedule templates, first-run setup wizard
 
 ### Topic Intelligence Dashboard Integration
 
@@ -1543,12 +1546,12 @@ No polling. Dashboard updates the instant Supabase receives a write.
 | WF_COMMENT_ANALYZE | After sync | AI sentiment + intent scoring |
 | WF_QA_CHECK | After render | Automated 13-point quality checklist |
 | WF_RETRY_WRAPPER | Sub-workflow | Exponential backoff for any API call |
-| WF_MUSIC_SELECT | During assembly | AI mood match → track selection → ducking |
+| WF_MUSIC_GENERATE | During assembly | Anthropic script analysis → Vertex AI Lyria generation → FFmpeg merge + ducking |
 | WF_ENDCARD | After assembly | Generate branded end card |
 
 ### AI Categorization Prompt
 
-Sent to Claude Haiku via OpenRouter after all scrapers complete:
+Sent to Claude Haiku via Anthropic API direct after all scrapers complete:
 
 ```
 You are a content strategist analyzing 50 discussion topics from 5 online sources.
@@ -1569,7 +1572,7 @@ Topics:
 Respond ONLY in JSON. No preamble. No markdown fences.
 ```
 
-**Model:** `anthropic/claude-3.5-haiku` via OpenRouter
+**Model:** `claude-3-5-haiku-latest` via Anthropic API direct
 **Temperature:** 0.3
 **Cost:** ~$0.02 per run
 
@@ -1704,7 +1707,7 @@ vision-gridai-platform/
     ├── WF_COMMENT_ANALYZE.json           ← AI sentiment + intent scoring
     ├── WF_QA_CHECK.json                  ← Automated 13-point quality checklist
     ├── WF_RETRY_WRAPPER.json             ← Exponential backoff for any API call
-    ├── WF_MUSIC_SELECT.json              ← AI mood match → track selection → ducking
+    ├── WF_MUSIC_GENERATE.json            ← Anthropic analysis → Lyria generation → FFmpeg merge + ducking
     └── WF_ENDCARD.json                   ← Generate branded end card
 ```
 
@@ -1723,7 +1726,7 @@ vision-gridai-platform/
 | D2 | Images (172 Seedream 4.0 — ALL scenes, no I2V/T2V) | ~$5.16 |
 | D3 | Ken Burns + Color Grade (FFmpeg, 172 scenes) | $0.00 |
 | D4 | Captions + Transitions + Assembly | $0.00 |
-| D5 | Background music mixing | $0.00 |
+| D5 | Background music (Lyria generation + FFmpeg mixing) | ~$0.10 |
 | D6 | End card generation | $0.00 |
 | D7 | Platform-specific renders | $0.00 |
 | E | Video review → GATE 3 → Publish | $0.00 |
@@ -1825,7 +1828,7 @@ Headers:
 | Scene crash mid-pipeline | Resume from failed scene | Check `{stage}_status = 'pending'` per scene |
 | YouTube API quota hit (publish) | Pause, schedule retry next day | Log warning, mark topic as `publish_pending` |
 | Auto-pilot budget exceeded | Pause all production | Alert on dashboard, require manual resume |
-| Music ducking clips audio | Lower music volume further | Reduce to volume=0.08 and re-mix |
+| Music ducking clips audio | Lower Lyria music volume further | Reduce to volume=0.08 and re-mix |
 | All 5 research sources fail | Mark run `failed` | Show last successful results |
 
 ---
