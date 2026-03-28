@@ -24,6 +24,9 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - @Dashboard_Implementation_Plan.md — Detailed dashboard page specs and Supabase Realtime patterns
 - @design-system/MASTER.md — Dashboard design system (colors, typography, spacing, components). Read before building any dashboard page.
 - @.planning/ — GSD state files (PROJECT.md, ROADMAP.md, STATE.md). Read for current sprint context.
+- @GUIDE.md — Topic Intelligence build guide with phase-by-phase prompts (Superpowers + gstack + Agency Agents)
+- @docs/superpowers/specs/ — Superpowers feature specs
+- @docs/superpowers/plans/ — Superpowers implementation plans
 
 ## Project Structure
 ```
@@ -46,17 +49,36 @@ vision-gridai-platform/
 ├── execution/             ← Shell scripts (FFmpeg, download, cleanup)
 ├── dashboard/
 │   ├── src/pages/         ← React SPA (9 pages incl. Shorts Creator + Social Publisher)
+│   │   └── Research.jsx   ← Topic Intelligence global page
+│   ├── src/components/research/  ← Topic Intelligence components
+│   │   ├── ResearchRunButton.jsx ← Triggers orchestrator webhook
+│   │   ├── ResearchProgress.jsx  ← Realtime progress per source
+│   │   ├── CategoryCards.jsx     ← Ranked category clusters
+│   │   ├── SourceTabs.jsx        ← Per-source breakdown
+│   │   └── TopicRow.jsx          ← Single result row
+│   ├── src/hooks/useResearch.js  ← Research queries + realtime
 │   └── src/remotion/      ← Kinetic caption renderer (Remotion components)
 ├── supabase/migrations/   ← SQL schema files (incl. shorts + social_accounts tables)
+│   └── 002_research_tables.sql  ← Topic Intelligence schema
 ├── data/                  ← Source files per project
+├── docs/superpowers/      ← Superpowers specs + plans
+│   ├── specs/             ← Feature specifications
+│   └── plans/             ← Implementation plans
 └── workflows/             ← n8n workflow JSONs (28 workflows incl. shorts + social)
+    ├── WF_RESEARCH_ORCHESTRATOR.json
+    ├── WF_RESEARCH_REDDIT.json
+    ├── WF_RESEARCH_YOUTUBE.json
+    ├── WF_RESEARCH_TIKTOK.json
+    ├── WF_RESEARCH_GOOGLE_TRENDS.json
+    ├── WF_RESEARCH_QUORA.json
+    └── WF_RESEARCH_CATEGORIZE.json
 ```
 
 ## Critical Rules
 
 **IMPORTANT: Read Agent.md before building ANY workflow or dashboard component.** It's the single source of truth.
 
-**IMPORTANT: This project uses GSD (Get Shit Done) for structured development.** Use `/gsd:` commands for planning and execution. Each sprint = one GSD phase. GSD spawns fresh sub-agents per task to avoid context rot. Read `.planning/` for current sprint state. Do NOT create competing planning structures.
+**IMPORTANT: This project uses Superpowers (obra/superpowers) as the PRIMARY build methodology.** Specs live at docs/superpowers/specs/. Plans live at docs/superpowers/plans/. Use subagent-driven-development for execution. GSD commands at .claude/commands/gsd/ are DEPRECATED for new work. Use gstack selectively: /qa, /browse, /careful, /freeze, /review ONLY. Do NOT use gstack planning commands — they conflict with Superpowers. Use Anthropic frontend-design skill for all React component work — read its SKILL.md first.
 
 **IMPORTANT: Read `design-system/MASTER.md` before building any dashboard page or component.** UI UX Pro Max skill is installed at `.claude/skills/ui-ux-pro-max/` and auto-activates for UI work. All dashboard pages must follow the master design system for visual consistency. For page-specific overrides, check `design-system/pages/{page-name}.md` first.
 
@@ -79,6 +101,8 @@ vision-gridai-platform/
 **IMPORTANT: Topic refinement considers all 24 other topics.** When user rejects/refines one topic, Claude receives all 24 others as context to avoid overlap.
 
 **IMPORTANT: Self-chaining architecture.** Each workflow fires the next on completion. WF_MASTER is a launcher. Every workflow handles its own errors and writes failure to Supabase.
+
+**IMPORTANT: Topic Intelligence research engine.** The `/research` route is a global page (not project-scoped) for mining 5 data sources (Reddit, YouTube Comments, TikTok, Google Trends + PAA, Quora). Results feed into project creation via a dropdown in CreateProjectModal. Research tables: `research_runs`, `research_results`, `research_categories`. Orchestrator webhook: POST `/webhook/research/run` with `{ project_id }`. Keywords are derived dynamically from the project's niche + description via AI — never hardcoded.
 
 ## n8n ↔ Supabase Pattern
 ```
@@ -138,13 +162,35 @@ cp -r build/* /opt/dashboard/  # Deploy to Nginx
 | G | Shorts: viral analysis + production → ⏸ GATE 4 | ⚡ + Deterministic | ~$22/topic |
 | H | Social media posting (TikTok, Instagram, YT Shorts) | Scheduled cron | Free |
 | Supervisor | Pipeline monitor (30 min cron) | ⚡ Agentic | ~$14.40/month |
+| TI | Topic Intelligence (5-source scrape + AI categorization) | On-demand | ~$0.13/run |
 | **Main video** | | | **~$28/video** |
 | **Shorts (20 clips)** | | | **~$22/topic** |
 | **Total per topic** | | | **~$50** |
 
-## Development Workflow (GSD Phases → Sprints)
+## Development Workflow (Superpowers)
 
-This project is built using GSD phases. Each phase maps to a sprint:
+This project uses Superpowers for structured development:
+
+**Workflow per feature:**
+1. Write spec:    docs/superpowers/specs/{date}-{feature}.md
+2. Create plan:   docs/superpowers/plans/{date}-{feature}.md
+3. Execute:       Superpowers subagent-driven-development (checkbox tracking)
+4. Quality gate:  /qa + /review (gstack)
+
+**Quality commands (gstack — selective use only):**
+- /qa       — After completing any deliverable
+- /browse   — Research external docs/APIs
+- /careful  — Precision-critical work (AI prompts, scoring logic)
+- /freeze   — Before merging into main
+- /review   — Before marking any phase complete
+
+**Dashboard pages — read frontend-design SKILL.md first, then:**
+```
+python3 .claude/skills/ui-ux-pro-max/scripts/search.py "AI video production dashboard" --design-system --persist -p "Vision GridAI"
+```
+
+> **Note:** GSD phases below are legacy. New work uses Superpowers. Topic Intelligence
+> phases (TI-1 through TI-10) are documented in GUIDE.md.
 
 | GSD Phase | Sprint | What Gets Built |
 |-----------|--------|----------------|
@@ -159,23 +205,6 @@ This project is built using GSD phases. Each phase maps to a sprint:
 | Phase 8 | Shorts Pipeline | Viral analysis + audio + images + video + captions + assembly workflows |
 | Phase 9 | Social Media | Social Media Publisher page + posting workflows + analytics pull |
 
-**Workflow per phase:**
-```
-/gsd:discuss-phase N   → Define layout/interaction preferences
-/gsd:plan-phase N      → Research + create atomic task plans
-/gsd:execute-phase N   → Build (parallel agents, fresh context per task)
-/gsd:verify-work N     → Test deliverables
-```
-
-**Dashboard pages — generate design system FIRST:**
-```
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "AI video production dashboard" --design-system --persist -p "Vision GridAI"
-```
-Then for each page:
-```
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "real-time monitoring" --design-system --persist -p "Vision GridAI" --page "production-monitor"
-```
-
 ## Gotchas
 - Supabase REST API uses `eq.` syntax for filters: `?status=eq.pending`
 - Supabase Realtime requires the table to have `REPLICA IDENTITY FULL` for UPDATE events
@@ -189,3 +218,8 @@ python3 .claude/skills/ui-ux-pro-max/scripts/search.py "real-time monitoring" --
 - Agency Agents (61 files in `~/.claude/agents/`) auto-activate by context. Don't need explicit invocation — GSD executors inherit them.
 - TikTok Content Posting API requires Developer account + app approval. Instagram requires Facebook Business account.
 - YouTube Shorts auto-detect by 9:16 aspect ratio + ≤60s duration. Clips >60s upload as regular vertical videos on same channel.
+- Topic Intelligence `/research` is a global route, NOT project-scoped. It exists alongside `/project/:id/research` (NicheResearch) which is per-project.
+- Research keywords are AI-derived, not stored in the projects table. They're in `research_runs.derived_keywords`.
+- Apify actors may time out on first run due to cold starts. Set timeout to 120s minimum.
+- The CreateProjectModal dropdown only shows results from the latest complete research run.
+- Superpowers specs/plans go in `docs/superpowers/`, NOT `.planning/` (that's legacy GSD state).

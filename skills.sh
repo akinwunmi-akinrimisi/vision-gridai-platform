@@ -78,6 +78,31 @@ else
   echo "  ⚠️  Nginx not found — needed for dashboard hosting"
 fi
 
+# Check Superpowers
+echo ""
+echo "▶ Checking build methodology tools..."
+if [ -d "docs/superpowers" ]; then
+    SPEC_COUNT=$(find docs/superpowers/specs -name "*.md" 2>/dev/null | wc -l)
+    PLAN_COUNT=$(find docs/superpowers/plans -name "*.md" 2>/dev/null | wc -l)
+    echo "  ✅ Superpowers: $SPEC_COUNT specs, $PLAN_COUNT plans"
+else
+    echo "  ⚠️  Superpowers docs directory not found. Run setup."
+fi
+
+# Check frontend-design
+if [ -d ".claude/skills/frontend-design" ]; then
+    echo "  ✅ frontend-design skill: installed"
+else
+    echo "  ⚠️  frontend-design skill not installed"
+fi
+
+# Check gstack
+if [ -d ".claude/skills/gstack" ]; then
+    echo "  ✅ gstack skill: installed (selective use only)"
+else
+    echo "  ⚠️  gstack skill not installed"
+fi
+
 # ─── 2. VERIFY n8n CREDENTIALS ─────────────────────────────
 
 echo ""
@@ -93,6 +118,10 @@ echo "    - YouTube account (OAuth2)"
 echo "    - Supabase API Key (httpHeaderAuth)"
 echo "    - TikTok account (OAuth2) — for shorts social posting"
 echo "    - Instagram account (OAuth2 via Facebook) — for shorts social posting"
+echo "    - Apify API Token (httpHeaderAuth) — for TikTok + Quora scraping"
+echo "    - SerpAPI Key (httpHeaderAuth) — for People Also Ask extraction"
+echo "    - OpenRouter API Key (httpHeaderAuth) — for AI categorization via Haiku"
+echo "    - Reddit API credentials (client_id + secret) — for PRAW"
 echo "  Verify all exist in n8n → Settings → Credentials"
 
 # ─── 3. INSTALL LOBEHUB SKILLS ──────────────────────────────
@@ -153,6 +182,7 @@ echo "▶ Creating project directory structure..."
 
 DIRS=(
   "directives"
+  "directives/topic-intelligence"
   "execution"
   "dashboard/src/pages"
   "dashboard/src/components"
@@ -318,6 +348,73 @@ else
     echo "     mkdir -p ~/.claude/agents && cp /tmp/agency-agents/*/*.md ~/.claude/agents/"
   fi
 fi
+
+# ─── 4g. INSTALL SUPERPOWERS (PRIMARY BUILD METHODOLOGY) ─────
+echo ""
+echo "▶ Installing Superpowers (obra/superpowers) — primary build methodology..."
+
+if [ -d ".claude/plugins/superpowers" ] || [ -f ".claude/plugins/superpowers/plugin.json" ]; then
+    echo "  ⏭️  Superpowers already installed"
+else
+    echo "  Installing Superpowers plugin..."
+    if command -v claude &> /dev/null; then
+        echo "  Run in Claude Code: /plugin marketplace add obra/superpowers"
+        echo "  Superpowers replaces GSD for all new work."
+        echo "  Specs go to: docs/superpowers/specs/"
+        echo "  Plans go to: docs/superpowers/plans/"
+    else
+        echo "  ⚠️  Claude Code CLI not found. Install Superpowers manually:"
+        echo "  /plugin marketplace add obra/superpowers"
+    fi
+fi
+
+mkdir -p docs/superpowers/specs docs/superpowers/plans
+echo "  📁 docs/superpowers/specs/"
+echo "  📁 docs/superpowers/plans/"
+
+# ─── 4h. INSTALL FRONTEND-DESIGN SKILL ──────────────────────
+echo ""
+echo "▶ Installing Anthropic frontend-design skill..."
+
+if [ -d ".claude/skills/frontend-design" ]; then
+    echo "  ⏭️  frontend-design skill already installed"
+else
+    echo "  Installing frontend-design skill..."
+    if command -v npx &> /dev/null; then
+        npx skills add https://github.com/anthropics/skills --skill frontend-design 2>/dev/null && \
+            echo "  ✅ frontend-design installed" || \
+            echo "  ⚠️  Install failed. Run manually: npx skills add https://github.com/anthropics/skills --skill frontend-design"
+    else
+        echo "  ⚠️  npx not found. Run manually after Node.js install."
+    fi
+fi
+
+# ─── 4i. INSTALL GSTACK (SELECTIVE COMMANDS) ─────────────────
+echo ""
+echo "▶ Installing gstack (garrytan/gstack) — selective quality commands..."
+
+if [ -d ".claude/skills/gstack" ]; then
+    echo "  ⏭️  gstack already installed"
+else
+    echo "  Installing gstack skill..."
+    if command -v npx &> /dev/null; then
+        npx skills add https://github.com/garrytan/gstack --skill gstack 2>/dev/null && \
+            echo "  ✅ gstack installed" || \
+            echo "  ⚠️  Install failed. Run manually: npx skills add https://github.com/garrytan/gstack --skill gstack"
+    else
+        echo "  ⚠️  npx not found. Run manually after Node.js install."
+    fi
+fi
+
+echo ""
+echo "  ⚠️  IMPORTANT: Only use these 5 gstack commands:"
+echo "    /qa       — Quality assurance after completing a deliverable"
+echo "    /browse   — Research Apify actors, API docs, third-party libs"
+echo "    /careful  — Precision mode for scoring logic and AI prompts"
+echo "    /freeze   — Lock state before merging into main codebase"
+echo "    /review   — Full code review before marking phase complete"
+echo "  DO NOT use gstack planning commands (/plan, /architect, /design)."
+echo "  Superpowers handles all planning."
 
 # ─── 4f. INSTALL REMOTION (KINETIC CAPTIONS) ────────────────
 
@@ -805,6 +902,62 @@ EOF
 else
   echo "  ⏭️  nginx.conf already exists, skipping"
 fi
+
+# ─── 5. TOPIC INTELLIGENCE ENVIRONMENT CHECK ────────────────
+echo ""
+echo "▶ Topic Intelligence — Source Connectivity..."
+
+# Reddit (PRAW)
+if python3 -c "import praw" 2>/dev/null; then
+    echo "  ✅ PRAW (Reddit): importable"
+else
+    echo "  ⚠️  PRAW not installed. Run: pip3 install --break-system-packages praw"
+fi
+
+# pytrends
+if python3 -c "import pytrends" 2>/dev/null; then
+    echo "  ✅ pytrends (Google Trends): importable"
+else
+    echo "  ⚠️  pytrends not installed. Run: pip3 install --break-system-packages pytrends"
+fi
+
+# Apify token check
+if [ -n "${APIFY_TOKEN:-}" ]; then
+    echo "  ✅ APIFY_TOKEN: set"
+else
+    echo "  ⚠️  APIFY_TOKEN not set in environment (may be in n8n credentials)"
+fi
+
+# SerpAPI check
+if [ -n "${SERPAPI_KEY:-}" ]; then
+    echo "  ✅ SERPAPI_KEY: set"
+else
+    echo "  ⚠️  SERPAPI_KEY not set in environment (may be in n8n credentials)"
+fi
+
+# OpenRouter check
+if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+    echo "  ✅ OPENROUTER_API_KEY: set"
+else
+    echo "  ⚠️  OPENROUTER_API_KEY not set (may be in n8n credentials)"
+fi
+
+# Research tables check
+echo ""
+echo "▶ Checking Topic Intelligence Supabase tables..."
+for table in research_runs research_results research_categories; do
+    RESP=$(curl -s -o /dev/null -w "%{http_code}" \
+        "${SUPABASE_URL}/rest/v1/${table}?select=id&limit=1" \
+        -H "apikey: ${SUPABASE_ANON_KEY:-none}" \
+        -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY:-none}" 2>/dev/null || echo "000")
+    if [ "$RESP" = "200" ]; then
+        echo "  ✅ Table: ${table}"
+    elif [ "$RESP" = "000" ]; then
+        echo "  ⚠️  Table: ${table} — could not connect"
+    else
+        echo "  ❌ Table: ${table} — HTTP ${RESP} (run migration 002)"
+    fi
+done
 
 # ─── DONE ───────────────────────────────────────────────────
 

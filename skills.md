@@ -46,13 +46,27 @@
 | Supabase Integration | REST API patterns, Realtime subscriptions, RLS policies |
 | React Dashboard | Component architecture, state management, Tailwind patterns |
 
+### Topic Intelligence — Data Scraping & Research
+| Skill | Purpose |
+|-------|---------|
+| Reddit API (PRAW) | Fetch posts, comments, upvotes from subreddits |
+| Apify Actors (Reddit, TikTok, Quora) | Cloud scraping for platforms without free APIs |
+| YouTube Data API v3 | Already listed — also used for comment extraction in research |
+| pytrends | Google Trends interest data, related queries, breakout detection |
+| SerpAPI | People Also Ask extraction from Google Search |
+| OpenRouter (Claude Haiku) | AI categorization, keyword derivation, video title generation |
+
 ### Development Workflow Tools
 | Tool | Type | Purpose |
 |------|------|---------|
-| GSD (Get Shit Done) | Slash commands (`/gsd:*`) | Structured build process — phases, parallel agents, fresh context per task, atomic commits |
+| ~~GSD (Get Shit Done)~~ | ~~Slash commands~~ | **DEPRECATED for new work.** Legacy commands remain but are not used. |
+| **Superpowers** (obra/superpowers) | Plugin + docs at `docs/superpowers/` | **PRIMARY build methodology.** Specs → plans → subagent-driven execution. Replaces GSD for all new work. |
+| **gstack** (garrytan/gstack) | Selective commands only | Quality gates: `/qa`, `/browse`, `/careful`, `/freeze`, `/review`. Do NOT use gstack planning commands. |
+| **frontend-design** (anthropics/skills) | Auto-activating skill | Production-grade UI design patterns. Read SKILL.md before any React component work. |
 | UI UX Pro Max | Auto-activating skill | Design intelligence — 67 styles, 96 palettes, 57 font pairings, design system generator |
+| Agency Agents (61) | Context-activated | Domain expertise. Auto-activate by task type. |
 | n8n Agent Commands | Slash commands (`/n8n:*`) | n8n workflow audit, Supabase query generation |
-| Remotion | Local tool (npm) | React-based video renderer for kinetic caption overlays (word-by-word pop-in) |
+| Remotion | Local tool (npm) | React-based video renderer for kinetic captions |
 
 ---
 
@@ -79,6 +93,12 @@ All 61 agents from [msitarzewski/agency-agents](https://github.com/msitarzewski/
 | Script quality | Content Creator | Narrative quality, engagement patterns |
 | Niche research | Trend Researcher | Market intelligence, competitive analysis |
 | User feedback | Feedback Synthesizer | User feedback analysis for refinement flows |
+| Research scraper workflows | API Developer | External API integration, rate limits, pagination |
+| Research orchestration | Backend Architect | Parallel execution, error recovery, state management |
+| AI categorization prompts | Prompt Engineer | Prompt crafting, iteration, structured output |
+| Google Trends normalization | Data Scientist | Trend interpretation, statistical normalization |
+| Research dashboard page | Frontend Developer | React, Supabase Realtime, responsive design |
+| Research E2E testing | QA Engineer | Test plans, edge cases, data integrity verification |
 
 ### Full Agency Roster (9 divisions)
 
@@ -126,7 +146,17 @@ All 61 agents from [msitarzewski/agency-agents](https://github.com/msitarzewski/
 | **Supervisor Agent ⚡** | n8n Workflow Design, n8n Hub | Supabase Integration |
 | **Dashboard (9 pages)** | React Dashboard, Supabase Integration, **UI UX Pro Max** | n8n Workflow Design |
 | **Webhook API** | n8n Workflow Design, n8n Expressions | Supabase Integration |
-| **Build Process** | **GSD** (slash commands), **Agency Agents** (61 specialists) | n8n Agent Commands |
+| **Build Process** | **Superpowers** (specs → plans → subagents), **Agency Agents** (61 specialists) | gstack (`/qa`, `/review`), n8n Agent Commands |
+| **TI-1:** Research Environment Setup | Supabase Integration, API Credentials, Apify | Docker (infra) |
+| **TI-2:** Reddit Scraper | Reddit API (PRAW) or Apify, n8n Workflow Design | Supabase Integration |
+| **TI-3:** YouTube Comments Scraper | YouTube Data API v3, n8n Workflow Design | Supabase Integration |
+| **TI-4:** TikTok Scraper | Apify TikTok, n8n Workflow Design | Supabase Integration |
+| **TI-5:** Google Trends + PAA | pytrends, SerpAPI, n8n Workflow Design | Data normalization |
+| **TI-6:** Quora Scraper | Apify Quora, n8n Workflow Design | Deduplication |
+| **TI-7:** Research Orchestrator | n8n Workflow Design, n8n Expressions | Error handling, parallel execution |
+| **TI-8:** AI Categorization | OpenRouter (Haiku), Prompt Engineering | JSON parsing, retry logic |
+| **TI-9:** Research Dashboard + Modal | React Dashboard, **frontend-design**, Supabase Realtime, **UI UX Pro Max** | Supabase Integration |
+| **TI-10:** E2E Testing | SQL queries, API validation | Performance profiling, cost tracking |
 
 ---
 
@@ -143,3 +173,25 @@ All 61 agents from [msitarzewski/agency-agents](https://github.com/msitarzewski/
 **Credential issues?** → `API Credentials Manager` — never hardcode keys
 **YouTube upload failing?** → `YouTube Uploader` for resumable upload, `YouTube Data API` for quota management
 **Quick ad-hoc fix?** → `/gsd:quick` — GSD guarantees (atomic commits, state tracking) without full planning
+**Starting a new Topic Intelligence phase?** → Write a Superpowers spec at `docs/superpowers/specs/`, then a plan at `docs/superpowers/plans/`. Execute via subagent-driven-development.
+**Building a scraper workflow?** → Start with `n8n Workflow Design` + the source-specific skill (PRAW, Apify, pytrends, SerpAPI). Use `@api-developer` agent.
+**Writing the AI categorization prompt?** → Use `/careful` from gstack. Use `@prompt-engineer` agent. Test with real data before committing.
+**Building the Research page or modifying CreateProjectModal?** → Read `frontend-design` SKILL.md first. Then read `design-system/MASTER.md`. Use `@frontend-developer` agent. Run `/qa` after completion.
+**Before merging Topic Intelligence into main?** → `/freeze` the current state, then `/review` all changes.
+**Researching Apify actors or API docs?** → `/browse` from gstack.
+**Engagement scoring logic?** → `/careful` — the normalization weights affect every result ranking.
+
+---
+
+## Topic Intelligence Cost Reference
+
+| Service | Per Run | Monthly (16 runs) |
+|---------|---------|-------------------|
+| Reddit (PRAW) | $0.00 | $0.00 |
+| YouTube Data API v3 | $0.00 | $0.00 |
+| TikTok (Apify) | ~$0.05 | ~$0.80 |
+| Google Trends (pytrends) | $0.00 | $0.00 |
+| SerpAPI (PAA) | ~$0.01 | ~$0.16 |
+| Quora (Apify) | ~$0.05 | ~$0.80 |
+| OpenRouter (Haiku) | ~$0.02 | ~$0.32 |
+| **Total** | **~$0.13** | **~$2.08** |

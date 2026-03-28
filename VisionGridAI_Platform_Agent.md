@@ -22,6 +22,12 @@
 - **Niche is NEVER hardcoded.** All prompts are dynamically generated per project. System prompts, expertise profiles, and topic constraints live in the `prompt_configs` table.
 - **3 approval gates are MANDATORY.** The pipeline pauses after topic generation, after script generation, and after video assembly. No auto-publishing.
 - Do not rewrite this file unless explicitly instructed.
+- **Topic Intelligence is niche-agnostic.** Every scraping workflow derives keywords dynamically from the project's `niche` and `niche_description` via AI. No hardcoded keywords anywhere.
+- **7-day lookback window.** Every research scraping run collects data from the last 7 days only.
+- **AI categorization is a second pass, not a filter.** All 50 raw results (10 per source) are stored first. Clustering and ranking happen after collection, never during.
+- **Every scraping result must have a source URL.** No orphaned data. If a result cannot be traced to its origin, discard it.
+- **Superpowers is the primary build methodology, NOT GSD.** Use Superpowers for specs, plans, and subagent-driven execution. GSD slash commands in `.claude/commands/gsd/` remain for legacy reference but are NOT used for new work. Use gstack selectively: only `/qa`, `/browse`, `/careful`, `/freeze`, `/review`. Do NOT use gstack's planning skills (they conflict with Superpowers).
+- **Use Anthropic frontend-design skill for all dashboard UI work.** Read the SKILL.md before building any React component. It overrides generic UI patterns.
 
 ---
 
@@ -56,6 +62,30 @@ Claude (Anthropic) · Google Cloud TTS · Fal.ai · YouTube · Google Drive
 | Captions (Shorts) | Remotion (React-based video renderer) | Kinetic word-by-word caption overlays for short-form |
 | Distribution | YouTube Data API v3 + TikTok API + Instagram Graph API | Upload + analytics |
 | Agent Expertise | Agency Agents (61 specialists in ~/.claude/agents/) | Domain expertise for GSD executor agents |
+
+### Topic Intelligence — 5 Data Sources
+
+| # | Source | Method | Cost | What We Extract |
+|---|--------|--------|------|-----------------|
+| 1 | **Reddit** | PRAW (free) or Apify Reddit Scraper (~$0.05) | Free–$0.05 | Post titles, body text, subreddit, upvotes, comment count, URL, date |
+| 2 | **YouTube Comments** | YouTube Data API v3 (free, 10K units/day) | Free | Comments from top niche videos (last 7d), likes, replies, video URL |
+| 3 | **TikTok** | Apify TikTok Scraper | ~$0.05 | Video captions, hashtags, likes, comments, shares, URL, date |
+| 4 | **Google Trends + PAA** | pytrends (free) + SerpAPI (~$0.01/search) | Free–$0.01 | Trending queries, People Also Ask questions, breakout topics |
+| 5 | **Quora** | Apify Quora Scraper | ~$0.05 | Question titles, follow count, answer count, URL |
+
+**Total cost per run: ~$0.13 | Monthly at 4 runs/week: ~$2.08**
+
+### Keyword Derivation
+
+No `niche_keywords` column needed. At research-run start, the orchestrator sends `niche` + `niche_description` to Claude Haiku:
+
+```
+Given this niche: "{niche}" with description: "{niche_description}",
+generate 5-8 search keywords for surfacing active discussions and pain points.
+Return ONLY a JSON array of strings.
+```
+
+Derived keywords are stored in `research_runs.derived_keywords` for audit.
 
 ---
 
@@ -386,6 +416,91 @@ CREATE TABLE social_accounts (
 );
 ```
 
+### Topic Intelligence Tables
+
+#### Table: `research_runs`
+
+```sql
+CREATE TABLE research_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'pending',  -- pending | scraping | categorizing | complete | failed
+  sources_completed INTEGER DEFAULT 0,
+  total_results INTEGER DEFAULT 0,
+  total_categories INTEGER DEFAULT 0,
+  lookback_days INTEGER DEFAULT 7,
+  derived_keywords TEXT[],
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  error_log JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE research_runs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Authenticated read research_runs" ON research_runs FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Service insert research_runs" ON research_runs FOR INSERT WITH CHECK (true);
+CREATE POLICY "Service update research_runs" ON research_runs FOR UPDATE USING (true);
+```
+
+#### Table: `research_results`
+
+```sql
+CREATE TABLE research_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_id UUID REFERENCES research_runs(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  source TEXT NOT NULL,  -- reddit | youtube | tiktok | google_trends | quora
+  raw_text TEXT NOT NULL,
+  source_url TEXT NOT NULL,
+  engagement_score INTEGER DEFAULT 0,
+  upvotes INTEGER DEFAULT 0,
+  comments INTEGER DEFAULT 0,
+  shares INTEGER DEFAULT 0,
+  posted_at TIMESTAMPTZ,
+  ai_video_title TEXT,
+  category_id UUID,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE research_results ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Authenticated read research_results" ON research_results FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Service insert research_results" ON research_results FOR INSERT WITH CHECK (true);
+```
+
+#### Table: `research_categories`
+
+```sql
+CREATE TABLE research_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_id UUID REFERENCES research_runs(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  summary TEXT,
+  total_engagement INTEGER DEFAULT 0,
+  result_count INTEGER DEFAULT 0,
+  rank INTEGER,
+  top_video_title TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE research_categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Authenticated read research_categories" ON research_categories FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Service insert research_categories" ON research_categories FOR INSERT WITH CHECK (true);
+CREATE POLICY "Service update research_categories" ON research_categories FOR UPDATE USING (true);
+
+-- FK from research_results to research_categories
+ALTER TABLE research_results ADD CONSTRAINT fk_research_category
+  FOREIGN KEY (category_id) REFERENCES research_categories(id) ON DELETE SET NULL;
+```
+
+#### Engagement Score Normalization
+
+```
+Reddit:        engagement_score = upvotes + (comments * 2)
+YouTube:       engagement_score = likes + (replies * 3)
+TikTok:        engagement_score = likes + (comments * 2) + (shares * 3)
+Google Trends: engagement_score = search_interest_index * 10 (0-1000 scale)
+Quora:         engagement_score = follows + (answers * 2)
+```
+
 ---
 
 ## 4. Pipeline Phases
@@ -401,7 +516,29 @@ Phase E: Video Review + YouTube Publish                               ⏸ GATE 3
 Phase F: Analytics Pull (daily cron)
 Phase G: Shorts Pipeline (agentic analysis + deterministic production) ⚡ ⏸ GATE 4
 Phase H: Social Media Publishing (TikTok, Instagram, YouTube Shorts)
+Phase TI: Topic Intelligence (5-source scrape + AI categorization)         On-demand
 ```
+
+### Topic Intelligence Phases
+
+| Phase | What | Type | Cost |
+|-------|------|------|------|
+| TI | Topic Intelligence research (5-source scrape + AI categorization) | On-demand | ~$0.13/run |
+
+### Topic Intelligence Sub-Phases (Build Order)
+
+| Sub-Phase | What Gets Built | Agency Agent |
+|-----------|----------------|--------------|
+| TI-1 | Environment: migration, credentials, Apify actors | `@devops-engineer` |
+| TI-2 | Reddit Scraper workflow | `@api-developer` |
+| TI-3 | YouTube Comments Scraper workflow | `@api-developer` |
+| TI-4 | TikTok Scraper workflow | `@api-developer` |
+| TI-5 | Google Trends + PAA workflow | `@api-developer` + `@data-scientist` |
+| TI-6 | Quora Scraper workflow | `@api-developer` |
+| TI-7 | Orchestrator (parallel + error handling + keyword derivation) | `@backend-architect` |
+| TI-8 | AI Categorization (clustering, ranking, title generation) | `@prompt-engineer` |
+| TI-9 | Dashboard: `/research` page + `CreateProjectModal` dropdown | `@frontend-developer` |
+| TI-10 | E2E testing | `@qa-engineer` |
 
 ### Phase A: Project Creation + Niche Research ⚡ AGENTIC
 
@@ -664,6 +801,78 @@ Max 3 regeneration attempts total across all passes. Force-pass on attempt 3.
 | Settings | `/project/:id/settings` | Per-project config, prompt editor, model selection, social accounts |
 | Analytics | `/project/:id/analytics` | YouTube performance, revenue, CPM by topic/niche |
 | Settings | `/project/:id/settings` | Per-project config, prompt editor, model selection |
+| Topic Research | `/research` | Topic Intelligence — 5-source scrape results, ranked categories, run research |
+
+### Topic Intelligence Dashboard Integration
+
+#### New Global Route: `/research`
+
+Not project-scoped. Lives in sidebar as a top-level nav item alongside "Projects." Research results feed into ANY project via the CreateProjectModal dropdown.
+
+**Route:** `/research`
+**Page:** `pages/Research.jsx`
+
+**Layout:**
+1. **Header:** Title + "Run Research" button (requires selecting a project for niche context) + last run timestamp
+2. **Progress bar:** Visible during active runs. Shows `sources_completed / 5` with per-source status pills (Reddit [done], YouTube [running], etc.). Uses Supabase Realtime on `research_runs`.
+3. **Ranked Categories:** Cards ordered by `rank`. Each shows: rank badge (#1 gold, #2 silver, #3 bronze), label, summary, top video title with "Use This Topic" button, total engagement, result count. Expandable to show all results in the cluster.
+4. **Source Tabs:** Reddit | YouTube | TikTok | Google Trends | Quora. Each tab shows a 10-row table: rank, raw text (truncated, expandable), AI video title, engagement score with breakdown tooltip, source URL (clickable), posted date (relative), category badge (color-coded).
+5. **Summary bar:** Total results, categories, top category, run duration, estimated cost.
+
+**New components:**
+- `components/research/ResearchRunButton.jsx`
+- `components/research/ResearchProgress.jsx`
+- `components/research/CategoryCards.jsx`
+- `components/research/SourceTabs.jsx`
+- `components/research/TopicRow.jsx`
+- `hooks/useResearch.js`
+
+#### Modified: `CreateProjectModal.jsx`
+
+Add optional "Pick from Research" above the niche input:
+
+```
+┌──────────────────────────────────────────┐
+│ New Project                               │
+│                                           │
+│ ┌── From Research (optional) ───────────┐│
+│ │ [Filter by category          ▾]       ││
+│ │ [Select a researched topic   ▾]       ││
+│ │                                       ││
+│ │   — or enter manually below —         ││
+│ └───────────────────────────────────────┘│
+│                                           │
+│ Niche Name *  [__________________]        │
+│ Description   [__________________]        │
+│ Target Videos [25]                        │
+│                                           │
+│               [Cancel] [Start Research]   │
+└──────────────────────────────────────────┘
+```
+
+**Behavior:**
+- Pulls from latest `research_runs` where `status = 'complete'`
+- Category dropdown filters by `research_categories.label`
+- Topic dropdown shows `ai_video_title` values within selected category
+- Selecting a topic auto-fills `niche` (from the run's project context) and `description` (from `ai_video_title` + category summary)
+- User can override any auto-filled field
+- If no research data exists: "No research data yet. [Run Research →]" links to `/research`
+- Proceeding without research is always allowed
+
+#### Modified: `App.jsx`
+
+```jsx
+const Research = lazy(() => import('./pages/Research'));
+// Add route:
+<Route path="/research" element={<Research />} />
+```
+
+#### Modified: `Sidebar.jsx`
+
+Add to global nav items (above project nav):
+```jsx
+{ label: 'Topic Research', icon: Microscope, path: '/research' }
+```
 
 ### Dashboard ↔ n8n API Endpoints
 
@@ -706,6 +915,33 @@ supabase.channel('topics').on('postgres_changes',
 ```
 
 No polling. Dashboard updates the instant Supabase receives a write.
+
+### AI Categorization Prompt
+
+Sent to Claude Haiku via OpenRouter after all scrapers complete:
+
+```
+You are a content strategist analyzing 50 discussion topics from 5 online sources.
+All topics relate to the niche: {niche_description}.
+
+Tasks:
+1. Group topics into organic categories by theme. Do NOT force a fixed count.
+   Let the data determine clusters (typically 4-8).
+2. For each category provide:
+   - label: short theme name (3-6 words)
+   - summary: 2-3 sentences on what this cluster covers and why the audience cares
+   - top_video_title: the single best YouTube video title from this cluster
+3. Rank categories by total engagement_score (sum of all topics in category).
+
+Topics:
+{json_array_of_50_results}
+
+Respond ONLY in JSON. No preamble. No markdown fences.
+```
+
+**Model:** `anthropic/claude-3.5-haiku` via OpenRouter
+**Temperature:** 0.3
+**Cost:** ~$0.02 per run
 
 ---
 
@@ -886,6 +1122,28 @@ Headers:
   Content-Type: application/json
   Prefer: return=representation (for INSERT/PATCH to get row back)
 ```
+
+---
+
+## 11. Error Handling — Topic Intelligence
+
+| Failure | Response | Recovery |
+|---------|----------|----------|
+| Apify actor timeout | Log to `research_runs.error_log`, mark source `failed` | Continue with remaining sources |
+| YouTube API quota hit | Log, mark source `failed` | Use last successful run's data, show "stale" badge |
+| All 5 sources fail | Mark run `failed` | Dashboard shows error state + last successful results |
+| AI categorization bad JSON | Retry with stricter prompt | If retry fails, show raw results uncategorized |
+| Keyword derivation empty | Fall back to `niche` as single keyword | Log warning |
+
+---
+
+## 12. Self-Annealing — Topic Intelligence
+
+After every research run, improve:
+1. **Scraping accuracy:** Source returns irrelevant results → update search query logic in directive.
+2. **Categorization quality:** Categories too broad/granular → refine AI prompt.
+3. **Engagement weighting:** Ranking surfaces low-value topics → adjust normalization weights.
+4. **Source reliability:** Track failure rates. >30% failure → investigate or replace source.
 
 ---
 
