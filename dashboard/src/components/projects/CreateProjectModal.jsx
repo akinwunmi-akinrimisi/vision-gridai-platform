@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { Link } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import { CheckCircle2, Loader2, Microscope } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -8,9 +10,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
 import { useCreateProject } from '../../hooks/useProjects';
 
 const EXAMPLE_HINTS = [
@@ -32,7 +42,60 @@ export default function CreateProjectModal({ open, onOpenChange }) {
   const [nicheBlurred, setNicheBlurred] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
+  // Research picker state
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [selectedResultId, setSelectedResultId] = useState('');
+
   const createProject = useCreateProject();
+
+  // Fetch the latest complete research run (across all projects)
+  const { data: latestRun } = useQuery({
+    queryKey: ['latest-complete-run'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('research_runs')
+        .select('id')
+        .eq('status', 'complete')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (error && error.code === 'PGRST116') return null;
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
+
+  // Fetch categories for the latest run
+  const { data: categories } = useQuery({
+    queryKey: ['research-categories', latestRun?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('research_categories')
+        .select('id, label, result_count')
+        .eq('run_id', latestRun.id)
+        .order('rank', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!latestRun?.id,
+  });
+
+  // Fetch results (topics) within the selected category
+  const { data: categoryResults } = useQuery({
+    queryKey: ['research-results-for-category', latestRun?.id, selectedCategoryId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('research_results')
+        .select('id, ai_video_title, raw_text, source')
+        .eq('run_id', latestRun.id)
+        .eq('category_id', selectedCategoryId)
+        .order('engagement_score', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!latestRun?.id && !!selectedCategoryId,
+  });
 
   // Cycle placeholder hints every 3 seconds
   useEffect(() => {
@@ -59,8 +122,27 @@ export default function CreateProjectModal({ open, onOpenChange }) {
       setShowSuccess(false);
       setNicheBlurred(false);
       setSubmitAttempted(false);
+      setSelectedCategoryId('');
+      setSelectedResultId('');
     }
   }, [open]);
+
+  // When a research result is selected, auto-fill niche + description
+  const handleResultSelect = (resultId) => {
+    setSelectedResultId(resultId);
+    if (!resultId || !categoryResults) return;
+    const result = categoryResults.find((r) => r.id === resultId);
+    if (result) {
+      if (result.ai_video_title) setNiche(result.ai_video_title);
+      if (result.raw_text) setDescription(result.raw_text.slice(0, 500));
+    }
+  };
+
+  // When category changes, reset the result selection
+  const handleCategorySelect = (catId) => {
+    setSelectedCategoryId(catId);
+    setSelectedResultId('');
+  };
 
   const nicheError = (nicheBlurred || submitAttempted) && niche.trim().length < 3
     ? 'Niche name must be at least 3 characters'
@@ -116,6 +198,70 @@ export default function CreateProjectModal({ open, onOpenChange }) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Research picker (optional) */}
+            <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Microscope className="w-4 h-4" />
+                From Research
+                <span className="text-xs">(optional)</span>
+              </div>
+
+              {latestRun ? (
+                <>
+                  <div className="space-y-2">
+                    <Select
+                      value={selectedCategoryId}
+                      onValueChange={handleCategorySelect}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select category..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(categories || []).map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.label} ({cat.result_count})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={selectedResultId}
+                      onValueChange={handleResultSelect}
+                      disabled={isSubmitting || !selectedCategoryId}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select topic..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(categoryResults || []).map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {r.ai_video_title || r.raw_text?.slice(0, 60)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="text-center text-xs text-muted-foreground">
+                    -- or enter manually below --
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No research data yet.{' '}
+                  <Link
+                    to="/research"
+                    onClick={() => onOpenChange(false)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Run Research &rarr;
+                  </Link>
+                </p>
+              )}
+            </div>
+
             {/* Niche name */}
             <div className="space-y-1.5">
               <label

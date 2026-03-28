@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Search,
   Clapperboard,
+  Microscope,
   Share2,
   Upload,
   Zap,
@@ -46,6 +47,7 @@ import { cn } from '@/lib/utils';
 
 const platformNavItems = [
   { label: 'Projects', icon: LayoutDashboard, path: '/' },
+  { label: 'Topic Research', icon: Microscope, path: '/research' },
   { label: 'Shorts Creator', icon: Clapperboard, path: '/shorts' },
   { label: 'Social Publisher', icon: Share2, path: '/social' },
 ];

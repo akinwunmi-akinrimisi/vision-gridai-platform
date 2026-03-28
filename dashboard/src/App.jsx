@@ -15,6 +15,7 @@ const VideoReview = lazy(() => import('./pages/VideoReview'));
 const ProductionMonitor = lazy(() => import('./pages/ProductionMonitor'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Research = lazy(() => import('./pages/Research'));
 const ShortsCreator = lazy(() => import('./pages/ShortsCreator'));
 const SocialPublisher = lazy(() => import('./pages/SocialPublisher'));
 
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/project/:id/topics/:topicId/review" element={<VideoReview />} />
             <Route path="/project/:id/production" element={<ProductionMonitor />} />
             <Route path="/project/:id/analytics" element={<Analytics />} />
+            <Route path="/research" element={<Research />} />
             <Route path="/shorts" element={<ShortsCreator />} />
             <Route path="/social" element={<SocialPublisher />} />
             <Route path="/project/:id/settings" element={<Settings />} />
