@@ -20,6 +20,7 @@ import {
   Upload,
   Zap,
   CalendarDays,
+  MessageCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -61,6 +62,7 @@ const projectNavItems = [
   { label: 'Production', icon: Activity, path: '/project/:id/production' },
   { label: 'Analytics', icon: BarChart3, path: '/project/:id/analytics' },
   { label: 'Calendar', icon: CalendarDays, path: '/project/:id/calendar' },
+  { label: 'Engagement', icon: MessageCircle, path: '/project/:id/engagement' },
   { label: 'Settings', icon: Settings, path: '/project/:id/settings' },
 ];
 
