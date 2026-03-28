@@ -26,6 +26,11 @@ const SETTINGS_COLUMNS = [
   'youtube_playlist3_id',
   'drive_root_folder_id',
   'drive_assets_folder_id',
+  'auto_pilot_enabled',
+  'auto_pilot_topic_threshold',
+  'auto_pilot_script_threshold',
+  'auto_pilot_default_visibility',
+  'monthly_budget_usd',
 ].join(', ');
 
 /**

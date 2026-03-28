@@ -23,6 +23,9 @@ export default function Settings() {
           <TabsTrigger value="youtube">YouTube</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
           <TabsTrigger value="prompts">Prompts</TabsTrigger>
+          <TabsTrigger value="autopilot">Auto-Pilot</TabsTrigger>
+          <TabsTrigger value="music">Music</TabsTrigger>
+          <TabsTrigger value="apihealth">API Health</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -39,6 +42,15 @@ export default function Settings() {
         </TabsContent>
         <TabsContent value="prompts">
           <PromptsTab projectId={projectId} />
+        </TabsContent>
+        <TabsContent value="autopilot">
+          <ConfigTab projectId={projectId} section="autopilot" />
+        </TabsContent>
+        <TabsContent value="music">
+          <ConfigTab projectId={projectId} section="music" />
+        </TabsContent>
+        <TabsContent value="apihealth">
+          <ConfigTab projectId={projectId} section="apihealth" />
         </TabsContent>
       </Tabs>
     </div>

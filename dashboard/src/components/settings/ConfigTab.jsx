@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Database,
@@ -16,6 +16,15 @@ import {
   Loader2,
   Link2,
   Unlink,
+  Zap,
+  Music,
+  Activity,
+  CheckCircle2,
+  Clock,
+  Upload,
+  DollarSign,
+  Eye,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjectSettings, useUpdateSettings } from '../../hooks/useProjectSettings';
@@ -34,6 +43,15 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import AccountCard from '../social/AccountCard';
 
 // -- Model options with costs -------------------------------------------------
@@ -527,6 +545,529 @@ function ReadOnlySection({ title, items }) {
   );
 }
 
+// -- AutoPilotSection ---------------------------------------------------------
+
+function AutoPilotSection({ data, onSave, isPending }) {
+  const [editing, setEditing] = useState(false);
+  const [values, setValues] = useState({});
+
+  const startEditing = () => {
+    setValues({
+      auto_pilot_enabled: data?.auto_pilot_enabled ?? false,
+      auto_pilot_topic_threshold: data?.auto_pilot_topic_threshold ?? 8.0,
+      auto_pilot_script_threshold: data?.auto_pilot_script_threshold ?? 7.5,
+      auto_pilot_default_visibility: data?.auto_pilot_default_visibility ?? 'unlisted',
+      monthly_budget_usd: data?.monthly_budget_usd ?? '',
+    });
+    setEditing(true);
+  };
+
+  const handleSave = () => {
+    onSave({
+      auto_pilot_enabled: values.auto_pilot_enabled,
+      auto_pilot_topic_threshold: Number(values.auto_pilot_topic_threshold),
+      auto_pilot_script_threshold: Number(values.auto_pilot_script_threshold),
+      auto_pilot_default_visibility: values.auto_pilot_default_visibility,
+      monthly_budget_usd: values.monthly_budget_usd ? Number(values.monthly_budget_usd) : null,
+    });
+    setEditing(false);
+  };
+
+  const isEnabled = editing ? values.auto_pilot_enabled : (data?.auto_pilot_enabled ?? false);
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Zap className="w-4 h-4 text-accent" />
+            Auto-Pilot Configuration
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Automate approvals based on quality thresholds
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {editing ? (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleSave} disabled={isPending}>
+                {isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </>
+          ) : (
+            <Button variant="outline" size="sm" onClick={startEditing}>
+              <Pencil className="w-3.5 h-3.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Enable toggle */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Enable Auto-Pilot</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Automatically approve topics and scripts that exceed quality thresholds
+            </p>
+          </div>
+          {editing ? (
+            <Switch
+              checked={values.auto_pilot_enabled}
+              onCheckedChange={(checked) => setValues((prev) => ({ ...prev, auto_pilot_enabled: checked }))}
+            />
+          ) : (
+            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${isEnabled ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+              {isEnabled ? 'Enabled' : 'Disabled'}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Threshold fields */}
+      <div className="bg-card border border-border rounded-xl px-4">
+        {/* Topic threshold */}
+        <div className="flex items-center justify-between py-3 border-b border-border">
+          <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            Topic Score Threshold
+          </label>
+          {editing ? (
+            <Input
+              type="number"
+              value={values.auto_pilot_topic_threshold}
+              min={1}
+              max={10}
+              step={0.5}
+              onChange={(e) => setValues((prev) => ({ ...prev, auto_pilot_topic_threshold: e.target.value }))}
+              className="w-24 h-9 text-sm text-right bg-muted border-border"
+            />
+          ) : (
+            <span className="text-sm font-medium">{data?.auto_pilot_topic_threshold ?? 8.0}</span>
+          )}
+        </div>
+
+        {/* Script threshold */}
+        <div className="flex items-center justify-between py-3 border-b border-border">
+          <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            Script Eval Threshold
+          </label>
+          {editing ? (
+            <Input
+              type="number"
+              value={values.auto_pilot_script_threshold}
+              min={1}
+              max={10}
+              step={0.5}
+              onChange={(e) => setValues((prev) => ({ ...prev, auto_pilot_script_threshold: e.target.value }))}
+              className="w-24 h-9 text-sm text-right bg-muted border-border"
+            />
+          ) : (
+            <span className="text-sm font-medium">{data?.auto_pilot_script_threshold ?? 7.5}</span>
+          )}
+        </div>
+
+        {/* Default visibility */}
+        <div className="flex items-center justify-between py-3 border-b border-border">
+          <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            Default Visibility
+          </label>
+          {editing ? (
+            <Select
+              value={values.auto_pilot_default_visibility}
+              onValueChange={(val) => setValues((prev) => ({ ...prev, auto_pilot_default_visibility: val }))}
+            >
+              <SelectTrigger className="w-36 h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">Public</SelectItem>
+                <SelectItem value="unlisted">Unlisted</SelectItem>
+                <SelectItem value="private">Private</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <span className="text-sm font-medium capitalize">{data?.auto_pilot_default_visibility ?? 'unlisted'}</span>
+          )}
+        </div>
+
+        {/* Monthly budget */}
+        <div className="flex items-center justify-between py-3">
+          <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            Monthly Budget (USD)
+          </label>
+          {editing ? (
+            <div className="flex items-center gap-1">
+              <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                type="number"
+                value={values.monthly_budget_usd}
+                min={0}
+                step={50}
+                placeholder="No limit"
+                onChange={(e) => setValues((prev) => ({ ...prev, monthly_budget_usd: e.target.value }))}
+                className="w-28 h-9 text-sm text-right bg-muted border-border"
+              />
+            </div>
+          ) : (
+            <span className="text-sm font-medium">
+              {data?.monthly_budget_usd ? `$${Number(data.monthly_budget_usd).toLocaleString()}` : 'No limit'}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Warning box */}
+      <div className="bg-warning-bg border border-warning-border rounded-lg p-3 flex items-start gap-2">
+        <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+        <p className="text-warning text-xs leading-relaxed">
+          Auto-pilot publishes as <strong>UNLISTED</strong> only. Human review is required to set videos to public visibility.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// -- MusicLibrarySection ------------------------------------------------------
+
+function formatDuration(ms) {
+  if (!ms) return '--';
+  const totalSec = Math.round(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+function MusicLibrarySection() {
+  const [tracks, setTracks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadForm, setUploadForm] = useState({ title: '', mood_tags: '', bpm: '', file_url: '' });
+
+  const fetchTracks = useCallback(() => {
+    setLoading(true);
+    supabase
+      .from('music_library')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          toast.error('Failed to load music library');
+          setTracks([]);
+        } else {
+          setTracks(data || []);
+        }
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => { fetchTracks(); }, [fetchTracks]);
+
+  const handleUpload = async () => {
+    if (!uploadForm.title || !uploadForm.file_url) {
+      toast.error('Title and file URL are required');
+      return;
+    }
+    const moodTags = uploadForm.mood_tags
+      ? uploadForm.mood_tags.split(',').map((t) => t.trim()).filter(Boolean)
+      : [];
+    const { error } = await supabase
+      .from('music_library')
+      .insert({
+        title: uploadForm.title,
+        mood_tags: moodTags,
+        bpm: uploadForm.bpm ? Number(uploadForm.bpm) : null,
+        file_url: uploadForm.file_url,
+      });
+    if (error) {
+      toast.error(error.message || 'Failed to add track');
+    } else {
+      toast.success('Track added');
+      setUploadForm({ title: '', mood_tags: '', bpm: '', file_url: '' });
+      setShowUpload(false);
+      fetchTracks();
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Music className="w-4 h-4 text-accent" />
+            Music Library
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Background music tracks available for video production
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowUpload(!showUpload)}
+        >
+          <Upload className="w-3.5 h-3.5" />
+          {showUpload ? 'Cancel' : 'Add Track'}
+        </Button>
+      </div>
+
+      {/* Upload form */}
+      {showUpload && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Title</label>
+              <Input
+                value={uploadForm.title}
+                onChange={(e) => setUploadForm((p) => ({ ...p, title: e.target.value }))}
+                placeholder="Track title"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">BPM</label>
+              <Input
+                type="number"
+                value={uploadForm.bpm}
+                onChange={(e) => setUploadForm((p) => ({ ...p, bpm: e.target.value }))}
+                placeholder="120"
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Mood Tags (comma-separated)</label>
+            <Input
+              value={uploadForm.mood_tags}
+              onChange={(e) => setUploadForm((p) => ({ ...p, mood_tags: e.target.value }))}
+              placeholder="cinematic, epic, dark"
+              className="h-9 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">File URL</label>
+            <Input
+              value={uploadForm.file_url}
+              onChange={(e) => setUploadForm((p) => ({ ...p, file_url: e.target.value }))}
+              placeholder="https://drive.google.com/..."
+              className="h-9 text-sm"
+            />
+          </div>
+          <div className="flex justify-end">
+            <Button size="sm" onClick={handleUpload}>
+              <Upload className="w-3.5 h-3.5" />
+              Add Track
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Tracks table */}
+      {tracks.length === 0 ? (
+        <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <Music className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
+          <p className="text-sm text-muted-foreground">No tracks in library</p>
+          <p className="text-xs text-muted-foreground mt-1">Add your first background music track above</p>
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Title</TableHead>
+                <TableHead className="text-xs">Mood Tags</TableHead>
+                <TableHead className="text-xs text-right">BPM</TableHead>
+                <TableHead className="text-xs text-right">Duration</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tracks.map((track) => (
+                <TableRow key={track.id}>
+                  <TableCell className="text-sm font-medium py-2.5">{track.title || '--'}</TableCell>
+                  <TableCell className="py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {(track.mood_tags || []).map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {tag}
+                        </Badge>
+                      ))}
+                      {(!track.mood_tags || track.mood_tags.length === 0) && (
+                        <span className="text-xs text-muted-foreground">--</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-right py-2.5">{track.bpm || '--'}</TableCell>
+                  <TableCell className="text-sm text-right py-2.5">{formatDuration(track.duration_ms)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        {tracks.length} track{tracks.length !== 1 ? 's' : ''} in library.
+        Tracks are auto-selected by mood matching during production.
+      </p>
+    </div>
+  );
+}
+
+// -- ApiHealthSection ---------------------------------------------------------
+
+const SERVICE_CHECKS = [
+  {
+    key: 'supabase',
+    label: 'Supabase',
+    description: 'Database & Realtime subscriptions',
+    icon: Database,
+  },
+  {
+    key: 'n8n',
+    label: 'n8n',
+    description: 'Workflow orchestration engine',
+    icon: Webhook,
+  },
+  {
+    key: 'fal',
+    label: 'Fal.ai',
+    description: 'Image & video generation',
+    icon: Zap,
+  },
+  {
+    key: 'youtube',
+    label: 'YouTube',
+    description: 'Video publishing & analytics',
+    icon: Youtube,
+  },
+  {
+    key: 'drive',
+    label: 'Google Drive',
+    description: 'File storage & sharing',
+    icon: Folder,
+  },
+];
+
+function ApiHealthSection({ data }) {
+  const [statuses, setStatuses] = useState({});
+  const [checking, setChecking] = useState(false);
+
+  const runChecks = useCallback(async (projectData) => {
+    setChecking(true);
+    const results = {};
+
+    // Supabase check -- simple query
+    try {
+      const { error } = await supabase.from('projects').select('id').limit(1);
+      results.supabase = error ? 'error' : 'connected';
+    } catch {
+      results.supabase = 'error';
+    }
+
+    // n8n check -- GET the webhook base to see if n8n responds
+    try {
+      const webhookBase = import.meta.env.VITE_N8N_WEBHOOK_BASE || '/webhook';
+      const resp = await fetch(`${webhookBase}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
+      results.n8n = resp.ok || resp.status === 404 ? 'connected' : 'error';
+    } catch {
+      // n8n may not have a /health endpoint; 404 means n8n is up
+      results.n8n = 'unknown';
+    }
+
+    // Fal.ai -- can't test from browser, show config status
+    results.fal = 'unknown'; // Always unknown from browser side
+
+    // YouTube -- check if channel_id is set
+    results.youtube = projectData?.youtube_channel_id ? 'connected' : 'not_configured';
+
+    // Google Drive -- check if drive_root_folder_id is set
+    results.drive = projectData?.drive_root_folder_id ? 'connected' : 'not_configured';
+
+    setStatuses(results);
+    setChecking(false);
+  }, []);
+
+  useEffect(() => {
+    runChecks(data);
+  }, [data, runChecks]);
+
+  const statusConfig = {
+    connected: { dot: 'bg-success', label: 'Connected', textClass: 'text-success' },
+    error: { dot: 'bg-danger', label: 'Error', textClass: 'text-danger' },
+    unknown: { dot: 'bg-warning', label: 'Unknown', textClass: 'text-warning' },
+    not_configured: { dot: 'bg-muted-foreground', label: 'Not configured', textClass: 'text-muted-foreground' },
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="w-4 h-4 text-accent" />
+            API Health
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Connection status for all external services
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => runChecks(data)}
+          disabled={checking}
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
+          {checking ? 'Checking...' : 'Re-check'}
+        </Button>
+      </div>
+
+      <div className="space-y-3">
+        {SERVICE_CHECKS.map((service) => {
+          const status = statuses[service.key] || 'unknown';
+          const cfg = statusConfig[status] || statusConfig.unknown;
+          const Icon = service.icon;
+
+          return (
+            <div
+              key={service.key}
+              className="bg-card border border-border rounded-xl p-4 flex items-center gap-4"
+            >
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <Icon className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{service.label}</p>
+                <p className="text-xs text-muted-foreground">{service.description}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
+                <span className={`text-xs font-medium ${cfg.textClass}`}>{cfg.label}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Fal.ai credentials are stored in n8n and cannot be verified from the browser.
+        YouTube and Drive show configuration status only.
+      </p>
+    </div>
+  );
+}
+
 // -- ConfigTab ----------------------------------------------------------------
 
 export default function ConfigTab({ projectId, section = 'general' }) {
@@ -615,6 +1156,33 @@ export default function ConfigTab({ projectId, section = 'general' }) {
     return (
       <div data-testid="config-tab" className="space-y-6 max-w-2xl">
         <SocialAccountsSection projectId={projectId} />
+      </div>
+    );
+  }
+
+  // -- Auto-Pilot tab
+  if (section === 'autopilot') {
+    return (
+      <div data-testid="config-tab">
+        <AutoPilotSection data={data} onSave={handleSave} isPending={isPending} />
+      </div>
+    );
+  }
+
+  // -- Music tab
+  if (section === 'music') {
+    return (
+      <div data-testid="config-tab">
+        <MusicLibrarySection />
+      </div>
+    );
+  }
+
+  // -- API Health tab
+  if (section === 'apihealth') {
+    return (
+      <div data-testid="config-tab">
+        <ApiHealthSection data={data} />
       </div>
     );
   }
