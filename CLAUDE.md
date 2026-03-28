@@ -10,9 +10,14 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - **Scripts:** Claude Sonnet via Anthropic API direct (NOT OpenRouter)
 - **Voiceover:** Google Cloud TTS (Chirp 3 HD)
 - **Images:** Fal.ai → Seedream 4.0 ($0.03/image, supports 16:9 + 9:16)
-- **Video clips:** Fal.ai → Wan 2.5 I2V + T2V ($0.05/sec, supports 16:9 + 9:16)
+- **Ken Burns Motion:** FFmpeg zoompan (6 direction templates, $0/scene)
+- **Color Grading:** FFmpeg eq + colorbalance (7 mood profiles per scene)
+- **Transitions:** FFmpeg xfade (5 transition types between scenes)
+- **Background Music:** Royalty-free library + FFmpeg voice-ducking
 - **Assembly:** FFmpeg (in n8n Docker container)
 - **Kinetic Captions:** Remotion (React-based video renderer, free, local on VPS)
+- **Thumbnails:** Fal.ai image + text overlay via Sharp/Jimp, auto-uploaded
+- **End Cards:** FFmpeg from static branded image (3s short, 5-8s long)
 - **Storage:** Google Drive
 - **Upload:** YouTube Data API v3 + TikTok Content API + Instagram Graph API
 - **Agent Expertise:** Agency Agents (61 specialists in `~/.claude/agents/`)
@@ -24,7 +29,8 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - @Dashboard_Implementation_Plan.md — Detailed dashboard page specs and Supabase Realtime patterns
 - @design-system/MASTER.md — Dashboard design system (colors, typography, spacing, components). Read before building any dashboard page.
 - @.planning/ — GSD state files (PROJECT.md, ROADMAP.md, STATE.md). Read for current sprint context.
-- @GUIDE.md — Topic Intelligence build guide with phase-by-phase prompts (Superpowers + gstack + Agency Agents)
+- @GUIDE.md — Consolidated build guide (31 features, Superpowers + gstack + Agency Agents)
+- @VisionGridAI_Video_Effects_Playbook.docx — Cinematic production playbook (prompts, FFmpeg, color science)
 - @docs/superpowers/specs/ — Superpowers feature specs
 - @docs/superpowers/plans/ — Superpowers implementation plans
 
@@ -48,37 +54,53 @@ vision-gridai-platform/
 ├── directives/            ← Per-stage SOPs (00–14)
 ├── execution/             ← Shell scripts (FFmpeg, download, cleanup)
 ├── dashboard/
-│   ├── src/pages/         ← React SPA (9 pages incl. Shorts Creator + Social Publisher)
-│   │   └── Research.jsx   ← Topic Intelligence global page
-│   ├── src/components/research/  ← Topic Intelligence components
-│   │   ├── ResearchRunButton.jsx ← Triggers orchestrator webhook
-│   │   ├── ResearchProgress.jsx  ← Realtime progress per source
-│   │   ├── CategoryCards.jsx     ← Ranked category clusters
-│   │   ├── SourceTabs.jsx        ← Per-source breakdown
-│   │   └── TopicRow.jsx          ← Single result row
-│   ├── src/hooks/useResearch.js  ← Research queries + realtime
+│   ├── src/pages/         ← React SPA (12 pages)
+│   │   ├── Research.jsx           ← Topic Intelligence (global)
+│   │   ├── ContentCalendar.jsx    ← Content Calendar
+│   │   └── EngagementHub.jsx      ← Engagement Hub
+│   ├── src/components/
+│   │   ├── research/              ← Topic Intelligence components
+│   │   ├── calendar/              ← Calendar components
+│   │   └── engagement/            ← Engagement components
+│   ├── src/hooks/
+│   │   ├── useResearch.js         ← Research queries + realtime
+│   │   ├── useSchedule.js         ← Calendar scheduling
+│   │   ├── useComments.js         ← Comment fetching
+│   │   └── useEngagement.js       ← Engagement metrics
 │   └── src/remotion/      ← Kinetic caption renderer (Remotion components)
 ├── supabase/migrations/   ← SQL schema files (incl. shorts + social_accounts tables)
-│   └── 002_research_tables.sql  ← Topic Intelligence schema
+│   ├── 002_research_tables.sql        ← Topic Intelligence schema
+│   ├── 003_cinematic_fields.sql       ← Cinematic production fields
+│   └── 004_calendar_engagement_music.sql ← Calendar, engagement, music tables
 ├── data/                  ← Source files per project
 ├── docs/superpowers/      ← Superpowers specs + plans
 │   ├── specs/             ← Feature specifications
 │   └── plans/             ← Implementation plans
-└── workflows/             ← n8n workflow JSONs (28 workflows incl. shorts + social)
+└── workflows/             ← n8n workflow JSONs (40+ workflows)
     ├── WF_RESEARCH_ORCHESTRATOR.json
     ├── WF_RESEARCH_REDDIT.json
     ├── WF_RESEARCH_YOUTUBE.json
     ├── WF_RESEARCH_TIKTOK.json
     ├── WF_RESEARCH_GOOGLE_TRENDS.json
     ├── WF_RESEARCH_QUORA.json
-    └── WF_RESEARCH_CATEGORIZE.json
+    ├── WF_RESEARCH_CATEGORIZE.json
+    ├── WF_KEN_BURNS.json              ← Replaces WF_I2V + WF_T2V
+    ├── WF_THUMBNAIL.json
+    ├── WF_PLATFORM_METADATA.json
+    ├── WF_SCHEDULE_PUBLISHER.json
+    ├── WF_COMMENTS_SYNC.json
+    ├── WF_COMMENT_ANALYZE.json
+    ├── WF_QA_CHECK.json
+    ├── WF_RETRY_WRAPPER.json
+    ├── WF_MUSIC_SELECT.json
+    └── WF_ENDCARD.json
 ```
 
 ## Critical Rules
 
 **IMPORTANT: Read Agent.md before building ANY workflow or dashboard component.** It's the single source of truth.
 
-**IMPORTANT: This project uses Superpowers (obra/superpowers) as the PRIMARY build methodology.** Specs live at docs/superpowers/specs/. Plans live at docs/superpowers/plans/. Use subagent-driven-development for execution. GSD commands at .claude/commands/gsd/ are DEPRECATED for new work. Use gstack selectively: /qa, /browse, /careful, /freeze, /review ONLY. Do NOT use gstack planning commands — they conflict with Superpowers. Use Anthropic frontend-design skill for all React component work — read its SKILL.md first.
+**IMPORTANT: This project uses Superpowers (obra/superpowers) as the PRIMARY build methodology.** Specs at docs/superpowers/specs/. Plans at docs/superpowers/plans/. GSD at .claude/commands/gsd/ is DEPRECATED. Use gstack selectively: /qa, /browse, /careful, /freeze, /review ONLY. Use frontend-design skill for all React work.
 
 **IMPORTANT: Read `design-system/MASTER.md` before building any dashboard page or component.** UI UX Pro Max skill is installed at `.claude/skills/ui-ux-pro-max/` and auto-activates for UI work. All dashboard pages must follow the master design system for visual consistency. For page-specific overrides, check `design-system/pages/{page-name}.md` first.
 
@@ -90,7 +112,9 @@ vision-gridai-platform/
 
 **IMPORTANT: 4 approval gates are mandatory.** Gate 1: Topics. Gate 2: Script. Gate 3: Video (before YouTube). Gate 4: Shorts (viral clips review before production). Pipeline PAUSES at each gate until user acts from dashboard.
 
-**IMPORTANT: Fal.ai is the media provider.** Images via Seedream 4.0 (`fal-ai/bytedance/seedream/v4/text-to-image`). Video via Wan 2.5 (`fal-ai/wan-25-preview`). Auth: `Authorization: Key {{FAL_API_KEY}}`. Async pattern: POST to `queue.fal.run` → poll for result.
+**IMPORTANT: Fal.ai is the image provider.** Images via Seedream 4.0 (`fal-ai/bytedance/seedream/v4/text-to-image`). Auth: `Authorization: Key {{FAL_API_KEY}}`. Async pattern: POST to `queue.fal.run` → poll for result.
+
+**IMPORTANT: ALL scenes use text-to-image + FFmpeg Ken Burns. No I2V or T2V.** Every scene: Seedream 4.0 image → FFmpeg zoompan (Ken Burns) + color grade → .mp4 clip. visual_type stays 'static_image' for backwards compatibility.
 
 **IMPORTANT: Agency Agents (61 specialists) are installed at `~/.claude/agents/`.** They auto-activate based on context. Key agents: Frontend Developer (dashboard), Backend Architect (n8n workflows), DevOps Automator (VPS/Docker), Image Prompt Engineer (thumbnail/visual prompts), TikTok Strategist + Instagram Curator (social media posting). GSD executor agents inherit their expertise automatically.
 
@@ -101,6 +125,22 @@ vision-gridai-platform/
 **IMPORTANT: Topic refinement considers all 24 other topics.** When user rejects/refines one topic, Claude receives all 24 others as context to avoid overlap.
 
 **IMPORTANT: Self-chaining architecture.** Each workflow fires the next on completion. WF_MASTER is a launcher. Every workflow handles its own errors and writes failure to Supabase.
+
+**IMPORTANT: 9-stage cinematic production system.** Script → Image Gen → Color Grade → Ken Burns → TTS → Captions → Transitions/Assembly → End Card → Platform Render. Every scene gets: composition prefix + subject + style DNA for image prompt, FFmpeg color grading per color_mood, FFmpeg zoompan per zoom_direction, and xfade transitions between scenes. See VisionGridAI_Platform_Agent.md for all FFmpeg filter chains.
+
+**IMPORTANT: Style DNA is LOCKED per project.** Generated during script creation, stored in projects.style_dna, appended to EVERY image prompt. Never modify between scenes. Prompt = composition_prefix + scene_subject + style_dna.
+
+**IMPORTANT: Universal negative prompt on ALL Fal.ai calls.** Stored in n8n workflow static data. Prevents artifacts, text in images, style drift.
+
+**IMPORTANT: Resume/checkpoint on every production workflow.** Check scene status before processing. If audio_status/image_status/clip_status != 'pending', skip that scene. topics.pipeline_stage tracks last completed stage globally.
+
+**IMPORTANT: Exponential backoff retry on ALL external API calls.** 1s → 2s → 4s → 8s, max 4 attempts. Applied via WF_RETRY_WRAPPER sub-workflow.
+
+**IMPORTANT: Content Calendar at /project/:id/calendar.** Visual scheduling across YouTube, TikTok, Instagram. WF_SCHEDULE_PUBLISHER cron checks every 15 min.
+
+**IMPORTANT: Engagement Hub at /project/:id/engagement.** Unified comments from all platforms. AI intent scoring. AI-suggested replies.
+
+**IMPORTANT: Auto-pilot mode per project.** When enabled: topics auto-approved if score > threshold, scripts auto-approved if eval > threshold, videos publish as UNLISTED. Never public automatically.
 
 **IMPORTANT: Topic Intelligence research engine.** The `/research` route is a global page (not project-scoped) for mining 5 data sources (Reddit, YouTube Comments, TikTok, Google Trends + PAA, Quora). Results feed into project creation via a dropdown in CreateProjectModal. Research tables: `research_runs`, `research_results`, `research_categories`. Orchestrator webhook: POST `/webhook/research/run` with `{ project_id }`. Keywords are derived dynamically from the project's niche + description via AI — never hardcoded.
 
@@ -150,47 +190,43 @@ cp -r build/* /opt/dashboard/  # Deploy to Nginx
 
 | Phase | What | Type | Cost |
 |-------|------|------|------|
-| A | Project creation + niche research (web search) | ⚡ Agentic | ~$0.60/project |
-| B | Topic + avatar generation → ⏸ GATE 1 | ⚡ Agentic | ~$0.20/project |
-| C | 3-pass script + per-pass scoring → ⏸ GATE 2 | ⚡ Agentic | $0.80–$1.80/video |
-| D1 | TTS audio (172 scenes, Master Clock) | Deterministic | ~$0.30/video |
-| D2 | Images (75 Seedream 4.0 on Fal.ai) | Deterministic | $2.25/video |
-| D3 | I2V (25) + T2V (72) Wan 2.5 on Fal.ai | Deterministic | $24.25/video |
-| D4 | Captions + FFmpeg assembly | Deterministic | Free |
-| E | Video review → ⏸ GATE 3 → YouTube publish | Dashboard | Free |
-| F | YouTube analytics pull (daily cron) | Deterministic | Free |
-| G | Shorts: viral analysis + production → ⏸ GATE 4 | ⚡ + Deterministic | ~$22/topic |
-| H | Social media posting (TikTok, Instagram, YT Shorts) | Scheduled cron | Free |
-| Supervisor | Pipeline monitor (30 min cron) | ⚡ Agentic | ~$14.40/month |
-| TI | Topic Intelligence (5-source scrape + AI categorization) | On-demand | ~$0.13/run |
-| **Main video** | | | **~$28/video** |
-| **Shorts (20 clips)** | | | **~$22/topic** |
-| **Total per topic** | | | **~$50** |
+| A | Project creation + niche research | Agentic | ~$0.60 |
+| B | Topic + avatar generation → GATE 1 | Agentic | ~$0.20 |
+| C | 3-pass script + scoring → GATE 2 | Agentic | ~$1.80 |
+| D1 | TTS audio (172 scenes) | Deterministic | ~$0.30 |
+| D2 | Images (172 Seedream 4.0) | Deterministic | ~$5.16 |
+| D3 | Ken Burns + Color Grade (FFmpeg) | Deterministic | Free |
+| D4 | Captions (ASS) + Transitions (xfade) + Assembly | Deterministic | Free |
+| D5 | Background music selection + ducking | Deterministic | Free |
+| D6 | End card + Thumbnail generation | Deterministic | ~$0.03 |
+| D7 | Platform-specific renders (4 exports) | Deterministic | Free |
+| E | QA check → Video review → GATE 3 → Publish | Dashboard | Free |
+| F | YouTube/TikTok/Instagram analytics (daily cron) | Deterministic | Free |
+| G | Shorts: clip from long-form → GATE 4 | Agentic + Det | ~$0.50 |
+| H | Social posting (scheduled via calendar) | Cron | Free |
+| TI | Topic Intelligence (5-source research) | On-demand | ~$0.13 |
+| Sup | Supervisor + Comment sync + Engagement | Cron | ~$14/mo |
+| **Total per video** | | | **~$8.06** |
 
 ## Development Workflow (Superpowers)
 
-This project uses Superpowers for structured development:
+Superpowers for planning + execution. gstack for quality gates.
 
-**Workflow per feature:**
+Workflow per feature:
 1. Write spec:    docs/superpowers/specs/{date}-{feature}.md
 2. Create plan:   docs/superpowers/plans/{date}-{feature}.md
-3. Execute:       Superpowers subagent-driven-development (checkbox tracking)
+3. Execute:       Superpowers subagent-driven-development
 4. Quality gate:  /qa + /review (gstack)
 
-**Quality commands (gstack — selective use only):**
-- /qa       — After completing any deliverable
-- /browse   — Research external docs/APIs
-- /careful  — Precision-critical work (AI prompts, scoring logic)
-- /freeze   — Before merging into main
-- /review   — Before marking any phase complete
+Quality commands (gstack selective):
+  /qa       — After completing any deliverable
+  /browse   — Research external docs/APIs
+  /careful  — AI prompts, scoring logic, FFmpeg filter chains
+  /freeze   — Before merging into main
+  /review   — Before marking any phase complete
 
-**Dashboard pages — read frontend-design SKILL.md first, then:**
-```
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "AI video production dashboard" --design-system --persist -p "Vision GridAI"
-```
-
-> **Note:** GSD phases below are legacy. New work uses Superpowers. Topic Intelligence
-> phases (TI-1 through TI-10) are documented in GUIDE.md.
+> Note: GSD phases below are legacy reference. New work uses Superpowers.
+> All 31 features documented in GUIDE.md.
 
 | GSD Phase | Sprint | What Gets Built |
 |-----------|--------|----------------|
@@ -209,7 +245,7 @@ python3 .claude/skills/ui-ux-pro-max/scripts/search.py "AI video production dash
 - Supabase REST API uses `eq.` syntax for filters: `?status=eq.pending`
 - Supabase Realtime requires the table to have `REPLICA IDENTITY FULL` for UPDATE events
 - Fal.ai is async — POST to `queue.fal.run/...` creates a task, poll `queue.fal.run/.../requests/{id}` for result. Auth header: `Authorization: Key {{FAL_API_KEY}}`
-- Fal.ai supports native 9:16 via `image_size: "portrait_9_16"` (images) and `aspect_ratio: "9:16"` (video) — no post-processing crop needed
+- Fal.ai supports native 9:16 via `image_size: "portrait_9_16"` for images — no post-processing crop needed
 - YouTube API quota: 10,000 units/day, 1,600 per upload = max 6 uploads/day
 - FFmpeg concat with `-c copy` avoids re-encoding and OOM on 2hr videos
 - React build must be deployed to Nginx's root directory after each dashboard change
@@ -218,8 +254,20 @@ python3 .claude/skills/ui-ux-pro-max/scripts/search.py "AI video production dash
 - Agency Agents (61 files in `~/.claude/agents/`) auto-activate by context. Don't need explicit invocation — GSD executors inherit them.
 - TikTok Content Posting API requires Developer account + app approval. Instagram requires Facebook Business account.
 - YouTube Shorts auto-detect by 9:16 aspect ratio + ≤60s duration. Clips >60s upload as regular vertical videos on same channel.
-- Topic Intelligence `/research` is a global route, NOT project-scoped. It exists alongside `/project/:id/research` (NicheResearch) which is per-project.
 - Research keywords are AI-derived, not stored in the projects table. They're in `research_runs.derived_keywords`.
 - Apify actors may time out on first run due to cold starts. Set timeout to 120s minimum.
 - The CreateProjectModal dropdown only shows results from the latest complete research run.
 - Superpowers specs/plans go in `docs/superpowers/`, NOT `.planning/` (that's legacy GSD state).
+- ALL scenes now use text-to-image + FFmpeg Ken Burns. WF_I2V and WF_T2V are deprecated. WF_KEN_BURNS replaces both.
+- 172-scene xfade chains hit FFmpeg memory limits. Assemble in 15-20 scene batches, then concat batches.
+- Style DNA must be IDENTICAL across all scenes. Store once in projects table, never regenerate mid-video.
+- Selective color scenes SKIP FFmpeg color grading — check `selective_color_element IS NOT NULL`.
+- Content Calendar `/project/:id/calendar` is NEW. Engagement Hub `/project/:id/engagement` is NEW.
+- Topic Intelligence `/research` is global (not project-scoped). `/project/:id/research` (NicheResearch) is per-project. They coexist.
+- Auto-pilot NEVER publishes as public. Always unlisted. Human changes visibility.
+- Background music ducking uses `volume=0.12` — NOT 0.5. Music should be barely perceptible under voice.
+- End card duration: 3s for shorts, 5-8s for long-form. Include in total video length calculation.
+- WF_RETRY_WRAPPER must be called as sub-workflow, not inline code, for n8n compatibility.
+- Platform export profiles differ: TikTok CRF 20-23, YouTube Long CRF 17-19. Do NOT use one export for all.
+- Ken Burns zoom intensity: 0.0015 increment for short-form (aggressive), 0.0008-0.001 for long-form (subtle).
+- Composition prefixes and Style DNA templates are stored in `prompt_templates` table, not hardcoded.

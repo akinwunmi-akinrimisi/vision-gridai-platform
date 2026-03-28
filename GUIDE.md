@@ -1,393 +1,514 @@
-# Topic Intelligence Engine — Build Guide
+# Vision GridAI — Consolidated Build Guide
+## 31 Features: Gap Analysis v2 + Effects Playbook + Topic Intelligence
 ## Superpowers + gstack + frontend-design + Agency Agents
 
-**Version 2.0 | March 2026**
-**Build methodology:** Superpowers (obra/superpowers) — primary
-**Quality gates:** gstack (selective: `/qa`, `/browse`, `/careful`, `/freeze`, `/review` only)
-**UI skill:** Anthropic frontend-design
-**Reference:** Read `VisionGridAI_Platform_Agent.md` before using any prompt below.
+**Version 3.0 | March 2026**
 
 ---
 
-## Build Methodology — How the Tools Work Together
+## How This Guide Works
 
-### Superpowers (Primary — replaces GSD)
+31 features organized into 6 build phases. Each phase has: objective, agency agents, Superpowers workflow, exact Claude Code prompts, and gstack quality commands.
 
-Superpowers manages the entire build lifecycle: specs → plans → subagent-driven execution. It lives at `docs/superpowers/` with plans and specs as markdown files.
-
-**Superpowers workflow for each phase:**
-```
-1. Write a spec:     docs/superpowers/specs/{date}-{feature}.md
-2. Create a plan:    docs/superpowers/plans/{date}-{feature}.md
-3. Execute plan:     Superpowers subagent-driven-development reads the plan
-                     and executes task-by-task with checkbox tracking
-4. Verify:           Use /qa and /review from gstack
-```
-
-### gstack (Selective — 5 commands only)
-
-Do NOT use gstack's planning skills (they conflict with Superpowers). Only these 5:
-
-| Command | When to Trigger | What It Does |
-|---------|----------------|--------------|
-| `/qa` | After completing any workflow or React component | Runs quality assurance checks on the deliverable |
-| `/browse` | When researching Apify actors, API docs, or third-party libraries | Opens browser-based research without leaving Claude Code |
-| `/careful` | When writing AI categorization prompts or engagement scoring logic | Activates extra-careful mode for precision-critical work |
-| `/freeze` | Before merging Topic Intelligence code into the main codebase | Locks current state to prevent accidental overwrites |
-| `/review` | Before marking any phase complete | Full code review pass |
-
-**Never use:** `/plan`, `/architect`, `/design`, or any gstack planning command.
-
-### Anthropic frontend-design Skill
-
-Installed via: `npx skills add https://github.com/anthropics/skills --skill frontend-design`
-
-**When to use:** Before building ANY React component for the Research page or modifying CreateProjectModal. Read the SKILL.md first. It provides production-grade design patterns that override generic Tailwind approaches.
-
-**Activation:** The skill auto-activates when Claude Code detects UI work. But explicitly reference it in prompts for best results:
-```
-Use the frontend-design skill. Read its SKILL.md before writing any JSX.
-```
-
-### Agency Agents (Specialists)
-
-61 agents at `~/.claude/agents/`. They activate by context. Key agents for Topic Intelligence:
-
-| Phase | Agent | Why |
-|-------|-------|-----|
-| TI-1 (Setup) | `@devops-engineer` | Supabase migration, Apify config, API credentials |
-| TI-2–6 (Scrapers) | `@api-developer` | External API integration, pagination, rate limits |
-| TI-5 (Google Trends) | `@data-scientist` | Trend interpretation, score normalization |
-| TI-7 (Orchestrator) | `@backend-architect` | Parallel execution, state management, error recovery |
-| TI-8 (Categorization) | `@prompt-engineer` | AI prompt crafting and iteration |
-| TI-9 (Dashboard) | `@frontend-developer` | React components, Supabase Realtime, responsive design |
-| TI-10 (Testing) | `@qa-engineer` | Test plans, edge cases, data integrity |
+**Superpowers workflow per phase:**
+1. Spec: `docs/superpowers/specs/{date}-{feature}.md`
+2. Plan: `docs/superpowers/plans/{date}-{feature}.md`
+3. Execute: subagent-driven-development with checkbox tracking
+4. Quality: `/qa` + `/review` from gstack
 
 ---
 
-## Phase-by-Phase Prompts
+## Phase 1: Foundation — Schema + Script Upgrade + Resilience
 
-### Phase TI-1: Environment Setup
+**Objective:** Database migrations, script prompt upgrade, Style DNA, composition library, resume/checkpoint, retry wrapper, negative prompt, production logs.
 
-**Objective:** Supabase migration, API credentials, Apify actors, connectivity tests.
-**Agent:** `@devops-engineer`
+**Agents:** `@devops-engineer` (migrations), `@prompt-engineer` (script prompts), `@backend-architect` (retry/resume)
 
-**Superpowers step:** Create spec + plan, then execute.
+### Prompt 1.1: Supabase Migrations
 
-**Prompt for Claude Code:**
 ```
-Read VisionGridAI_Platform_Agent.md — specifically the Topic Intelligence Supabase Schema
-section (research_runs, research_results, research_categories tables).
+Use @devops-engineer. Apply 3 Supabase migrations in order.
 
-Use @devops-engineer.
+Read AGENT_MERGE_SECTIONS in VisionGridAI_Platform_Agent.md for exact SQL.
 
-Tasks:
-1. Create supabase/migrations/002_research_tables.sql with all three tables,
-   RLS policies, and the FK constraint. Apply to the live Supabase instance.
-2. Verify Reddit access (PRAW or Apify). Test: fetch 5 posts from r/personalfinance.
-3. Verify YouTube Data API v3. Test: search "credit cards tips", fetch 5 comments.
-4. Verify TikTok via Apify. Test: "credit cards" query, 5 results.
-5. Verify Google Trends via pytrends. Test: "credit cards" geo=US, 7 days.
-6. Verify Quora via Apify. Test: "how to improve credit score", 5 results.
+1. Migration 002_research_tables.sql — 3 tables (research_runs, research_results, research_categories) + RLS
+2. Migration 003_cinematic_fields.sql — ALTER scenes table: add color_mood, zoom_direction, caption_highlight_word, transition_to_next, b_roll_insert, composition_prefix, selective_color_element, pipeline_stage. ALTER topics: add pipeline_stage. UPDATE all existing scenes SET visual_type = 'static_image'.
+3. Migration 004_calendar_engagement_music.sql — 6 new tables: scheduled_posts, platform_metadata, comments, music_library, renders, production_logs. ALTER projects: add auto_pilot fields + budget fields.
 
-Do NOT proceed until all 5 sources return data. Log failures.
-Use /careful for the SQL migration — schema errors are expensive to fix.
+Apply all to live Supabase at https://supabase.operscale.cloud.
+Use /careful for schema changes.
 ```
 
-**Verify:** `/qa` then `/review`
+### Prompt 1.2: Style DNA + Composition Library
+
+```
+Use @prompt-engineer. Seed the prompt_templates table.
+
+Insert 4 Style DNA templates (Historical, Finance, Tech, Inspirational) — exact text in VisionGridAI_Platform_Agent.md "Style DNA Templates" section.
+
+Insert 8 composition prefix templates (wide_establishing, medium_closeup, over_shoulder, extreme_closeup, high_angle, low_angle, symmetrical, leading_lines) — exact text in "Composition Prefix Library" section.
+
+Insert 1 universal negative prompt — exact text in "Universal Negative Prompt" section.
+
+All entries: template_type = 'style_dna' | 'composition' | 'negative', is_active = true, version = 1.
+```
+
+### Prompt 1.3: Script Generation Prompt Upgrade
+
+```
+Use @prompt-engineer. Upgrade the script generation prompts in prompt_configs.
+
+Replace the existing script generation prompts with the Master Script Generator (Long-Form — 2 Hours) from VisionGridAI_Platform_Agent.md. This outputs the FULL scene schema: color_mood, zoom_direction, composition_prefix, caption_highlight_word, transition_to_next, b_roll_insert, selective_color_elements, music_sections, retention_hooks, style_dna.
+
+The 3-pass system stays:
+- Pass 1: narrative + color_mood + zoom_direction + act
+- Pass 2: composition_prefix + caption_highlight_word + b_roll_insert
+- Pass 3: transition_to_next + selective_color_elements + music_sections + style_dna
+
+Add 3 niche adapter prompts (Finance, Historical, Tech) — exact text in Agent.md.
+Add Image Prompt Enhancer prompt.
+Add Keyword Extraction prompt.
+Add YouTube SEO Metadata Generator prompt.
+Add Background Music Mood Descriptor prompt.
+
+Use /careful — these prompts determine ALL downstream quality.
+```
+
+### Prompt 1.4: Resume/Checkpoint + Retry Wrapper
+
+```
+Use @backend-architect. Build 2 critical resilience features.
+
+1. WF_RETRY_WRAPPER — reusable n8n sub-workflow.
+   Accepts: webhook_url, payload, max_retries (default 4), base_delay_ms (default 1000)
+   Implements: exponential backoff 1s→2s→4s→8s, capped at 30s
+   Logs each attempt to production_logs table
+   Returns: response or throws after max retries
+
+2. Resume logic in ALL production workflows (WF_TTS, WF_IMAGE, WF_KEN_BURNS, WF_CAPTIONS_ASSEMBLY):
+   BEFORE processing, query: SELECT id FROM scenes WHERE topic_id = X AND {stage}_status = 'pending'
+   Only process pending scenes. Skip completed ones.
+   Update topics.pipeline_stage after each workflow completes.
+
+Store WF_RETRY_WRAPPER.json in workflows/.
+Use /careful for the retry logic. Use /qa after.
+```
+
+### Prompt 1.5: Production Logging
+
+```
+Use @backend-architect. Add structured logging to all production workflows.
+
+After EVERY external API call (Fal.ai, Claude, Google TTS, YouTube), insert a row to production_logs:
+  topic_id, stage, scene_number, action (e.g., 'fal_ai_seedream'), status, duration_ms, cost_usd, retry_count
+
+Add a n8n Function node template that wraps API calls with timing + logging.
+The dashboard's ProductionMonitor page will read this table for per-video logs.
+```
+
+**Quality:** `/qa` → `/review`
 
 ---
 
-### Phase TI-2: Reddit Scraper Workflow
+## Phase 2: Cinematic Pipeline — Ken Burns + Color Grade + Transitions
 
-**Agent:** `@api-developer`
+**Objective:** Replace WF_I2V + WF_T2V with WF_KEN_BURNS. Add color grading. Add xfade transitions. Upgrade assembly workflow.
 
-**Prompt:**
+**Agents:** `@api-developer` (workflows), `@backend-architect` (assembly logic)
+
+### Prompt 2.1: WF_KEN_BURNS Workflow
+
 ```
-Use @api-developer. Build the Reddit Scraper n8n workflow.
+Use @api-developer. Build WF_KEN_BURNS — replaces WF_I2V and WF_T2V.
 
-Read the Topic Intelligence section of VisionGridAI_Platform_Agent.md for the
-engagement formula: upvotes + (comments * 2).
+Read VisionGridAI_Platform_Agent.md: Ken Burns Motion section (6 directions) + Color Science section (7 moods).
 
-Build an n8n workflow that:
-1. Accepts: derived_keywords (string[]), run_id (uuid), project_id (uuid)
-2. Determines relevant subreddits (accept subreddit_list param, AI discovery later)
-3. Fetches posts from last 7 days, sorted by engagement
-4. Extracts: title, body (500 chars), subreddit, upvotes, comment_count, URL, timestamp
-5. Calculates engagement_score
-6. Ranks all posts, takes top 10
-7. Writes to research_results (source = 'reddit')
-8. Handles 429 rate limits (wait + retry), invalid subreddits (skip + log)
-9. Returns { source: 'reddit', results_count: N, status: 'complete' }
+For each scene (172 total):
+1. Check clip_status — skip if not 'pending' (resume support)
+2. Download image from image_url
+3. Get zoom_direction → look up Z/X/Y expressions from the 6-direction table
+4. Get color_mood → look up FFmpeg filter chain from the 7-mood table
+5. Check selective_color_element — if NOT NULL, skip color grade filters
+6. Calculate FRAMES = duration_seconds × 30
+7. Determine OUTPUT_SIZE: 1920x1080 for long-form
+8. Build FFmpeg command:
+   ffmpeg -loop 1 -i {INPUT}.png -vf "
+     scale=8000:-1,
+     zoompan=z='{Z}':x='{X}':y='{Y}':d={FRAMES}:s={SIZE}:fps=30,
+     {COLOR_FILTERS}
+   " -t {DURATION} -c:v libx264 -pix_fmt yuv420p -preset medium {OUTPUT}.mp4
+9. Upload clip to Google Drive
+10. Update scenes: clip_url, clip_status = 'uploaded'
+11. Log to production_logs
 
-Never hardcode API keys. Use n8n credentials.
-Store workflow JSON in workflows/WF_RESEARCH_REDDIT.json.
-Test with keywords = ["credit cards", "credit score"], subreddits = ["personalfinance", "CreditCards"].
+Process in batches of 20 to manage VPS memory.
+Store as workflows/WF_KEN_BURNS.json.
+Use /careful for the FFmpeg expressions — one wrong character breaks the pipeline.
 ```
 
-**Verify:** `/qa`
+### Prompt 2.2: Upgrade WF_CAPTIONS_ASSEMBLY with Transitions
+
+```
+Use @backend-architect. Upgrade the assembly workflow to use xfade transitions.
+
+Read VisionGridAI_Platform_Agent.md: Transition System section (5 types + offset formula).
+
+Replace simple concat with xfade chain:
+1. For each scene pair, get transition_to_next from scenes table
+2. Map to FFmpeg xfade type: crossfade→fade, hard_cut→(concat), zoom_blur→circleopen, wipe_left→wipeleft, dissolve_slow→dissolve
+3. Calculate offset: offset_N = SUM(durations[0..N-1]) - SUM(transition_durations[0..N-2])
+4. For 172 scenes, batch in groups of 20:
+   - Assemble scenes 1-20 with xfade → batch_1.mp4
+   - Assemble scenes 21-40 with xfade → batch_2.mp4
+   - ...
+   - Final: concat all batches with crossfade
+5. Burn ASS captions onto assembled video
+6. Log total assembly time to production_logs
+
+The n8n Function node dynamically builds the FFmpeg filter_complex string from scene data.
+Use /careful for offset calculation — off-by-one errors cause audio desync.
+```
+
+**Quality:** `/qa` → `/review`
 
 ---
 
-### Phase TI-3: YouTube Comments Scraper
+## Phase 3: Audio — Background Music + End Cards
 
-**Agent:** `@api-developer`
+**Objective:** Music library, mood-based selection, FFmpeg ducking, end card generation.
 
-**Prompt:**
+**Agents:** `@api-developer` (workflows), `@prompt-engineer` (music mood prompt)
+
+### Prompt 3.1: Background Music System
+
 ```
-Use @api-developer. Build the YouTube Comments Scraper n8n workflow.
+Use @api-developer and @prompt-engineer. Build WF_MUSIC_SELECT.
 
-Engagement formula: likes + (replies * 3).
+1. During script generation, the music_sections array specifies mood per chapter
+2. WF_MUSIC_SELECT queries music_library table: match mood_tags to requested mood
+3. If no match, use AI (Haiku via OpenRouter) with the Background Music Mood Descriptor prompt to generate a music description, then do best-match from library
+4. Mix voiceover + selected track:
+   ffmpeg -i voiceover.wav -i music.mp3 \
+     -filter_complex "[1:a]volume=0.12[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=2[out]" \
+     -map "[out]" -c:a aac -b:a 192k mixed.m4a
+5. For long-form with multiple music sections: crossfade between tracks at chapter boundaries
 
-Build an n8n workflow that:
-1. Accepts: derived_keywords, run_id, project_id
-2. Searches YouTube for top 20 videos matching keywords, last 7 days, sorted by viewCount
-3. Fetches commentThreads for top 10 videos (20 comments each)
-4. Extracts: comment text (500 chars), like count, reply count, video URL, timestamp, video title
-5. Calculates engagement_score, ranks, takes top 10
-6. Writes to research_results (source = 'youtube')
-7. Tracks API quota. Stop if approaching 10K daily limit.
-8. Returns { source: 'youtube', results_count: N, status: 'complete' }
-
-Store as workflows/WF_RESEARCH_YOUTUBE.json.
-Test with keywords = ["best credit cards 2026"]. Log quota usage.
+Store as WF_MUSIC_SELECT.json.
 ```
+
+### Prompt 3.2: End Card + Thumbnail
+
+```
+Use @api-developer. Build WF_ENDCARD and WF_THUMBNAIL.
+
+WF_ENDCARD:
+1. Generate end card image: dark background (#0A0A1A) + channel logo + subscribe text
+2. FFmpeg: ffmpeg -loop 1 -i endcard.png -vf "fade=in:st=0:d=0.5,fade=out:st=4.5:d=0.5" -t 5 endcard.mp4
+3. Concatenate onto final assembled video
+4. Duration: 5-8 seconds for long-form
+
+WF_THUMBNAIL:
+1. Use AI (Fal.ai Seedream) to generate a thumbnail image from script hook + style_dna
+2. Add text overlay via n8n Code node (Sharp/Jimp): thumbnail_text from YouTube SEO Metadata prompt
+3. Upload to Google Drive
+4. Store URL in platform_metadata table
+
+Store as WF_ENDCARD.json and WF_THUMBNAIL.json.
+```
+
+**Quality:** `/qa`
 
 ---
 
-### Phase TI-4: TikTok Scraper
+## Phase 4: Platform Publishing — Metadata + Calendar + Exports
 
-**Agent:** `@api-developer`
+**Objective:** Platform-specific metadata, export profiles, content calendar, scheduled posting.
 
-**Prompt:**
+**Agents:** `@api-developer` (workflows), `@frontend-developer` (calendar page), `@prompt-engineer` (metadata prompts)
+
+### Prompt 4.1: Platform Metadata + Export Profiles
+
 ```
-Use @api-developer. Build the TikTok Scraper n8n workflow via Apify.
+Use @api-developer and @prompt-engineer. Build WF_PLATFORM_METADATA.
 
-Engagement formula: likes + (comments * 2) + (shares * 3).
+1. After video assembly, trigger this workflow
+2. Send topic data to Claude Haiku with YouTube SEO Metadata Generator prompt
+3. Generate platform-specific variants:
+   - YouTube: SEO title (60 chars), long description with chapters + timestamps, 15-20 tags, thumbnail text
+   - TikTok: Punchy caption (150 chars), trending hashtags (15-20), no description
+   - Instagram: Storytelling caption, hashtag blocks (30 max)
+4. Store all in platform_metadata table (one row per platform)
 
-Build an n8n workflow that:
-1. Accepts: derived_keywords, run_id, project_id
-2. Calls Apify TikTok Scraper: keywords joined, last 7 days, 30 results, English
-3. Extracts: caption, hashtags, likes, comments, shares, URL, timestamp
-4. Calculates engagement_score, ranks, takes top 10
-5. Writes to research_results (source = 'tiktok')
-6. Handles Apify timeout (increase to 120s), empty results (broaden keywords)
-7. Returns { source: 'tiktok', results_count: N, status: 'complete' }
+Then build platform-specific FFmpeg render step:
+   YouTube Long: CRF 17-19, preset slow, 12 Mbps, 192k AAC, 1920x1080
+   YouTube Shorts: CRF 18-20, preset slow, 6 Mbps, 192k AAC, 1080x1920
+   TikTok: CRF 20-23, preset medium, 4 Mbps, 128k AAC, 1080x1920
+   Instagram: CRF 20-23, preset medium, 3.5 Mbps, 128k AAC, 1080x1920
+All with -movflags +faststart. Store each in renders table.
 
-Store as workflows/WF_RESEARCH_TIKTOK.json.
+Store as WF_PLATFORM_METADATA.json.
 ```
+
+### Prompt 4.2: Content Calendar Dashboard Page
+
+```
+Use @frontend-developer. Use frontend-design skill. Read design-system/MASTER.md.
+
+Build pages/ContentCalendar.jsx at route /project/:id/calendar.
+
+Layout:
+- Monthly/weekly toggle view
+- Grid cells show scheduled + published content
+- Color-coded by platform: YouTube (red), TikTok (black/cyan), Instagram (purple)
+- Status indicators: scheduled (outline), publishing (pulsing), published (solid), failed (red border)
+- Drag-and-drop to reschedule (update scheduled_posts.scheduled_at)
+- Click to open ScheduleModal: set date/time, pick platform(s), set visibility
+
+Components: CalendarGrid.jsx, ContentBlock.jsx (draggable), ScheduleModal.jsx
+Hook: useSchedule.js — queries scheduled_posts + Supabase Realtime
+
+Add route to App.jsx:
+  const ContentCalendar = lazy(() => import('./pages/ContentCalendar'));
+  <Route path="/project/:id/calendar" element={<ContentCalendar />} />
+
+Add sidebar nav item: { label: 'Calendar', icon: Calendar, path: '/project/:id/calendar' }
+```
+
+### Prompt 4.3: Schedule Publisher Workflow
+
+```
+Use @api-developer. Build WF_SCHEDULE_PUBLISHER as n8n cron (every 15 min).
+
+1. Query: SELECT * FROM scheduled_posts WHERE status = 'scheduled' AND scheduled_at <= NOW()
+2. For each due post:
+   a. Get render file URL from renders table for this topic + platform
+   b. Get metadata from platform_metadata table
+   c. Upload to platform (YouTube API / TikTok API / Instagram API)
+   d. Update: status = 'published', published_at = NOW()
+   e. On failure: status = 'failed', error_message = error, retry next cycle (max 3)
+3. Default visibility: use project's auto_pilot_default_visibility (default 'unlisted')
+
+Store as WF_SCHEDULE_PUBLISHER.json.
+```
+
+**Quality:** `/qa` → `/review`
 
 ---
 
-### Phase TI-5: Google Trends + PAA
+## Phase 5: Engagement + Analytics + Auto-Pilot
 
-**Agent:** `@api-developer` + `@data-scientist`
+**Objective:** Comment sync, AI sentiment/intent, engagement hub, enhanced analytics, auto-pilot mode.
 
-**Prompt:**
+**Agents:** `@frontend-developer` (pages), `@api-developer` (workflows), `@prompt-engineer` (AI prompts)
+
+### Prompt 5.1: Comment Sync + AI Analysis
+
 ```
-Use @api-developer and @data-scientist. Build the Google Trends + PAA workflow.
+Use @api-developer. Build WF_COMMENTS_SYNC (daily cron) and WF_COMMENT_ANALYZE.
 
-Engagement formula: search_interest_index * 10. PAA questions get base score 500.
-Breakout topics get 2x multiplier.
+WF_COMMENTS_SYNC:
+1. For each published video, fetch latest comments from YouTube/TikTok/Instagram APIs
+2. Store in comments table: platform, author, text, like_count, platform_comment_id
+3. Deduplicate by platform_comment_id
 
-Build an n8n workflow that:
-1. Accepts: derived_keywords, run_id, project_id
-2. Queries pytrends: interest over time for each keyword, geo='US', 'now 7-d'
-3. Extracts related queries (rising + top) and breakout topics (>5000% growth)
-4. Queries SerpAPI for People Also Ask boxes per keyword
-5. Combines all results, calculates engagement_score with multipliers
-6. Ranks, takes top 10
-7. Writes to research_results (source = 'google_trends')
-8. Returns { source: 'google_trends', results_count: N, status: 'complete' }
+WF_COMMENT_ANALYZE:
+1. Triggers after sync
+2. Send batch of new comments to Claude Haiku:
+   "Classify each comment: sentiment (positive/negative/neutral), intent_score (0-1), intent_signals array.
+   High intent signals: 'link please', 'how to buy', 'price?', 'where can I get', 'DM me', 'need this'.
+   Return JSON array."
+3. Update comments table with sentiment, intent_score, intent_signals
+4. Comments with intent_score > 0.7 are flagged for engagement
 
-Use /careful — the scoring normalization must be precise.
-Store as workflows/WF_RESEARCH_GOOGLE_TRENDS.json.
+Store as WF_COMMENTS_SYNC.json and WF_COMMENT_ANALYZE.json.
 ```
+
+### Prompt 5.2: Engagement Hub Page
+
+```
+Use @frontend-developer. Use frontend-design skill.
+
+Build pages/EngagementHub.jsx at route /project/:id/engagement.
+
+Layout:
+1. Filter bar: platform tabs (All | YouTube | TikTok | Instagram), sentiment filter, intent filter
+2. Comment feed: unified list, sorted by intent_score descending (highest conversion potential first)
+3. Each comment card: author avatar, text, platform badge, sentiment indicator, intent score bar, "Reply" button
+4. AI Reply panel: click Reply → AI generates 3 suggested replies → one-click to post
+5. Sentiment chart: per-video breakdown (Recharts pie/bar)
+6. Summary stats: total comments, avg sentiment, high-intent count, reply rate
+
+Components: CommentFeed.jsx, ConversionSignals.jsx, ReplyComposer.jsx, SentimentChart.jsx
+Hooks: useComments.js, useEngagement.js
+
+Add route + sidebar nav: { label: 'Engagement', icon: MessageCircle, path: '/project/:id/engagement' }
+```
+
+### Prompt 5.3: Auto-Pilot Mode
+
+```
+Use @backend-architect and @frontend-developer.
+
+Backend: Modify orchestrator workflows to check projects.auto_pilot_enabled.
+When auto-pilot ON:
+- After topic generation: if topic_score > auto_pilot_topic_threshold, auto-approve (skip Gate 1)
+- After script eval: if combined_eval > auto_pilot_script_threshold, auto-approve (skip Gate 2)
+- After video render + QA check (all 13 pass): auto-publish as UNLISTED (skip Gate 3)
+- If monthly_spend_usd > monthly_budget_usd: PAUSE, alert on dashboard
+- If 2 consecutive videos score < 6.0: PAUSE, alert
+
+Frontend: Add auto-pilot toggle to ProjectDashboard and Settings page.
+- Toggle switch with confirmation dialog: "Auto-pilot will publish as UNLISTED. You review weekly."
+- Pulsing indicator badge when active
+- After 5+ successful videos with avg eval > 7.5: prompt "Enable Auto-Pilot?"
+```
+
+### Prompt 5.4: Enhanced Analytics
+
+```
+Use @frontend-developer. Upgrade pages/Analytics.jsx.
+
+Add:
+1. Cross-platform comparison: same content's views/likes/comments on YouTube vs TikTok vs Instagram (side-by-side bar chart)
+2. Follower/subscriber growth timeline (line chart, overlaid with publish dates)
+3. Engagement rate per video: (comments + likes) / views (percentage column in table)
+4. Content performance heatmap: which days/times get most engagement (7×24 grid)
+5. Cost vs Revenue waterfall chart per video
+6. Subscriber milestone tracker
+
+Use Recharts for all charts. Follow design-system/MASTER.md.
+```
+
+**Quality:** `/qa` → `/review`
 
 ---
 
-### Phase TI-6: Quora Scraper
+## Phase 6: Topic Intelligence + Dashboard Polish + QA
 
-**Agent:** `@api-developer`
+**Objective:** 5-source research, Research page, CreateProjectModal dropdown, QA workflow, Settings overhaul, enhanced pages.
 
-**Prompt:**
+**Agents:** `@api-developer` (scraper workflows), `@frontend-developer` (pages), `@qa-engineer` (testing)
+
+### Prompt 6.1: Topic Intelligence Workflows
+
 ```
-Use @api-developer. Build the Quora Scraper n8n workflow via Apify.
+Use @api-developer. Build all 7 research workflows exactly as specified in VisionGridAI_Platform_Agent.md.
 
-Engagement formula: follows + (answers * 2).
+WF_RESEARCH_ORCHESTRATOR: webhook trigger, keyword derivation via Haiku, parallel 5-source dispatch, progress tracking, triggers categorization on completion.
+WF_RESEARCH_REDDIT: PRAW or Apify, top 10 by engagement (upvotes + comments×2), last 7 days.
+WF_RESEARCH_YOUTUBE: YouTube Data API v3, top 10 comments by likes + replies×3.
+WF_RESEARCH_TIKTOK: Apify, top 10 by likes + comments×2 + shares×3.
+WF_RESEARCH_GOOGLE_TRENDS: pytrends + SerpAPI, interest index×10, PAA base 500, breakout 2x.
+WF_RESEARCH_QUORA: Apify, top 10 by follows + answers×2.
+WF_RESEARCH_CATEGORIZE: Claude Haiku, organic clustering, ranking, video title generation.
 
-Build an n8n workflow that:
-1. Accepts: derived_keywords, run_id, project_id
-2. Calls Apify Quora Scraper per keyword, 20 results each
-3. Deduplicates by question URL
-4. Extracts: question title, answer count, follower count, URL, last activity date, answer snippet
-5. Calculates engagement_score, ranks, takes top 10
-6. Writes to research_results (source = 'quora')
-7. Returns { source: 'quora', results_count: N, status: 'complete' }
-
-Store as workflows/WF_RESEARCH_QUORA.json.
-```
-
----
-
-### Phase TI-7: Orchestrator
-
-**Agent:** `@backend-architect` + `@api-developer`
-
-**Prompt:**
-```
-Use @backend-architect and @api-developer. Build the Research Orchestrator.
-
-Read the error handling table in VisionGridAI_Platform_Agent.md.
-
-Build a master n8n workflow that:
-1. Accepts: project_id (from webhook)
-2. Reads niche + niche_description from projects table
-3. Derives keywords via Claude Haiku (OpenRouter):
-   "Given niche: {niche}, description: {niche_description}, generate 5-8 search keywords.
-   Return ONLY a JSON array."
-4. Creates research_runs row: status='scraping', stores derived_keywords
-5. Triggers all 5 scrapers IN PARALLEL (n8n Execute Workflow):
-   WF_RESEARCH_REDDIT, WF_RESEARCH_YOUTUBE, WF_RESEARCH_TIKTOK,
-   WF_RESEARCH_GOOGLE_TRENDS, WF_RESEARCH_QUORA
-6. Increments sources_completed as each returns
-7. If a sub-workflow fails: logs to error_log JSONB, does NOT abort others
-8. When all complete: counts total_results. If >= 10, sets status='categorizing'
-   and triggers AI categorization. If < 10, sets status='failed'.
-9. Exposes webhook: POST /webhook/research/run with body { project_id: uuid }
-
-Store as workflows/WF_RESEARCH_ORCHESTRATOR.json.
-Test: trigger webhook, verify parallel execution, test failure recovery.
-Use /careful for the parallel coordination logic.
+ALL scrapers use WF_RETRY_WRAPPER for API calls.
+Store as WF_RESEARCH_*.json in workflows/.
 ```
 
----
+### Prompt 6.2: Research Page + CreateProjectModal
 
-### Phase TI-8: AI Categorization
-
-**Agent:** `@prompt-engineer` + `@api-developer`
-
-**Prompt:**
 ```
-Use @prompt-engineer and @api-developer. Build the AI Categorization workflow.
+Use @frontend-developer. Use frontend-design skill.
 
-Read the AI Categorization Prompt in VisionGridAI_Platform_Agent.md.
+1. Build pages/Research.jsx at global route /research.
+   - Project selector + "Run Research" button
+   - Realtime progress (sources_completed / 5)
+   - Ranked category cards (gold/silver/bronze)
+   - Source tabs (Reddit | YouTube | TikTok | Google Trends | Quora)
+   - "Use This Topic" button per result
 
-Build an n8n workflow that:
-1. Triggers after orchestrator sets status='categorizing'
-2. Fetches all research_results for this run_id
-3. Sends categorization prompt to Claude Haiku via OpenRouter (temp 0.3)
-4. Parses JSON response into categories
-5. For each category: creates research_categories row with label, summary,
-   top_video_title, total_engagement, result_count, rank
-6. Updates each research_result's category_id
-7. Generates ai_video_title for each result (batch prompt to Haiku)
-8. Updates research_runs: status='complete', total_categories=N, completed_at=now()
-
-Handle malformed JSON: strip markdown fences, retry with stricter prompt.
-Store as workflows/WF_RESEARCH_CATEGORIZE.json.
-Use /careful for the categorization prompt — it determines output quality.
-```
-
----
-
-### Phase TI-9: Dashboard
-
-**Agent:** `@frontend-developer`
-
-**Prompt:**
-```
-Use @frontend-developer. Use the frontend-design skill — read its SKILL.md first.
-Read design-system/MASTER.md for the Neon Pipeline color system.
-
-Build the Topic Intelligence dashboard integration:
-
-1. NEW PAGE: dashboard/src/pages/Research.jsx at route /research
-   - Header: "Topic Research" + "Run Research" button + project selector dropdown
-   - Progress: Supabase Realtime on research_runs, show per-source status pills
-   - Ranked Categories: cards ordered by rank (gold/silver/bronze badges),
-     each with label, summary, top_video_title, "Use This Topic" copy button,
-     engagement score, result count, expandable to see all results
-   - Source Tabs: Reddit | YouTube | TikTok | Google Trends | Quora
-     Each tab: 10-row table with raw_text, ai_video_title, engagement_score
-     (tooltip breakdown), source URL, posted date, category badge
-   - Summary bar: totals, top category, run duration, cost estimate
-
-2. NEW HOOK: dashboard/src/hooks/useResearch.js
-   - Queries research_runs, research_results, research_categories
-   - Supabase Realtime subscription for live progress
-
-3. MODIFY: dashboard/src/components/projects/CreateProjectModal.jsx
-   - Add "From Research (optional)" section above niche input
+2. Modify CreateProjectModal.jsx:
+   - Add "From Research" section above niche input
    - Category filter dropdown → topic dropdown → auto-fills niche + description
-   - "No research data" state shows link to /research
+   - "No research data" → links to /research
    - "OR enter manually below" separator
-   - Selecting research topic is optional, manual entry always works
 
-4. MODIFY: dashboard/src/App.jsx
-   - Add: const Research = lazy(() => import('./pages/Research'));
-   - Add: <Route path="/research" element={<Research />} />
+3. Modify App.jsx: add Research route
+4. Modify Sidebar.jsx: add global "Topic Research" nav item
 
-5. MODIFY: dashboard/src/components/layout/Sidebar.jsx
-   - Add global nav item: { label: 'Topic Research', icon: Microscope, path: '/research' }
-   - Position: above the project-scoped nav
-
-Follow the existing pattern: shadcn/ui components, Tailwind utility classes,
-React Query for data fetching, Supabase Realtime for subscriptions.
-Use /qa after building, then /review before marking complete.
+Hooks: useResearch.js (queries + Realtime)
 ```
+
+### Prompt 6.3: Automated QA Workflow
+
+```
+Use @api-developer. Build WF_QA_CHECK — runs after final render.
+
+13 automated checks from VisionGridAI_Platform_Agent.md QA section:
+
+Visual: resolution, file size, black frames, frame rate, aspect ratio (FFprobe)
+Caption: ASS file exists, no overflow, highlight words match narration
+Audio: duration match (±500ms), loudness (-16 LUFS ±1), no gaps > 2s
+Platform: H.264 codec, AAC audio, .mp4 container, faststart flag
+
+Store results as JSON in a qa_results JSONB field on the renders table.
+Dashboard shows pass/fail checklist on VideoReview page.
+
+If auto-pilot ON and all 13 pass: auto-trigger publish.
+Store as WF_QA_CHECK.json.
+```
+
+### Prompt 6.4: Settings Overhaul + VideoReview Enhancement
+
+```
+Use @frontend-developer.
+
+Settings page (/project/:id/settings) — rebuild from 2K stub to full page:
+- Auto-pilot config: enable/disable toggle, topic threshold, script threshold, default visibility
+- Platform connections: YouTube ✅/⚠️/❌, TikTok status, Instagram status
+- API health: Fal.ai, Anthropic, Google TTS — last response time, error rate (from production_logs)
+- Cost budget: monthly budget input, current spend progress bar, alert threshold
+- Music library manager: upload tracks, set mood tags, preview, delete
+- Default schedule templates: "YouTube: Tue/Thu 9am", "TikTok: daily 6pm"
+
+VideoReview page — add:
+- Upload visibility toggle (public/unlisted/private) — default unlisted
+- Platform selector checkboxes (YouTube ✓, TikTok ✓, Instagram ✓)
+- Thumbnail preview + "Regenerate" button
+- SEO metadata preview per platform (from platform_metadata table)
+- QA checklist (13 items, pass/fail badges from WF_QA_CHECK results)
+
+ProjectDashboard — add:
+- Auto-pilot toggle with pulsing indicator
+- Pipeline health: green/yellow/red based on recent production_logs errors
+- Quick actions: "Generate Next Video", "Run Research", "View Calendar"
+- Activity feed: last 5 pipeline events from production_logs
+```
+
+### Prompt 6.5: E2E Testing
+
+```
+Use @qa-engineer. Comprehensive testing across all 31 features.
+
+TEST 1: Full cinematic pipeline — create project, generate script (verify new fields), generate 5 images (verify composition + style DNA), Ken Burns (verify zoom + color grade), assembly (verify xfade transitions), music ducking, end card, platform renders, QA check.
+
+TEST 2: Topic Intelligence — run research, verify 50 results, categories, dropdown in CreateProjectModal.
+
+TEST 3: Content Calendar — schedule a post, verify cron picks it up, publishes as unlisted.
+
+TEST 4: Engagement Hub — sync comments (mock data), verify sentiment scoring, AI reply generation.
+
+TEST 5: Auto-pilot — enable, trigger pipeline, verify gates skipped, video published as unlisted.
+
+TEST 6: Resume — crash a workflow mid-scene, restart, verify it resumes from failed scene.
+
+TEST 7: Retry — simulate Fal.ai timeout, verify exponential backoff, verify production log entries.
+
+Use /qa per test. Use /review for final report.
+```
+
+**Quality:** `/qa` → `/review` → `/freeze`
 
 ---
 
-### Phase TI-10: End-to-End Testing
+## Quick Reference — All Phases
 
-**Agent:** `@qa-engineer`
-
-**Prompt:**
-```
-Use @qa-engineer. Run comprehensive E2E testing.
-
-TEST 1 — Happy Path (CardMath niche):
-- Select CardMath project, click "Run Research" on /research
-- Time full run (target: under 3 minutes)
-- Verify: 50 results, 4-8 categories, all URLs valid, categories meaningful
-
-TEST 2 — Different Niche (stoic philosophy):
-- Create test project, run research
-- Verify results are relevant, categories differ from Test 1
-
-TEST 3 — Partial Failure:
-- Disable TikTok scraper, run research
-- Verify: 4/5 sources complete, error logged, categorization runs on 40 results
-
-TEST 4 — CreateProjectModal Integration:
-- Open CreateProjectModal, verify "From Research" dropdown populates
-- Select a category filter, select a topic, verify auto-fill
-- Verify manual entry still works when dropdown is ignored
-
-TEST 5 — Data Integrity:
-- Spot-check 5 source URLs (1 per source), verify content matches raw_text
-
-TEST 6 — Performance + Cost:
-- Log per-source timing, total run time, Apify costs, OpenRouter cost
-
-Use /qa for each test. Use /review for the final report.
-Fix bugs before marking complete.
-```
-
----
-
-## Prompt Sequence Quick Reference
-
-| Step | Agent | Tool Commands | Description |
-|------|-------|--------------|-------------|
-| TI-1 | `@devops-engineer` | `/careful` → `/qa` → `/review` | Environment + migration |
-| TI-2 | `@api-developer` | `/qa` | Reddit scraper |
-| TI-3 | `@api-developer` | `/qa` | YouTube scraper |
-| TI-4 | `@api-developer` | `/qa` | TikTok scraper |
-| TI-5 | `@api-developer` + `@data-scientist` | `/careful` → `/qa` | Google Trends + PAA |
-| TI-6 | `@api-developer` | `/qa` | Quora scraper |
-| TI-7 | `@backend-architect` | `/careful` → `/qa` → `/review` | Orchestrator |
-| TI-8 | `@prompt-engineer` | `/careful` → `/qa` | AI categorization |
-| TI-9 | `@frontend-developer` | frontend-design skill → `/qa` → `/review` | Dashboard + modal |
-| TI-10 | `@qa-engineer` | `/qa` → `/review` | E2E testing |
+| Phase | Features | Agents | gstack |
+|-------|---------|--------|--------|
+| 1 | Schema + script upgrade + resilience (6 prompts) | `@devops-engineer` `@prompt-engineer` `@backend-architect` | `/careful` → `/qa` → `/review` |
+| 2 | Ken Burns + color grade + transitions (2 prompts) | `@api-developer` `@backend-architect` | `/careful` → `/qa` |
+| 3 | Music + end cards + thumbnails (2 prompts) | `@api-developer` `@prompt-engineer` | `/qa` |
+| 4 | Platform metadata + calendar + exports (3 prompts) | `@api-developer` `@frontend-developer` `@prompt-engineer` | `/qa` → `/review` |
+| 5 | Engagement + analytics + auto-pilot (4 prompts) | `@frontend-developer` `@api-developer` `@backend-architect` `@prompt-engineer` | `/qa` → `/review` |
+| 6 | Topic Intelligence + QA + Settings + testing (5 prompts) | `@api-developer` `@frontend-developer` `@qa-engineer` | `/qa` → `/review` → `/freeze` |

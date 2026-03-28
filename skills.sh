@@ -103,6 +103,25 @@ else
     echo "  ⚠️  gstack skill not installed"
 fi
 
+# Check FFmpeg capabilities for cinematic pipeline
+echo ""
+echo "▶ Checking FFmpeg cinematic capabilities..."
+if docker exec n8n-n8n-1 ffmpeg -filters 2>/dev/null | grep -q zoompan; then
+    echo "  ✅ FFmpeg zoompan filter (Ken Burns)"
+else
+    echo "  ⚠️  zoompan filter not found in FFmpeg"
+fi
+if docker exec n8n-n8n-1 ffmpeg -filters 2>/dev/null | grep -q xfade; then
+    echo "  ✅ FFmpeg xfade filter (transitions)"
+else
+    echo "  ⚠️  xfade filter not found (requires FFmpeg 4.3+)"
+fi
+if docker exec n8n-n8n-1 ffmpeg -filters 2>/dev/null | grep -q colorbalance; then
+    echo "  ✅ FFmpeg colorbalance filter (color grading)"
+else
+    echo "  ⚠️  colorbalance filter not found"
+fi
+
 # ─── 2. VERIFY n8n CREDENTIALS ─────────────────────────────
 
 echo ""
@@ -903,61 +922,48 @@ else
   echo "  ⏭️  nginx.conf already exists, skipping"
 fi
 
-# ─── 5. TOPIC INTELLIGENCE ENVIRONMENT CHECK ────────────────
+# ─── 5. TOPIC INTELLIGENCE + CINEMATIC PIPELINE CHECKS ──────
 echo ""
-echo "▶ Topic Intelligence — Source Connectivity..."
+echo "▶ Topic Intelligence — data source connectivity..."
 
-# Reddit (PRAW)
-if python3 -c "import praw" 2>/dev/null; then
-    echo "  ✅ PRAW (Reddit): importable"
-else
-    echo "  ⚠️  PRAW not installed. Run: pip3 install --break-system-packages praw"
-fi
+# Python packages for research
+for pkg in praw pytrends requests; do
+    python3 -c "import $pkg" 2>/dev/null && \
+        echo "  ✅ $pkg importable" || \
+        echo "  ⚠️  $pkg not installed (pip3 install --break-system-packages $pkg)"
+done
 
-# pytrends
-if python3 -c "import pytrends" 2>/dev/null; then
-    echo "  ✅ pytrends (Google Trends): importable"
-else
-    echo "  ⚠️  pytrends not installed. Run: pip3 install --break-system-packages pytrends"
-fi
+# API keys
+[ -n "${APIFY_TOKEN:-}" ] && echo "  ✅ APIFY_TOKEN set" || echo "  ⚠️  APIFY_TOKEN not set"
+[ -n "${SERPAPI_KEY:-}" ] && echo "  ✅ SERPAPI_KEY set" || echo "  ⚠️  SERPAPI_KEY not set"
+[ -n "${OPENROUTER_API_KEY:-}" ] && echo "  ✅ OPENROUTER_API_KEY set" || echo "  ⚠️  OPENROUTER_API_KEY not set"
 
-# Apify token check
-if [ -n "${APIFY_TOKEN:-}" ]; then
-    echo "  ✅ APIFY_TOKEN: set"
-else
-    echo "  ⚠️  APIFY_TOKEN not set in environment (may be in n8n credentials)"
-fi
-
-# SerpAPI check
-if [ -n "${SERPAPI_KEY:-}" ]; then
-    echo "  ✅ SERPAPI_KEY: set"
-else
-    echo "  ⚠️  SERPAPI_KEY not set in environment (may be in n8n credentials)"
-fi
-
-# OpenRouter check
-if [ -n "${OPENROUTER_API_KEY:-}" ]; then
-    echo "  ✅ OPENROUTER_API_KEY: set"
-else
-    echo "  ⚠️  OPENROUTER_API_KEY not set (may be in n8n credentials)"
-fi
-
-# Research tables check
+# Research + cinematic tables
 echo ""
-echo "▶ Checking Topic Intelligence Supabase tables..."
-for table in research_runs research_results research_categories; do
+echo "▶ Checking Supabase tables (research + cinematic + calendar + engagement)..."
+for table in research_runs research_results research_categories scheduled_posts platform_metadata comments music_library renders production_logs; do
     RESP=$(curl -s -o /dev/null -w "%{http_code}" \
         "${SUPABASE_URL}/rest/v1/${table}?select=id&limit=1" \
         -H "apikey: ${SUPABASE_ANON_KEY:-none}" \
         -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY:-none}" 2>/dev/null || echo "000")
     if [ "$RESP" = "200" ]; then
-        echo "  ✅ Table: ${table}"
-    elif [ "$RESP" = "000" ]; then
-        echo "  ⚠️  Table: ${table} — could not connect"
+        echo "  ✅ $table"
     else
-        echo "  ❌ Table: ${table} — HTTP ${RESP} (run migration 002)"
+        echo "  ❌ $table — HTTP ${RESP} (run migrations)"
     fi
 done
+
+# Cinematic fields on scenes table
+echo ""
+echo "▶ Checking cinematic fields on scenes table..."
+SCENE_CHECK=$(curl -s "${SUPABASE_URL}/rest/v1/scenes?select=color_mood,zoom_direction&limit=1" \
+    -H "apikey: ${SUPABASE_ANON_KEY:-none}" \
+    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY:-none}" 2>/dev/null || echo "error")
+if echo "$SCENE_CHECK" | grep -q "color_mood"; then
+    echo "  ✅ Cinematic fields present on scenes table"
+else
+    echo "  ❌ Cinematic fields missing — run migration 003"
+fi
 
 # ─── DONE ───────────────────────────────────────────────────
 
