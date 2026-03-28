@@ -1,0 +1,251 @@
+<h2>Core Pipeline Pages — Dashboard, Topics, Scripts</h2>
+<p class="subtitle">The 3 pages users spend the most time on</p>
+
+<div class="section">
+  <h3>1. Project Dashboard — Command Center</h3>
+  <div class="mockup">
+    <div class="mockup-header">/project/:id — Command Center</div>
+    <div class="mockup-body" style="background:#0C0A1A;padding:28px;font-family:system-ui;color:#fafafa;font-size:12px;">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div>
+          <div style="font-size:10px;color:#52525B;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">Project</div>
+          <h2 style="margin:0;font-size:20px;font-weight:700;letter-spacing:-0.03em;">US Credit Cards</h2>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#A1A1AA;padding:6px 12px;border-radius:8px;font-size:11px;cursor:pointer;">Export</button>
+          <button style="background:linear-gradient(135deg,#F59E0B,#EA580C);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">Start Production</button>
+        </div>
+      </div>
+
+      <!-- KPI Cards Row -->
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;">
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;">
+          <div style="font-size:9px;color:#71717A;text-transform:uppercase;letter-spacing:0.05em;">Topics</div>
+          <div style="display:flex;align-items:baseline;gap:4px;margin-top:4px;">
+            <span style="font-size:22px;font-weight:700;letter-spacing:-0.03em;">25</span>
+            <span style="font-size:10px;color:#34D399;">22 approved</span>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;">
+          <div style="font-size:9px;color:#71717A;text-transform:uppercase;letter-spacing:0.05em;">Published</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.03em;margin-top:4px;color:#34D399;">12</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;">
+          <div style="font-size:9px;color:#71717A;text-transform:uppercase;letter-spacing:0.05em;">In Progress</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.03em;margin-top:4px;color:#FBBF24;">3</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;">
+          <div style="font-size:9px;color:#71717A;text-transform:uppercase;letter-spacing:0.05em;">Revenue</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.03em;margin-top:4px;background:linear-gradient(135deg,#FBBF24,#F97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">$4.2K</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;">
+          <div style="font-size:9px;color:#71717A;text-transform:uppercase;letter-spacing:0.05em;">Total Spend</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.03em;margin-top:4px;">$196</div>
+        </div>
+      </div>
+
+      <!-- Pipeline Table -->
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-weight:600;font-size:13px;">Pipeline</span>
+          <div style="display:flex;gap:6px;">
+            <span style="padding:3px 10px;border-radius:6px;background:rgba(251,191,36,0.1);color:#FBBF24;font-size:10px;font-weight:500;">All</span>
+            <span style="padding:3px 10px;border-radius:6px;color:#71717A;font-size:10px;">Active</span>
+            <span style="padding:3px 10px;border-radius:6px;color:#71717A;font-size:10px;">Published</span>
+          </div>
+        </div>
+        <!-- Table header -->
+        <div style="display:grid;grid-template-columns:40px 1fr 100px 120px 80px 80px 80px;padding:8px 16px;font-size:10px;color:#52525B;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <span>#</span><span>Title</span><span>Angle</span><span>Status</span><span>Score</span><span>Views</span><span>Revenue</span>
+        </div>
+        <!-- Row 1 - published -->
+        <div style="display:grid;grid-template-columns:40px 1fr 100px 120px 80px 80px 80px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.03);align-items:center;cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+          <span style="color:#71717A;">1</span>
+          <span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Amex Platinum Worth $695?</span>
+          <span style="font-size:10px;color:#A1A1AA;">Mathematician</span>
+          <span><span style="background:rgba(16,185,129,0.1);color:#34D399;padding:2px 8px;border-radius:5px;font-size:10px;">Published</span></span>
+          <span style="color:#FBBF24;font-weight:600;">7.8</span>
+          <span>45K</span>
+          <span style="color:#34D399;font-weight:500;">$1,575</span>
+        </div>
+        <!-- Row 2 - in production -->
+        <div style="display:grid;grid-template-columns:40px 1fr 100px 120px 80px 80px 80px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.03);align-items:center;cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+          <span style="color:#71717A;">2</span>
+          <span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Perfect 3-Card Wallet Setup</span>
+          <span style="font-size:10px;color:#A1A1AA;">Mathematician</span>
+          <span><span style="background:rgba(251,191,36,0.1);color:#FBBF24;padding:2px 8px;border-radius:5px;font-size:10px;">Assembly</span></span>
+          <span style="color:#FBBF24;font-weight:600;">8.1</span>
+          <span style="color:#52525B;">—</span>
+          <span style="color:#52525B;">—</span>
+        </div>
+        <!-- Row 3 - script review -->
+        <div style="display:grid;grid-template-columns:40px 1fr 100px 120px 80px 80px 80px;padding:10px 16px;align-items:center;cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+          <span style="color:#71717A;">3</span>
+          <span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">CSR vs CSP: 365 Days Later</span>
+          <span style="font-size:10px;color:#A1A1AA;">Mathematician</span>
+          <span><span style="background:rgba(139,92,246,0.1);color:#A78BFA;padding:2px 8px;border-radius:5px;font-size:10px;">⏸ Script Review</span></span>
+          <span style="color:#FBBF24;font-weight:600;">6.2</span>
+          <span style="color:#52525B;">—</span>
+          <span style="color:#52525B;">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>2. Topic Review — Card Grid with Actions</h3>
+  <div class="mockup">
+    <div class="mockup-header">/project/:id/topics — Review & Approve</div>
+    <div class="mockup-body" style="background:#0C0A1A;padding:28px;font-family:system-ui;color:#fafafa;font-size:12px;">
+      <!-- Header with bulk bar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <h2 style="margin:0;font-size:20px;font-weight:700;letter-spacing:-0.03em;">Topics</h2>
+          <p style="margin:4px 0 0;font-size:12px;color:#71717A;">25 topics · 22 approved · 1 pending · 2 rejected</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#A1A1AA;padding:6px 12px;border-radius:8px;font-size:11px;">Filter ▾</button>
+          <button style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);color:#34D399;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:500;">✓ Approve All Pending</button>
+        </div>
+      </div>
+
+      <!-- Topic Card -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:18px;margin-bottom:12px;">
+        <div style="display:flex;align-items:start;gap:14px;">
+          <div style="min-width:32px;height:32px;border-radius:8px;background:rgba(251,191,36,0.1);display:flex;align-items:center;justify-content:center;color:#FBBF24;font-weight:700;font-size:13px;">#1</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span style="font-size:9px;color:#A78BFA;background:rgba(139,92,246,0.1);padding:2px 6px;border-radius:4px;">Mathematician</span>
+              <span style="font-size:9px;color:#34D399;background:rgba(16,185,129,0.1);padding:2px 6px;border-radius:4px;">CPM $35-50+</span>
+              <span style="font-size:9px;color:#F59E0B;background:rgba(245,158,11,0.1);padding:2px 6px;border-radius:4px;">🔥 Very High Viral</span>
+            </div>
+            <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em;margin-bottom:4px;">Is the Amex Platinum Worth $695? I Did the Math for 7 Lifestyles</div>
+            <div style="font-size:11px;color:#A1A1AA;margin-bottom:10px;">Every YouTuber says get the Amex Platinum. But they all have the same lifestyle...</div>
+            <!-- Avatar preview -->
+            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:8px;padding:10px;display:flex;gap:16px;font-size:10px;color:#A1A1AA;">
+              <div>👤 <span style="color:#fafafa;">Marcus, 34</span></div>
+              <div>💼 Software Engineer, $145K</div>
+              <div>😤 Paying $695/yr, not sure getting value</div>
+              <div>💭 Validation anxiety</div>
+            </div>
+          </div>
+          <!-- Actions -->
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:90px;">
+            <button style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);color:#34D399;padding:6px 0;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;text-align:center;">✓ Approve</button>
+            <button style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);color:#F87171;padding:6px 0;border-radius:7px;font-size:11px;cursor:pointer;text-align:center;">✗ Reject</button>
+            <button style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#A1A1AA;padding:6px 0;border-radius:7px;font-size:11px;cursor:pointer;text-align:center;">↻ Refine</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Second topic card (collapsed) -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;">
+        <div style="min-width:32px;height:32px;border-radius:8px;background:rgba(16,185,129,0.1);display:flex;align-items:center;justify-content:center;color:#34D399;font-weight:700;font-size:13px;">#2</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:500;">The Perfect 3-Card Wallet for Every Budget</div>
+          <div style="font-size:10px;color:#71717A;margin-top:2px;">Mathematician · CPM $25-40 · ✓ Approved</div>
+        </div>
+        <span style="background:rgba(16,185,129,0.1);color:#34D399;padding:3px 8px;border-radius:5px;font-size:10px;">Approved</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>3. Script Review — Split Panel</h3>
+  <div class="mockup">
+    <div class="mockup-header">/project/:id/topics/:topicId/script — Script Review</div>
+    <div class="mockup-body" style="background:#0C0A1A;padding:0;font-family:system-ui;color:#fafafa;font-size:12px;display:flex;min-height:320px;">
+      <!-- Left: Score Panel -->
+      <div style="width:240px;background:rgba(255,255,255,0.02);border-right:1px solid rgba(255,255,255,0.06);padding:20px;">
+        <div style="font-size:10px;color:#52525B;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Quality Score</div>
+        <div style="font-size:36px;font-weight:800;letter-spacing:-0.04em;background:linear-gradient(135deg,#FBBF24,#F97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">7.8</div>
+        <div style="font-size:10px;color:#34D399;margin-bottom:16px;">✓ Above threshold (7.0)</div>
+
+        <!-- Score bars -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span style="color:#A1A1AA;">Persona</span><span style="color:#FBBF24;">8</span></div>
+            <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="width:80%;height:100%;background:#FBBF24;border-radius:2px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span style="color:#A1A1AA;">Hook</span><span style="color:#F97316;">9</span></div>
+            <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="width:90%;height:100%;background:#F97316;border-radius:2px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span style="color:#A1A1AA;">Pacing</span><span style="color:#FBBF24;">7</span></div>
+            <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="width:70%;height:100%;background:#FBBF24;border-radius:2px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span style="color:#A1A1AA;">Specificity</span><span style="color:#FBBF24;">8</span></div>
+            <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="width:80%;height:100%;background:#FBBF24;border-radius:2px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span style="color:#A1A1AA;">TTS Ready</span><span style="color:#FBBF24;">7</span></div>
+            <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="width:70%;height:100%;background:#FBBF24;border-radius:2px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span style="color:#A1A1AA;">Visuals</span><span style="color:#FBBF24;">8</span></div>
+            <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="width:80%;height:100%;background:#FBBF24;border-radius:2px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span style="color:#A1A1AA;">Anti-Pattern</span><span style="color:#FBBF24;">7</span></div>
+            <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="width:70%;height:100%;background:#FBBF24;border-radius:2px;"></div></div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:6px;font-size:10px;">
+          <div style="display:flex;justify-content:space-between;"><span style="color:#71717A;">Words</span><span>18,742</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#71717A;">Scenes</span><span>172</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#71717A;">Visuals</span><span style="color:#A1A1AA;">75 img · 25 i2v · 72 t2v</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#71717A;">Attempt</span><span>1 of 3</span></div>
+        </div>
+
+        <!-- Actions -->
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;">
+          <button style="background:linear-gradient(135deg,#F59E0B,#EA580C);color:#fff;border:none;padding:8px 0;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;width:100%;">✓ Approve Script</button>
+          <button style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);color:#F87171;padding:7px 0;border-radius:8px;font-size:11px;cursor:pointer;width:100%;">✗ Reject</button>
+          <button style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#A1A1AA;padding:7px 0;border-radius:8px;font-size:11px;cursor:pointer;width:100%;">↻ Refine with Feedback</button>
+        </div>
+      </div>
+
+      <!-- Right: Script Content -->
+      <div style="flex:1;padding:20px;overflow-y:auto;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+          <span style="padding:4px 10px;border-radius:6px;background:rgba(251,191,36,0.1);color:#FBBF24;font-size:10px;font-weight:500;">Pass 1</span>
+          <span style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.04);color:#71717A;font-size:10px;">Pass 2</span>
+          <span style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.04);color:#71717A;font-size:10px;">Pass 3</span>
+        </div>
+
+        <!-- Chapter -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span style="color:#FBBF24;">▸</span> Chapter 1: The Amex Platinum Myth
+          </div>
+          <!-- Scene -->
+          <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:8px;padding:12px;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <span style="font-size:9px;color:#52525B;font-family:monospace;">scene_001</span>
+              <span style="font-size:9px;background:rgba(16,185,129,0.1);color:#34D399;padding:1px 5px;border-radius:3px;">static_image</span>
+              <span style="font-size:9px;color:#52525B;">anticipation</span>
+            </div>
+            <div style="font-size:12px;line-height:1.6;color:#E4E4E7;">Meet Marcus. He's 34, a software engineer pulling in a hundred and forty-five thousand a year in Austin. Every month, six hundred and ninety-five dollars disappears from his statement...</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:8px;padding:12px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <span style="font-size:9px;color:#52525B;font-family:monospace;">scene_002</span>
+              <span style="font-size:9px;background:rgba(139,92,246,0.1);color:#A78BFA;padding:1px 5px;border-radius:3px;">i2v</span>
+              <span style="font-size:9px;color:#52525B;">tension</span>
+            </div>
+            <div style="font-size:12px;line-height:1.6;color:#E4E4E7;">His wife asked him last week why they're paying for a card they barely use for travel anymore...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">3 core pipeline pages. Let me know if these feel right, then I'll show Production, Analytics, and the remaining pages.</p>

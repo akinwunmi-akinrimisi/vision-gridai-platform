@@ -1,0 +1,89 @@
+<h2>Frontend Overhaul — 3 Approaches</h2>
+<p class="subtitle">Pick the approach that best matches your goals for Vision GridAI as a sellable SaaS product</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Evolutionary Rebuild — Keep Vite + React Router</h3>
+      <p><strong>Stack:</strong> Vite + React 18 + React Router 7 + shadcn/ui + Tailwind v4 + React Query</p>
+      <p><strong>What changes:</strong> Replace hand-rolled components with shadcn/ui. New Figma-inspired design system. Rebuild all 12 pages. Keep current routing and data layer intact.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Fastest to ship — existing hooks, API layer, and Supabase Realtime all stay</li>
+            <li>Zero migration risk — no new framework to learn</li>
+            <li>shadcn/ui is copy-paste, not a dependency — full control</li>
+            <li>Vite is the fastest dev server, perfect for SPA</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>No SSR — not ideal if you later want SEO or public-facing pages</li>
+            <li>Client-side routing only — no server-side data loading</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top:12px;padding:8px 12px;background:rgba(16,185,129,0.1);border-radius:8px;border-left:3px solid #10B981;font-size:13px;">
+        <strong>⭐ Recommended.</strong> Your dashboard is a private SPA behind auth — no SEO needed. The existing data layer (React Query + Supabase Realtime) is already well-built. This gives you the biggest visual upgrade with the least risk.
+      </p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Next.js Migration — Full Framework Upgrade</h3>
+      <p><strong>Stack:</strong> Next.js 15 (App Router) + shadcn/ui + Tailwind v4 + Server Components</p>
+      <p><strong>What changes:</strong> Migrate to Next.js. Server components for data loading. File-based routing. API routes replace n8n webhook proxying. Full rebuild.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Industry standard for SaaS — investors/buyers recognize it</li>
+            <li>Server components for faster initial loads</li>
+            <li>Built-in API routes, middleware, auth patterns</li>
+            <li>Easy to add public marketing pages later</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Major migration effort — every page, hook, and route changes</li>
+            <li>Supabase Realtime requires client components — limits Server Component benefits</li>
+            <li>Needs Node.js server (not just static files on Nginx)</li>
+            <li>Your dashboard is private SPA — SSR benefits are minimal</li>
+            <li>2-3x longer to ship vs Approach A</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid — Vite SPA Now, Next.js Later</h3>
+      <p><strong>Stack:</strong> Vite + React 18 + shadcn/ui now. Designed so pages can migrate to Next.js incrementally.</p>
+      <p><strong>What changes:</strong> Same as Approach A, but with architectural patterns (barrel exports, co-located data loaders) that make a future Next.js migration easy.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Ships fast like A, migrates like B later</li>
+            <li>No wasted work — components and hooks transfer 1:1</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Premature abstraction risk — designing for a migration that may never happen</li>
+            <li>Slightly more complex patterns for no immediate benefit</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
