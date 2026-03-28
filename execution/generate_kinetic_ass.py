@@ -152,9 +152,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         scene_offset_ms = scene_info.get("start_time_ms", 0) if scene_info else 0
 
         # Mark emphasis words
+        # Priority: scene's caption_highlight_word > auto-detection
+        highlight_word = scene_info.get("caption_highlight_word", "").strip().lower() if scene_info else ""
         all_word_texts = [w["word"] for w in words]
         for i, w in enumerate(words):
-            w["emphasis"] = is_emphasis_word(w["word"], i, all_word_texts)
+            clean_word = re.sub(r"[^a-zA-Z0-9$%]", "", w["word"]).lower()
+            if highlight_word and clean_word == highlight_word:
+                w["emphasis"] = True
+            else:
+                w["emphasis"] = is_emphasis_word(w["word"], i, all_word_texts)
             # Adjust timestamps to global video time
             w["global_start_ms"] = scene_offset_ms + w["start_ms"]
             w["global_end_ms"] = scene_offset_ms + w["end_ms"]
