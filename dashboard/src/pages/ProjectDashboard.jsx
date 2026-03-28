@@ -12,18 +12,21 @@ import {
   Upload,
   Download,
   RefreshCw,
+  Activity,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTopics } from '../hooks/useTopics';
 import { useProjectMetrics } from '../hooks/useProjectMetrics';
 import { useQuotaStatus } from '../hooks/useQuotaStatus';
 import { useBatchPublish } from '../hooks/usePublishMutations';
+import { useProjectSettings, useUpdateSettings } from '../hooks/useProjectSettings';
 import { webhookCall } from '../lib/api';
 import PageHeader from '../components/shared/PageHeader';
 import KPICard from '../components/shared/KPICard';
 import PipelineTable from '../components/dashboard/PipelineTable';
 import BatchPublishDialog from '../components/video/BatchPublishDialog';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -77,6 +80,8 @@ export default function ProjectDashboard() {
   const { metrics, isLoading: metricsLoading } = useProjectMetrics(projectId);
   const { remaining: quotaRemaining } = useQuotaStatus(projectId);
   const batchPublishMutation = useBatchPublish(projectId);
+  const { data: settings } = useProjectSettings(projectId);
+  const updateSettings = useUpdateSettings(projectId);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState(null);
 
@@ -132,6 +137,27 @@ export default function ProjectDashboard() {
     toast.success('Refreshing data...');
   }, [queryClient, projectId]);
 
+  const handleAutoPilotToggle = useCallback(
+    (checked) => {
+      updateSettings.mutate({ auto_pilot_enabled: checked });
+    },
+    [updateSettings]
+  );
+
+  const pipelineHealth = useMemo(() => {
+    if (!topics || topics.length === 0) return { status: 'idle', label: 'No topics yet', color: 'text-muted-foreground', dot: 'bg-muted-foreground' };
+    const hasFailed = topics.some(
+      (t) => t.status === 'failed' || t.error_log
+    );
+    const hasActive = topics.some(
+      (t) =>
+        ['scripting', 'audio', 'images', 'i2v', 't2v', 'assembly', 'publishing'].includes(t.status)
+    );
+    if (hasFailed) return { status: 'error', label: 'Issues detected', color: 'text-danger', dot: 'bg-danger' };
+    if (hasActive) return { status: 'active', label: 'Production active', color: 'text-warning', dot: 'bg-warning' };
+    return { status: 'ok', label: 'All systems operational', color: 'text-success', dot: 'bg-success' };
+  }, [topics]);
+
   /* ---- KPI card data ---- */
   const kpis = [
     {
@@ -171,6 +197,25 @@ export default function ProjectDashboard() {
         title="Project Dashboard"
         subtitle="Command center for your video production pipeline"
       >
+        {/* Auto-pilot toggle */}
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={!!settings?.auto_pilot_enabled}
+            onCheckedChange={handleAutoPilotToggle}
+            disabled={updateSettings.isPending}
+            id="auto-pilot-toggle"
+          />
+          <label
+            htmlFor="auto-pilot-toggle"
+            className="text-xs font-medium text-muted-foreground cursor-pointer select-none flex items-center gap-1.5"
+          >
+            {settings?.auto_pilot_enabled && (
+              <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
+            )}
+            Auto-Pilot
+          </label>
+        </div>
+
         {firstPendingTopic && (
           <Button onClick={handleStartNext} size="sm">
             <Play className="w-3.5 h-3.5" />
@@ -205,6 +250,19 @@ export default function ProjectDashboard() {
             ))
         }
       </div>
+
+      {/* Pipeline health indicator */}
+      {!isLoading && (
+        <div className="flex items-center gap-2 mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border">
+            <Activity className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className={`w-2 h-2 rounded-full ${pipelineHealth.dot}`} />
+            <span className={`text-xs font-medium ${pipelineHealth.color}`}>
+              {pipelineHealth.label}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Quick actions bar */}
       <div className="flex items-center gap-2 flex-wrap mb-4">

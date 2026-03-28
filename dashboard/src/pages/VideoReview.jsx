@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import {
   ArrowLeft,
@@ -6,9 +6,12 @@ import {
   ChevronRight,
   CheckCircle2,
   ExternalLink,
+  ChevronDown,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useVideoReview } from '../hooks/useVideoReview';
 import { useTopics } from '../hooks/useTopics';
+import { useProjectSettings } from '../hooks/useProjectSettings';
 import {
   useApproveVideo,
   useRejectVideo,
@@ -16,6 +19,7 @@ import {
   useUpdateMetadata,
   useRetryUpload,
 } from '../hooks/usePublishMutations';
+import { supabase } from '../lib/supabase';
 import VideoPlayer from '../components/video/VideoPlayer';
 import ThumbnailPreview from '../components/video/ThumbnailPreview';
 import CaptionPreview from '../components/video/CaptionPreview';
@@ -26,6 +30,13 @@ import PublishDialog from '../components/video/PublishDialog';
 import RejectDialog from '../components/video/RejectDialog';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const STATUS_MAP = {
   assembled: { status: 'assembled', label: 'Ready for Review' },
@@ -41,12 +52,132 @@ const REVIEWABLE_STATUSES = [
   'assembled', 'video_approved', 'publishing', 'scheduled', 'published', 'upload_failed',
 ];
 
+/* ------------------------------------------------------------------ */
+/*  QA Checklist section                                               */
+/* ------------------------------------------------------------------ */
+function QAChecklist({ topicId }) {
+  const [qaData, setQaData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!topicId) return;
+    let cancelled = false;
+    async function fetchQA() {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('production_log')
+          .select('details')
+          .eq('topic_id', topicId)
+          .eq('stage', 'qa_check')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (!cancelled) {
+          if (error || !data || data.length === 0) {
+            setQaData(null);
+          } else {
+            const details = typeof data[0].details === 'string'
+              ? JSON.parse(data[0].details)
+              : data[0].details;
+            setQaData(details);
+          }
+        }
+      } catch {
+        if (!cancelled) setQaData(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchQA();
+    return () => { cancelled = true; };
+  }, [topicId]);
+
+  if (loading) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-4 mt-4 animate-pulse">
+        <div className="h-4 w-32 bg-muted rounded" />
+      </div>
+    );
+  }
+
+  const checks = qaData?.checks || qaData?.items || [];
+  const passCount = checks.filter((c) => c.passed || c.status === 'pass').length;
+  const totalCount = checks.length;
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 mt-4">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center justify-between w-full text-left"
+      >
+        <div className="flex items-center gap-2">
+          <ClipboardCheck className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Quality Assurance
+          </span>
+          {totalCount > 0 && (
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                passCount === totalCount
+                  ? 'bg-success-bg text-success'
+                  : 'bg-warning-bg text-warning'
+              }`}
+            >
+              {passCount}/{totalCount}
+            </span>
+          )}
+        </div>
+        <ChevronDown
+          className={`w-4 h-4 text-muted-foreground transition-transform ${
+            expanded ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {expanded && (
+        <div className="mt-3 space-y-1.5 animate-fade-in">
+          {totalCount === 0 ? (
+            <p className="text-xs text-muted-foreground italic">
+              QA not yet run. Quality checks will appear after the QA workflow completes.
+            </p>
+          ) : (
+            checks.map((check, i) => {
+              const passed = check.passed || check.status === 'pass';
+              return (
+                <div
+                  key={check.name || check.label || i}
+                  className="flex items-start gap-2 text-xs"
+                >
+                  <span className={`flex-shrink-0 mt-0.5 ${passed ? 'text-success' : 'text-danger'}`}>
+                    {passed ? '\u2705' : '\u274C'}
+                  </span>
+                  <span className="text-foreground/80">
+                    {check.name || check.label || `Check ${i + 1}`}
+                    {check.message && (
+                      <span className="text-muted-foreground ml-1">
+                        -- {check.message}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VideoReview() {
   const { id: projectId, topicId } = useParams();
   const navigate = useNavigate();
 
   const { topic, scenes, isLoading, error } = useVideoReview(topicId);
   const { data: allTopics } = useTopics(projectId);
+  const { data: settings } = useProjectSettings(projectId);
 
   const approveVideo = useApproveVideo(projectId);
   const rejectVideo = useRejectVideo(projectId);
@@ -56,6 +187,7 @@ export default function VideoReview() {
 
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [visibility, setVisibility] = useState(null);
 
   const reviewableTopics = useMemo(
     () => (allTopics || []).filter((t) =>
@@ -72,13 +204,22 @@ export default function VideoReview() {
   const prevTopic = currentIndex > 0 ? reviewableTopics[currentIndex - 1] : null;
   const nextTopic = currentIndex < reviewableTopics.length - 1 ? reviewableTopics[currentIndex + 1] : null;
 
+  // Initialize visibility from project settings when loaded
+  useEffect(() => {
+    if (settings?.auto_pilot_default_visibility && visibility === null) {
+      setVisibility(settings.auto_pilot_default_visibility);
+    }
+  }, [settings, visibility]);
+
+  const effectiveVisibility = visibility || settings?.auto_pilot_default_visibility || 'unlisted';
+
   const isPublished = topic?.status === 'published';
   const videoReviewStatus = topic?.video_review_status || topic?.status;
 
   const handleApprove = useCallback(({ action, scheduleTime }) => {
-    approveVideo.mutate({ topicId, action, scheduleTime });
+    approveVideo.mutate({ topicId, action, scheduleTime, visibility: effectiveVisibility });
     setShowPublishDialog(false);
-  }, [approveVideo, topicId]);
+  }, [approveVideo, topicId, effectiveVisibility]);
 
   const handleReject = useCallback(({ feedback, rollbackStage }) => {
     rejectVideo.mutate({ topicId, feedback, rollbackStage });
@@ -285,6 +426,35 @@ export default function VideoReview() {
           />
           <CaptionPreview scenes={scenes} />
           <ProductionSummary topic={topic} scenes={scenes} />
+
+          {/* Visibility selector -- shown before publish */}
+          {!isPublished && (
+            <div className="bg-card border border-border rounded-xl p-4 mt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Upload Visibility
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Choose the initial visibility when publishing to YouTube
+                  </p>
+                </div>
+                <Select value={effectiveVisibility} onValueChange={setVisibility}>
+                  <SelectTrigger className="w-[140px] h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="unlisted">Unlisted</SelectItem>
+                    <SelectItem value="private">Private</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* QA Checklist */}
+          <QAChecklist topicId={topicId} />
         </div>
       </div>
 

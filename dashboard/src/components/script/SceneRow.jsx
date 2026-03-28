@@ -7,6 +7,25 @@ const VISUAL_BADGE = {
   t2v: { status: 'scripting', label: 'T2V' },
 };
 
+const COLOR_MOOD_DOT = {
+  cold_desat: 'bg-blue-400',
+  cool_neutral: 'bg-slate-400',
+  dark_mono: 'bg-zinc-600',
+  warm_sepia: 'bg-amber-600',
+  warm_gold: 'bg-amber-400',
+  full_natural: 'bg-green-400',
+  muted_selective: 'bg-purple-400',
+};
+
+const ZOOM_ICON = {
+  zoom_in: '\u2197',     // ↗
+  zoom_out: '\u2199',    // ↙
+  pan_left: '\u2190',    // ←
+  pan_right: '\u2192',   // →
+  pan_up: '\u2191',      // ↑
+  static: '~',
+};
+
 /**
  * Individual scene display row with scene_id, visual badge, narration, and hidden prompt.
  * @param {object} props
@@ -28,12 +47,29 @@ export default function SceneRow({ scene, isEditing, onStartEdit, onTogglePrompt
       onClick={() => onStartEdit(scene.id || scene.scene_id)}
       data-testid={`scene-row-${scene.scene_number}`}
     >
-      {/* Top row: scene_id + visual_type badge + emotional_beat */}
+      {/* Top row: scene_id + visual_type badge + cinematic fields + emotional_beat */}
       <div className="flex items-center gap-2">
         <span className="font-mono text-[9px] text-muted-foreground" data-testid={`line-number-${scene.scene_number}`}>
           {sceneId}
         </span>
         <StatusBadge status={badge.status} label={badge.label} />
+        {/* Cinematic field badges */}
+        {scene.color_mood && (
+          <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground" title={`Color: ${scene.color_mood}`}>
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${COLOR_MOOD_DOT[scene.color_mood] || 'bg-muted-foreground'}`} />
+            {scene.color_mood.replace(/_/g, ' ')}
+          </span>
+        )}
+        {scene.zoom_direction && (
+          <span className="text-[9px] text-muted-foreground font-mono" title={`Zoom: ${scene.zoom_direction}`}>
+            {ZOOM_ICON[scene.zoom_direction] || scene.zoom_direction}
+          </span>
+        )}
+        {scene.composition_prefix && (
+          <span className="text-[9px] text-muted-foreground/60 bg-muted px-1 py-0.5 rounded" title={`Composition: ${scene.composition_prefix}`}>
+            {scene.composition_prefix}
+          </span>
+        )}
         {scene.emotional_beat && (
           <span className="text-[9px] text-muted-foreground italic ml-auto truncate max-w-[120px]">
             {scene.emotional_beat}

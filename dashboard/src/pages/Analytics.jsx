@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useParams } from 'react-router';
+import { useParams, Link } from 'react-router';
 import {
   BarChart3,
   Eye,
@@ -10,6 +10,9 @@ import {
   Users,
   DollarSign,
   RefreshCw,
+  Youtube,
+  Share2,
+  Settings,
 } from 'lucide-react';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { refreshAnalytics } from '../lib/analyticsApi';
@@ -64,6 +67,173 @@ function formatDelta(value, suffix = '%') {
 function deltaType(value) {
   if (value == null || isNaN(value) || value === 0) return undefined;
   return value > 0 ? 'positive' : 'negative';
+}
+
+// ---------------------------------------------------------------------------
+// PlatformBreakdown — YouTube / TikTok / Instagram stats
+// ---------------------------------------------------------------------------
+
+function PlatformBreakdown({ projectId, topics }) {
+  const [shortsStats, setShortsStats] = useState(null);
+
+  useEffect(() => {
+    if (!projectId) return;
+    let cancelled = false;
+    async function load() {
+      const { data } = await supabase
+        .from('shorts')
+        .select('tiktok_views, tiktok_likes, tiktok_shares, tiktok_comments, instagram_views, instagram_likes, instagram_comments, tiktok_status, instagram_status')
+        .eq('project_id', projectId);
+
+      if (cancelled) return;
+      if (!data || data.length === 0) {
+        setShortsStats(null);
+        return;
+      }
+
+      const stats = {
+        tiktok: { views: 0, likes: 0, shares: 0, connected: false },
+        instagram: { views: 0, likes: 0, comments: 0, connected: false },
+      };
+      for (const s of data) {
+        stats.tiktok.views += s.tiktok_views || 0;
+        stats.tiktok.likes += s.tiktok_likes || 0;
+        stats.tiktok.shares += s.tiktok_shares || 0;
+        if (s.tiktok_status && s.tiktok_status !== 'pending') stats.tiktok.connected = true;
+
+        stats.instagram.views += s.instagram_views || 0;
+        stats.instagram.likes += s.instagram_likes || 0;
+        stats.instagram.comments += s.instagram_comments || 0;
+        if (s.instagram_status && s.instagram_status !== 'pending') stats.instagram.connected = true;
+      }
+      setShortsStats(stats);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  // YouTube totals from topics
+  const ytStats = useMemo(() => {
+    if (!topics?.length) return { views: 0, watchHours: 0, revenue: 0 };
+    return {
+      views: topics.reduce((s, t) => s + (t.yt_views || 0), 0),
+      watchHours: topics.reduce((s, t) => s + (parseFloat(t.yt_watch_hours) || 0), 0),
+      revenue: topics.reduce((s, t) => s + (parseFloat(t.yt_estimated_revenue) || 0), 0),
+    };
+  }, [topics]);
+
+  return (
+    <div className="mt-8 mb-8">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+        Platform Breakdown
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* YouTube */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+              <Youtube className="w-4 h-4 text-red-500" />
+            </div>
+            <span className="text-sm font-semibold">YouTube</span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Views</span>
+              <span className="font-mono tabular-nums font-medium">{ytStats.views.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Watch Hours</span>
+              <span className="font-mono tabular-nums font-medium">{ytStats.watchHours.toFixed(1)}h</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Revenue</span>
+              <span className="font-mono tabular-nums font-medium text-success">
+                ${ytStats.revenue.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* TikTok */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center">
+              <Share2 className="w-4 h-4 text-pink-500" />
+            </div>
+            <span className="text-sm font-semibold">TikTok</span>
+          </div>
+          {shortsStats?.tiktok?.connected || (shortsStats?.tiktok?.views > 0) ? (
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Views</span>
+                <span className="font-mono tabular-nums font-medium">{shortsStats.tiktok.views.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Likes</span>
+                <span className="font-mono tabular-nums font-medium">{shortsStats.tiktok.likes.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Shares</span>
+                <span className="font-mono tabular-nums font-medium">{shortsStats.tiktok.shares.toLocaleString()}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground italic">
+              <p>No TikTok data available.</p>
+              <Link
+                to={`/project/${projectId}/settings`}
+                className="inline-flex items-center gap-1 mt-2 text-primary hover:text-primary-hover transition-colors"
+              >
+                <Settings className="w-3 h-3" />
+                Connect account in Settings
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Instagram */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <svg className="w-4 h-4 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
+            </div>
+            <span className="text-sm font-semibold">Instagram</span>
+          </div>
+          {shortsStats?.instagram?.connected || (shortsStats?.instagram?.views > 0) ? (
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Views</span>
+                <span className="font-mono tabular-nums font-medium">{shortsStats.instagram.views.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Likes</span>
+                <span className="font-mono tabular-nums font-medium">{shortsStats.instagram.likes.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Comments</span>
+                <span className="font-mono tabular-nums font-medium">{shortsStats.instagram.comments.toLocaleString()}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground italic">
+              <p>No Instagram data available.</p>
+              <Link
+                to={`/project/${projectId}/settings`}
+                className="inline-flex items-center gap-1 mt-2 text-primary hover:text-primary-hover transition-colors"
+              >
+                <Settings className="w-3 h-3" />
+                Connect account in Settings
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -420,6 +590,9 @@ export default function Analytics() {
           </div>
         </>
       )}
+
+      {/* Platform breakdown */}
+      <PlatformBreakdown projectId={id} topics={topics} />
 
       {/* Niche comparison */}
       <NicheComparisonTable />
