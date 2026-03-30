@@ -684,7 +684,7 @@ export default function TopicDetail() {
 
   const { data: topic, isLoading: topicLoading } = useScript(topicId);
   const { scenes, stageProgress, failedScenes, isLoading: scenesLoading } =
-    useProductionProgress(topicId);
+    useProductionProgress(topicId, topic);
   const { logs } = useProductionLog(topicId);
   const mutations = useProductionMutations(projectId);
 

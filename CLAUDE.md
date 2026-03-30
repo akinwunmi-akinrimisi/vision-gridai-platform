@@ -15,6 +15,8 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - **Transitions:** FFmpeg xfade (5 transition types between scenes)
 - **Background Music:** Google Vertex AI Lyria (lyria-002, custom AI-generated music per video) + FFmpeg voice-ducking
 - **Assembly:** FFmpeg (in n8n Docker container)
+- **Remotion Hybrid Rendering:** Scenes AI-classified as fal_ai (photorealistic) or remotion (data/typographic). Remotion renders pixel-perfect stats, charts, comparisons, timelines. Both produce .png → same Ken Burns pipeline.
+- **Remotion Render Service:** Node.js on VPS, renders via `npx remotion still`. Called by n8n for Remotion-classified scenes.
 - **Kinetic Captions:** Remotion (React-based video renderer, free, local on VPS)
 - **Thumbnails:** Fal.ai image + text overlay via Sharp/Jimp, auto-uploaded
 - **End Cards:** FFmpeg from static branded image (3s short, 5-8s long)
@@ -93,7 +95,37 @@ vision-gridai-platform/
     ├── WF_QA_CHECK.json
     ├── WF_RETRY_WRAPPER.json
     ├── WF_MUSIC_GENERATE.json
-    └── WF_ENDCARD.json
+    ├── WF_ENDCARD.json
+    ├── WF_SCENE_CLASSIFY.json         ← NEW (Remotion hybrid)
+    └── WF_REMOTION_RENDER.json        ← NEW (Remotion hybrid)
+├── dashboard/src/remotion/
+│   ├── templates/
+│   │   ├── index.js
+│   │   ├── shared/
+│   │   │   ├── MoodTheme.js
+│   │   │   ├── Typography.js
+│   │   │   ├── AnimatedNumber.js
+│   │   │   ├── TrendArrow.js
+│   │   │   └── GlassCard.js
+│   │   ├── StatCallout.jsx
+│   │   ├── ComparisonLayout.jsx
+│   │   ├── BarChart.jsx
+│   │   ├── TimelineGraphic.jsx
+│   │   ├── QuoteCard.jsx
+│   │   ├── ListBreakdown.jsx
+│   │   ├── ChapterTitle.jsx
+│   │   ├── DataTable.jsx
+│   │   ├── BeforeAfter.jsx
+│   │   ├── PercentageRing.jsx
+│   │   ├── MapVisual.jsx
+│   │   └── MetricHighlight.jsx
+│   └── render-service.js        ← Node.js render endpoint
+├── dashboard/src/components/production/
+│   └── SceneClassificationReview.jsx  ← NEW
+├── dashboard/src/hooks/
+│   └── useSceneClassification.js      ← NEW
+├── supabase/migrations/
+│   └── 005_remotion_hybrid_rendering.sql  ← NEW
 ```
 
 ## Critical Rules
@@ -115,6 +147,8 @@ vision-gridai-platform/
 **IMPORTANT: Fal.ai is the image provider.** Images via Seedream 4.0 (`fal-ai/bytedance/seedream/v4/text-to-image`). Auth: `Authorization: Key {{FAL_API_KEY}}`. Async pattern: POST to `queue.fal.run` → poll for result.
 
 **IMPORTANT: ALL scenes use text-to-image + FFmpeg Ken Burns. No I2V or T2V.** Every scene: Seedream 4.0 image → FFmpeg zoompan (Ken Burns) + color grade → .mp4 clip. visual_type stays 'static_image' for backwards compatibility.
+
+**IMPORTANT: Hybrid rendering — Fal.ai + Remotion.** After script approval (Gate 2), ALL scenes are AI-classified as fal_ai or remotion via WF_SCENE_CLASSIFY. Results visible on dashboard. Operator reviews and can override any classification. Must click "Accept & Proceed" before image generation starts. This applies to both long-form and short-form production. Remotion scenes use data_payload (structured JSON), not image prompts. Both tracks produce .png files that enter the same Ken Burns + color grade pipeline.
 
 **IMPORTANT: Agency Agents (61 specialists) are installed at `~/.claude/agents/`.** They auto-activate based on context. Key agents: Frontend Developer (dashboard), Backend Architect (n8n workflows), DevOps Automator (VPS/Docker), Image Prompt Engineer (thumbnail/visual prompts), TikTok Strategist + Instagram Curator (social media posting). GSD executor agents inherit their expertise automatically.
 
@@ -193,8 +227,9 @@ cp -r build/* /opt/dashboard/  # Deploy to Nginx
 | A | Project creation + niche research | Agentic | ~$0.60 |
 | B | Topic + avatar generation → GATE 1 | Agentic | ~$0.20 |
 | C | 3-pass script + scoring → GATE 2 | Agentic | ~$1.80 |
+| C+ | Scene render classification → operator review | Agentic + Dashboard | ~$0.03 |
 | D1 | TTS audio (172 scenes) | Deterministic | ~$0.30 |
-| D2 | Images (172 Seedream 4.0) | Deterministic | ~$5.16 |
+| D2 | Images (Fal.ai ~108 + Remotion ~64 scenes) | Deterministic | ~$3.24 |
 | D3 | Ken Burns + Color Grade (FFmpeg) | Deterministic | Free |
 | D4 | Captions (ASS) + Transitions (xfade) + Assembly | Deterministic | Free |
 | D5 | Background music selection + ducking | Deterministic | Free |
@@ -206,7 +241,7 @@ cp -r build/* /opt/dashboard/  # Deploy to Nginx
 | H | Social posting (scheduled via calendar) | Cron | Free |
 | TI | Topic Intelligence (5-source research) | On-demand | ~$0.13 |
 | Sup | Supervisor + Comment sync + Engagement | Cron | ~$14/mo |
-| **Total per video** | | | **~$8.06** |
+| **Total per video** | | | **~$6.17** |
 
 ## Development Workflow (Superpowers)
 
@@ -271,3 +306,11 @@ Quality commands (gstack selective):
 - Platform export profiles differ: TikTok CRF 20-23, YouTube Long CRF 17-19. Do NOT use one export for all.
 - Ken Burns zoom intensity: 0.0015 increment for short-form (aggressive), 0.0008-0.001 for long-form (subtle).
 - Composition prefixes and Style DNA templates are stored in `prompt_templates` table, not hardcoded.
+- Remotion render service must be running on VPS for image generation to work. Check with `curl localhost:3100/health`.
+- Remotion templates derive colors from `color_mood` field. If color_mood is null, template defaults to `cool_neutral`.
+- `data_payload` must match the template's `props_schema` from `remotion_templates` table. Mismatched schema = render failure.
+- Classification runs in batches of 30 scenes per Haiku call (context management).
+- Operator must explicitly "Accept & Proceed" after classification review. This is NOT automatic even with auto-pilot on. Auto-pilot skips Gates 1-3 but NOT classification review (it auto-accepts if classification completes without errors).
+- Short-form scenes inherit classification from parent long-form scenes. If shorts pipeline regenerates 9:16 visuals, classification runs again.
+- Remotion rendering: ~1-2 seconds per scene. 64 scenes = ~90 seconds total. Much faster than Fal.ai (~3-5 seconds per image).
+- Preview renders use the same Remotion service but skip Drive upload. Preview PNGs are temporary.

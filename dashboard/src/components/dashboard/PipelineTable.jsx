@@ -10,6 +10,7 @@ import {
   Search,
   RotateCcw,
   AlertTriangle,
+  Scan,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
@@ -31,25 +32,26 @@ import SegmentedProgressBar, { computeWeightedProgress } from './SegmentedProgre
 /*  Status → StatusBadge variant mapping                               */
 /* ------------------------------------------------------------------ */
 const STATUS_MAP = {
-  pending:         { label: 'Pending',     variant: 'pending',    group: 'pending' },
-  approved:        { label: 'Approved',    variant: 'approved',   group: 'pending' },
-  scripting:       { label: 'Scripting',   variant: 'scripting',  group: 'active' },
-  script_approved: { label: 'Script OK',   variant: 'approved',   group: 'pending' },
-  queued:          { label: 'Queued',      variant: 'assembly',   group: 'active' },
-  producing:       { label: 'Producing',   variant: 'active',     group: 'active' },
-  audio:           { label: 'Audio',       variant: 'active',     group: 'active' },
-  images:          { label: 'Images',      variant: 'active',     group: 'active' },
-  assembling:      { label: 'Assembling',  variant: 'assembly',   group: 'active' },
-  assembled:       { label: 'Assembled',   variant: 'assembled',  group: 'active' },
-  ready_review:    { label: 'Review',      variant: 'review',     group: 'active' },
-  video_approved:  { label: 'Approved',    variant: 'approved',   group: 'active' },
-  publishing:      { label: 'Publishing',  variant: 'uploading',  group: 'active' },
-  scheduled:       { label: 'Scheduled',   variant: 'review',     group: 'published' },
-  published:       { label: 'Published',   variant: 'published',  group: 'published' },
-  upload_failed:   { label: 'Failed',      variant: 'failed',     group: 'failed' },
-  failed:          { label: 'Failed',      variant: 'failed',     group: 'failed' },
-  stopped:         { label: 'Stopped',     variant: 'pending',    group: 'failed' },
-  rejected:        { label: 'Rejected',    variant: 'rejected',   group: 'failed' },
+  pending:         { label: 'Pending',      variant: 'pending',    group: 'pending' },
+  approved:        { label: 'Approved',     variant: 'approved',   group: 'pending' },
+  scripting:       { label: 'Scripting',    variant: 'scripting',  group: 'active' },
+  script_approved: { label: 'Script OK',    variant: 'approved',   group: 'pending' },
+  classifying:     { label: 'Classifying',  variant: 'scripting',  group: 'active' },
+  queued:          { label: 'Queued',       variant: 'assembly',   group: 'active' },
+  producing:       { label: 'Producing',    variant: 'active',     group: 'active' },
+  audio:           { label: 'Audio',        variant: 'active',     group: 'active' },
+  images:          { label: 'Images',       variant: 'active',     group: 'active' },
+  assembling:      { label: 'Assembling',   variant: 'assembly',   group: 'active' },
+  assembled:       { label: 'Assembled',    variant: 'assembled',  group: 'active' },
+  ready_review:    { label: 'Review',       variant: 'review',     group: 'active' },
+  video_approved:  { label: 'Approved',     variant: 'approved',   group: 'active' },
+  publishing:      { label: 'Publishing',   variant: 'uploading',  group: 'active' },
+  scheduled:       { label: 'Scheduled',    variant: 'review',     group: 'published' },
+  published:       { label: 'Published',    variant: 'published',  group: 'published' },
+  upload_failed:   { label: 'Failed',       variant: 'failed',     group: 'failed' },
+  failed:          { label: 'Failed',       variant: 'failed',     group: 'failed' },
+  stopped:         { label: 'Stopped',      variant: 'pending',    group: 'failed' },
+  rejected:        { label: 'Rejected',     variant: 'rejected',   group: 'failed' },
 };
 
 const FILTER_TABS = [
@@ -105,6 +107,18 @@ function MobileTopicCard({ topic, projectId }) {
         </div>
       )}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        {(topic.classification_status === 'classified' || topic.classification_status === 'reviewed') && topic.scenes_fal_count != null && (
+          <span className="inline-flex items-center gap-1 font-mono tabular-nums">
+            <Scan className="w-3 h-3 text-warning" />
+            {topic.scenes_fal_count ?? 0}F / {topic.scenes_remotion_count ?? 0}R
+          </span>
+        )}
+        {topic.classification_status === 'classifying' && (
+          <span className="inline-flex items-center gap-1 text-info">
+            <Scan className="w-3 h-3 animate-pulse" />
+            Classifying
+          </span>
+        )}
         {topic.script_quality_score != null && (
           <span className="font-mono tabular-nums">Score: {topic.script_quality_score}</span>
         )}
@@ -385,6 +399,21 @@ export default function PipelineTable({ topics, projectId, statusFilter: externa
                     <span data-testid={`status-badge-${topic.id}`}>
                       <StatusBadge status={statusInfo.variant} label={statusInfo.label} />
                     </span>
+                    {/* Classification split indicator */}
+                    {(topic.classification_status === 'classified' || topic.classification_status === 'reviewed') && topic.scenes_fal_count != null && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Scan className="w-2.5 h-2.5 text-warning" />
+                        <span className="text-[9px] text-muted-foreground tabular-nums">
+                          {topic.scenes_fal_count ?? 0}F / {topic.scenes_remotion_count ?? 0}R
+                        </span>
+                      </div>
+                    )}
+                    {topic.classification_status === 'classifying' && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Scan className="w-2.5 h-2.5 text-info animate-pulse" />
+                        <span className="text-[9px] text-info">Classifying...</span>
+                      </div>
+                    )}
                   </TableCell>
 
                   {/* Progress */}

@@ -1,0 +1,526 @@
+{
+  "name": "WF_SCENE_CLASSIFY",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "classify-scenes",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-classify-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400],
+      "webhookId": "classify-scenes-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-classify",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-classify",
+      "name": "Check Auth",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [420, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-auth-failed",
+      "name": "Auth Failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [640, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst topic_id = body.topic_id;\n\nif (!topic_id) {\n  throw new Error('topic_id is required');\n}\n\nreturn [{ json: { topic_id } }];"
+      },
+      "id": "validate-request",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $json.topic_id, message: 'Classification started' }, error: null }) }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "respond-202",
+      "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [860, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}&select=*",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "read-topic",
+      "name": "Read Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/projects?id=eq.{{ $('Read Topic').first().json[0].project_id }}&select=niche,niche_description,style_dna",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "read-project",
+      "name": "Read Project",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes?topic_id=eq.{{ $('Validate Request').first().json.topic_id }}&order=scene_number.asc&select=id,scene_number,narration_text,image_prompt,composition_prefix,b_roll_insert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "read-scenes",
+      "name": "Read Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ classification_status: 'classifying' }) }}",
+        "options": {}
+      },
+      "id": "patch-topic-classifying",
+      "name": "PATCH Topic Classifying",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const scenes = $('Read Scenes').first().json;\nconst topic = $('Read Topic').first().json[0];\nconst project = $('Read Project').first().json[0];\n\nconst niche = project.niche || 'general';\nconst style_dna = project.style_dna || '';\nconst topic_title = topic.seo_title || topic.original_title || 'Untitled';\nconst topic_id = topic.id;\nconst project_id = topic.project_id;\n\n// Batch scenes into groups of 30\nconst BATCH_SIZE = 30;\nconst batches = [];\n\nfor (let i = 0; i < scenes.length; i += BATCH_SIZE) {\n  const batchScenes = scenes.slice(i, i + BATCH_SIZE);\n  const scene_numbers = batchScenes.map(s => s.scene_number);\n  const scene_ids = batchScenes.map(s => s.id);\n\n  const scenesForPrompt = batchScenes.map(s => ({\n    scene_number: s.scene_number,\n    narration: (s.narration_text || '').substring(0, 300),\n    image_prompt: (s.image_prompt || '').substring(0, 200),\n    composition_prefix: s.composition_prefix || null,\n    b_roll_insert: s.b_roll_insert || null\n  }));\n\n  const prompt = `You are a video production visual classifier. For each scene, determine if the visual should be:\n1. \"fal_ai\" — photorealistic AI image (people, environments, products, mood imagery)\n2. \"remotion\" — data graphic (numbers, comparisons, charts, timelines, lists, quotes, tables)\n\nRULES:\n- Specific numbers/prices/dates that must display accurately → \"remotion\"\n- Narration explains data while showing mood image → \"fal_ai\" (data is spoken not shown)\n- When in doubt → \"fal_ai\"\n- For remotion scenes, select template and generate data_payload\n\nTemplates: stat_callout, comparison_layout, bar_chart, timeline_graphic, quote_card, list_breakdown, chapter_title, data_table, before_after, percentage_ring, map_visual, metric_highlight\n\nVIDEO NICHE: ${niche}\nVIDEO TOPIC: ${topic_title}\nSTYLE DNA: ${style_dna}\n\nSCENES:\n${JSON.stringify(scenesForPrompt, null, 2)}\n\nOUTPUT: JSON array, one object per scene:\n[{\"scene_number\":1,\"render_method\":\"fal_ai\",\"reasoning\":\"...\",\"remotion_template\":null,\"data_payload\":null},...]\n\nFor remotion scenes, data_payload must be a valid JSON object with the data needed for the template. Example for stat_callout: {\"value\":\"$695\",\"label\":\"Annual Fee\",\"subtitle\":\"Amex Platinum\"}\n\nRESPOND ONLY WITH THE JSON ARRAY.`;\n\n  batches.push({\n    json: {\n      batch_index: Math.floor(i / BATCH_SIZE),\n      prompt,\n      scene_numbers,\n      scene_ids,\n      topic_id,\n      project_id,\n      total_batches: Math.ceil(scenes.length / BATCH_SIZE)\n    }\n  });\n}\n\nreturn batches;"
+      },
+      "id": "build-classification-batches",
+      "name": "Build Classification Batches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1740, 400]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-batches",
+      "name": "Loop Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1960, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4096, temperature: 0.2, messages: [{ role: 'user', content: $json.prompt }] }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "claude-classify-batch",
+      "name": "Claude Classify Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2180, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vlfOXwvIUlRYnr41",
+          "name": "Anthropic API Key"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst batchData = $('Loop Batches').first().json;\nconst scene_numbers = batchData.scene_numbers;\nconst scene_ids = batchData.scene_ids;\nconst topic_id = batchData.topic_id;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst anonKey = $env.SUPABASE_ANON_KEY;\nconst serviceKey = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nlet classifications = [];\n\ntry {\n  // Extract text content from Anthropic response\n  let text = '';\n  if (response.content && Array.isArray(response.content)) {\n    text = response.content.map(c => c.text || '').join('');\n  } else if (typeof response === 'string') {\n    text = response;\n  } else {\n    text = JSON.stringify(response);\n  }\n\n  // Strip markdown code fences if present\n  text = text.replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/\\s*```$/i, '').trim();\n\n  classifications = JSON.parse(text);\n} catch (parseErr) {\n  // Default all scenes in this batch to fal_ai on parse failure\n  classifications = scene_numbers.map((num, idx) => ({\n    scene_number: num,\n    render_method: 'fal_ai',\n    reasoning: 'Classification parse failed, defaulting to fal_ai',\n    remotion_template: null,\n    data_payload: null\n  }));\n}\n\n// PATCH each scene\nconst results = [];\nfor (let i = 0; i < scene_ids.length; i++) {\n  const sceneId = scene_ids[i];\n  const sceneNum = scene_numbers[i];\n  const cls = classifications.find(c => c.scene_number === sceneNum) || {\n    render_method: 'fal_ai',\n    reasoning: 'No classification returned, defaulting to fal_ai',\n    remotion_template: null,\n    data_payload: null\n  };\n\n  const patchBody = {\n    render_method: cls.render_method || 'fal_ai',\n    classification_reasoning: cls.reasoning || '',\n    classification_status: 'classified'\n  };\n\n  if (cls.render_method === 'remotion' && cls.remotion_template) {\n    patchBody.remotion_template = cls.remotion_template;\n    patchBody.data_payload = cls.data_payload ? (typeof cls.data_payload === 'string' ? cls.data_payload : JSON.stringify(cls.data_payload)) : null;\n  }\n\n  try {\n    const resp = await fetch(\n      `${supabaseUrl}/rest/v1/scenes?id=eq.${sceneId}`,\n      {\n        method: 'PATCH',\n        headers: {\n          'apikey': anonKey,\n          'Authorization': `Bearer ${serviceKey}`,\n          'Content-Type': 'application/json',\n          'Prefer': 'return=minimal'\n        },\n        body: JSON.stringify(patchBody)\n      }\n    );\n    results.push({ scene_number: sceneNum, status: 'updated', render_method: patchBody.render_method });\n  } catch (fetchErr) {\n    results.push({ scene_number: sceneNum, status: 'fetch_error', error: fetchErr.message });\n  }\n}\n\nreturn [{ json: {\n  batch_index: batchData.batch_index,\n  topic_id,\n  scenes_updated: results.length,\n  results\n} }];"
+      },
+      "id": "parse-update-scenes",
+      "name": "Parse & Update Scenes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2400, 500]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ classification_status: 'classified' }) }}",
+        "options": {}
+      },
+      "id": "patch-topic-classified",
+      "name": "PATCH Topic Classified",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2180, 260],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_logs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Validate Request').first().json.topic_id, project_id: $('Read Topic').first().json[0].project_id, stage: 'classification', action: 'completed', details: { message: 'All scenes classified' } }) }}",
+        "options": {}
+      },
+      "id": "log-complete",
+      "name": "Log Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2400, 260],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Auth": {
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Auth Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {
+            "node": "Respond 202",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Topic": {
+      "main": [
+        [
+          {
+            "node": "Read Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Project": {
+      "main": [
+        [
+          {
+            "node": "Read Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Scenes": {
+      "main": [
+        [
+          {
+            "node": "PATCH Topic Classifying",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PATCH Topic Classifying": {
+      "main": [
+        [
+          {
+            "node": "Build Classification Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Classification Batches": {
+      "main": [
+        [
+          {
+            "node": "Loop Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Batches": {
+      "main": [
+        [
+          {
+            "node": "PATCH Topic Classified",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Claude Classify Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Classify Batch": {
+      "main": [
+        [
+          {
+            "node": "Parse & Update Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Update Scenes": {
+      "main": [
+        [
+          {
+            "node": "Loop Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PATCH Topic Classified": {
+      "main": [
+        [
+          {
+            "node": "Log Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "staticData": null,
+  "tags": []
+}

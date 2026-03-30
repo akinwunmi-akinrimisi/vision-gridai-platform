@@ -5,9 +5,11 @@ import {
   Subtitles,
   Clapperboard,
   CheckCircle2,
+  Scan,
 } from 'lucide-react';
 
 const STAGES = [
+  { key: 'classification', label: 'Classify', icon: Scan },
   { key: 'audio', label: 'Audio', icon: Mic },
   { key: 'images', label: 'Images', icon: Image },
   { key: 'i2v', label: 'I2V', icon: Film },
@@ -23,7 +25,7 @@ function getStageState(key, stageProgress) {
   if (stage.completed >= stage.total) return 'completed';
   if (stage.completed > 0) return 'active';
 
-  const stageOrder = ['audio', 'images', 'i2v', 't2v', 'captions', 'assembly'];
+  const stageOrder = ['classification', 'audio', 'images', 'i2v', 't2v', 'captions', 'assembly'];
   const idx = stageOrder.indexOf(key);
   if (idx > 0) {
     const allPriorComplete = stageOrder.slice(0, idx).every((k) => {
@@ -36,8 +38,9 @@ function getStageState(key, stageProgress) {
 }
 
 /**
- * StageProgress: 6-stage horizontal progress bar showing Audio, Images, I2V, T2V, Captions, Assembly.
+ * StageProgress: 7-stage horizontal progress bar showing Classify, Audio, Images, I2V, T2V, Captions, Assembly.
  * Each stage has a thin progress bar, icon, label, and count.
+ * Classification stage shows Fal.ai/Remotion split counts when complete.
  */
 export default function StageProgress({ stageProgress }) {
   return (
@@ -82,7 +85,9 @@ export default function StageProgress({ stageProgress }) {
                 ? 'text-primary'
                 : 'text-muted-foreground'
             }`}>
-              {state === 'completed' ? (
+              {state === 'completed' && stage.key === 'classification' && progress?.falai != null ? (
+                <span className="tabular-nums">{progress.falai}F / {progress.remotion}R</span>
+              ) : state === 'completed' ? (
                 stage.label
               ) : progress && progress.total > 0 ? (
                 <span className="tabular-nums">{progress.completed}/{progress.total}</span>

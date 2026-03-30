@@ -1,0 +1,403 @@
+{
+  "name": "WF_SOCIAL_POSTER",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "social/post",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-social-post",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400],
+      "webhookId": "social-post-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth",
+      "name": "Check Auth",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [420, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-401",
+      "name": "Auth Failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [640, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate request: extract short_id, platform, caption, hashtags\nconst body = $input.first().json.body || {};\nconst shortId = body.short_id;\nconst platform = body.platform; // tiktok | instagram | youtube_shorts\nconst caption = body.caption || '';\nconst hashtags = body.hashtags || [];\n\nif (!shortId) {\n  throw new Error('Missing required field: short_id');\n}\n\nconst validPlatforms = ['tiktok', 'instagram', 'youtube_shorts'];\nif (!platform || !validPlatforms.includes(platform)) {\n  throw new Error(`Invalid platform: ${platform}. Must be one of: ${validPlatforms.join(', ')}`);\n}\n\nreturn [{ json: { short_id: shortId, platform, caption, hashtags } }];"
+      },
+      "id": "validate-request",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { short_id: $json.short_id, platform: $json.platform, message: 'Posting started' }, error: null }) }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "respond-202",
+      "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/shorts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Validate Request').first().json.short_id }}" },
+            { "name": "select", "value": "*" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "read-short",
+      "name": "Read Short",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/renders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $('Read Short').first().json[0].topic_id }}" },
+            { "name": "platform", "value": "=eq.{{ $('Validate Request').first().json.platform }}" },
+            { "name": "select", "value": "file_url,drive_id" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "read-render",
+      "name": "Read Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Validate Request').first().json.platform }}",
+                    "rightValue": "tiktok",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "tiktok"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Validate Request').first().json.platform }}",
+                    "rightValue": "instagram",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "instagram"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Validate Request').first().json.platform }}",
+                    "rightValue": "youtube_shorts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "youtube_shorts"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-platform",
+      "name": "Switch Platform",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1520, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Post to TikTok Content Posting API\nconst shortData = $('Read Short').first().json[0];\nconst renderData = $('Read Render').first().json[0] || {};\nconst validateData = $('Validate Request').first().json;\nconst caption = validateData.caption || shortData.tiktok_caption || shortData.caption || '';\nconst hashtags = validateData.hashtags || shortData.hashtags || [];\nconst fullCaption = caption + (hashtags.length ? ' ' + hashtags.map(h => h.startsWith('#') ? h : '#' + h).join(' ') : '');\n\nconst videoUrl = renderData.file_url || shortData.portrait_drive_url;\nif (!videoUrl) {\n  return [{ json: { success: false, platform: 'tiktok', error: 'No video URL available', short_id: shortData.id } }];\n}\n\nconst accessToken = process.env.TIKTOK_ACCESS_TOKEN;\nif (!accessToken) {\n  return [{ json: { success: false, platform: 'tiktok', error: 'TIKTOK_ACCESS_TOKEN not configured — skipping', short_id: shortData.id, skipped: true } }];\n}\n\ntry {\n  // Step 1: Init video upload\n  const initResp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://open.tiktokapis.com/v2/post/publish/video/init/',\n    headers: {\n      'Authorization': `Bearer ${accessToken}`,\n      'Content-Type': 'application/json',\n    },\n    body: JSON.stringify({\n      post_info: {\n        title: fullCaption.substring(0, 150),\n        privacy_level: 'PUBLIC_TO_EVERYONE',\n        disable_duet: false,\n        disable_comment: false,\n        disable_stitch: false,\n      },\n      source_info: {\n        source: 'PULL_FROM_URL',\n        video_url: videoUrl,\n      },\n    }),\n  });\n\n  const publishId = initResp?.data?.publish_id || null;\n  return [{ json: { success: true, platform: 'tiktok', post_id: publishId, short_id: shortData.id, caption: fullCaption } }];\n} catch (e) {\n  return [{ json: { success: false, platform: 'tiktok', error: e.message, short_id: shortData.id } }];\n}"
+      },
+      "id": "post-tiktok",
+      "name": "Post TikTok",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Post to Instagram Graph API (Reels)\nconst shortData = $('Read Short').first().json[0];\nconst renderData = $('Read Render').first().json[0] || {};\nconst validateData = $('Validate Request').first().json;\nconst caption = validateData.caption || shortData.instagram_caption || shortData.caption || '';\nconst hashtags = validateData.hashtags || shortData.hashtags || [];\nconst fullCaption = caption + (hashtags.length ? '\\n\\n' + hashtags.map(h => h.startsWith('#') ? h : '#' + h).join(' ') : '');\n\nconst videoUrl = renderData.file_url || shortData.portrait_drive_url;\nif (!videoUrl) {\n  return [{ json: { success: false, platform: 'instagram', error: 'No video URL available', short_id: shortData.id } }];\n}\n\nconst accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;\nconst igUserId = process.env.INSTAGRAM_USER_ID;\nif (!accessToken || !igUserId) {\n  return [{ json: { success: false, platform: 'instagram', error: 'INSTAGRAM_ACCESS_TOKEN or INSTAGRAM_USER_ID not configured — skipping', short_id: shortData.id, skipped: true } }];\n}\n\ntry {\n  // Step 1: Create media container (Reels)\n  const createResp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `https://graph.facebook.com/v19.0/${igUserId}/media`,\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({\n      media_type: 'REELS',\n      video_url: videoUrl,\n      caption: fullCaption.substring(0, 2200),\n      access_token: accessToken,\n      share_to_feed: true,\n    }),\n  });\n\n  const containerId = createResp?.id;\n  if (!containerId) {\n    return [{ json: { success: false, platform: 'instagram', error: 'Failed to create media container', short_id: shortData.id } }];\n  }\n\n  // Step 2: Wait for processing (poll status)\n  let ready = false;\n  for (let attempt = 0; attempt < 10; attempt++) {\n    await new Promise(r => setTimeout(r, 5000));\n    const statusResp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: `https://graph.facebook.com/v19.0/${containerId}?fields=status_code&access_token=${accessToken}`,\n    });\n    if (statusResp?.status_code === 'FINISHED') { ready = true; break; }\n    if (statusResp?.status_code === 'ERROR') {\n      return [{ json: { success: false, platform: 'instagram', error: 'Media processing failed', short_id: shortData.id } }];\n    }\n  }\n\n  if (!ready) {\n    return [{ json: { success: false, platform: 'instagram', error: 'Media processing timed out', short_id: shortData.id } }];\n  }\n\n  // Step 3: Publish\n  const publishResp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `https://graph.facebook.com/v19.0/${igUserId}/media_publish`,\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ creation_id: containerId, access_token: accessToken }),\n  });\n\n  return [{ json: { success: true, platform: 'instagram', post_id: publishResp?.id || containerId, short_id: shortData.id, caption: fullCaption } }];\n} catch (e) {\n  return [{ json: { success: false, platform: 'instagram', error: e.message, short_id: shortData.id } }];\n}"
+      },
+      "id": "post-instagram",
+      "name": "Post Instagram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/youtube/upload",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Read Short').first().json[0].topic_id, short_id: $('Read Short').first().json[0].id, is_short: true, title: $('Validate Request').first().json.caption || $('Read Short').first().json[0].clip_title || 'Short', description: ($('Validate Request').first().json.hashtags || []).map(h => h.startsWith('#') ? h : '#' + h).join(' '), visibility: 'unlisted' }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "post-youtube-shorts",
+      "name": "Post YouTube Shorts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 580],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "single"
+      },
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2040, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Update shorts table with platform-specific posting result\nconst result = $input.first().json;\nconst platform = result.platform || $('Validate Request').first().json.platform;\nconst shortId = result.short_id || $('Validate Request').first().json.short_id;\nconst success = result.success;\n\nconst updateFields = {};\nconst now = new Date().toISOString();\n\nif (platform === 'tiktok') {\n  updateFields.tiktok_status = success ? 'published' : 'failed';\n  if (success && result.post_id) updateFields.tiktok_post_id = result.post_id;\n  if (success) updateFields.tiktok_published_at = now;\n  if (result.caption) updateFields.tiktok_caption = result.caption;\n} else if (platform === 'instagram') {\n  updateFields.instagram_status = success ? 'published' : 'failed';\n  if (success && result.post_id) updateFields.instagram_post_id = result.post_id;\n  if (success) updateFields.instagram_published_at = now;\n  if (result.caption) updateFields.instagram_caption = result.caption;\n} else if (platform === 'youtube_shorts') {\n  updateFields.youtube_shorts_status = success ? 'published' : 'failed';\n  if (result.youtube_video_id) updateFields.youtube_shorts_video_id = result.youtube_video_id;\n  if (success) updateFields.youtube_shorts_published_at = now;\n}\n\n// PATCH shorts table\nawait this.helpers.httpRequest({\n  method: 'PATCH',\n  url: `${process.env.SUPABASE_URL}/rest/v1/shorts?id=eq.${shortId}`,\n  headers: {\n    'apikey': process.env.SUPABASE_ANON_KEY,\n    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,\n    'Content-Type': 'application/json',\n    'Prefer': 'return=representation',\n  },\n  body: JSON.stringify({ ...updateFields, updated_at: now }),\n});\n\nreturn [{ json: { short_id: shortId, platform, success, post_id: result.post_id || null, fields_updated: Object.keys(updateFields) } }];"
+      },
+      "id": "update-short-status",
+      "name": "Update Short Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_logs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Read Short').first().json[0].topic_id, project_id: $('Read Short').first().json[0].project_id, stage: 'social_post', action: $json.success ? 'posted' : 'post_failed', status: $json.success ? 'success' : 'error', details: { platform: $json.platform, short_id: $json.short_id, post_id: $json.post_id, success: $json.success } }) }}",
+        "options": {}
+      },
+      "id": "log-posted",
+      "name": "Log Posted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2480, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle error: update short status to failed\nconst platform = $('Validate Request').first().json.platform;\nconst shortId = $('Validate Request').first().json.short_id;\nconst errorMsg = $input.first().json?.message || 'Unknown error';\n\nconst updateFields = {};\nif (platform === 'tiktok') updateFields.tiktok_status = 'failed';\nelse if (platform === 'instagram') updateFields.instagram_status = 'failed';\nelse if (platform === 'youtube_shorts') updateFields.youtube_shorts_status = 'failed';\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'PATCH',\n    url: `${process.env.SUPABASE_URL}/rest/v1/shorts?id=eq.${shortId}`,\n    headers: {\n      'apikey': process.env.SUPABASE_ANON_KEY,\n      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=minimal',\n    },\n    body: JSON.stringify({ ...updateFields, updated_at: new Date().toISOString() }),\n  });\n} catch (e) { /* best effort */ }\n\nreturn [{ json: { short_id: shortId, platform, error: errorMsg, status: 'failed' } }];"
+      },
+      "id": "handle-error",
+      "name": "Handle Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 600]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "Check Auth", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth": {
+      "main": [
+        [{ "node": "Validate Request", "type": "main", "index": 0 }],
+        [{ "node": "Auth Failed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [{ "node": "Respond 202", "type": "main", "index": 0 }]
+      ]
+    },
+    "Respond 202": {
+      "main": [
+        [{ "node": "Read Short", "type": "main", "index": 0 }]
+      ]
+    },
+    "Read Short": {
+      "main": [
+        [{ "node": "Read Render", "type": "main", "index": 0 }]
+      ]
+    },
+    "Read Render": {
+      "main": [
+        [{ "node": "Switch Platform", "type": "main", "index": 0 }]
+      ]
+    },
+    "Switch Platform": {
+      "main": [
+        [{ "node": "Post TikTok", "type": "main", "index": 0 }],
+        [{ "node": "Post Instagram", "type": "main", "index": 0 }],
+        [{ "node": "Post YouTube Shorts", "type": "main", "index": 0 }]
+      ]
+    },
+    "Post TikTok": {
+      "main": [
+        [{ "node": "Merge Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Post Instagram": {
+      "main": [
+        [{ "node": "Merge Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Post YouTube Shorts": {
+      "main": [
+        [{ "node": "Merge Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [{ "node": "Update Short Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Short Status": {
+      "main": [
+        [{ "node": "Log Posted", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 300,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": []
+}

@@ -74,7 +74,7 @@ export default function ProductionMonitor() {
   const currentTopic = activeTopic || stoppedTopic;
 
   const { scenes, stageProgress, failedScenes: hookFailedScenes, isLoading: scenesLoading } =
-    useProductionProgress(currentTopic?.id || null);
+    useProductionProgress(currentTopic?.id || null, currentTopic);
   const { logs } = useProductionLog(currentTopic?.id || null);
 
   const failedScenes = useMemo(() => {

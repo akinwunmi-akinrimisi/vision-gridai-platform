@@ -1,0 +1,265 @@
+{
+  "name": "WF_SOCIAL_ANALYTICS",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily 7AM UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "social/analytics/refresh",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-manual",
+      "name": "Manual Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 540],
+      "webhookId": "social-analytics-refresh"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: null, message: 'Social analytics refresh started' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [440, 540]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/shorts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "or", "value": "(tiktok_status.eq.published,instagram_status.eq.published,youtube_shorts_status.eq.published)" },
+            { "name": "select", "value": "id,topic_id,project_id,tiktok_post_id,tiktok_status,instagram_post_id,instagram_status,youtube_shorts_video_id,youtube_shorts_status" },
+            { "name": "order", "value": "created_at.desc" },
+            { "name": "limit", "value": "200" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-published-shorts",
+      "name": "Get Published Shorts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-results",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-any-results",
+      "name": "Check Any Results",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 400]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        },
+        "batchSize": 5
+      },
+      "id": "split-batches",
+      "name": "SplitInBatches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fetch analytics stats from each platform for the current batch of shorts\nconst shorts = $input.all().map(item => item.json);\nconst results = [];\n\nfor (const short of shorts) {\n  const stats = { id: short.id, topic_id: short.topic_id, project_id: short.project_id };\n\n  // TikTok stats\n  if (short.tiktok_status === 'published' && short.tiktok_post_id && process.env.TIKTOK_ACCESS_TOKEN) {\n    try {\n      const resp = await this.helpers.httpRequest({\n        method: 'POST',\n        url: 'https://open.tiktokapis.com/v2/video/query/',\n        headers: {\n          'Authorization': `Bearer ${process.env.TIKTOK_ACCESS_TOKEN}`,\n          'Content-Type': 'application/json',\n        },\n        body: JSON.stringify({\n          filters: { video_ids: [short.tiktok_post_id] },\n          fields: ['view_count', 'like_count', 'comment_count', 'share_count'],\n        }),\n      });\n      const video = resp?.data?.videos?.[0];\n      if (video) {\n        stats.tiktok_views = video.view_count || 0;\n        stats.tiktok_likes = video.like_count || 0;\n        stats.tiktok_comments = video.comment_count || 0;\n        stats.tiktok_shares = video.share_count || 0;\n      }\n    } catch (e) { /* continue */ }\n  }\n\n  // Instagram stats\n  if (short.instagram_status === 'published' && short.instagram_post_id && process.env.INSTAGRAM_ACCESS_TOKEN) {\n    try {\n      const resp = await this.helpers.httpRequest({\n        method: 'GET',\n        url: `https://graph.facebook.com/v19.0/${short.instagram_post_id}/insights?metric=plays,likes,comments&access_token=${process.env.INSTAGRAM_ACCESS_TOKEN}`,\n      });\n      const metrics = resp?.data || [];\n      for (const m of metrics) {\n        if (m.name === 'plays') stats.instagram_views = m.values?.[0]?.value || 0;\n        if (m.name === 'likes') stats.instagram_likes = m.values?.[0]?.value || 0;\n        if (m.name === 'comments') stats.instagram_comments = m.values?.[0]?.value || 0;\n      }\n    } catch (e) { /* continue */ }\n  }\n\n  // YouTube Shorts stats\n  if (short.youtube_shorts_status === 'published' && short.youtube_shorts_video_id && process.env.YOUTUBE_API_KEY) {\n    try {\n      const resp = await this.helpers.httpRequest({\n        method: 'GET',\n        url: `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${short.youtube_shorts_video_id}&key=${process.env.YOUTUBE_API_KEY}`,\n      });\n      const video = resp?.items?.[0]?.statistics;\n      if (video) {\n        stats.youtube_shorts_views = parseInt(video.viewCount) || 0;\n        stats.youtube_shorts_likes = parseInt(video.likeCount) || 0;\n      }\n    } catch (e) { /* continue */ }\n  }\n\n  results.push(stats);\n}\n\nreturn results.map(r => ({ json: r }));"
+      },
+      "id": "fetch-stats",
+      "name": "Fetch Stats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PATCH each short with fetched analytics stats\nconst items = $input.all();\nlet updated = 0;\n\nfor (const item of items) {\n  const s = item.json;\n  const patchBody = {};\n\n  // Only include fields that were actually fetched\n  if (s.tiktok_views !== undefined) patchBody.tiktok_views = s.tiktok_views;\n  if (s.tiktok_likes !== undefined) patchBody.tiktok_likes = s.tiktok_likes;\n  if (s.tiktok_comments !== undefined) patchBody.tiktok_comments = s.tiktok_comments;\n  if (s.tiktok_shares !== undefined) patchBody.tiktok_shares = s.tiktok_shares;\n  if (s.instagram_views !== undefined) patchBody.instagram_views = s.instagram_views;\n  if (s.instagram_likes !== undefined) patchBody.instagram_likes = s.instagram_likes;\n  if (s.instagram_comments !== undefined) patchBody.instagram_comments = s.instagram_comments;\n  if (s.youtube_shorts_views !== undefined) patchBody.youtube_shorts_views = s.youtube_shorts_views;\n  if (s.youtube_shorts_likes !== undefined) patchBody.youtube_shorts_likes = s.youtube_shorts_likes;\n\n  if (Object.keys(patchBody).length === 0) continue;\n\n  patchBody.updated_at = new Date().toISOString();\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: `${process.env.SUPABASE_URL}/rest/v1/shorts?id=eq.${s.id}`,\n      headers: {\n        'apikey': process.env.SUPABASE_ANON_KEY,\n        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,\n        'Content-Type': 'application/json',\n        'Prefer': 'return=minimal',\n      },\n      body: JSON.stringify(patchBody),\n    });\n    updated++;\n  } catch (e) { /* continue with next */ }\n}\n\nreturn [{ json: { updated, total: items.length } }];"
+      },
+      "id": "patch-shorts",
+      "name": "PATCH Shorts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_logs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ stage: 'social_analytics', action: 'analytics_refreshed', status: 'success', details: { updated: $json.updated, total: $json.total, refreshed_at: new Date().toISOString() } }) }}",
+        "options": {}
+      },
+      "id": "log-refresh",
+      "name": "Log Refresh",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// No published shorts found — nothing to refresh\nreturn [{ json: { message: 'No published shorts found', refreshed: 0 } }];"
+      },
+      "id": "no-results",
+      "name": "No Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 540]
+    },
+    {
+      "parameters": {},
+      "id": "schedule-done",
+      "name": "Schedule Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle errors during analytics refresh\nconst error = $input.first().json;\nconst errorMsg = error?.message || error?.error || 'Unknown error during analytics refresh';\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${process.env.SUPABASE_URL}/rest/v1/production_logs`,\n    headers: {\n      'apikey': process.env.SUPABASE_ANON_KEY,\n      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=minimal',\n    },\n    body: JSON.stringify({ stage: 'social_analytics', action: 'analytics_refresh_failed', status: 'error', details: { error: errorMsg } }),\n  });\n} catch (e) { /* best effort */ }\n\nreturn [{ json: { error: errorMsg, status: 'failed' } }];"
+      },
+      "id": "handle-error",
+      "name": "Handle Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 540]
+    }
+  ],
+  "connections": {
+    "Daily 7AM UTC": {
+      "main": [
+        [{ "node": "Get Published Shorts", "type": "main", "index": 0 }]
+      ]
+    },
+    "Manual Webhook": {
+      "main": [
+        [{ "node": "Respond OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Respond OK": {
+      "main": [
+        [{ "node": "Get Published Shorts", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Published Shorts": {
+      "main": [
+        [{ "node": "Check Any Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Any Results": {
+      "main": [
+        [{ "node": "SplitInBatches", "type": "main", "index": 0 }],
+        [{ "node": "No Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "SplitInBatches": {
+      "main": [
+        [{ "node": "Log Refresh", "type": "main", "index": 0 }],
+        [{ "node": "Fetch Stats", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Stats": {
+      "main": [
+        [{ "node": "PATCH Shorts", "type": "main", "index": 0 }]
+      ]
+    },
+    "PATCH Shorts": {
+      "main": [
+        [{ "node": "SplitInBatches", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Refresh": {
+      "main": [
+        [{ "node": "Schedule Done", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 600,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": []
+}
