@@ -14,7 +14,10 @@
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 400],
+      "position": [
+        200,
+        400
+      ],
       "webhookId": "master-start-webhook"
     },
     {
@@ -44,7 +47,10 @@
       "name": "Check Auth",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [420, 400]
+      "position": [
+        420,
+        400
+      ]
     },
     {
       "parameters": {
@@ -58,7 +64,10 @@
       "name": "Auth Failed",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [640, 600]
+      "position": [
+        640,
+        600
+      ]
     },
     {
       "parameters": {
@@ -68,7 +77,10 @@
       "name": "Validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 300]
+      "position": [
+        640,
+        300
+      ]
     },
     {
       "parameters": {
@@ -82,7 +94,10 @@
       "name": "Respond 202",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [860, 300]
+      "position": [
+        860,
+        300
+      ]
     },
     {
       "parameters": {
@@ -93,14 +108,23 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "id", "value": "=eq.{{ $('Validate').first().json.topic_id }}" },
-            { "name": "select", "value": "*" }
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Validate').first().json.topic_id }}"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            }
           ]
         },
         "options": {}
@@ -109,7 +133,10 @@
       "name": "Read Topic",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1080, 300],
+      "position": [
+        1080,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -125,13 +152,17 @@
       "name": "Determine Start Stage",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1300, 300]
+      "position": [
+        1300,
+        300
+      ]
     },
     {
       "parameters": {
         "rules": {
           "values": [
             {
+              "outputIndex": 0,
               "conditions": {
                 "conditions": [
                   {
@@ -143,11 +174,10 @@
                     }
                   }
                 ]
-              },
-              "renameOutput": true,
-              "outputKey": "script"
+              }
             },
             {
+              "outputIndex": 1,
               "conditions": {
                 "conditions": [
                   {
@@ -159,11 +189,10 @@
                     }
                   }
                 ]
-              },
-              "renameOutput": true,
-              "outputKey": "classify"
+              }
             },
             {
+              "outputIndex": 2,
               "conditions": {
                 "conditions": [
                   {
@@ -175,11 +204,10 @@
                     }
                   }
                 ]
-              },
-              "renameOutput": true,
-              "outputKey": "images"
+              }
             },
             {
+              "outputIndex": 3,
               "conditions": {
                 "conditions": [
                   {
@@ -191,11 +219,10 @@
                     }
                   }
                 ]
-              },
-              "renameOutput": true,
-              "outputKey": "tts"
+              }
             },
             {
+              "outputIndex": 4,
               "conditions": {
                 "conditions": [
                   {
@@ -207,11 +234,10 @@
                     }
                   }
                 ]
-              },
-              "renameOutput": true,
-              "outputKey": "assembly"
+              }
             },
             {
+              "outputIndex": 5,
               "conditions": {
                 "conditions": [
                   {
@@ -223,20 +249,19 @@
                     }
                   }
                 ]
-              },
-              "renameOutput": true,
-              "outputKey": "thumbnail"
+              }
             }
-          ],
-          "fallbackOutput": "extra"
-        },
-        "options": {}
+          ]
+        }
       },
       "id": "switch-stage",
       "name": "Switch Stage",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [1520, 300]
+      "position": [
+        1520,
+        300
+      ]
     },
     {
       "parameters": {
@@ -247,8 +272,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -262,7 +293,10 @@
       "name": "Trigger Script",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, -20],
+      "position": [
+        1780,
+        -20
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -279,8 +313,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -294,7 +334,10 @@
       "name": "Trigger Classify",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 120],
+      "position": [
+        1780,
+        120
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -311,8 +354,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -326,7 +375,10 @@
       "name": "Trigger Images",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 260],
+      "position": [
+        1780,
+        260
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -343,8 +395,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -358,7 +416,10 @@
       "name": "Trigger TTS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 400],
+      "position": [
+        1780,
+        400
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -375,8 +436,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -390,7 +457,10 @@
       "name": "Trigger Assembly",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 540],
+      "position": [
+        1780,
+        540
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -407,8 +477,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -422,7 +498,10 @@
       "name": "Trigger Thumbnail",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 680],
+      "position": [
+        1780,
+        680
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -439,9 +518,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -453,7 +541,10 @@
       "name": "Log Started",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2040, 300],
+      "position": [
+        2040,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -469,79 +560,196 @@
       "name": "Handle Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [860, 600]
+      "position": [
+        860,
+        600
+      ]
     }
   ],
   "connections": {
     "Webhook Trigger": {
       "main": [
-        [{ "node": "Check Auth", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Check Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Check Auth": {
       "main": [
-        [{ "node": "Validate", "type": "main", "index": 0 }],
-        [{ "node": "Auth Failed", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Validate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Auth Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Validate": {
       "main": [
-        [{ "node": "Respond 202", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond 202",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Respond 202": {
       "main": [
-        [{ "node": "Read Topic", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Read Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Read Topic": {
       "main": [
-        [{ "node": "Determine Start Stage", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Determine Start Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Determine Start Stage": {
       "main": [
-        [{ "node": "Switch Stage", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Switch Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Switch Stage": {
       "main": [
-        [{ "node": "Trigger Script", "type": "main", "index": 0 }],
-        [{ "node": "Trigger Classify", "type": "main", "index": 0 }],
-        [{ "node": "Trigger Images", "type": "main", "index": 0 }],
-        [{ "node": "Trigger TTS", "type": "main", "index": 0 }],
-        [{ "node": "Trigger Assembly", "type": "main", "index": 0 }],
-        [{ "node": "Trigger Thumbnail", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Trigger Script",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trigger Classify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trigger Images",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trigger TTS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trigger Assembly",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trigger Thumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Trigger Script": {
       "main": [
-        [{ "node": "Log Started", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Log Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Trigger Classify": {
       "main": [
-        [{ "node": "Log Started", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Log Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Trigger Images": {
       "main": [
-        [{ "node": "Log Started", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Log Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Trigger TTS": {
       "main": [
-        [{ "node": "Log Started", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Log Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Trigger Assembly": {
       "main": [
-        [{ "node": "Log Started", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Log Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Trigger Thumbnail": {
       "main": [
-        [{ "node": "Log Started", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Log Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },

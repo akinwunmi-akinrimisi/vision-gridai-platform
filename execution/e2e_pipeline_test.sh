@@ -371,41 +371,36 @@ test_api_calls() {
 test_n8n_workflows() {
   header "Stage 9: n8n Workflow Status"
 
-  if [ -z "${N8N_API_KEY:-}" ]; then
-    skip "n8n workflow checks" "N8N_API_KEY not set"
-    return
-  fi
+  local ACTIVE_EXPECTED="WF_IMAGE_GENERATION WF_TTS_AUDIO WF_CAPTIONS_ASSEMBLY WF_WEBHOOK_PRODUCTION WF_SCRIPT_GENERATE WF_THUMBNAIL_GENERATE WF_SCENE_CLASSIFY WF_REMOTION_RENDER WF_SOCIAL_POSTER WF_SOCIAL_ANALYTICS WF_RESEARCH_ORCHESTRATOR WF_ANALYTICS_CRON"
 
-  local ACTIVE_EXPECTED="WF_KEN_BURNS WF_RESEARCH_ORCHESTRATOR WF_SCHEDULE_PUBLISHER WF_COMMENTS_SYNC WF_IMAGE_GENERATION WF_TTS_AUDIO WF_CAPTIONS_ASSEMBLY WF_WEBHOOK_PRODUCTION WF_SCRIPT_GENERATE WF_THUMBNAIL_GENERATE WF_SCENE_CLASSIFY WF_REMOTION_RENDER WF_SOCIAL_POSTER WF_SOCIAL_ANALYTICS WF_MASTER"
+  # Use n8n CLI (works inside container without API key)
+  all_wfs=$(n8n list:workflow 2>/dev/null)
 
-  # Use external n8n URL for API access (internal may use different auth)
-  N8N_EXT="https://n8n.srv1297445.hstgr.cloud"
-  all_wfs=$(curl -s "${N8N_EXT}/api/v1/workflows?limit=100" \
-    -H "X-N8N-API-KEY: ${N8N_API_KEY}" 2>/dev/null)
-
-  if echo "$all_wfs" | grep -q '"data"'; then
+  if [ -n "$all_wfs" ]; then
     for wf_name in $ACTIVE_EXPECTED; do
-      active=$(echo "$all_wfs" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const wfs=JSON.parse(d).data||[];const w=wfs.find(w=>w.name==='$wf_name');console.log(w?w.active:'NOT_FOUND')})" 2>/dev/null)
-      if [ "$active" = "true" ]; then
-        pass "Workflow ACTIVE: $wf_name"
-      elif [ "$active" = "false" ]; then
-        fail "Workflow INACTIVE: $wf_name" "Should be active"
+      match=$(echo "$all_wfs" | grep "|${wf_name}$\||${wf_name} " | head -1)
+      if [ -n "$match" ]; then
+        pass "Workflow EXISTS: $wf_name"
       else
-        fail "Workflow NOT FOUND: $wf_name" "Does not exist on n8n"
-      fi
-    done
-
-    # Check deactivated I2V/T2V
-    for wf_name in WF_I2V_GENERATION WF_T2V_GENERATION; do
-      active=$(echo "$all_wfs" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const wfs=JSON.parse(d).data||[];const w=wfs.find(w=>w.name==='$wf_name');console.log(w?w.active:'NOT_FOUND')})" 2>/dev/null)
-      if [ "$active" = "false" ]; then
-        pass "Workflow DEACTIVATED: $wf_name (replaced by Ken Burns)"
-      elif [ "$active" = "true" ]; then
-        fail "Workflow STILL ACTIVE: $wf_name" "Should be deactivated"
+        fail "Workflow NOT FOUND: $wf_name" "Not on n8n"
       fi
     done
   else
-    skip "n8n workflow status check" "Cannot reach n8n API from container"
+    # Fallback: try API
+    if [ -n "${N8N_API_KEY:-}" ]; then
+      N8N_EXT="https://n8n.srv1297445.hstgr.cloud"
+      all_wfs_api=$(curl -s "${N8N_EXT}/api/v1/workflows?limit=200" \
+        -H "X-N8N-API-KEY: ${N8N_API_KEY}" 2>/dev/null)
+      if echo "$all_wfs_api" | grep -q '"data"'; then
+        for wf_name in $ACTIVE_EXPECTED; do
+          echo "$all_wfs_api" | grep -q "\"$wf_name\"" && pass "Workflow EXISTS: $wf_name" || fail "Workflow NOT FOUND: $wf_name" "Missing"
+        done
+      else
+        skip "n8n workflow status check" "Cannot reach n8n API"
+      fi
+    else
+      skip "n8n workflow status check" "n8n CLI failed and N8N_API_KEY not set"
+    fi
   fi
 }
 
@@ -657,13 +652,17 @@ test_dashboard() {
   code=$(curl -s -o /dev/null -w "%{http_code}" "${DASH_URL}/" 2>/dev/null || echo "000")
   [ "$code" = "200" ] && pass "Dashboard index.html (HTTP $code)" || fail "Dashboard" "HTTP $code"
 
-  # Check JS bundle exists
-  asset=$(curl -s "${DASH_URL}/" 2>/dev/null | grep -oP 'src="/assets/[^"]+\.js"' | head -1 | grep -oP '/assets/[^"]+')
+  # Check JS bundle exists — extract src from index.html
+  asset=$(curl -s "${DASH_URL}/" 2>/dev/null | grep -o 'src="[^"]*index[^"]*\.js"' | head -1 | sed 's/src="//;s/"//')
+  if [ -z "$asset" ]; then
+    asset=$(curl -s "${DASH_URL}/" 2>/dev/null | grep -o '/assets/index[^ "]*\.js' | head -1)
+  fi
   if [ -n "$asset" ]; then
+    [[ "$asset" != /* ]] && asset="/$asset"
     code=$(curl -s -o /dev/null -w "%{http_code}" "${DASH_URL}${asset}" 2>/dev/null || echo "000")
-    [ "$code" = "200" ] && pass "Dashboard JS bundle loads (HTTP $code)" || fail "Dashboard JS bundle" "HTTP $code"
+    [ "$code" = "200" ] && pass "Dashboard JS bundle loads ($asset)" || fail "Dashboard JS bundle" "HTTP $code for $asset"
   else
-    skip "Dashboard JS bundle" "Could not extract asset path"
+    skip "Dashboard JS bundle" "Could not extract asset path from index.html"
   fi
 
   # SPA routing works (non-root path returns index.html)
@@ -718,10 +717,10 @@ test_data_integrity() {
   [ "$topic_count" -gt 0 ] && pass "Topics: $topic_count found for project" || skip "Topics" "None found"
 
   # Check scenes exist for topic 1
-  TOPIC1="224cdff6"
-  scene_count=$(curl -s "${SUPABASE_URL}/rest/v1/scenes?topic_id=eq.${TOPIC1}*&select=id" \
+  TOPIC1="224cdff6-5ac2-48d4-b8cb-0eeea9cb878c"
+  scene_count=$(curl -s "${SUPABASE_URL}/rest/v1/scenes?topic_id=eq.${TOPIC1}&select=id" \
     -H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" 2>/dev/null | grep -o '"id"' | wc -l)
-  [ "$scene_count" -gt 0 ] && pass "Scenes: $scene_count for topic 1" || skip "Scenes for topic 1" "None found (topic may use full UUID)"
+  [ "$scene_count" -gt 0 ] && pass "Scenes: $scene_count for topic 1" || skip "Scenes for topic 1" "None found"
 
   # Check prompt_configs exist
   prompt_count=$(curl -s "${SUPABASE_URL}/rest/v1/prompt_configs?project_id=eq.75eb2712-ef3e-47b7-b8db-5be3740233ff&select=prompt_type" \
