@@ -31,7 +31,7 @@ const EXAMPLE_HINTS = [
   'e.g., Space Exploration',
 ];
 
-export default function CreateProjectModal({ open, onOpenChange }) {
+export default function CreateProjectModal({ open, onOpenChange, prefillNiche, prefillDescription }) {
   const [niche, setNiche] = useState('');
   const [description, setDescription] = useState('');
   const [targetVideoCount, setTargetVideoCount] = useState(25);
@@ -96,6 +96,12 @@ export default function CreateProjectModal({ open, onOpenChange }) {
     },
     enabled: !!latestRun?.id && !!selectedCategoryId,
   });
+
+  // Prefill from Research page "Use This Topic"
+  useEffect(() => {
+    if (open && prefillNiche) setNiche(prefillNiche);
+    if (open && prefillDescription) setDescription(prefillDescription);
+  }, [open, prefillNiche, prefillDescription]);
 
   // Cycle placeholder hints every 3 seconds
   useEffect(() => {

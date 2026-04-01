@@ -1,4 +1,4 @@
-import { Trophy, Flame, BarChart3, ArrowRight } from 'lucide-react';
+import { Trophy, Flame, BarChart3, ArrowRight, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -29,7 +29,8 @@ export default function CategoryCards({ categories, onUseTopic }) {
             icon: BarChart3,
           };
           const RankIcon = style.icon;
-          const isHot = (cat.total_engagement || 0) > 1000;
+          const engagement = cat.total_engagement || 0;
+          const isHot = engagement > 1000;
 
           return (
             <div
@@ -37,9 +38,7 @@ export default function CategoryCards({ categories, onUseTopic }) {
               className={cn(
                 'rounded-xl border p-4 transition-all hover:shadow-md',
                 style.bg,
-                `animate-slide-up stagger-${Math.min(i + 1, 8)}`,
               )}
-              style={{ opacity: 0 }}
             >
               {/* Rank badge + engagement */}
               <div className="flex items-center justify-between mb-3">
@@ -52,11 +51,13 @@ export default function CategoryCards({ categories, onUseTopic }) {
                   <RankIcon className="w-3 h-3" />
                   #{rank}
                 </span>
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <div className="flex items-center gap-2">
                   {isHot && <Flame className="w-3 h-3 text-danger" />}
-                  <span className="tabular-nums font-mono">
-                    {(cat.total_engagement || 0).toLocaleString()} engagement
-                  </span>
+                  {engagement > 0 && (
+                    <span className="text-[10px] text-muted-foreground tabular-nums font-mono">
+                      {engagement.toLocaleString()} engagement
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -72,30 +73,38 @@ export default function CategoryCards({ categories, onUseTopic }) {
                 </p>
               )}
 
-              {/* Top video hint */}
+              {/* Suggested video title */}
               {cat.top_video_title && (
-                <p className="text-[10px] text-muted-foreground italic mb-3 line-clamp-1">
-                  Top: {cat.top_video_title}
-                </p>
+                <div className="bg-background/50 rounded-md px-2.5 py-1.5 mb-3 border border-border/50">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">Suggested Video</p>
+                  <p className="text-xs font-medium leading-snug line-clamp-2">
+                    {cat.top_video_title}
+                  </p>
+                </div>
               )}
 
-              {/* Result count + CTA */}
-              <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/50">
-                <span className="text-[10px] text-muted-foreground">
+              {/* Metrics row */}
+              <div className="flex items-center gap-3 mb-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Users className="w-3 h-3" />
                   {cat.result_count || 0} results
                 </span>
-                {onUseTopic && (
+              </div>
+
+              {/* CTA */}
+              {onUseTopic && (
+                <div className="pt-2 border-t border-border/50">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-xs text-primary hover:text-primary-hover"
+                    className="h-7 px-2 text-xs text-primary hover:text-primary-hover w-full justify-between"
                     onClick={() => onUseTopic(cat)}
                   >
                     Use This Topic
-                    <ArrowRight className="w-3 h-3 ml-1" />
+                    <ArrowRight className="w-3 h-3" />
                   </Button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           );
         })}

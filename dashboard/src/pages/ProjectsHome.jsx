@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router';
 import { Plus, Folder, TrendingUp, DollarSign, Video, Sparkles } from 'lucide-react';
 import { useProjects, useRetryResearch } from '../hooks/useProjects';
 import PageHeader from '../components/shared/PageHeader';
@@ -10,6 +11,16 @@ import { Button } from '@/components/ui/button';
 
 export default function ProjectsHome() {
   const [modalOpen, setModalOpen] = useState(false);
+  const location = useLocation();
+
+  // Auto-open CreateProjectModal when navigated from Research "Use This Topic"
+  useEffect(() => {
+    if (location.state?.openCreateModal) {
+      setModalOpen(true);
+      // Clear the state so refreshing doesn't re-open
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
   const { data: projects, isLoading, error } = useProjects();
   const retryResearchMutation = useRetryResearch();
 
@@ -167,7 +178,12 @@ export default function ProjectsHome() {
         </div>
       )}
 
-      <CreateProjectModal open={modalOpen} onOpenChange={setModalOpen} />
+      <CreateProjectModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        prefillNiche={location.state?.prefillNiche}
+        prefillDescription={location.state?.prefillDescription}
+      />
     </div>
   );
 }

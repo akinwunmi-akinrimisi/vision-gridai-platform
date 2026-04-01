@@ -2,33 +2,32 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useRealtimeSubscription } from './useRealtimeSubscription';
 import { webhookCall } from '../lib/api';
+import { toast } from 'sonner';
 
 /**
- * Fetch the latest research run for a project.
+ * Fetch the latest research run (globally, not project-scoped).
  * Subscribes to Realtime for live progress updates.
  */
-export function useLatestRun(projectId) {
+export function useLatestRun() {
   useRealtimeSubscription(
     'research_runs',
-    projectId ? `project_id=eq.${projectId}` : null,
-    [['research-run', projectId]],
+    null,
+    [['research-run-latest']],
   );
 
   return useQuery({
-    queryKey: ['research-run', projectId],
+    queryKey: ['research-run-latest'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('research_runs')
         .select('*')
-        .eq('project_id', projectId)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      if (error && error.code === 'PGRST116') return null; // no rows
+      if (error && error.code === 'PGRST116') return null;
       if (error) throw error;
       return data;
     },
-    enabled: !!projectId,
   });
 }
 
@@ -53,7 +52,6 @@ export function useCategories(runId) {
 
 /**
  * Fetch results for a research run, optionally filtered by source.
- * Joins category label for display.
  */
 export function useResults(runId, source) {
   return useQuery({
@@ -79,28 +77,67 @@ export function useResults(runId, source) {
 
 /**
  * Trigger a new research run via n8n webhook.
- * Invalidates the latest-run cache on success so the UI picks up the new run.
+ * Accepts niche text directly (standalone) or project_id (project-scoped).
  */
 export function useRunResearch() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, platforms, timeRange }) => {
-      return webhookCall('research/run', {
-        project_id: projectId,
+    mutationFn: async ({ niche, projectId, platforms, timeRange }) => {
+      const result = await webhookCall('research/run', {
+        niche,
+        project_id: projectId || null,
         platforms,
         time_range: timeRange,
       });
+      if (result.success === false) throw new Error(result.error || 'Webhook failed');
+      return result;
     },
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: ['research-run', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['research-runs-all'] });
+    onSuccess: () => {
+      toast.success('Research started — scraping selected platforms...');
+      const poll = (attempt) => {
+        if (attempt > 10) return;
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['research-run-latest'] });
+          queryClient.invalidateQueries({ queryKey: ['research-runs-all'] });
+          poll(attempt + 1);
+        }, 2000);
+      };
+      poll(0);
+    },
+    onError: (err) => {
+      toast.error(`Research failed: ${err.message}`);
     },
   });
 }
 
 /**
- * Fetch all research runs across all projects (overview / history).
+ * Cancel a research run by setting its status to 'failed'.
+ */
+export function useCancelResearch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (runId) => {
+      const { error } = await supabase
+        .from('research_runs')
+        .update({ status: 'failed', error_log: [{ error: 'Cancelled by user' }] })
+        .eq('id', runId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Research run cancelled');
+      queryClient.invalidateQueries({ queryKey: ['research-run-latest'] });
+      queryClient.invalidateQueries({ queryKey: ['research-runs-all'] });
+    },
+    onError: (err) => {
+      toast.error(`Cancel failed: ${err.message}`);
+    },
+  });
+}
+
+/**
+ * Fetch all research runs (overview / history).
  * Limited to most recent 20 runs.
  */
 export function useAllRuns() {

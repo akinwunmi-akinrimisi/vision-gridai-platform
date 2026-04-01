@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import {
   Search,
   Play,
@@ -9,6 +10,8 @@ import {
   DollarSign,
   Clock,
   Filter,
+  History,
+  XCircle,
 } from 'lucide-react';
 import {
   useLatestRun,
@@ -17,8 +20,8 @@ import {
   useRunResearch,
   useAllRuns,
   useRunById,
+  useCancelResearch,
 } from '../hooks/useResearch';
-import { useProjects } from '../hooks/useProjects';
 
 import PageHeader from '../components/shared/PageHeader';
 import KPICard from '../components/shared/KPICard';
@@ -27,13 +30,6 @@ import ResearchProgress from '../components/research/ResearchProgress';
 import CategoryCards from '../components/research/CategoryCards';
 import SourceTabs from '../components/research/SourceTabs';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -74,7 +70,6 @@ function formatRunAge(dateStr) {
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
-
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
@@ -89,7 +84,7 @@ function formatRunAge(dateStr) {
 // ---------------------------------------------------------------------------
 
 function RunHistoryRow({ run, isSelected, onSelect }) {
-  const projectName = run.projects?.name || run.projects?.niche || 'Unknown';
+  const label = run.niche_input || run.projects?.name || run.projects?.niche || 'Unknown';
   const isActive = run.status === 'scraping' || run.status === 'categorizing';
   const platforms = run.platforms || ALL_PLATFORMS;
   const timeRange = run.time_range || '7d';
@@ -103,12 +98,11 @@ function RunHistoryRow({ run, isSelected, onSelect }) {
     >
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium truncate">{projectName}</p>
+          <p className="text-xs font-medium truncate">{label}</p>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[10px] text-muted-foreground">
               {formatRunAge(run.created_at)}
             </span>
-            {/* Platform badges */}
             <div className="flex gap-0.5">
               {ALL_PLATFORMS.map((p) => (
                 <span
@@ -120,11 +114,9 @@ function RunHistoryRow({ run, isSelected, onSelect }) {
                 />
               ))}
             </div>
-            {/* Time range */}
             <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
               {timeRange}
             </span>
-            {/* Result count */}
             {run.total_results > 0 && (
               <span className="text-[10px] text-muted-foreground tabular-nums">
                 {run.total_results} results
@@ -156,18 +148,20 @@ function RunHistoryRow({ run, isSelected, onSelect }) {
 // ---------------------------------------------------------------------------
 
 export default function Research() {
-  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const navigate = useNavigate();
+  const [nicheInput, setNicheInput] = useState('');
   const [selectedSource, setSelectedSource] = useState('all');
   const [selectedPlatforms, setSelectedPlatforms] = useState(new Set(ALL_PLATFORMS));
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [selectedRunId, setSelectedRunId] = useState(null);
+  const [justStarted, setJustStarted] = useState(false);
 
   // Data hooks
-  const { data: projects, isLoading: projectsLoading } = useProjects();
-  const { data: latestRun, isLoading: runLoading } = useLatestRun(selectedProjectId);
+  const { data: latestRun, isLoading: runLoading } = useLatestRun();
   const { data: allRuns } = useAllRuns();
   const runResearch = useRunResearch();
+  const cancelResearch = useCancelResearch();
   const { data: historicalRun } = useRunById(selectedRunId);
 
   // Use historical run if selected, otherwise latest
@@ -182,6 +176,17 @@ export default function Research() {
   const isComplete = activeRun?.status === 'complete';
   const hasRun = !!activeRun;
 
+  // Clear justStarted when a run appears or after timeout
+  useEffect(() => {
+    if (!justStarted) return;
+    if (hasRun && (isRunning || isComplete)) {
+      setJustStarted(false);
+      return;
+    }
+    const timer = setTimeout(() => setJustStarted(false), 15000);
+    return () => clearTimeout(timer);
+  }, [justStarted, hasRun, isRunning, isComplete]);
+
   // KPI data from completed run
   const kpis = useMemo(() => {
     if (!isComplete || !results) {
@@ -195,19 +200,13 @@ export default function Research() {
     };
   }, [isComplete, results, categories, activeRun]);
 
-  // Auto-select first project if none selected
-  if (!selectedProjectId && projects?.length > 0 && !projectsLoading) {
-    // Use setTimeout to avoid setting state during render
-    setTimeout(() => setSelectedProjectId(projects[0].id), 0);
-  }
-
   const allPlatformsSelected = selectedPlatforms.size === ALL_PLATFORMS.length;
 
   const togglePlatform = (key) => {
     setSelectedPlatforms((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
-        if (next.size <= 1) return prev; // minimum 1 platform
+        if (next.size <= 1) return prev;
         next.delete(key);
       } else {
         next.add(key);
@@ -225,41 +224,35 @@ export default function Research() {
   };
 
   const handleRunResearch = () => {
-    if (!selectedProjectId) return;
     const timeRange =
       selectedTimeRange === 'custom'
         ? { start: customRange.start, end: customRange.end }
         : selectedTimeRange;
+    setJustStarted(true);
+    setSelectedRunId(null);
     runResearch.mutate({
-      projectId: selectedProjectId,
+      niche: nicheInput.trim() || undefined,
       platforms: [...selectedPlatforms],
       timeRange,
     });
   };
 
-  const handleUseTopic = (category) => {
-    // This would navigate to topic creation or store it as a seed topic.
-    // For now, log for development. The n8n webhook integration comes later.
-    console.info('[Research] Use topic:', category.label);
+  const handleCancel = () => {
+    if (activeRun && isRunning) {
+      cancelResearch.mutate(activeRun.id);
+    }
   };
 
-  // ---------------------------------------------------------------------------
-  // Loading skeleton
-  // ---------------------------------------------------------------------------
-
-  if (projectsLoading) {
-    return (
-      <div className="animate-fade-in">
-        <PageHeader title="Topic Research" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-card border border-border rounded-lg p-4 h-[88px] animate-pulse" />
-          ))}
-        </div>
-        <div className="bg-card border border-border rounded-xl h-64 animate-pulse" />
-      </div>
-    );
-  }
+  const handleUseTopic = (category) => {
+    // Navigate to Projects page with category data in URL state for CreateProjectModal
+    navigate('/', {
+      state: {
+        openCreateModal: true,
+        prefillNiche: category.label,
+        prefillDescription: category.summary + (category.top_video_title ? '\n\nSuggested video: ' + category.top_video_title : ''),
+      },
+    });
+  };
 
   // ---------------------------------------------------------------------------
   // Render
@@ -270,106 +263,91 @@ export default function Research() {
       {/* Page Header */}
       <PageHeader
         title="Topic Research"
-        subtitle="AI-powered topic intelligence across Reddit, YouTube, TikTok, Google Trends, and Quora"
+        subtitle="Enter a niche to discover trending topics across Reddit, YouTube, TikTok, Google Trends, and Quora"
       >
-        {/* Project selector */}
-        <Select
-          value={selectedProjectId || ''}
-          onValueChange={(val) => {
-            setSelectedProjectId(val);
-            setSelectedSource('all');
-          }}
-        >
-          <SelectTrigger className="w-[200px] h-9 text-xs bg-card border-border">
-            <SelectValue placeholder="Select project..." />
-          </SelectTrigger>
-          <SelectContent>
-            {(projects || []).map((p) => (
-              <SelectItem key={p.id} value={p.id} className="text-xs">
-                {p.name || p.niche}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Niche input */}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={nicheInput}
+            onChange={(e) => setNicheInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleRunResearch()}
+            placeholder="Optional: narrow by niche (e.g. credit cards, AI tools)"
+            className="text-xs h-9 w-[320px] rounded-md border border-border bg-card px-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
 
-        {/* Run Research button */}
-        <Button
-          onClick={handleRunResearch}
-          disabled={!selectedProjectId || runResearch.isPending || isRunning}
-          className="bg-gradient-to-r from-primary to-destructive hover:from-primary-hover hover:to-destructive/90 text-white shadow-glow-primary"
-          size="sm"
-        >
-          {runResearch.isPending || isRunning ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span className="hidden sm:inline">Running...</span>
-            </>
-          ) : (
-            <>
-              <Play className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Run Research</span>
-              <span className="sm:hidden">Run</span>
-            </>
-          )}
-        </Button>
+          {/* Run Research button */}
+          <Button
+            onClick={handleRunResearch}
+            disabled={runResearch.isPending || justStarted}
+            className="bg-gradient-to-r from-primary to-destructive hover:from-primary-hover hover:to-destructive/90 text-white shadow-glow-primary"
+            size="sm"
+          >
+            {runResearch.isPending || justStarted ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span className="hidden sm:inline">Running...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Run Research</span>
+                <span className="sm:hidden">Run</span>
+              </>
+            )}
+          </Button>
+        </div>
       </PageHeader>
 
       {/* Platform + Time Range config row */}
-      {selectedProjectId && (
-        <div className="flex flex-wrap items-center gap-3 mb-6 animate-slide-up">
-          {/* Platform toggles */}
-          <div className="flex items-center gap-1.5">
-            <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1" />
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex items-center gap-1.5">
+          <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1" />
+          <button
+            onClick={toggleAll}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
+              allPlatformsSelected
+                ? 'bg-primary/15 text-primary border-primary/30'
+                : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
+            }`}
+          >
+            All
+          </button>
+          {ALL_PLATFORMS.map((key) => (
             <button
-              onClick={toggleAll}
+              key={key}
+              onClick={() => togglePlatform(key)}
               className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
-                allPlatformsSelected
+                selectedPlatforms.has(key)
                   ? 'bg-primary/15 text-primary border-primary/30'
                   : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
               }`}
             >
-              All
+              {PLATFORM_LABELS[key]}
             </button>
-            {ALL_PLATFORMS.map((key) => (
-              <button
-                key={key}
-                onClick={() => togglePlatform(key)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
-                  selectedPlatforms.has(key)
-                    ? 'bg-primary/15 text-primary border-primary/30'
-                    : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
-                }`}
-              >
-                {PLATFORM_LABELS[key]}
-              </button>
-            ))}
-          </div>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Time range selector */}
-          <div className="flex items-center gap-1">
-            {TIME_RANGES.map((tr) => (
-              <button
-                key={tr.value}
-                onClick={() => setSelectedTimeRange(tr.value)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
-                  selectedTimeRange === tr.value
-                    ? 'bg-accent/15 text-accent border-accent/30'
-                    : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
-                }`}
-              >
-                {tr.label}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
-      )}
+        <div className="flex-1" />
+        <div className="flex items-center gap-1">
+          {TIME_RANGES.map((tr) => (
+            <button
+              key={tr.value}
+              onClick={() => setSelectedTimeRange(tr.value)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
+                selectedTimeRange === tr.value
+                  ? 'bg-accent/15 text-accent border-accent/30'
+                  : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
+              }`}
+            >
+              {tr.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {/* Custom date range picker (shown when Custom is selected) */}
-      {selectedProjectId && selectedTimeRange === 'custom' && (
-        <div className="flex items-center gap-3 mb-6 pl-6 animate-slide-up">
+      {/* Custom date range picker */}
+      {selectedTimeRange === 'custom' && (
+        <div className="flex items-center gap-3 mb-6 pl-6">
           <label className="text-[11px] text-muted-foreground">From</label>
           <input
             type="datetime-local"
@@ -389,9 +367,9 @@ export default function Research() {
 
       {/* Viewing historical run banner */}
       {isViewingHistory && (
-        <div className="flex items-center justify-between mb-4 px-4 py-2.5 bg-info-bg border border-info-border rounded-lg animate-slide-up">
+        <div className="flex items-center justify-between mb-4 px-4 py-2.5 bg-info-bg border border-info-border rounded-lg">
           <span className="text-xs text-info font-medium">
-            Viewing run from {formatRunAge(activeRun.created_at)} — {activeRun.projects?.name || 'Unknown project'}
+            Viewing run from {formatRunAge(activeRun.created_at)} — {activeRun.niche_input || activeRun.projects?.name || 'Unknown'}
           </span>
           <button
             onClick={() => setSelectedRunId(null)}
@@ -402,120 +380,100 @@ export default function Research() {
         </div>
       )}
 
-      {/* No project selected */}
-      {!selectedProjectId && (
-        <EmptyState
-          icon={Search}
-          title="Select a project"
-          description="Choose a project from the dropdown above to view or start research."
-        />
+      {/* Just started — waiting for run to appear */}
+      {justStarted && !isRunning && (
+        <div className="bg-card border border-border rounded-xl p-8 text-center mb-6">
+          <Loader2 className="w-6 h-6 text-primary animate-spin mx-auto mb-3" />
+          <p className="text-sm font-medium mb-1">Starting research...</p>
+          <p className="text-xs text-muted-foreground">
+            {nicheInput.trim()
+              ? `Deriving keywords for "${nicheInput}" and initializing`
+              : 'Discovering trending topics on'}{' '}
+            {[...selectedPlatforms].map((p) => PLATFORM_LABELS[p]).join(', ')}
+          </p>
+        </div>
       )}
 
-      {/* Project selected but no runs yet */}
-      {selectedProjectId && !hasRun && !runLoading && (
+      {/* Active run -- show progress with cancel button */}
+      {hasRun && isRunning && !justStarted && (
+        <div className="mb-6">
+          <ResearchProgress run={activeRun} />
+          <div className="flex justify-end mt-2">
+            <Button
+              onClick={handleCancel}
+              disabled={cancelResearch.isPending}
+              variant="outline"
+              size="sm"
+              className="text-danger border-danger-border hover:bg-danger-bg"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              {cancelResearch.isPending ? 'Cancelling...' : 'Cancel Run'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* No runs yet and not starting */}
+      {!hasRun && !runLoading && !justStarted && (
         <EmptyState
           icon={Search}
           title="No research runs yet"
-          description="Click 'Run Research' to start scraping Reddit, YouTube, TikTok, Trends, and Quora for topic intelligence."
-          action={
-            <Button
-              onClick={handleRunResearch}
-              disabled={runResearch.isPending}
-              className="bg-gradient-to-r from-primary to-destructive hover:from-primary-hover hover:to-destructive/90 text-white shadow-glow-primary"
-            >
-              <Play className="w-4 h-4" />
-              Run First Research
-            </Button>
-          }
+          description="Enter a niche above and click 'Run Research' to discover trending topics across 5 platforms."
         />
       )}
 
-      {/* Loading run */}
-      {selectedProjectId && runLoading && (
+      {/* Loading */}
+      {runLoading && !justStarted && (
         <div className="bg-card border border-border rounded-xl p-8 text-center animate-pulse">
           <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin mx-auto mb-2" />
           <p className="text-xs text-muted-foreground">Loading research data...</p>
         </div>
       )}
 
-      {/* Active run -- show progress */}
-      {hasRun && isRunning && (
-        <div className="mb-6 animate-slide-up stagger-1" style={{ opacity: 0 }}>
-          <ResearchProgress run={activeRun} />
+      {/* Research History — always visible when there are runs */}
+      {allRuns && allRuns.length > 0 && !justStarted && (
+        <div className="mb-6">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+            <History className="w-3.5 h-3.5" />
+            Research History
+          </h2>
+          <div className="bg-card border border-border rounded-xl overflow-hidden max-h-[280px] overflow-y-auto">
+            {allRuns.map((run) => (
+              <RunHistoryRow
+                key={run.id}
+                run={run}
+                isSelected={selectedRunId ? run.id === selectedRunId : run.id === activeRun?.id}
+                onSelect={(r) => {
+                  setSelectedRunId(r.id);
+                  setSelectedSource('all');
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
 
       {/* Completed run -- show KPIs + categories + results */}
       {hasRun && isComplete && (
         <>
-          {/* KPI cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
-            <div className="animate-slide-up stagger-1" style={{ opacity: 0 }}>
-              <KPICard
-                label="Total Results"
-                value={String(kpis.totalResults)}
-                icon={Hash}
-              />
-            </div>
-            <div className="animate-slide-up stagger-2" style={{ opacity: 0 }}>
-              <KPICard
-                label="Categories"
-                value={String(kpis.totalCategories)}
-                icon={Layers}
-              />
-            </div>
-            <div className="animate-slide-up stagger-3" style={{ opacity: 0 }}>
-              <KPICard
-                label="Avg Engagement"
-                value={
-                  kpis.totalResults > 0
-                    ? String(Math.round(kpis.totalEngagement / kpis.totalResults))
-                    : '0'
-                }
-                icon={BarChart3}
-              />
-            </div>
-            <div className="animate-slide-up stagger-4" style={{ opacity: 0 }}>
-              <KPICard
-                label="Run Cost"
-                value={formatCost(kpis.cost)}
-                icon={DollarSign}
-              />
-            </div>
+            <KPICard label="Total Results" value={String(kpis.totalResults)} icon={Hash} />
+            <KPICard label="Categories" value={String(kpis.totalCategories)} icon={Layers} />
+            <KPICard
+              label="Avg Engagement"
+              value={kpis.totalResults > 0 ? String(Math.round(kpis.totalEngagement / kpis.totalResults)) : '0'}
+              icon={BarChart3}
+            />
+            <KPICard label="Run Cost" value={formatCost(kpis.cost)} icon={DollarSign} />
           </div>
 
-          {/* Run history */}
-          {allRuns && allRuns.length > 1 && (
-            <div className="mb-6 animate-slide-up stagger-5" style={{ opacity: 0 }}>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Research History
-              </h2>
-              <div className="bg-card border border-border rounded-xl overflow-hidden max-h-[240px] overflow-y-auto">
-                {allRuns.map((run) => (
-                  <RunHistoryRow
-                    key={run.id}
-                    run={run}
-                    isSelected={selectedRunId ? run.id === selectedRunId : run.id === activeRun?.id}
-                    onSelect={(r) => {
-                      setSelectedRunId(r.id);
-                      setSelectedProjectId(r.project_id);
-                      setSelectedSource('all');
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Category cards */}
           {categories && categories.length > 0 && (
-            <div className="mb-6 animate-slide-up stagger-6" style={{ opacity: 0 }}>
+            <div className="mb-6">
               <CategoryCards categories={categories} onUseTopic={handleUseTopic} />
             </div>
           )}
 
-          {/* Source tabs + results table */}
-          <div className="mb-6 animate-slide-up stagger-7" style={{ opacity: 0 }}>
+          <div className="mb-6">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Raw Results by Source
             </h2>
@@ -527,16 +485,13 @@ export default function Research() {
             />
           </div>
 
-          {/* Run metadata */}
           <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground py-4 border-t border-border">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               Completed {formatRunAge(activeRun.completed_at || activeRun.updated_at)}
             </span>
             {activeRun.duration_ms && (
-              <span>
-                Duration: {(activeRun.duration_ms / 1000).toFixed(1)}s
-              </span>
+              <span>Duration: {(activeRun.duration_ms / 1000).toFixed(1)}s</span>
             )}
           </div>
         </>
@@ -547,11 +502,13 @@ export default function Research() {
         <div className="bg-card border border-danger-border rounded-xl p-8 text-center mb-6">
           <p className="text-sm text-danger font-medium mb-2">Research run failed</p>
           <p className="text-xs text-muted-foreground mb-4">
-            {activeRun.error || 'An unexpected error occurred during the research run.'}
+            {Array.isArray(activeRun.error_log) && activeRun.error_log[0]?.error
+              ? activeRun.error_log[0].error
+              : 'An unexpected error occurred during the research run.'}
           </p>
           <Button
             onClick={handleRunResearch}
-            disabled={runResearch.isPending}
+            disabled={!nicheInput.trim() || runResearch.isPending}
             variant="outline"
             size="sm"
           >
@@ -559,7 +516,6 @@ export default function Research() {
           </Button>
         </div>
       )}
-
     </div>
   );
 }

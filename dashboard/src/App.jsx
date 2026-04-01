@@ -16,6 +16,7 @@ const ProductionMonitor = lazy(() => import('./pages/ProductionMonitor'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Research = lazy(() => import('./pages/Research'));
+const YouTubeDiscovery = lazy(() => import('./pages/YouTubeDiscovery'));
 const ShortsCreator = lazy(() => import('./pages/ShortsCreator'));
 const SocialPublisher = lazy(() => import('./pages/SocialPublisher'));
 const ContentCalendar = lazy(() => import('./pages/ContentCalendar'));
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/project/:id/calendar" element={<ContentCalendar />} />
             <Route path="/project/:id/engagement" element={<EngagementHub />} />
             <Route path="/research" element={<Research />} />
+            <Route path="/youtube-discovery" element={<YouTubeDiscovery />} />
             <Route path="/shorts" element={<ShortsCreator />} />
             <Route path="/social" element={<SocialPublisher />} />
             <Route path="/project/:id/settings" element={<Settings />} />

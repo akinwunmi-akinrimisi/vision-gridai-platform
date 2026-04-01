@@ -16,10 +16,12 @@ const SOURCES = [
 export default function ResearchProgress({ run }) {
   if (!run) return null;
 
-  const completedSources = run.sources_completed || [];
-  const totalSources = SOURCES.length;
-  const completed = completedSources.length;
-  const pct = Math.round((completed / totalSources) * 100);
+  // sources_completed can be an integer count or an array of source keys
+  const raw = run.sources_completed;
+  const completedSources = Array.isArray(raw) ? raw : [];
+  const completedCount = Array.isArray(raw) ? raw.length : (typeof raw === 'number' ? raw : 0);
+  const totalSources = Array.isArray(run.platforms) ? run.platforms.length : SOURCES.length;
+  const pct = totalSources > 0 ? Math.round((completedCount / totalSources) * 100) : 0;
 
   const isCategorizingPhase = run.status === 'categorizing';
   const isScraping = run.status === 'scraping';
@@ -45,7 +47,7 @@ export default function ResearchProgress({ run }) {
           <p className="text-xs text-muted-foreground mt-0.5">
             {isComplete
               ? `All ${totalSources} sources processed successfully`
-              : `${completed} of ${totalSources} sources collected`}
+              : `${completedCount} of ${totalSources} sources collected`}
           </p>
         </div>
       </div>
@@ -63,10 +65,10 @@ export default function ResearchProgress({ run }) {
         />
       </div>
 
-      {/* Source pills */}
+      {/* Source pills — show only selected platforms */}
       <div className="flex flex-wrap gap-2">
-        {SOURCES.map((src) => {
-          const done = completedSources.includes(src.key);
+        {(Array.isArray(run.platforms) ? SOURCES.filter(s => run.platforms.includes(s.key)) : SOURCES).map((src, idx) => {
+          const done = completedSources.length > 0 ? completedSources.includes(src.key) : idx < completedCount;
           return (
             <span
               key={src.key}
