@@ -85,11 +85,16 @@ export function useRunResearch() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (projectId) => {
-      return webhookCall('research/run', { project_id: projectId });
+    mutationFn: async ({ projectId, platforms, timeRange }) => {
+      return webhookCall('research/run', {
+        project_id: projectId,
+        platforms,
+        time_range: timeRange,
+      });
     },
-    onSuccess: (_, projectId) => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ['research-run', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['research-runs-all'] });
     },
   });
 }
@@ -110,5 +115,24 @@ export function useAllRuns() {
       if (error) throw error;
       return data || [];
     },
+  });
+}
+
+/**
+ * Fetch a specific research run by ID (for viewing historical results).
+ */
+export function useRunById(runId) {
+  return useQuery({
+    queryKey: ['research-run-by-id', runId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('research_runs')
+        .select('*, projects(name, niche)')
+        .eq('id', runId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!runId,
   });
 }
