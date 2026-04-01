@@ -16,6 +16,7 @@ import {
   useResults,
   useRunResearch,
   useAllRuns,
+  useRunById,
 } from '../hooks/useResearch';
 import { useProjects } from '../hooks/useProjects';
 
@@ -90,37 +91,61 @@ function formatRunAge(dateStr) {
 function RunHistoryRow({ run, isSelected, onSelect }) {
   const projectName = run.projects?.name || run.projects?.niche || 'Unknown';
   const isActive = run.status === 'scraping' || run.status === 'categorizing';
+  const platforms = run.platforms || ALL_PLATFORMS;
+  const timeRange = run.time_range || '7d';
 
   return (
     <button
-      onClick={() => onSelect(run.project_id)}
-      className={`w-full text-left px-4 py-3 border-b border-border last:border-b-0 transition-colors hover:bg-card-hover ${
+      onClick={() => onSelect(run)}
+      className={`w-full text-left px-4 py-3 border-b border-border last:border-b-0 transition-colors hover:bg-card-hover cursor-pointer ${
         isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : ''
       }`}
     >
-      <div className="flex items-center justify-between">
-        <div className="min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-medium truncate">{projectName}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            {formatRunAge(run.created_at)}
-            {isActive && (
-              <span className="ml-1.5 text-primary">
-                <Loader2 className="w-2.5 h-2.5 inline animate-spin" /> Running
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] text-muted-foreground">
+              {formatRunAge(run.created_at)}
+            </span>
+            {/* Platform badges */}
+            <div className="flex gap-0.5">
+              {ALL_PLATFORMS.map((p) => (
+                <span
+                  key={p}
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    platforms.includes(p) ? 'bg-primary' : 'bg-border'
+                  }`}
+                  title={PLATFORM_LABELS[p]}
+                />
+              ))}
+            </div>
+            {/* Time range */}
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+              {timeRange}
+            </span>
+            {/* Result count */}
+            {run.total_results > 0 && (
+              <span className="text-[10px] text-muted-foreground tabular-nums">
+                {run.total_results} results
               </span>
             )}
-          </p>
+          </div>
         </div>
-        <span
-          className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[9px] font-medium border ${
-            run.status === 'complete'
-              ? 'bg-success-bg text-success border-success-border'
-              : run.status === 'failed'
-                ? 'bg-danger-bg text-danger border-danger-border'
-                : 'bg-warning-bg text-warning border-warning-border'
-          }`}
-        >
-          {run.status}
-        </span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isActive && <Loader2 className="w-3 h-3 text-primary animate-spin" />}
+          <span
+            className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[9px] font-medium border ${
+              run.status === 'complete'
+                ? 'bg-success-bg text-success border-success-border'
+                : run.status === 'failed'
+                  ? 'bg-danger-bg text-danger border-danger-border'
+                  : 'bg-warning-bg text-warning border-warning-border'
+            }`}
+          >
+            {run.status}
+          </span>
+        </div>
       </div>
     </button>
   );
@@ -136,19 +161,26 @@ export default function Research() {
   const [selectedPlatforms, setSelectedPlatforms] = useState(new Set(ALL_PLATFORMS));
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
+  const [selectedRunId, setSelectedRunId] = useState(null);
 
   // Data hooks
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: latestRun, isLoading: runLoading } = useLatestRun(selectedProjectId);
-  const { data: categories } = useCategories(latestRun?.id);
-  const { data: results, isLoading: resultsLoading } = useResults(latestRun?.id, selectedSource);
   const { data: allRuns } = useAllRuns();
   const runResearch = useRunResearch();
+  const { data: historicalRun } = useRunById(selectedRunId);
+
+  // Use historical run if selected, otherwise latest
+  const activeRun = selectedRunId && historicalRun ? historicalRun : latestRun;
+  const isViewingHistory = !!selectedRunId && !!historicalRun;
+
+  const { data: categories } = useCategories(activeRun?.id);
+  const { data: results, isLoading: resultsLoading } = useResults(activeRun?.id, selectedSource);
 
   // Derived state
-  const isRunning = latestRun?.status === 'scraping' || latestRun?.status === 'categorizing';
-  const isComplete = latestRun?.status === 'complete';
-  const hasRun = !!latestRun;
+  const isRunning = activeRun?.status === 'scraping' || activeRun?.status === 'categorizing';
+  const isComplete = activeRun?.status === 'complete';
+  const hasRun = !!activeRun;
 
   // KPI data from completed run
   const kpis = useMemo(() => {
@@ -159,9 +191,9 @@ export default function Research() {
       totalResults: results.length,
       totalCategories: categories?.length || 0,
       totalEngagement: results.reduce((sum, r) => sum + (r.engagement_score || 0), 0),
-      cost: latestRun?.cost || 0,
+      cost: activeRun?.cost || 0,
     };
-  }, [isComplete, results, categories, latestRun]);
+  }, [isComplete, results, categories, activeRun]);
 
   // Auto-select first project if none selected
   if (!selectedProjectId && projects?.length > 0 && !projectsLoading) {
@@ -355,6 +387,21 @@ export default function Research() {
         </div>
       )}
 
+      {/* Viewing historical run banner */}
+      {isViewingHistory && (
+        <div className="flex items-center justify-between mb-4 px-4 py-2.5 bg-info-bg border border-info-border rounded-lg animate-slide-up">
+          <span className="text-xs text-info font-medium">
+            Viewing run from {formatRunAge(activeRun.created_at)} — {activeRun.projects?.name || 'Unknown project'}
+          </span>
+          <button
+            onClick={() => setSelectedRunId(null)}
+            className="text-xs font-medium text-info hover:text-info/80 underline underline-offset-2 cursor-pointer"
+          >
+            Back to Latest
+          </button>
+        </div>
+      )}
+
       {/* No project selected */}
       {!selectedProjectId && (
         <EmptyState
@@ -394,7 +441,7 @@ export default function Research() {
       {/* Active run -- show progress */}
       {hasRun && isRunning && (
         <div className="mb-6 animate-slide-up stagger-1" style={{ opacity: 0 }}>
-          <ResearchProgress run={latestRun} />
+          <ResearchProgress run={activeRun} />
         </div>
       )}
 
@@ -437,15 +484,38 @@ export default function Research() {
             </div>
           </div>
 
+          {/* Run history */}
+          {allRuns && allRuns.length > 1 && (
+            <div className="mb-6 animate-slide-up stagger-5" style={{ opacity: 0 }}>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                Research History
+              </h2>
+              <div className="bg-card border border-border rounded-xl overflow-hidden max-h-[240px] overflow-y-auto">
+                {allRuns.map((run) => (
+                  <RunHistoryRow
+                    key={run.id}
+                    run={run}
+                    isSelected={selectedRunId ? run.id === selectedRunId : run.id === activeRun?.id}
+                    onSelect={(r) => {
+                      setSelectedRunId(r.id);
+                      setSelectedProjectId(r.project_id);
+                      setSelectedSource('all');
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Category cards */}
           {categories && categories.length > 0 && (
-            <div className="mb-6 animate-slide-up stagger-5" style={{ opacity: 0 }}>
+            <div className="mb-6 animate-slide-up stagger-6" style={{ opacity: 0 }}>
               <CategoryCards categories={categories} onUseTopic={handleUseTopic} />
             </div>
           )}
 
           {/* Source tabs + results table */}
-          <div className="mb-6 animate-slide-up stagger-6" style={{ opacity: 0 }}>
+          <div className="mb-6 animate-slide-up stagger-7" style={{ opacity: 0 }}>
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Raw Results by Source
             </h2>
@@ -461,11 +531,11 @@ export default function Research() {
           <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground py-4 border-t border-border">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              Completed {formatRunAge(latestRun.completed_at || latestRun.updated_at)}
+              Completed {formatRunAge(activeRun.completed_at || activeRun.updated_at)}
             </span>
-            {latestRun.duration_ms && (
+            {activeRun.duration_ms && (
               <span>
-                Duration: {(latestRun.duration_ms / 1000).toFixed(1)}s
+                Duration: {(activeRun.duration_ms / 1000).toFixed(1)}s
               </span>
             )}
           </div>
@@ -473,11 +543,11 @@ export default function Research() {
       )}
 
       {/* Failed run */}
-      {hasRun && latestRun?.status === 'failed' && (
+      {hasRun && activeRun?.status === 'failed' && (
         <div className="bg-card border border-danger-border rounded-xl p-8 text-center mb-6">
           <p className="text-sm text-danger font-medium mb-2">Research run failed</p>
           <p className="text-xs text-muted-foreground mb-4">
-            {latestRun.error || 'An unexpected error occurred during the research run.'}
+            {activeRun.error || 'An unexpected error occurred during the research run.'}
           </p>
           <Button
             onClick={handleRunResearch}
@@ -490,24 +560,6 @@ export default function Research() {
         </div>
       )}
 
-      {/* Run history sidebar (shows when there are multiple runs) */}
-      {allRuns && allRuns.length > 1 && (
-        <div className="mt-6">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Recent Research Runs
-          </h2>
-          <div className="bg-card border border-border rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
-            {allRuns.map((run) => (
-              <RunHistoryRow
-                key={run.id}
-                run={run}
-                isSelected={run.project_id === selectedProjectId}
-                onSelect={setSelectedProjectId}
-              />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
