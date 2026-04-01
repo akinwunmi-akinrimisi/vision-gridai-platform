@@ -194,22 +194,92 @@ export default function VideoAnalysis() {
       {/* Complete — show analysis */}
       {isComplete && a && (
         <>
-          {/* Overall score + summary */}
-          <div className="bg-card border border-border rounded-xl p-5 mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Overall Score</p>
-                <p className="text-3xl font-bold tabular-nums">{a.overall_score || '--'}<span className="text-sm text-muted-foreground">/10</span></p>
+          {/* Verdict Banner */}
+          {a.opportunity_scorecard && (() => {
+            const sc = a.opportunity_scorecard;
+            const verdict = sc.verdict;
+            const verdictConfig = {
+              STRONG_GO: { bg: 'bg-success/10 border-success/30', text: 'text-success', label: 'STRONG GO', icon: '🟢' },
+              CONDITIONAL_GO: { bg: 'bg-warning/10 border-warning/30', text: 'text-warning', label: 'CONDITIONAL GO', icon: '🟡' },
+              WEAK: { bg: 'bg-[#ff8c00]/10 border-[#ff8c00]/30', text: 'text-[#ff8c00]', label: 'WEAK OPPORTUNITY', icon: '🟠' },
+              NO_GO: { bg: 'bg-danger/10 border-danger/30', text: 'text-danger', label: 'NO-GO', icon: '🔴' },
+            };
+            const vc = verdictConfig[verdict] || verdictConfig.WEAK;
+            const composite = parseFloat(sc.composite_score) || 0;
+
+            const dimensions = [
+              { key: 'market_gap', label: 'Market Gap', weight: '×1.5' },
+              { key: 'uniqueness_potential', label: 'Uniqueness Potential', weight: '×1.3' },
+              { key: 'audience_demand', label: 'Audience Demand', weight: '×1.2' },
+              { key: 'engagement_ceiling', label: 'Engagement Ceiling', weight: '×1.0' },
+              { key: 'script_exploitability', label: 'Script Exploitability', weight: '×1.0' },
+              { key: 'competition_density', label: 'Competition (10=low)', weight: '×1.0' },
+              { key: 'monetization_fit', label: 'Monetization Fit', weight: '×1.0' },
+            ];
+
+            return (
+              <div className={`rounded-xl border-2 p-5 mb-4 ${vc.bg}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{vc.icon}</span>
+                    <div>
+                      <p className={`text-lg font-bold ${vc.text}`}>{vc.label}</p>
+                      <p className="text-xs text-muted-foreground">Composite Score: <span className="font-bold tabular-nums">{composite.toFixed(1)}</span>/10</p>
+                    </div>
+                  </div>
+                  <Button onClick={handleCreateProject} className="bg-gradient-to-r from-primary to-destructive hover:from-primary-hover hover:to-destructive/90 text-white shadow-glow-primary">
+                    <Rocket className="w-4 h-4" />
+                    Create Project
+                  </Button>
+                </div>
+
+                {sc.verdict_reason && (
+                  <p className="text-xs mb-4 leading-relaxed">{sc.verdict_reason}</p>
+                )}
+
+                {verdict === 'NO_GO' && (
+                  <div className="bg-danger/10 border border-danger/20 rounded-lg px-3 py-2 mb-4">
+                    <p className="text-[11px] text-danger font-semibold">Warning: This opportunity scores below threshold. Creating a project is not recommended unless you have a strong unique angle not captured in this analysis.</p>
+                  </div>
+                )}
+                {verdict === 'WEAK' && (
+                  <div className="bg-[#ff8c00]/10 border border-[#ff8c00]/20 rounded-lg px-3 py-2 mb-4">
+                    <p className="text-[11px] text-[#ff8c00] font-semibold">Caution: This opportunity is viable only with strong differentiation. Review the 10x Strategy section carefully before proceeding.</p>
+                  </div>
+                )}
+
+                {/* Score bars */}
+                <div className="space-y-2">
+                  {dimensions.map(d => {
+                    const dim = sc[d.key];
+                    const score = parseInt(dim?.score) || 0;
+                    const pct = Math.min((score / 10) * 100, 100);
+                    return (
+                      <div key={d.key}>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] text-muted-foreground w-36 flex-shrink-0">{d.label} <span className="opacity-50">{d.weight}</span></span>
+                          <div className="flex-1 h-2 bg-background/50 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${score >= 8 ? 'bg-success' : score >= 6 ? 'bg-warning' : score >= 4 ? 'bg-[#ff8c00]' : 'bg-danger'}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-[10px] font-mono font-bold w-8 text-right">{score}/10</span>
+                        </div>
+                        {dim?.justification && (
+                          <p className="text-[9px] text-muted-foreground ml-36 pl-2">{dim.justification}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <Button onClick={handleCreateProject} className="bg-gradient-to-r from-primary to-destructive hover:from-primary-hover hover:to-destructive/90 text-white shadow-glow-primary">
-                <Rocket className="w-4 h-4" />
-                Create Project from Analysis
-              </Button>
+            );
+          })()}
+
+          {/* Summary */}
+          {a.one_line_summary && (
+            <div className="bg-card border border-border rounded-xl p-4 mb-4">
+              <p className="text-sm text-muted-foreground">{a.one_line_summary}</p>
             </div>
-            {a.one_line_summary && (
-              <p className="text-sm text-muted-foreground border-t border-border pt-3">{a.one_line_summary}</p>
-            )}
-          </div>
+          )}
 
           {/* 10x Strategy (most important — show first) */}
           {a.ten_x_strategy && (

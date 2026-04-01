@@ -21,6 +21,7 @@ import {
   useRunDiscovery,
   useCancelDiscovery,
   useAnalyzeVideo,
+  useAllAnalyses,
 } from '../hooks/useYouTubeDiscovery';
 import PageHeader from '../components/shared/PageHeader';
 import EmptyState from '../components/shared/EmptyState';
@@ -72,27 +73,32 @@ function formatAge(dateStr) {
 // VideoCard
 // ---------------------------------------------------------------------------
 
-function VideoCard({ video, onUseForProject, onAnalyze, isAnalyzing }) {
+function VideoCard({ video, onUseForProject, onAnalyze, isAnalyzing, existingAnalysis, onViewAnalysis }) {
+  const hasAnalysis = !!existingAnalysis;
+  const verdict = existingAnalysis?.analysis?.opportunity_scorecard?.verdict;
+  const verdictColors = {
+    STRONG_GO: 'bg-success-bg text-success border-success-border',
+    CONDITIONAL_GO: 'bg-warning-bg text-warning border-warning-border',
+    WEAK: 'bg-[#ff8c00]/10 text-[#ff8c00] border-[#ff8c00]/30',
+    NO_GO: 'bg-danger-bg text-danger border-danger-border',
+  };
+  const verdictLabels = { STRONG_GO: 'Strong Go', CONDITIONAL_GO: 'Conditional', WEAK: 'Weak', NO_GO: 'No-Go' };
+
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-border-hover transition-all">
       <div className="relative">
-        <img
-          src={video.thumbnail_url}
-          alt={video.title}
-          className="w-full h-[140px] object-cover bg-muted"
-          loading="lazy"
-        />
+        <img src={video.thumbnail_url} alt={video.title} className="w-full h-[140px] object-cover bg-muted" loading="lazy" />
         <span className="absolute bottom-2 right-2 bg-background/90 text-foreground text-[10px] font-mono px-1.5 py-0.5 rounded">
           {formatDuration(video.duration_seconds)}
         </span>
+        {verdict && (
+          <span className={`absolute top-2 left-2 text-[9px] font-bold px-2 py-0.5 rounded-full border ${verdictColors[verdict] || ''}`}>
+            {verdictLabels[verdict] || verdict}
+          </span>
+        )}
       </div>
       <div className="p-3">
-        <a
-          href={video.video_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-semibold leading-tight line-clamp-2 hover:text-primary transition-colors"
-        >
+        <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold leading-tight line-clamp-2 hover:text-primary transition-colors">
           {video.title}
         </a>
         <p className="text-[10px] text-muted-foreground mt-1 truncate">{video.channel_name}</p>
@@ -103,30 +109,32 @@ function VideoCard({ video, onUseForProject, onAnalyze, isAnalyzing }) {
           <span className="flex items-center gap-1 ml-auto" title="Published"><Clock className="w-3 h-3" />{formatAge(video.published_at)}</span>
         </div>
         <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-border/50">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-[10px] text-accent hover:text-accent/80 flex-1"
-            onClick={() => onAnalyze(video)}
-            disabled={isAnalyzing}
-          >
-            {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Microscope className="w-3 h-3" />}
-            Analyze
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-[10px] text-primary hover:text-primary-hover flex-1"
-            onClick={() => onUseForProject(video)}
-          >
+          {hasAnalysis ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[10px] text-success hover:text-success/80 flex-1"
+              onClick={() => onViewAnalysis(existingAnalysis.id)}
+            >
+              <Eye className="w-3 h-3" />
+              View Analysis
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[10px] text-accent hover:text-accent/80 flex-1"
+              onClick={() => onAnalyze(video)}
+              disabled={isAnalyzing}
+            >
+              {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Microscope className="w-3 h-3" />}
+              Analyze
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] text-primary hover:text-primary-hover flex-1" onClick={() => onUseForProject(video)}>
             Use for Project
           </Button>
-          <a
-            href={video.video_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-card-hover transition-colors flex-shrink-0"
-          >
+          <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-card-hover transition-colors flex-shrink-0">
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>
@@ -151,7 +159,22 @@ export default function YouTubeDiscovery() {
   const runDiscovery = useRunDiscovery();
   const cancelDiscovery = useCancelDiscovery();
   const analyzeVideo = useAnalyzeVideo();
+  const { data: allAnalyses } = useAllAnalyses();
   const [analyzingVideoId, setAnalyzingVideoId] = useState(null);
+
+  // Map video_id → analysis for quick lookup
+  const analysisMap = {};
+  if (allAnalyses) {
+    for (const a of allAnalyses) {
+      if (!analysisMap[a.video_id] || a.status === 'complete') {
+        analysisMap[a.video_id] = a;
+      }
+    }
+  }
+
+  const handleViewAnalysis = (analysisId) => {
+    navigate(`/youtube-discovery/analysis/${analysisId}`);
+  };
 
   const handleAnalyze = async (video) => {
     setAnalyzingVideoId(video.video_id);
@@ -399,6 +422,8 @@ export default function YouTubeDiscovery() {
                   onUseForProject={handleUseForProject}
                   onAnalyze={handleAnalyze}
                   isAnalyzing={analyzingVideoId === video.video_id}
+                  existingAnalysis={analysisMap[video.video_id]}
+                  onViewAnalysis={handleViewAnalysis}
                 />
               ))}
             </div>
