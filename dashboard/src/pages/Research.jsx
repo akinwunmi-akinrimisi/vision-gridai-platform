@@ -8,6 +8,7 @@ import {
   Hash,
   DollarSign,
   Clock,
+  Filter,
 } from 'lucide-react';
 import {
   useLatestRun,
@@ -32,6 +33,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const ALL_PLATFORMS = ['reddit', 'youtube', 'tiktok', 'trends', 'quora'];
+const PLATFORM_LABELS = {
+  reddit: 'Reddit',
+  youtube: 'YouTube',
+  tiktok: 'TikTok',
+  trends: 'Google Trends',
+  quora: 'Quora',
+};
+const TIME_RANGES = [
+  { value: '1h', label: '1h' },
+  { value: '6h', label: '6h' },
+  { value: '1d', label: '1d' },
+  { value: '7d', label: '7d' },
+  { value: '30d', label: '30d' },
+  { value: 'custom', label: 'Custom' },
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -111,6 +133,9 @@ function RunHistoryRow({ run, isSelected, onSelect }) {
 export default function Research() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [selectedSource, setSelectedSource] = useState('all');
+  const [selectedPlatforms, setSelectedPlatforms] = useState(new Set(ALL_PLATFORMS));
+  const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
+  const [customRange, setCustomRange] = useState({ start: '', end: '' });
 
   // Data hooks
   const { data: projects, isLoading: projectsLoading } = useProjects();
@@ -144,9 +169,40 @@ export default function Research() {
     setTimeout(() => setSelectedProjectId(projects[0].id), 0);
   }
 
+  const allPlatformsSelected = selectedPlatforms.size === ALL_PLATFORMS.length;
+
+  const togglePlatform = (key) => {
+    setSelectedPlatforms((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size <= 1) return prev; // minimum 1 platform
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allPlatformsSelected) {
+      setSelectedPlatforms(new Set([ALL_PLATFORMS[0]]));
+    } else {
+      setSelectedPlatforms(new Set(ALL_PLATFORMS));
+    }
+  };
+
   const handleRunResearch = () => {
     if (!selectedProjectId) return;
-    runResearch.mutate(selectedProjectId);
+    const timeRange =
+      selectedTimeRange === 'custom'
+        ? { start: customRange.start, end: customRange.end }
+        : selectedTimeRange;
+    runResearch.mutate({
+      projectId: selectedProjectId,
+      platforms: [...selectedPlatforms],
+      timeRange,
+    });
   };
 
   const handleUseTopic = (category) => {
@@ -225,6 +281,79 @@ export default function Research() {
           )}
         </Button>
       </PageHeader>
+
+      {/* Platform + Time Range config row */}
+      {selectedProjectId && (
+        <div className="flex flex-wrap items-center gap-3 mb-6 animate-slide-up">
+          {/* Platform toggles */}
+          <div className="flex items-center gap-1.5">
+            <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1" />
+            <button
+              onClick={toggleAll}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
+                allPlatformsSelected
+                  ? 'bg-primary/15 text-primary border-primary/30'
+                  : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
+              }`}
+            >
+              All
+            </button>
+            {ALL_PLATFORMS.map((key) => (
+              <button
+                key={key}
+                onClick={() => togglePlatform(key)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
+                  selectedPlatforms.has(key)
+                    ? 'bg-primary/15 text-primary border-primary/30'
+                    : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
+                }`}
+              >
+                {PLATFORM_LABELS[key]}
+              </button>
+            ))}
+          </div>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Time range selector */}
+          <div className="flex items-center gap-1">
+            {TIME_RANGES.map((tr) => (
+              <button
+                key={tr.value}
+                onClick={() => setSelectedTimeRange(tr.value)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
+                  selectedTimeRange === tr.value
+                    ? 'bg-accent/15 text-accent border-accent/30'
+                    : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
+                }`}
+              >
+                {tr.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Custom date range picker (shown when Custom is selected) */}
+      {selectedProjectId && selectedTimeRange === 'custom' && (
+        <div className="flex items-center gap-3 mb-6 pl-6 animate-slide-up">
+          <label className="text-[11px] text-muted-foreground">From</label>
+          <input
+            type="datetime-local"
+            value={customRange.start}
+            onChange={(e) => setCustomRange((r) => ({ ...r, start: e.target.value }))}
+            className="input text-xs h-8 w-auto"
+          />
+          <label className="text-[11px] text-muted-foreground">To</label>
+          <input
+            type="datetime-local"
+            value={customRange.end}
+            onChange={(e) => setCustomRange((r) => ({ ...r, end: e.target.value }))}
+            className="input text-xs h-8 w-auto"
+          />
+        </div>
+      )}
 
       {/* No project selected */}
       {!selectedProjectId && (
