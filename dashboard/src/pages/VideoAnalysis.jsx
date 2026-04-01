@@ -13,6 +13,8 @@ import {
   Star,
   ExternalLink,
   Rocket,
+  Users,
+  HelpCircle,
 } from 'lucide-react';
 import { useVideoAnalysis, NICHES } from '../hooks/useYouTubeDiscovery';
 import PageHeader from '../components/shared/PageHeader';
@@ -87,6 +89,11 @@ export default function VideoAnalysis() {
   const niche = NICHES.find((n) => n.key === analysis?.niche_category);
 
   const handleCreateProject = () => {
+    const topicOpps = a.comment_insights?.topic_opportunities || [];
+    const topicLines = topicOpps.length > 0
+      ? ['\nAudience-Demanded Topics (from comment analysis):', ...topicOpps.map(t => `- ${t.theme}: ${t.suggested_video_title || t.description}`)]
+      : [];
+
     navigate('/', {
       state: {
         openCreateModal: true,
@@ -103,6 +110,10 @@ export default function VideoAnalysis() {
           '',
           'Key Differentiators:',
           ...(a.ten_x_strategy?.key_differentiators || []).map((d) => '- ' + d),
+          '',
+          'Gaps to Exploit:',
+          ...(a.blue_ocean_analysis?.gaps_and_opportunities || []).map((g) => '- ' + g),
+          ...topicLines,
         ].join('\n'),
         analysisIds: [analysisId],
       },
@@ -246,6 +257,88 @@ export default function VideoAnalysis() {
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Untapped Audience Segments</p>
                   <BulletList items={a.blue_ocean_analysis.untapped_audience_segments} />
                 </div>
+              </div>
+            </Section>
+          )}
+
+          {/* Comment Insights — Audience Demand */}
+          {a.comment_insights && (
+            <Section icon={Users} title="Audience Demand (from Comments)" color="text-warning">
+              <div className="space-y-4">
+                {a.comment_insights.sentiment_summary && (
+                  <div className="bg-background/50 rounded-md px-3 py-2 border border-border/50">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Sentiment</p>
+                    <p className="text-xs">{a.comment_insights.sentiment_summary}</p>
+                  </div>
+                )}
+
+                {a.comment_insights.top_questions?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                      <HelpCircle className="w-3 h-3" /> Unanswered Questions
+                    </p>
+                    <BulletList items={a.comment_insights.top_questions} />
+                  </div>
+                )}
+
+                {a.comment_insights.requests?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Viewer Requests</p>
+                    <BulletList items={a.comment_insights.requests} />
+                  </div>
+                )}
+
+                {a.comment_insights.complaints?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Complaints & Criticisms</p>
+                    <BulletList items={a.comment_insights.complaints} />
+                  </div>
+                )}
+
+                {/* Topic Opportunities from comments */}
+                {a.comment_insights.topic_opportunities?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold mb-2">Topic Opportunities</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {a.comment_insights.topic_opportunities.map((topic, i) => (
+                        <div key={i} className="bg-background/50 border border-border/50 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-semibold">{topic.theme}</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                              topic.sentiment === 'positive' ? 'bg-success-bg text-success' :
+                              topic.sentiment === 'negative' ? 'bg-danger-bg text-danger' :
+                              'bg-warning-bg text-warning'
+                            }`}>
+                              {topic.sentiment}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mb-2">{topic.description}</p>
+                          {topic.suggested_video_title && (
+                            <div className="bg-primary/5 border border-primary/10 rounded px-2 py-1 mb-2">
+                              <p className="text-[9px] text-muted-foreground">Suggested Video</p>
+                              <p className="text-[11px] font-medium text-primary">{topic.suggested_video_title}</p>
+                            </div>
+                          )}
+                          {topic.representative_comments?.length > 0 && (
+                            <div className="space-y-1">
+                              {topic.representative_comments.map((c, j) => (
+                                <p key={j} className="text-[9px] text-muted-foreground italic border-l-2 border-border pl-2">
+                                  "{c}"
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {a._meta && (
+                  <p className="text-[9px] text-muted-foreground text-right">
+                    Based on {a._meta.comments_fetched || 0} comments analyzed
+                  </p>
+                )}
               </div>
             </Section>
           )}
