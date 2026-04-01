@@ -6,35 +6,53 @@
         "httpMethod": "POST",
         "path": "script/generate",
         "responseMode": "responseNode",
-        "options": { "allowedOrigins": "*" }
+        "options": {
+          "allowedOrigins": "*"
+        },
+        "authentication": "headerAuth",
+        "httpHeaderAuth": {
+          "name": "Authorization",
+          "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}"
+        }
       },
       "id": "wf-sg-webhook",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 400]
+      "position": [
+        200,
+        400
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst topic_id = body.topic_id;\nconst project_id = body.project_id;\n\nif (!topic_id) throw new Error('topic_id is required');\n\nreturn [{ json: { topic_id, project_id } }];"
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst topic_id = body.topic_id;\nconst project_id = body.project_id;\n\nif (!topic_id) throw new Error(\"topic_id is required\");\n\nreturn [{ json: { topic_id, project_id } }];"
       },
       "id": "wf-sg-validate",
       "name": "Validate Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 400]
+      "position": [
+        420,
+        400
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true, message: 'Script generation started', topic_id: $json.topic_id }) }}",
-        "options": { "responseCode": 200 }
+        "options": {
+          "responseCode": 200
+        }
       },
       "id": "wf-sg-respond",
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [640, 240]
+      "position": [
+        640,
+        240
+      ]
     },
     {
       "parameters": {
@@ -45,7 +63,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            }
           ]
         },
         "options": {}
@@ -54,8 +75,16 @@
       "name": "Read Topic",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [640, 400],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        640,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -66,7 +95,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            }
           ]
         },
         "options": {}
@@ -75,8 +107,16 @@
       "name": "Read Prompts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 400],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        860,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -87,7 +127,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            }
           ]
         },
         "options": {}
@@ -96,8 +139,16 @@
       "name": "Read Project",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1080, 400],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        1080,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -107,7 +158,10 @@
       "name": "Init & Validate Prompts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1300, 400]
+      "position": [
+        1300,
+        400
+      ]
     },
     {
       "parameters": {
@@ -118,8 +172,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -131,8 +191,16 @@
       "name": "PATCH Status Scripting",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1520, 400],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        1520,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -143,9 +211,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -157,8 +234,16 @@
       "name": "Log Started",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1740, 400],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        1740,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -168,7 +253,10 @@
       "name": "Build Pass 1 Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1960, 400]
+      "position": [
+        1960,
+        400
+      ]
     },
     {
       "parameters": {
@@ -179,21 +267,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8192, system: $('Init & Validate Prompts').first().json.project.niche_system_prompt || 'You are an expert scriptwriter for long-form YouTube documentaries.', messages: [{ role: 'user', content: $json.prompt }] }) }}",
-        "options": { "timeout": 120000 }
+        "options": {
+          "timeout": 120000
+        }
       },
       "id": "wf-sg-claude-pass1",
       "name": "Claude: Pass 1 Foundation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2180, 400],
-      "credentials": { "httpHeaderAuth": { "id": "vlfOXwvIUlRYnr41", "name": "Anthropic API Key" } },
+      "position": [
+        2180,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vlfOXwvIUlRYnr41",
+          "name": "Anthropic API Key"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -204,19 +308,30 @@
       "name": "Check Pass 1 Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2400, 400]
+      "position": [
+        2400,
+        400
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "boolean": [{ "value1": "={{ $json.isError }}", "value2": true }]
+          "boolean": [
+            {
+              "value1": "={{ $json.isError }}",
+              "value2": true
+            }
+          ]
         }
       },
       "id": "wf-sg-if-pass1-err",
       "name": "IF Pass 1 Error",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [2620, 400]
+      "position": [
+        2620,
+        400
+      ]
     },
     {
       "parameters": {
@@ -226,7 +341,10 @@
       "name": "Build Pass 1 Eval Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2840, 540]
+      "position": [
+        2840,
+        540
+      ]
     },
     {
       "parameters": {
@@ -237,21 +355,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: 'You are a script quality evaluator. Always return valid JSON only, no markdown.', messages: [{ role: 'user', content: $json.eval_prompt }] }) }}",
-        "options": { "timeout": 60000 }
+        "options": {
+          "timeout": 60000
+        }
       },
       "id": "wf-sg-claude-eval1",
       "name": "Claude: Eval Pass 1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3060, 540],
-      "credentials": { "httpHeaderAuth": { "id": "vlfOXwvIUlRYnr41", "name": "Anthropic API Key" } },
+      "position": [
+        3060,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vlfOXwvIUlRYnr41",
+          "name": "Anthropic API Key"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -262,7 +396,10 @@
       "name": "Merge Pass 1 Scores",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3280, 540]
+      "position": [
+        3280,
+        540
+      ]
     },
     {
       "parameters": {
@@ -273,8 +410,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -286,8 +429,16 @@
       "name": "PATCH Pass 1 Scores",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3500, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        3500,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -298,9 +449,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -312,8 +472,16 @@
       "name": "Log Pass 1 Complete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3720, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        3720,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -323,7 +491,10 @@
       "name": "Build Pass 2 Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3940, 540]
+      "position": [
+        3940,
+        540
+      ]
     },
     {
       "parameters": {
@@ -334,21 +505,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 12288, system: $('Init & Validate Prompts').first().json.project.niche_system_prompt || 'You are an expert scriptwriter for long-form YouTube documentaries.', messages: [{ role: 'user', content: $json.prompt }, { role: 'assistant', content: $json.pass1_text }] }) }}",
-        "options": { "timeout": 180000 }
+        "options": {
+          "timeout": 180000
+        }
       },
       "id": "wf-sg-claude-pass2",
       "name": "Claude: Pass 2 Depth",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4160, 540],
-      "credentials": { "httpHeaderAuth": { "id": "vlfOXwvIUlRYnr41", "name": "Anthropic API Key" } },
+      "position": [
+        4160,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vlfOXwvIUlRYnr41",
+          "name": "Anthropic API Key"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -359,19 +546,30 @@
       "name": "Check Pass 2 Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4380, 540]
+      "position": [
+        4380,
+        540
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "boolean": [{ "value1": "={{ $json.isError }}", "value2": true }]
+          "boolean": [
+            {
+              "value1": "={{ $json.isError }}",
+              "value2": true
+            }
+          ]
         }
       },
       "id": "wf-sg-if-pass2-err",
       "name": "IF Pass 2 Error",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [4600, 540]
+      "position": [
+        4600,
+        540
+      ]
     },
     {
       "parameters": {
@@ -381,7 +579,10 @@
       "name": "Merge Pass 2 Scores",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4820, 540]
+      "position": [
+        4820,
+        540
+      ]
     },
     {
       "parameters": {
@@ -392,8 +593,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -405,8 +612,16 @@
       "name": "PATCH Pass 2 Scores",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [5040, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        5040,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -417,9 +632,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -431,8 +655,16 @@
       "name": "Log Pass 2 Complete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [5260, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        5260,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -442,7 +674,10 @@
       "name": "Build Pass 3 Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [5480, 540]
+      "position": [
+        5480,
+        540
+      ]
     },
     {
       "parameters": {
@@ -453,21 +688,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8192, system: $('Init & Validate Prompts').first().json.project.niche_system_prompt || 'You are an expert scriptwriter for long-form YouTube documentaries.', messages: [{ role: 'user', content: $json.prompt }] }) }}",
-        "options": { "timeout": 120000 }
+        "options": {
+          "timeout": 120000
+        }
       },
       "id": "wf-sg-claude-pass3",
       "name": "Claude: Pass 3 Resolution",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [5700, 540],
-      "credentials": { "httpHeaderAuth": { "id": "vlfOXwvIUlRYnr41", "name": "Anthropic API Key" } },
+      "position": [
+        5700,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vlfOXwvIUlRYnr41",
+          "name": "Anthropic API Key"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -478,19 +729,30 @@
       "name": "Check Pass 3 Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [5920, 540]
+      "position": [
+        5920,
+        540
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "boolean": [{ "value1": "={{ $json.isError }}", "value2": true }]
+          "boolean": [
+            {
+              "value1": "={{ $json.isError }}",
+              "value2": true
+            }
+          ]
         }
       },
       "id": "wf-sg-if-pass3-err",
       "name": "IF Pass 3 Error",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [6140, 540]
+      "position": [
+        6140,
+        540
+      ]
     },
     {
       "parameters": {
@@ -500,7 +762,10 @@
       "name": "Merge Pass 3 Scores",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [6360, 540]
+      "position": [
+        6360,
+        540
+      ]
     },
     {
       "parameters": {
@@ -511,8 +776,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -524,8 +795,16 @@
       "name": "PATCH Pass 3 Scores",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [6580, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        6580,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -536,9 +815,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -550,8 +838,16 @@
       "name": "Log Pass 3 Complete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [6800, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        6800,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -561,7 +857,10 @@
       "name": "Build Combined Eval",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [7020, 540]
+      "position": [
+        7020,
+        540
+      ]
     },
     {
       "parameters": {
@@ -572,21 +871,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4096, system: 'You are a script quality evaluator. Always return valid JSON only, no markdown.', messages: [{ role: 'user', content: $json.eval_prompt }] }) }}",
-        "options": { "timeout": 90000 }
+        "options": {
+          "timeout": 90000
+        }
       },
       "id": "wf-sg-claude-combined",
       "name": "Claude: Combined Eval",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [7240, 540],
-      "credentials": { "httpHeaderAuth": { "id": "vlfOXwvIUlRYnr41", "name": "Anthropic API Key" } },
+      "position": [
+        7240,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vlfOXwvIUlRYnr41",
+          "name": "Anthropic API Key"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -597,7 +912,10 @@
       "name": "Merge Combined Scores",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [7460, 540]
+      "position": [
+        7460,
+        540
+      ]
     },
     {
       "parameters": {
@@ -608,8 +926,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -621,8 +945,16 @@
       "name": "PATCH Combined Score",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [7680, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        7680,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -632,7 +964,10 @@
       "name": "Build Visual Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [7900, 540]
+      "position": [
+        7900,
+        540
+      ]
     },
     {
       "parameters": {
@@ -643,21 +978,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4096, system: 'You are a visual director for YouTube documentaries. Assign visual types to scenes. Always return valid JSON only.', messages: [{ role: 'user', content: $json.visual_prompt }] }) }}",
-        "options": { "timeout": 90000 }
+        "options": {
+          "timeout": 90000
+        }
       },
       "id": "wf-sg-claude-visual",
       "name": "Claude: Visual Assignment",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [8120, 540],
-      "credentials": { "httpHeaderAuth": { "id": "vlfOXwvIUlRYnr41", "name": "Anthropic API Key" } },
+      "position": [
+        8120,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vlfOXwvIUlRYnr41",
+          "name": "Anthropic API Key"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -668,7 +1019,10 @@
       "name": "Build Scenes Array",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [8340, 540]
+      "position": [
+        8340,
+        540
+      ]
     },
     {
       "parameters": {
@@ -679,8 +1033,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -692,8 +1052,16 @@
       "name": "PATCH Script JSON",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [8560, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        8560,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -704,8 +1072,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "options": {}
@@ -714,8 +1088,16 @@
       "name": "Delete Prior Scenes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [8780, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        8780,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -726,9 +1108,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -740,8 +1131,16 @@
       "name": "Bulk Insert Scenes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [9000, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        9000,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -752,8 +1151,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -765,8 +1170,16 @@
       "name": "PATCH Status Review",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [9220, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        9220,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -777,9 +1190,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -791,8 +1213,16 @@
       "name": "Log Completed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [9440, 540],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        9440,
+        540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -802,7 +1232,10 @@
       "name": "Collect Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2840, 200]
+      "position": [
+        2840,
+        200
+      ]
     },
     {
       "parameters": {
@@ -813,8 +1246,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -826,8 +1265,16 @@
       "name": "PATCH Status Failed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3060, 200],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        3060,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     },
     {
       "parameters": {
@@ -838,9 +1285,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_ANON_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -852,156 +1308,532 @@
       "name": "Log Failed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3280, 200],
-      "credentials": { "httpHeaderAuth": { "id": "QsqqFXtnLakNfVKR", "name": "Supabase Service Role" } }
+      "position": [
+        3280,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
     }
   ],
   "connections": {
     "Webhook Trigger": {
-      "main": [[{ "node": "Validate Request", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Validate Request": {
-      "main": [[
-        { "node": "Respond to Webhook", "type": "main", "index": 0 },
-        { "node": "Read Topic", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Read Topic": {
-      "main": [[{ "node": "Read Prompts", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Read Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Read Prompts": {
-      "main": [[{ "node": "Read Project", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Read Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Read Project": {
-      "main": [[{ "node": "Init & Validate Prompts", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Init & Validate Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Init & Validate Prompts": {
-      "main": [[{ "node": "PATCH Status Scripting", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH Status Scripting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH Status Scripting": {
-      "main": [[{ "node": "Log Started", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Log Started": {
-      "main": [[{ "node": "Build Pass 1 Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Pass 1 Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Pass 1 Prompt": {
-      "main": [[{ "node": "Claude: Pass 1 Foundation", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude: Pass 1 Foundation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude: Pass 1 Foundation": {
-      "main": [[{ "node": "Check Pass 1 Error", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Pass 1 Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Pass 1 Error": {
-      "main": [[{ "node": "IF Pass 1 Error", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "IF Pass 1 Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "IF Pass 1 Error": {
       "main": [
-        [{ "node": "Collect Error", "type": "main", "index": 0 }],
-        [{ "node": "Build Pass 1 Eval Prompt", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Collect Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Pass 1 Eval Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Build Pass 1 Eval Prompt": {
-      "main": [[{ "node": "Claude: Eval Pass 1", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude: Eval Pass 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude: Eval Pass 1": {
-      "main": [[{ "node": "Merge Pass 1 Scores", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Pass 1 Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Merge Pass 1 Scores": {
-      "main": [[{ "node": "PATCH Pass 1 Scores", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH Pass 1 Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH Pass 1 Scores": {
-      "main": [[{ "node": "Log Pass 1 Complete", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log Pass 1 Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Log Pass 1 Complete": {
-      "main": [[{ "node": "Build Pass 2 Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Pass 2 Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Pass 2 Prompt": {
-      "main": [[{ "node": "Claude: Pass 2 Depth", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude: Pass 2 Depth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude: Pass 2 Depth": {
-      "main": [[{ "node": "Check Pass 2 Error", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Pass 2 Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Pass 2 Error": {
-      "main": [[{ "node": "IF Pass 2 Error", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "IF Pass 2 Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "IF Pass 2 Error": {
       "main": [
-        [{ "node": "Collect Error", "type": "main", "index": 0 }],
-        [{ "node": "Merge Pass 2 Scores", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Collect Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Pass 2 Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Merge Pass 2 Scores": {
-      "main": [[{ "node": "PATCH Pass 2 Scores", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH Pass 2 Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH Pass 2 Scores": {
-      "main": [[{ "node": "Log Pass 2 Complete", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log Pass 2 Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Log Pass 2 Complete": {
-      "main": [[{ "node": "Build Pass 3 Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Pass 3 Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Pass 3 Prompt": {
-      "main": [[{ "node": "Claude: Pass 3 Resolution", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude: Pass 3 Resolution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude: Pass 3 Resolution": {
-      "main": [[{ "node": "Check Pass 3 Error", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Pass 3 Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Pass 3 Error": {
-      "main": [[{ "node": "IF Pass 3 Error", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "IF Pass 3 Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "IF Pass 3 Error": {
       "main": [
-        [{ "node": "Collect Error", "type": "main", "index": 0 }],
-        [{ "node": "Merge Pass 3 Scores", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Collect Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Pass 3 Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Merge Pass 3 Scores": {
-      "main": [[{ "node": "PATCH Pass 3 Scores", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH Pass 3 Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH Pass 3 Scores": {
-      "main": [[{ "node": "Log Pass 3 Complete", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log Pass 3 Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Log Pass 3 Complete": {
-      "main": [[{ "node": "Build Combined Eval", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Combined Eval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Combined Eval": {
-      "main": [[{ "node": "Claude: Combined Eval", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude: Combined Eval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude: Combined Eval": {
-      "main": [[{ "node": "Merge Combined Scores", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Combined Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Merge Combined Scores": {
-      "main": [[{ "node": "PATCH Combined Score", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH Combined Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH Combined Score": {
-      "main": [[{ "node": "Build Visual Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Visual Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Visual Prompt": {
-      "main": [[{ "node": "Claude: Visual Assignment", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude: Visual Assignment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude: Visual Assignment": {
-      "main": [[{ "node": "Build Scenes Array", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Scenes Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Scenes Array": {
-      "main": [[{ "node": "PATCH Script JSON", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH Script JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH Script JSON": {
-      "main": [[{ "node": "Delete Prior Scenes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Delete Prior Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Delete Prior Scenes": {
-      "main": [[{ "node": "Bulk Insert Scenes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Bulk Insert Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Bulk Insert Scenes": {
-      "main": [[{ "node": "PATCH Status Review", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH Status Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH Status Review": {
-      "main": [[{ "node": "Log Completed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Collect Error": {
-      "main": [[{ "node": "PATCH Status Failed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH Status Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH Status Failed": {
-      "main": [[{ "node": "Log Failed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
-  "settings": { "executionOrder": "v1" }
+  "settings": {
+    "executionOrder": "v1"
+  }
 }
