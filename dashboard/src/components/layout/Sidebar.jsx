@@ -48,8 +48,8 @@ import { cn } from '@/lib/utils';
 // ── Nav configuration ────────────────────────────────
 
 const platformNavItems = [
-  { label: 'Projects', icon: LayoutDashboard, path: '/' },
   { label: 'Topic Research', icon: Microscope, path: '/research' },
+  { label: 'Projects', icon: LayoutDashboard, path: '/' },
   { label: 'Shorts Creator', icon: Clapperboard, path: '/shorts' },
   { label: 'Social Publisher', icon: Share2, path: '/social' },
 ];
