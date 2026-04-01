@@ -97,6 +97,97 @@ export function useRunDiscovery() {
   });
 }
 
+export function useAnalyzeVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (video) => {
+      // Create the analysis row first
+      const { data, error } = await supabase
+        .from('yt_video_analyses')
+        .insert({
+          run_id: video.run_id,
+          video_id: video.video_id,
+          video_title: video.title,
+          channel_name: video.channel_name,
+          video_url: video.video_url,
+          thumbnail_url: video.thumbnail_url,
+          niche_category: video.niche_category,
+          views: video.views,
+          likes: video.likes,
+          comments: video.comments,
+          duration_seconds: video.duration_seconds,
+          status: 'pending',
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+
+      // Trigger the analysis workflow
+      const result = await webhookCall('youtube/analyze', {
+        analysis_id: data.id,
+        video_id: video.video_id,
+        video_url: video.video_url,
+        video_title: video.title,
+        channel_name: video.channel_name,
+        niche_category: NICHES.find((n) => n.key === video.niche_category)?.label || video.niche_category,
+      });
+
+      return { analysisId: data.id, ...result };
+    },
+    onSuccess: (data) => {
+      toast.success('Analysis started — fetching transcript and analyzing...');
+      queryClient.invalidateQueries({ queryKey: ['yt-video-analyses'] });
+    },
+    onError: (err) => {
+      toast.error(`Analysis failed: ${err.message}`);
+    },
+  });
+}
+
+export function useVideoAnalysis(analysisId) {
+  useRealtimeSubscription(
+    'yt_video_analyses',
+    analysisId ? `id=eq.${analysisId}` : null,
+    [['yt-video-analysis', analysisId]],
+  );
+
+  return useQuery({
+    queryKey: ['yt-video-analysis', analysisId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('yt_video_analyses')
+        .select('*')
+        .eq('id', analysisId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!analysisId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'pending' || status === 'fetching_transcript' || status === 'analyzing'
+        ? 3000
+        : false;
+    },
+  });
+}
+
+export function useAllAnalyses() {
+  return useQuery({
+    queryKey: ['yt-video-analyses'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('yt_video_analyses')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+}
+
 export function useCancelDiscovery() {
   const queryClient = useQueryClient();
 

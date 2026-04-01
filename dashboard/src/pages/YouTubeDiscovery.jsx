@@ -11,6 +11,7 @@ import {
   XCircle,
   History,
   ExternalLink,
+  Microscope,
 } from 'lucide-react';
 import {
   NICHES,
@@ -19,6 +20,7 @@ import {
   useAllDiscoveryRuns,
   useRunDiscovery,
   useCancelDiscovery,
+  useAnalyzeVideo,
 } from '../hooks/useYouTubeDiscovery';
 import PageHeader from '../components/shared/PageHeader';
 import EmptyState from '../components/shared/EmptyState';
@@ -70,10 +72,9 @@ function formatAge(dateStr) {
 // VideoCard
 // ---------------------------------------------------------------------------
 
-function VideoCard({ video, onUseForProject }) {
+function VideoCard({ video, onUseForProject, onAnalyze, isAnalyzing }) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-border-hover transition-all">
-      {/* Thumbnail */}
       <div className="relative">
         <img
           src={video.thumbnail_url}
@@ -85,8 +86,6 @@ function VideoCard({ video, onUseForProject }) {
           {formatDuration(video.duration_seconds)}
         </span>
       </div>
-
-      {/* Content */}
       <div className="p-3">
         <a
           href={video.video_url}
@@ -96,33 +95,24 @@ function VideoCard({ video, onUseForProject }) {
         >
           {video.title}
         </a>
-
-        <p className="text-[10px] text-muted-foreground mt-1 truncate">
-          {video.channel_name}
-        </p>
-
-        {/* Stats */}
+        <p className="text-[10px] text-muted-foreground mt-1 truncate">{video.channel_name}</p>
         <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1" title="Views">
-            <Eye className="w-3 h-3" />
-            {formatNumber(video.views)}
-          </span>
-          <span className="flex items-center gap-1" title="Likes">
-            <ThumbsUp className="w-3 h-3" />
-            {formatNumber(video.likes)}
-          </span>
-          <span className="flex items-center gap-1" title="Comments">
-            <MessageSquare className="w-3 h-3" />
-            {formatNumber(video.comments)}
-          </span>
-          <span className="flex items-center gap-1 ml-auto" title="Published">
-            <Clock className="w-3 h-3" />
-            {formatAge(video.published_at)}
-          </span>
+          <span className="flex items-center gap-1" title="Views"><Eye className="w-3 h-3" />{formatNumber(video.views)}</span>
+          <span className="flex items-center gap-1" title="Likes"><ThumbsUp className="w-3 h-3" />{formatNumber(video.likes)}</span>
+          <span className="flex items-center gap-1" title="Comments"><MessageSquare className="w-3 h-3" />{formatNumber(video.comments)}</span>
+          <span className="flex items-center gap-1 ml-auto" title="Published"><Clock className="w-3 h-3" />{formatAge(video.published_at)}</span>
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50">
+        <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-border/50">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[10px] text-accent hover:text-accent/80 flex-1"
+            onClick={() => onAnalyze(video)}
+            disabled={isAnalyzing}
+          >
+            {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Microscope className="w-3 h-3" />}
+            Analyze
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -135,7 +125,7 @@ function VideoCard({ video, onUseForProject }) {
             href={video.video_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-card-hover transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-card-hover transition-colors flex-shrink-0"
           >
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
@@ -160,6 +150,20 @@ export default function YouTubeDiscovery() {
   const { data: allRuns } = useAllDiscoveryRuns();
   const runDiscovery = useRunDiscovery();
   const cancelDiscovery = useCancelDiscovery();
+  const analyzeVideo = useAnalyzeVideo();
+  const [analyzingVideoId, setAnalyzingVideoId] = useState(null);
+
+  const handleAnalyze = async (video) => {
+    setAnalyzingVideoId(video.video_id);
+    try {
+      const result = await analyzeVideo.mutateAsync(video);
+      if (result?.analysisId) {
+        navigate(`/youtube-discovery/analysis/${result.analysisId}`);
+      }
+    } finally {
+      setAnalyzingVideoId(null);
+    }
+  };
 
   const activeRun = selectedRunId
     ? allRuns?.find((r) => r.id === selectedRunId) || latestRun
@@ -393,6 +397,8 @@ export default function YouTubeDiscovery() {
                   key={video.id}
                   video={video}
                   onUseForProject={handleUseForProject}
+                  onAnalyze={handleAnalyze}
+                  isAnalyzing={analyzingVideoId === video.video_id}
                 />
               ))}
             </div>

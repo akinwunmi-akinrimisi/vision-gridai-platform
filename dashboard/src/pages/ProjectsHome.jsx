@@ -183,6 +183,7 @@ export default function ProjectsHome() {
         onOpenChange={setModalOpen}
         prefillNiche={location.state?.prefillNiche}
         prefillDescription={location.state?.prefillDescription}
+        analysisIds={location.state?.analysisIds}
       />
     </div>
   );

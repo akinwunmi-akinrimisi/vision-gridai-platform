@@ -31,7 +31,7 @@ const EXAMPLE_HINTS = [
   'e.g., Space Exploration',
 ];
 
-export default function CreateProjectModal({ open, onOpenChange, prefillNiche, prefillDescription }) {
+export default function CreateProjectModal({ open, onOpenChange, prefillNiche, prefillDescription, analysisIds }) {
   const [niche, setNiche] = useState('');
   const [description, setDescription] = useState('');
   const [targetVideoCount, setTargetVideoCount] = useState(25);
@@ -165,6 +165,7 @@ export default function CreateProjectModal({ open, onOpenChange, prefillNiche, p
         niche: niche.trim(),
         description: description.trim() || undefined,
         target_video_count: targetVideoCount,
+        reference_analyses: analysisIds || undefined,
       });
 
       setShowSuccess(true);
