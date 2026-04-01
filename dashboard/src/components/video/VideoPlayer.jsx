@@ -100,12 +100,13 @@ export default function VideoPlayer({ topic }) {
             title={topic.seo_title || 'Video preview'}
           />
         ) : driveFileId ? (
-          <iframe
-            src={`https://drive.google.com/file/d/${driveFileId}/preview`}
-            className="absolute inset-0 w-full h-full"
-            allow="autoplay"
-            title={topic?.seo_title || 'Video preview'}
-          />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3">
+              <Play className="w-8 h-8 opacity-40" />
+            </div>
+            <span className="text-sm mb-1">Video preview requires Google Drive access</span>
+            <span className="text-xs text-muted-foreground">Use the Download link below to view the video</span>
+          </div>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3">

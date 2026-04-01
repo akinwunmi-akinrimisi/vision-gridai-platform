@@ -419,7 +419,11 @@ export default function VideoReview() {
         {/* Right: Video content */}
         <div className="lg:col-span-8 space-y-4">
           <VideoPlayer topic={topic} />
-          <ThumbnailPreview thumbnailUrl={topic.thumbnail_url} />
+          <ThumbnailPreview
+            thumbnailUrl={topic.thumbnail_url}
+            onGenerate={() => handleRegenThumbnail()}
+            isGenerating={regenThumbnail.isPending}
+          />
           <UploadProgress
             publishProgress={topic.publish_progress}
             onRetry={handleRetryUpload}

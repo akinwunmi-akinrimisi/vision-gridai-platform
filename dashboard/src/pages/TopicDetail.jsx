@@ -942,9 +942,20 @@ export default function TopicDetail() {
             </h3>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {Object.entries(topic.cost_breakdown).map(([key, val]) => (
+            {Object.entries(topic.cost_breakdown)
+              .map(([key, val]) => {
+                // Replace deprecated I2V/T2V with Ken Burns ($0)
+                const lk = key.toLowerCase();
+                if (lk === 'i2v' || lk === 't2v') return null;
+                return [key, val];
+              })
+              .filter(Boolean)
+              .concat([['ken_burns', 0]])
+              // Deduplicate ken_burns if it already exists
+              .filter(([key], i, arr) => arr.findIndex(([k]) => k === key) === i)
+              .map(([key, val]) => (
               <div key={key} className="flex items-center justify-between px-3 py-2 rounded-lg bg-background border border-border">
-                <span className="text-xs text-muted-foreground capitalize">{key}</span>
+                <span className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
                 <span className="text-xs font-bold tabular-nums">
                   ${typeof val === 'number' ? val.toFixed(2) : val}
                 </span>

@@ -341,14 +341,14 @@ export default function Sidebar({ onLogout, collapsed, setCollapsed }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setCollapsed]);
 
-  // Auto-collapse below 1280px on desktop
+  // Auto-collapse below 1024px on desktop (only on resize, not initial mount)
   useEffect(() => {
     if (isMobile) return;
-    const mql = window.matchMedia('(max-width: 1280px)');
+    const mql = window.matchMedia('(max-width: 1024px)');
     const handler = (e) => {
       if (e.matches) setCollapsed(true);
     };
-    if (mql.matches) setCollapsed(true);
+    // Only listen for future resizes — do NOT collapse on initial mount
     mql.addEventListener('change', handler);
     return () => mql.removeEventListener('change', handler);
   }, [setCollapsed, isMobile]);

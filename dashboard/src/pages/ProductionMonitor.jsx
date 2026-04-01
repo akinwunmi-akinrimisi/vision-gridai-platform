@@ -63,7 +63,7 @@ export default function ProductionMonitor() {
     [topics]
   );
   const completedTopics = useMemo(
-    () => topics.filter((t) => t.status === 'assembled').slice(-3).reverse(),
+    () => topics.filter((t) => t.status === 'assembled' || t.status === 'published').slice(-3).reverse(),
     [topics]
   );
   const scriptApprovedTopics = useMemo(
@@ -71,7 +71,20 @@ export default function ProductionMonitor() {
     [topics]
   );
 
-  const currentTopic = activeTopic || stoppedTopic;
+  // Fallback: if no actively producing/stopped topic, show most recently assembled/published topic
+  const lastCompletedTopic = useMemo(() => {
+    if (activeTopic || stoppedTopic) return null;
+    const finished = topics.filter((t) => t.status === 'assembled' || t.status === 'published');
+    if (finished.length === 0) return null;
+    // Sort by updated_at descending, fall back to topic_number
+    return finished.sort((a, b) => {
+      const da = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const db = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return db - da;
+    })[0];
+  }, [topics, activeTopic, stoppedTopic]);
+
+  const currentTopic = activeTopic || stoppedTopic || lastCompletedTopic;
 
   const { scenes, stageProgress, failedScenes: hookFailedScenes, isLoading: scenesLoading } =
     useProductionProgress(currentTopic?.id || null, currentTopic);
@@ -195,7 +208,7 @@ export default function ProductionMonitor() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[10px] uppercase tracking-wider text-primary font-semibold">
-                    Now Producing
+                    {lastCompletedTopic && !activeTopic && !stoppedTopic ? 'Last Production' : 'Now Producing'}
                   </span>
                   <span className="text-2xs text-muted-foreground tabular-nums">
                     #{currentTopic.topic_number}
