@@ -153,6 +153,7 @@ export default function YouTubeDiscovery() {
   const [selectedNiche, setSelectedNiche] = useState('all');
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [justStarted, setJustStarted] = useState(false);
+  const [searchNiches, setSearchNiches] = useState(new Set(NICHES.map(n => n.key)));
 
   const { data: latestRun, isLoading: runLoading } = useLatestDiscoveryRun();
   const { data: allRuns } = useAllDiscoveryRuns();
@@ -210,11 +211,32 @@ export default function YouTubeDiscovery() {
     return () => clearTimeout(t);
   }, [justStarted, hasRun, isSearching, isComplete]);
 
+  const toggleSearchNiche = (key) => {
+    setSearchNiches(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size <= 1) return prev;
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllSearchNiches = () => {
+    if (searchNiches.size === NICHES.length) {
+      setSearchNiches(new Set([NICHES[0].key]));
+    } else {
+      setSearchNiches(new Set(NICHES.map(n => n.key)));
+    }
+  };
+
   const handleRun = () => {
     setJustStarted(true);
     setSelectedRunId(null);
     setSelectedNiche('all');
-    runDiscovery.mutate({ timeRange: selectedTimeRange });
+    runDiscovery.mutate({ timeRange: selectedTimeRange, niches: [...searchNiches] });
   };
 
   const handleUseForProject = (video) => {
@@ -249,7 +271,7 @@ export default function YouTubeDiscovery() {
     <div className="animate-slide-up">
       <PageHeader
         title="YouTube Discovery"
-        subtitle="Find top-performing long-form videos (45min+) across 5 niches"
+        subtitle="Find top-performing long-form videos (45min+) across selected niches"
       >
         <div className="flex items-center gap-2">
           <select
@@ -285,13 +307,41 @@ export default function YouTubeDiscovery() {
         </div>
       </PageHeader>
 
+      {/* Niche selection for search */}
+      <div className="flex flex-wrap items-center gap-1.5 mb-6">
+        <span className="text-[10px] text-muted-foreground mr-1 uppercase tracking-wider">Search niches:</span>
+        <button
+          onClick={toggleAllSearchNiches}
+          className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
+            searchNiches.size === NICHES.length
+              ? 'bg-primary/15 text-primary border-primary/30'
+              : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
+          }`}
+        >
+          All
+        </button>
+        {NICHES.map((n) => (
+          <button
+            key={n.key}
+            onClick={() => toggleSearchNiche(n.key)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
+              searchNiches.has(n.key)
+                ? 'bg-primary/15 text-primary border-primary/30'
+                : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
+            }`}
+          >
+            {n.label}
+          </button>
+        ))}
+      </div>
+
       {/* Just started */}
       {justStarted && !isSearching && (
         <div className="bg-card border border-border rounded-xl p-8 text-center mb-6">
           <Loader2 className="w-6 h-6 text-primary animate-spin mx-auto mb-3" />
           <p className="text-sm font-medium mb-1">Searching YouTube...</p>
           <p className="text-xs text-muted-foreground">
-            Scanning 5 niches with multiple keyword variations. This may take 30-60 seconds.
+            Scanning {searchNiches.size} niche{searchNiches.size !== 1 ? 's' : ''} with multiple keyword variations. This may take 30-60 seconds.
           </p>
         </div>
       )}

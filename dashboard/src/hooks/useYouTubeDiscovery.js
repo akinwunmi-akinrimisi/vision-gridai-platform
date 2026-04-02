@@ -5,11 +5,13 @@ import { webhookCall } from '../lib/api';
 import { toast } from 'sonner';
 
 const NICHES = [
-  { key: 'narrative_storytelling', label: 'Narrative Storytelling' },
-  { key: 'real_estate', label: 'Real Estate & Property' },
+  { key: 'business_case_studies', label: 'Business & Entrepreneurship Case Studies' },
+  { key: 'jungian_psychology', label: 'Jungian Psychology' },
+  { key: 'history_documentaries', label: 'History Documentaries & Storytelling' },
   { key: 'personal_finance', label: 'Personal Finance & Investing' },
-  { key: 'business_marketing', label: 'Business & Digital Marketing' },
-  { key: 'legal_tax', label: 'Legal & Tax Education' },
+  { key: 'health_fitness', label: 'Health, Fitness & Longevity' },
+  { key: 'betrayal_revenge', label: 'Betrayal/Revenge Stories' },
+  { key: 'literary_analysis', label: 'Literary Analysis & Reviews' },
 ];
 
 export { NICHES };
@@ -74,8 +76,8 @@ export function useRunDiscovery() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ timeRange }) => {
-      const result = await webhookCall('youtube/discover', { time_range: timeRange });
+    mutationFn: async ({ timeRange, niches }) => {
+      const result = await webhookCall('youtube/discover', { time_range: timeRange, niches: niches || null });
       if (result.success === false) throw new Error(result.error || 'Webhook failed');
       return result;
     },
