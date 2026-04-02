@@ -60,8 +60,8 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ niche, description, target_video_count }) =>
-      webhookCall('project/create', { niche, description, target_video_count }),
+    mutationFn: ({ niche, description, target_video_count, reference_analyses }) =>
+      webhookCall('project/create', { niche, description, target_video_count, reference_analyses: reference_analyses || [] }),
 
     onMutate: async ({ niche, description, target_video_count }) => {
       await queryClient.cancelQueries({ queryKey: ['projects'] });

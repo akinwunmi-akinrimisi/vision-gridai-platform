@@ -308,7 +308,7 @@ export default function YouTubeDiscovery() {
       </PageHeader>
 
       {/* Niche selection for search */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-6 mt-4">
         <span className="text-[10px] text-muted-foreground mr-1 uppercase tracking-wider">Search niches:</span>
         <button
           onClick={toggleAllSearchNiches}
@@ -430,7 +430,7 @@ export default function YouTubeDiscovery() {
       {hasRun && isComplete && (
         <>
           {/* Niche tabs */}
-          <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
+          <div className="flex gap-2 mb-6 mt-2 overflow-x-auto pb-2">
             <button
               onClick={() => setSelectedNiche('all')}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer whitespace-nowrap ${
