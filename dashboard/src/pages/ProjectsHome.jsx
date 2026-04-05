@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { Plus, Folder, TrendingUp, DollarSign, Video, Sparkles } from 'lucide-react';
-import { useProjects, useRetryResearch } from '../hooks/useProjects';
+import { useProjects, useRetryResearch, useDeleteProject } from '../hooks/useProjects';
 import PageHeader from '../components/shared/PageHeader';
 import KPICard from '../components/shared/KPICard';
 import EmptyState from '../components/shared/EmptyState';
@@ -23,6 +23,7 @@ export default function ProjectsHome() {
   }, [location.state]);
   const { data: projects, isLoading, error } = useProjects();
   const retryResearchMutation = useRetryResearch();
+  const deleteProjectMutation = useDeleteProject();
 
   const totalProjects = projects?.length || 0;
   const publishedCount = projects?.reduce((sum, p) => {
@@ -159,6 +160,8 @@ export default function ProjectsHome() {
               <ProjectCard
                 project={project}
                 onRetry={retryResearchMutation.mutate}
+                onDelete={(projectId) => deleteProjectMutation.mutate(projectId)}
+                isDeleting={deleteProjectMutation.isPending}
               />
             </div>
           ))}

@@ -7,8 +7,10 @@ import {
   Loader2,
   RotateCcw,
   ArrowRight,
+  Trash2,
 } from 'lucide-react';
 import StatusBadge from '../shared/StatusBadge';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 
 /* ── Status → StatusBadge mapping ─────────────────────────────── */
@@ -214,10 +216,11 @@ function getNicheEmoji(niche) {
 
 /* ── Component ───────────────────────────────────────────────── */
 
-export default function ProjectCard({ project, onRetry }) {
+export default function ProjectCard({ project, onRetry, onDelete, isDeleting }) {
   const navigate = useNavigate();
   const { id, name, niche, status, created_at, updated_at, topics_summary } = project;
   const [, setTick] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const computedStatus = useMemo(
     () => computeProjectStatus(status, topics_summary),
@@ -235,6 +238,18 @@ export default function ProjectCard({ project, onRetry }) {
   }, []);
 
   const relativeTime = formatRelativeTime(updated_at || created_at);
+
+  // Show delete only on early-stage or failed projects with no topics in production
+  const hasTopics = topics_summary && topics_summary.length > 0;
+  const hasProductionTopics = hasTopics && topics_summary.some((t) =>
+    ['scripting', 'producing', 'audio', 'images', 'assembling', 'assembled', 'published', 'ready_review'].includes(t.status)
+  );
+  const isDeletableStatus = [
+    'created', 'researching', 'researching_competitors', 'researching_pain_points',
+    'researching_keywords', 'researching_blue_ocean', 'researching_prompts',
+    'research_failed', 'failed',
+  ].includes(status);
+  const canDelete = onDelete && isDeletableStatus && !hasProductionTopics;
 
   // Progress ratio for mini bar
   const progressRatio = computedStatus.topicCount > 0
@@ -346,9 +361,25 @@ export default function ProjectCard({ project, onRetry }) {
         </>
       )}
 
-      {/* Footer: time + arrow */}
+      {/* Footer: time + delete + arrow */}
       <div className="flex items-center justify-between mt-3">
-        <p className="text-2xs text-muted-foreground">{relativeTime}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-2xs text-muted-foreground">{relativeTime}</p>
+          {canDelete && (
+            <button
+              data-testid={`delete-project-${id}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowDeleteConfirm(true);
+              }}
+              className="p-1 rounded-md text-muted-foreground/40 hover:text-danger hover:bg-danger/10 transition-colors opacity-0 group-hover:opacity-100"
+              title="Delete project"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
         <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-200" />
       </div>
 
@@ -370,6 +401,21 @@ export default function ProjectCard({ project, onRetry }) {
         </Button>
       )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          onDelete(id);
+          setShowDeleteConfirm(false);
+        }}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${name || niche}"? This will permanently remove the project and all related data (topics, scripts, scenes, research). This action cannot be undone.`}
+        confirmText="Delete Project"
+        confirmVariant="danger"
+        loading={isDeleting}
+      />
     </div>
   );
 }
