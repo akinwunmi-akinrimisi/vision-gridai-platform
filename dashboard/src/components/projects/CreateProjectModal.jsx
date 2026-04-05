@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Loader2, Microscope } from 'lucide-react';
+import { CheckCircle2, Loader2, Microscope, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -34,6 +34,7 @@ const EXAMPLE_HINTS = [
 export default function CreateProjectModal({ open, onOpenChange, prefillNiche, prefillDescription, analysisIds }) {
   const [niche, setNiche] = useState('');
   const [description, setDescription] = useState('');
+  const [productionStyle, setProductionStyle] = useState('ai_cinematic');
   const [targetVideoCount, setTargetVideoCount] = useState(25);
   const [hintIndex, setHintIndex] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -124,6 +125,7 @@ export default function CreateProjectModal({ open, onOpenChange, prefillNiche, p
     if (!open) {
       setNiche('');
       setDescription('');
+      setProductionStyle('ai_cinematic');
       setTargetVideoCount(25);
       setShowSuccess(false);
       setNicheBlurred(false);
@@ -164,6 +166,7 @@ export default function CreateProjectModal({ open, onOpenChange, prefillNiche, p
       await createProject.mutateAsync({
         niche: niche.trim(),
         description: description.trim() || undefined,
+        production_style: productionStyle,
         target_video_count: targetVideoCount,
         reference_analyses: analysisIds || undefined,
       });
@@ -290,6 +293,38 @@ export default function CreateProjectModal({ open, onOpenChange, prefillNiche, p
               />
               {nicheError && (
                 <p className="text-danger text-xs mt-1">{nicheError}</p>
+              )}
+            </div>
+
+            {/* Production Style */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="production-style"
+                className="block text-sm font-medium"
+              >
+                Production Style
+              </label>
+              <Select
+                value={productionStyle}
+                onValueChange={setProductionStyle}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="production-style" className="w-full">
+                  <SelectValue placeholder="Select style..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ai_cinematic">AI Cinematic</SelectItem>
+                  <SelectItem value="kinetic_typography">Kinetic Typography</SelectItem>
+                </SelectContent>
+              </Select>
+              {productionStyle === 'kinetic_typography' && (
+                <div className="flex items-start gap-2 mt-1.5 p-2.5 rounded-md bg-info-bg border border-info-border">
+                  <Info className="w-3.5 h-3.5 text-info flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-info leading-relaxed">
+                    Videos will use animated text graphics instead of AI-generated images.
+                    Scenes are rendered as kinetic typography frames with programmatic animations.
+                  </p>
+                </div>
               )}
             </div>
 

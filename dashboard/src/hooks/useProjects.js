@@ -60,10 +60,10 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ niche, description, target_video_count, reference_analyses }) =>
-      webhookCall('project/create', { niche, description, target_video_count, reference_analyses: reference_analyses || [] }),
+    mutationFn: ({ niche, description, production_style, target_video_count, reference_analyses }) =>
+      webhookCall('project/create', { niche, description, production_style, target_video_count, reference_analyses: reference_analyses || [] }),
 
-    onMutate: async ({ niche, description, target_video_count }) => {
+    onMutate: async ({ niche, description, production_style, target_video_count }) => {
       await queryClient.cancelQueries({ queryKey: ['projects'] });
 
       const previousProjects = queryClient.getQueryData(['projects']);
@@ -73,6 +73,7 @@ export function useCreateProject() {
         name: niche,
         niche,
         niche_description: description || null,
+        production_style: production_style || 'ai_cinematic',
         target_video_count: target_video_count || 25,
         status: 'researching',
         created_at: new Date().toISOString(),

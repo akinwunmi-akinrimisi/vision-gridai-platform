@@ -1,0 +1,346 @@
+{
+  "name": "WF_KINETIC_POLL",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kinetic_jobs?status=in.(queued,generating_script,rendering_frames,generating_tts,mixing_audio,assembling,uploading)&select=*&order=created_at.asc",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "find-active-jobs",
+      "name": "Find Active Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-no-jobs",
+              "leftValue": "={{ $json.length || 0 }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-no-jobs",
+      "name": "IF No Jobs",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// No active jobs, exit early\nreturn [{ json: { polled: true, active_jobs: 0, message: 'No active kinetic jobs' } }];"
+      },
+      "id": "exit-no-jobs",
+      "name": "Exit No Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 280]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Transform the Supabase response array into individual items for SplitInBatches\nconst jobs = $input.first().json;\n\nif (!Array.isArray(jobs)) {\n  return [{ json: { error: 'Expected array of jobs', raw: jobs } }];\n}\n\nreturn jobs.map(job => ({ json: job }));"
+      },
+      "id": "prepare-jobs",
+      "name": "Prepare Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 500]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-over-jobs",
+      "name": "Loop Over Jobs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1100, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://localhost:3200/status/{{ $json.job_id || $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "poll-service",
+      "name": "Poll Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 600],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const serviceResponse = $input.first().json;\nconst job = $('Loop Over Jobs').first().json;\n\n// Build the PATCH body from service response\nconst patchBody = {};\n\nif (serviceResponse.status) {\n  patchBody.status = serviceResponse.status;\n}\nif (serviceResponse.progress !== undefined) {\n  patchBody.progress_pct = serviceResponse.progress;\n}\nif (serviceResponse.current_step) {\n  patchBody.current_step = serviceResponse.current_step;\n}\nif (serviceResponse.frames_completed !== undefined) {\n  patchBody.frames_completed = serviceResponse.frames_completed;\n}\nif (serviceResponse.frames_total !== undefined) {\n  patchBody.frames_total = serviceResponse.frames_total;\n}\nif (serviceResponse.error) {\n  patchBody.error_message = serviceResponse.error;\n  patchBody.status = 'failed';\n}\n\npatchBody.last_polled_at = new Date().toISOString();\n\n// Compute images_progress string for the topic\nlet images_progress = 'pending';\nif (serviceResponse.frames_completed !== undefined && serviceResponse.frames_total) {\n  if (serviceResponse.frames_completed >= serviceResponse.frames_total) {\n    images_progress = 'complete';\n  } else {\n    images_progress = `done:${serviceResponse.frames_completed}/${serviceResponse.frames_total}`;\n  }\n}\n\nreturn [{ json: {\n  job_id: job.id,\n  topic_id: job.topic_id,\n  patch_body: patchBody,\n  images_progress,\n  service_status: serviceResponse.status || 'unknown'\n} }];"
+      },
+      "id": "compute-progress",
+      "name": "Update Topic Progress",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 600]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kinetic_jobs?id=eq.{{ $json.job_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.patch_body) }}",
+        "options": {}
+      },
+      "id": "update-job",
+      "name": "Update Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics?id=eq.{{ $('Update Topic Progress').first().json.topic_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ images_progress: $('Update Topic Progress').first().json.images_progress }) }}",
+        "options": {}
+      },
+      "id": "patch-topic-progress",
+      "name": "PATCH Topic Progress",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Find Active Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Active Jobs": {
+      "main": [
+        [
+          {
+            "node": "IF No Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF No Jobs": {
+      "main": [
+        [
+          {
+            "node": "Exit No Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Jobs": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Jobs": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Poll Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Service": {
+      "main": [
+        [
+          {
+            "node": "Update Topic Progress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Topic Progress": {
+      "main": [
+        [
+          {
+            "node": "Update Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Job": {
+      "main": [
+        [
+          {
+            "node": "PATCH Topic Progress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PATCH Topic Progress": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 120,
+    "saveExecutionProgress": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none"
+  },
+  "staticData": null,
+  "tags": []
+}
