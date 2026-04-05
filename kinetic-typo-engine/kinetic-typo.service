@@ -1,0 +1,15 @@
+[Unit]
+Description=Kinetic Typography Engine
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/kinetic-typo-engine
+ExecStart=/opt/kinetic-typo-engine/venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 3200
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

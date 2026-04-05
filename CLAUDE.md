@@ -23,6 +23,8 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - **Storage:** Google Drive
 - **Upload:** YouTube Data API v3 + TikTok Content API + Instagram Graph API
 - **Agent Expertise:** Agency Agents (61 specialists in `~/.claude/agents/`)
+- **Kinetic Typography Service:** Python (FastAPI) on VPS port 3200. Programmatic frame rendering (Pillow + pycairo). No AI images. 30fps JPEG frames assembled via FFmpeg. Triggered by n8n webhook.
+- **Production Style Selector:** Per-project choice: "AI Cinematic" or "Kinetic Typography" in CreateProjectModal.
 
 ## Key Reference Files
 - @Agent.md — Full platform architecture, Supabase schema, all pipeline phases, scoring rubric, dashboard spec
@@ -126,6 +128,36 @@ vision-gridai-platform/
 │   └── useSceneClassification.js      ← NEW
 ├── supabase/migrations/
 │   └── 005_remotion_hybrid_rendering.sql  ← NEW
+├── kinetic-typo-engine/
+│   ├── src/
+│   │   ├── main.py              ← FastAPI service (port 3200)
+│   │   ├── config.py            ← Constants, colors, TTS config
+│   │   ├── animation_engine.py  ← Easing functions + interpolation
+│   │   ├── background.py        ← Gradients, grid, particles
+│   │   ├── typography.py        ← Text rendering, cached layers
+│   │   ├── cards.py             ← Numbered card components
+│   │   ├── frame_renderer.py    ← Scene-level frame renderer
+│   │   ├── script_generator.py  ← Claude API (chunked for long-form)
+│   │   ├── voice_generator.py   ← Google Cloud TTS + preprocessing
+│   │   ├── audio_generator.py   ← Music selection + ducking
+│   │   ├── video_assembler.py   ← FFmpeg assembly
+│   │   └── drive_uploader.py    ← Google Drive upload
+│   ├── fonts/
+│   ├── tests/
+│   ├── requirements.txt
+│   └── kinetic-typo.service     ← systemd unit file
+├── workflows/
+│   ├── WF_KINETIC_TRIGGER.json
+│   ├── WF_KINETIC_POLL.json
+│   └── WF_KINETIC_COMPLETE.json
+├── supabase/migrations/
+│   └── 006_kinetic_typography.sql
+├── dashboard/src/components/script/
+│   ├── KineticScriptReview.jsx
+│   ├── KineticSceneCard.jsx
+│   └── KineticElementRow.jsx
+├── dashboard/src/components/production/
+│   └── KineticProductionMonitor.jsx
 ```
 
 ## Critical Rules
@@ -149,6 +181,8 @@ vision-gridai-platform/
 **IMPORTANT: ALL scenes use text-to-image + FFmpeg Ken Burns. No I2V or T2V.** Every scene: Seedream 4.0 image → FFmpeg zoompan (Ken Burns) + color grade → .mp4 clip. visual_type stays 'static_image' for backwards compatibility.
 
 **IMPORTANT: Hybrid rendering — Fal.ai + Remotion.** After script approval (Gate 2), ALL scenes are AI-classified as fal_ai or remotion via WF_SCENE_CLASSIFY. Results visible on dashboard. Operator reviews and can override any classification. Must click "Accept & Proceed" before image generation starts. This applies to both long-form and short-form production. Remotion scenes use data_payload (structured JSON), not image prompts. Both tracks produce .png files that enter the same Ken Burns + color grade pipeline.
+
+**IMPORTANT: Two production styles — "AI Cinematic" and "Kinetic Typography."** Selected per project via production_style field. AI Cinematic uses Fal.ai images + Remotion + Ken Burns + color grade. Kinetic Typography uses Python-rendered frames (Pillow + pycairo) with animated text, particles, and data graphics. No AI images. Kinetic runs as a standalone service on :3200, triggered by n8n. After script approval: AI Cinematic → scene classification → image gen. Kinetic → straight to frame rendering (skips classification entirely). Both use same TTS, music, Drive upload, YouTube publish, dashboard approval gates, analytics.
 
 **IMPORTANT: Agency Agents (61 specialists) are installed at `~/.claude/agents/`.** They auto-activate based on context. Key agents: Frontend Developer (dashboard), Backend Architect (n8n workflows), DevOps Automator (VPS/Docker), Image Prompt Engineer (thumbnail/visual prompts), TikTok Strategist + Instagram Curator (social media posting). GSD executor agents inherit their expertise automatically.
 
@@ -241,6 +275,7 @@ cp -r build/* /opt/dashboard/  # Deploy to Nginx
 | H | Social posting (scheduled via calendar) | Cron | Free |
 | TI | Topic Intelligence (5-source research) | On-demand | ~$0.13 |
 | Sup | Supervisor + Comment sync + Engagement | Cron | ~$14/mo |
+| K | Kinetic Typography rendering (all frames + assembly) | Deterministic | ~$1.50 |
 | **Total per video** | | | **~$6.17** |
 
 ## Development Workflow (Superpowers)
@@ -314,6 +349,16 @@ Quality commands (gstack selective):
 - Short-form scenes inherit classification from parent long-form scenes. If shorts pipeline regenerates 9:16 visuals, classification runs again.
 - Remotion rendering: ~1-2 seconds per scene. 64 scenes = ~90 seconds total. Much faster than Fal.ai (~3-5 seconds per image).
 - Preview renders use the same Remotion service but skip Drive upload. Preview PNGs are temporary.
+- Kinetic service must be running on :3200 for kinetic projects to work. Check: `curl localhost:3200/health`
+- production_style is per-project, not per-topic. All videos in a project use the same style.
+- Kinetic bypasses scene classification AND Remotion entirely. No render_method field used.
+- Long-form kinetic (2hr) generates ~216,000 JPEG frames. Scene-by-scene rendering keeps disk under 2GB active.
+- JPEG quality=95 mandatory. PNG causes OOM at ~400 frames.
+- TTS Journey-D voice does NOT support pitch parameter. Will throw INVALID_ARGUMENT.
+- ALL_CAPS text must be preprocessed to title case before TTS (otherwise spells letter-by-letter).
+- The kinetic Python service writes directly to Supabase (kinetic_jobs, kinetic_scenes). n8n polls for status changes.
+- For chunked script generation (>15min), each chapter prompt receives the previous chapter's last scene as context for continuity.
+- Frame render avg: 42ms. Full 2hr video: ~2.5 hours render time. This is expected and communicated in dashboard.
 
 ## Skill routing
 

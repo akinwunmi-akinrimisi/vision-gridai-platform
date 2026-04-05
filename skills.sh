@@ -1017,6 +1017,45 @@ else
     echo "  ❌ Classification fields missing — run migration 005"
 fi
 
+# ─── 7. KINETIC TYPOGRAPHY ENGINE CHECKS ─────────────────────
+echo ""
+echo "▶ Kinetic Typography Engine..."
+
+# Check service
+KINETIC_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3200/health 2>/dev/null || echo "000")
+if [ "$KINETIC_STATUS" = "200" ]; then
+    echo "  ✅ Kinetic service: running on :3200"
+else
+    echo "  ⚠️  Kinetic service not running (HTTP $KINETIC_STATUS)"
+    echo "     Start: cd kinetic-typo-engine && python -m uvicorn src.main:app --port 3200"
+fi
+
+# Check Python deps
+for pkg in pillow pycairo numpy scipy pydub anthropic fastapi uvicorn; do
+    python3 -c "import ${pkg//-/_}" 2>/dev/null && \
+        echo "  ✅ $pkg" || echo "  ⚠️  $pkg missing"
+done
+
+# Check kinetic tables
+for table in kinetic_scenes kinetic_jobs; do
+    RESP=$(curl -s -o /dev/null -w "%{http_code}" \
+        "${SUPABASE_URL}/rest/v1/${table}?select=id&limit=1" \
+        -H "apikey: ${SUPABASE_ANON_KEY:-none}" \
+        -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY:-none}" 2>/dev/null || echo "000")
+    [ "$RESP" = "200" ] && echo "  ✅ $table" || echo "  ❌ $table — run migration 006"
+done
+
+# Check production_style column on projects
+STYLE_CHECK=$(curl -s "${SUPABASE_URL}/rest/v1/projects?select=production_style&limit=1" \
+    -H "apikey: ${SUPABASE_ANON_KEY:-none}" \
+    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY:-none}" 2>/dev/null || echo "error")
+echo "$STYLE_CHECK" | grep -q "production_style" && \
+    echo "  ✅ production_style column on projects" || \
+    echo "  ❌ production_style column missing — run migration 006"
+
+# Check fonts directory
+[ -d "kinetic-typo-engine/fonts" ] && echo "  ✅ Fonts directory exists" || echo "  ⚠️  No fonts directory"
+
 # ─── DONE ───────────────────────────────────────────────────
 
 echo ""
