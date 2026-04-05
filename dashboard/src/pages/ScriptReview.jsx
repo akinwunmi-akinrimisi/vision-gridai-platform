@@ -243,6 +243,8 @@ export default function ScriptReview() {
             passScores={topic.script_pass_scores}
             status={topic.status}
             attempts={topic.script_attempts || 1}
+            startedAt={topic.last_status_change}
+            forcePass={topic.script_force_passed === true}
           />
         </div>
       )}

@@ -1,21 +1,17 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 /**
- * Right-side slide-in panel (Linear-style detail panel).
- * @param {boolean} isOpen - Whether panel is visible
- * @param {Function} onClose - Close handler
- * @param {string} title - Panel title
- * @param {React.ReactNode} children - Panel body content
- * @param {string} width - Tailwind width class (default 'w-[480px]')
+ * Right-side slide-in panel.
+ * Uses React Portal to escape parent transform/stacking context.
+ * Only renders when open.
  */
 export default function SidePanel({ isOpen, onClose, title, children, width = 'w-[480px]' }) {
   // Lock body scroll when open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
@@ -32,41 +28,32 @@ export default function SidePanel({ isOpen, onClose, title, children, width = 'w
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  return (
+  if (!isOpen) return null;
+
+  return createPortal(
     <>
       {/* Backdrop overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity duration-300"
-          onClick={onClose}
-        />
-      )}
+      <div
+        className="fixed inset-0 z-[9998] bg-black/30"
+        onClick={onClose}
+      />
 
       {/* Panel */}
       <aside
         className={`
-          fixed right-0 top-0 h-full z-50 ${width} max-w-full
-          bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl
-          border-l border-border/50 dark:border-white/[0.06]
-          shadow-2xl shadow-black/[0.1] dark:shadow-black/[0.4]
-          transform transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : 'translate-x-full'}
+          fixed right-0 top-0 h-full z-[9999] ${width} max-w-full
+          bg-[#1E1B3A] border-l border-white/10 shadow-2xl
           flex flex-col
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 dark:border-white/[0.06] flex-shrink-0">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
+          <h2 className="text-lg font-bold text-white tracking-tight">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="
-              p-1.5 rounded-lg
-              text-slate-400 hover:text-slate-900 dark:hover:text-white
-              hover:bg-slate-100 dark:hover:bg-white/[0.06]
-              transition-colors duration-200 cursor-pointer
-            "
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             aria-label="Close panel"
           >
             <X className="w-5 h-5" />
@@ -78,6 +65,7 @@ export default function SidePanel({ isOpen, onClose, title, children, width = 'w
           {children}
         </div>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }

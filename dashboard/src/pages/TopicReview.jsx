@@ -162,7 +162,7 @@ export default function TopicReview() {
         await approveMutation.mutateAsync({ topic_ids: action.topics });
         toast.success(`Approved all ${action.topics.length} pending topics`);
       } else if (action.type === 'regenerate-rejected') {
-        await webhookCall('topics/regenerate-rejected', { project_id: projectId });
+        await webhookCall('topics/action', { action: 'regenerate-rejected', project_id: projectId });
         toast.success('Regenerating rejected topics...');
       }
     } catch (err) {

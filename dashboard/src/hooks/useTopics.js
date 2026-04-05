@@ -40,7 +40,7 @@ export function useApproveTopics(projectId) {
 
   return useMutation({
     mutationFn: ({ topic_ids }) =>
-      webhookCall('topics/approve', { topic_ids }),
+      webhookCall('topics/action', { action: 'approve', topic_ids }),
 
     onMutate: async ({ topic_ids }) => {
       await queryClient.cancelQueries({ queryKey: ['topics', projectId] });
@@ -78,7 +78,7 @@ export function useRejectTopics(projectId) {
 
   return useMutation({
     mutationFn: ({ topic_ids, feedback }) =>
-      webhookCall('topics/reject', { topic_ids, feedback }),
+      webhookCall('topics/action', { action: 'reject', topic_ids, feedback }),
 
     onMutate: async ({ topic_ids }) => {
       await queryClient.cancelQueries({ queryKey: ['topics', projectId] });
@@ -116,7 +116,7 @@ export function useRefineTopic(projectId) {
 
   return useMutation({
     mutationFn: ({ topic_id, instructions }) =>
-      webhookCall('topics/refine', { topic_id, instructions }),
+      webhookCall('topics/action', { action: 'refine', topic_id, instructions }),
 
     onMutate: async ({ topic_id }) => {
       await queryClient.cancelQueries({ queryKey: ['topics', projectId] });

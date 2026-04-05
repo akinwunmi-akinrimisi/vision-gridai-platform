@@ -24,6 +24,15 @@ const AVATAR_FIELDS = [
   { key: 'dream_outcome', label: 'Dream Outcome' },
 ];
 
+const GRAND_MASTER_FIELDS = [
+  { key: 'core_domain_framework', label: 'Domain Framework', rows: 2 },
+  { key: 'content_angle_blue_ocean', label: 'Blue Ocean Angle', rows: 2 },
+  { key: 'practical_takeaways', label: 'Practical Takeaways', rows: 3 },
+  { key: 'psychographics', label: 'Psychographics', rows: 2 },
+  { key: 'key_emotional_drivers', label: 'Emotional Drivers', rows: 2 },
+  { key: 'viewer_search_intent', label: 'Search Intent', rows: 2 },
+];
+
 const SCRIPT_STATUS_BADGE = {
   generating: { status: 'scripting', label: 'Generating' },
   review:     { status: 'review', label: 'Review' },
@@ -110,11 +119,13 @@ export default function TopicCard({
   /* -- Edit handlers -- */
   const handleEnterEdit = (e) => {
     e.stopPropagation();
-    setEditTopicFields({
+    const tf = {
       seo_title: topic.seo_title || '',
       narrative_hook: topic.narrative_hook || '',
       key_segments: topic.key_segments || '',
-    });
+    };
+    for (const { key } of GRAND_MASTER_FIELDS) tf[key] = topic[key] || '';
+    setEditTopicFields(tf);
     const av = topic.avatars?.[0] || {};
     const af = {};
     for (const { key } of AVATAR_FIELDS) af[key] = av[key] || '';
@@ -433,6 +444,22 @@ export default function TopicCard({
                       focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all resize-none"
                   />
                 </div>
+
+                {/* Grand Master topic fields */}
+                {GRAND_MASTER_FIELDS.map(({ key, label, rows }) => (
+                  <div key={key}>
+                    <label className="block text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1.5">{label}</label>
+                    <textarea
+                      data-testid={`edit-${key}`}
+                      value={editTopicFields[key] || ''}
+                      onChange={(e) => setEditTopicFields((p) => ({ ...p, [key]: e.target.value }))}
+                      rows={rows}
+                      className="w-full px-3 py-2 rounded-lg text-sm bg-muted border border-border text-foreground
+                        focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all resize-none"
+                      placeholder={label}
+                    />
+                  </div>
+                ))}
               </div>
 
               {/* Avatar fields */}
@@ -498,6 +525,20 @@ export default function TopicCard({
                 <div>
                   <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1">Key Segments</p>
                   <p className="text-sm leading-relaxed whitespace-pre-line">{topic.key_segments}</p>
+                </div>
+              )}
+
+              {/* Grand Master topic fields */}
+              {GRAND_MASTER_FIELDS.some(({ key }) => topic[key]) && (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  {GRAND_MASTER_FIELDS.map(({ key, label }) => (
+                    topic[key] ? (
+                      <div key={key}>
+                        <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1">{label}</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-line">{topic[key]}</p>
+                      </div>
+                    ) : null
+                  ))}
                 </div>
               )}
 
