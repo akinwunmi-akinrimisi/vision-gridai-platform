@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 
 import anthropic
 
-from config import (
+from .config import (
     ANTHROPIC_API_KEY,
     TEMP_DIR,
 )

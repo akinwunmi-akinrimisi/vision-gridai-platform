@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from pydub import AudioSegment
 
-from config import (
+from .config import (
     DUCK_DB,
     DUCK_FADE_MS,
     DUCK_RMS_WINDOW_MS,

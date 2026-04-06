@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from google.cloud import texttospeech
 
-from config import (
+from .config import (
     ACRONYMS,
     TEMP_DIR,
     TTS_MAX_RATE,
