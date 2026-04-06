@@ -300,28 +300,63 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
                 script_raw = []
 
             # Convert n8n script format to kinetic scene format
+            # IMPORTANT: frame_renderer reads scene["type"] and scene["text"]/["headline"]
+            # at the TOP level — NOT nested inside elements.
+            # Color moods rotate per chapter for visual variety.
+            color_accents = ["accent_purple", "accent_cyan", "accent_orange"]
             scenes = []
-            for i, s in enumerate(script_raw if isinstance(script_raw, list) else []):
+            script_list = script_raw if isinstance(script_raw, list) else []
+            total = len(script_list)
+            for i, s in enumerate(script_list):
                 narration = s.get("narration_text", s.get("narration", ""))
-                scene_type = "statement"
+                chapter = s.get("chapter", "")
+                chapter_num = s.get("chapter_number", i // 15)
+
+                # Infer scene type from position and content
                 text_lower = narration.lower() if narration else ""
                 if i == 0:
                     scene_type = "hook"
-                elif any(w in text_lower for w in ["percent", "million", "billion", "trillion", "$"]):
-                    scene_type = "stats"
-                elif i == len(script_raw) - 1:
+                elif i == total - 1:
                     scene_type = "cta"
+                elif any(w in text_lower for w in ["percent", "million", "billion", "trillion", "$", "number"]):
+                    scene_type = "stats"
+                elif chapter and chapter != (script_list[i-1].get("chapter", "") if i > 0 else ""):
+                    scene_type = "chapter_title"
+                elif any(w in text_lower for w in ["said", "told", "asked", "replied", "remember"]):
+                    scene_type = "quote"
+                elif i % 7 == 3:
+                    scene_type = "hook"  # variety every ~7 scenes
+                else:
+                    scene_type = "statement"
 
                 word_count = len(narration.split()) if narration else 0
                 duration = max(5, round(word_count / 150 * 60))
 
+                # Extract short headline from narration (first sentence or first 60 chars)
+                headline = narration.split(".")[0][:80] if narration else ""
+                body = narration[len(headline):].strip(". ") if len(narration) > len(headline) else ""
+
+                # Rotate accent color per chapter for visual variety
+                accent = color_accents[chapter_num % len(color_accents)]
+
                 scenes.append({
                     "scene_id": s.get("scene_id", f"scene_{i+1:03d}"),
-                    "scene_type": scene_type,
+                    "type": scene_type,  # KEY: "type" not "scene_type"
                     "duration_seconds": duration,
-                    "chapter": s.get("chapter", ""),
+                    "chapter": chapter,
+                    "chapter_number": chapter_num,
+                    # TOP-LEVEL text keys that frame_renderer reads:
+                    "text": headline,
+                    "headline": headline,
+                    "body": body,
+                    "label": chapter.upper() if chapter and scene_type == "chapter_title" else "",
+                    "stat_value": "",
+                    "stat_label": "",
+                    "accent_color": accent,
+                    "animation": "fade_in",
                     "elements": [
-                        {"text": narration, "style": "BODY", "animation": "fade_in", "delay_ms": 0, "duration_ms": duration * 1000}
+                        {"text": narration, "style": "BODY", "animation": "fade_in",
+                         "delay_ms": 0, "duration_ms": duration * 1000}
                     ],
                 })
             total_scenes = len(scenes)

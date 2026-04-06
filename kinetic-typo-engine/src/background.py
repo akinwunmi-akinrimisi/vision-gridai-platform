@@ -31,26 +31,29 @@ from .config import (
 # Background gradient
 # ---------------------------------------------------------------------------
 
+# Color mood palettes for visual variety across scenes
+_BG_MOODS = {
+    "purple_teal": ((45, 27, 78), (13, 59, 59)),      # default
+    "cyan_orange": ((13, 50, 70), (60, 30, 10)),       # warm tech
+    "pink_blue":   ((55, 20, 45), (15, 25, 65)),       # creative
+    "green_purple": ((15, 45, 25), (40, 20, 60)),      # nature/growth
+    "gold_navy":   ((50, 40, 15), (10, 15, 45)),       # premium/finance
+    "red_teal":    ((55, 15, 15), (10, 50, 50)),       # dramatic
+}
+
 def render_background(
     width: int = VIDEO_WIDTH,
     height: int = VIDEO_HEIGHT,
+    color_mood: str = "purple_teal",
 ) -> Image.Image:
     """
-    Render the base background - deep navy with two radial gradient glow zones.
-
-    * Purple glow at the top-left quadrant.
-    * Teal glow at the bottom-right quadrant.
-
-    Uses numpy for fast per-pixel computation.
-
-    Returns
-    -------
-    PIL.Image.Image
-        RGB image at the requested resolution.
+    Render the base background with two radial gradient glow zones.
+    Color mood varies the glow colors for visual diversity.
     """
     bg_r, bg_g, bg_b = COLORS["bg_dark"]
-    purple = COLORS.get("bg_purple", (45, 27, 78))
-    teal = COLORS.get("bg_teal", (13, 59, 59))
+    mood = _BG_MOODS.get(color_mood, _BG_MOODS["purple_teal"])
+    purple = mood[0]
+    teal = mood[1]
 
     # Build coordinate grids
     ys = np.arange(height, dtype=np.float32)

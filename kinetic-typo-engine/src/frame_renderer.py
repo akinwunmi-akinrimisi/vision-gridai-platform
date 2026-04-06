@@ -736,9 +736,14 @@ def render_scene(
     # ------------------------------------------------------------------
     # 1. Background (static per scene, rendered once)
     # ------------------------------------------------------------------
+    # Dynamic background color based on chapter number
+    _mood_keys = list(["purple_teal", "cyan_orange", "pink_blue", "green_purple", "gold_navy", "red_teal"])
+    _chapter_num = scene.get("chapter_number", 0) if isinstance(scene.get("chapter_number"), int) else 0
+    _bg_mood = _mood_keys[_chapter_num % len(_mood_keys)]
     bg_base: Image.Image = render_background(
         width=VIDEO_WIDTH,
         height=VIDEO_HEIGHT,
+        color_mood=_bg_mood,
     )
     grid_overlay: Image.Image = render_grid_overlay(
         width=VIDEO_WIDTH,

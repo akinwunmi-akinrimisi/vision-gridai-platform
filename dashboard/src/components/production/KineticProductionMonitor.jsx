@@ -197,7 +197,7 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
   // Elapsed timer
   useEffect(() => {
     const startTime = job?.started_at || job?.created_at;
-    if (!startTime || job?.status === 'complete' || job?.status === 'failed') return;
+    if (!startTime || job?.status === 'completed' || job?.status === 'failed' || job?.current_stage === 'completed') return;
 
     const start = new Date(startTime).getTime();
     const tick = () => setElapsed(Date.now() - start);
