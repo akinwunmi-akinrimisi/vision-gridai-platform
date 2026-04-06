@@ -48,3 +48,6 @@ Thumbs.db
 .vscode/
 .idea/
 .gstack/
+kinetic-typo-engine/tts-claude.json
+kinetic-typo-engine/*.json
+!kinetic-typo-engine/package.json
