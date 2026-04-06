@@ -295,8 +295,8 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
       {/* Pipeline stage indicator */}
       <div className="flex items-center gap-1 mb-4">
         {PIPELINE_STAGES.map((stage, i) => {
-          const isCurrent = i === currentStageIdx;
-          const isDone = i < currentStageIdx || isComplete;
+          const isCurrent = !isComplete && i === currentStageIdx;
+          const isDone = isComplete || i < currentStageIdx;
           const StageIcon = stage.icon;
 
           return (
@@ -413,8 +413,8 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
         />
       </div>
 
-      {/* Current scene indicator */}
-      {job?.current_scene && (
+      {/* Current scene indicator (hide when complete) */}
+      {job?.current_scene && !isComplete && (
         <div className="mt-3 p-2 rounded-md bg-muted/30 border border-border/50">
           <p className="text-[10px] text-muted-foreground">
             Currently processing: <span className="text-foreground font-medium">Scene {job.current_scene}</span>
@@ -422,6 +422,35 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
               <span className="text-muted-foreground"> ({job.current_chapter})</span>
             )}
           </p>
+        </div>
+      )}
+
+      {/* Completed: show video link */}
+      {isComplete && (
+        <div className="mt-3 p-3 rounded-md bg-success/10 border border-success/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-success" />
+              <p className="text-sm font-semibold text-success">Production Complete</p>
+            </div>
+            {job?.video_url && (
+              job.video_url.startsWith('http') ? (
+                <a
+                  href={job.video_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-success text-success-foreground text-xs font-medium hover:bg-success/90 transition-colors"
+                >
+                  <Upload className="w-3 h-3" />
+                  Open in Google Drive
+                </a>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Video saved: {job.video_url.split('/').pop()}
+                </span>
+              )
+            )}
+          </div>
         </div>
       )}
 

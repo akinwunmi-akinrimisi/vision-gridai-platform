@@ -283,6 +283,11 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
         # ------------------------------------------------------------------
         # Stage 1: Script generation (or use pre-generated script)
         # ------------------------------------------------------------------
+        # Use topic_id for output directory so assets persist across retries
+        import os
+        output_base = os.path.join(config.OUTPUT_DIR, req.topic_id)
+        os.makedirs(output_base, exist_ok=True)
+
         _update("script_generation", pct=0.0)
 
         if req.script_json:
@@ -355,7 +360,7 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
                     return
 
             import os, gc
-            scene_dir = os.path.join(config.OUTPUT_DIR, job_id, f"scene_{idx:03d}")
+            scene_dir = os.path.join(output_base, f"scene_{idx:03d}")
             os.makedirs(scene_dir, exist_ok=True)
 
             # Resume: skip scenes with existing frames
@@ -403,7 +408,7 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
         logger.info("[%s] Stages 3-5: Per-scene voice + clip assembly", job_id)
 
         import os, time
-        voice_dir = os.path.join(config.OUTPUT_DIR, job_id, "voice")
+        voice_dir = os.path.join(output_base, "voice")
         os.makedirs(voice_dir, exist_ok=True)
         clip_paths = []
 
@@ -412,7 +417,7 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
                 return
 
             # Resume: skip scenes that already have clips
-            clip_path_check = os.path.join(config.OUTPUT_DIR, job_id, f'clip_{scene_idx:03d}.mp4')
+            clip_path_check = os.path.join(output_base, f'clip_{scene_idx:03d}.mp4')
             if os.path.exists(clip_path_check) and os.path.getsize(clip_path_check) > 1000:
                 clip_paths.append(clip_path_check)
                 logger.info('[%s] Resuming: skipping scene %d (clip exists)', job_id, scene_idx)
@@ -438,7 +443,7 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
 
             # Assemble scene clip (frames + audio)
             if scene_dir and os.path.isdir(scene_dir):
-                clip_path = os.path.join(config.OUTPUT_DIR, job_id, f"clip_{scene_idx:03d}.mp4")
+                clip_path = os.path.join(output_base, f"clip_{scene_idx:03d}.mp4")
                 try:
                     assemble_video(scene_dir, scene_voice_path, clip_path)
                     clip_paths.append(clip_path)
@@ -453,7 +458,7 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
         _update("video_assembly", pct=90.0)
         logger.info("[%s] Concatenating %d clips", job_id, len(clip_paths))
 
-        output_video = os.path.join(config.OUTPUT_DIR, job_id, "final.mp4")
+        output_video = os.path.join(output_base, "final.mp4")
         if len(clip_paths) > 1:
             from .video_assembler import concat_clips
             concat_clips(clip_paths, output_video)
