@@ -968,7 +968,7 @@ Test with curl:
 ```bash
 curl -X POST https://n8n.srv1297445.hstgr.cloud/webhook/research/run \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer __REDACTED_DASHBOARD_API_TOKEN_OLD__" \
+  -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
   -d '{"project_id":"75eb2712-ef3e-47b7-b8db-5be3740233ff","platforms":["reddit","youtube"],"time_range":"1d"}'
 ```
 
