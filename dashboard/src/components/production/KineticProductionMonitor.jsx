@@ -24,12 +24,11 @@ import { toast } from 'sonner';
  * Different from AI Cinematic: Script -> Frames -> TTS -> Mix -> Assembly -> Upload
  */
 const PIPELINE_STAGES = [
-  { key: 'script',   label: 'Script',   icon: FileText, match: ['scripting', 'script_approved'] },
-  { key: 'frames',   label: 'Frames',   icon: Layers,   match: ['rendering_frames', 'frames'] },
-  { key: 'tts',      label: 'TTS',      icon: Volume2,  match: ['tts', 'audio'] },
-  { key: 'mix',      label: 'Mix',      icon: Activity,  match: ['mixing', 'mix'] },
-  { key: 'assembly', label: 'Assembly', icon: Film,     match: ['assembling', 'assembly'] },
-  { key: 'upload',   label: 'Upload',   icon: Upload,   match: ['uploading', 'uploaded', 'published', 'assembled'] },
+  { key: 'script',   label: 'Script',       icon: FileText, match: ['script_generation'] },
+  { key: 'frames',   label: 'Frames',       icon: Layers,   match: ['frame_rendering'] },
+  { key: 'voice',    label: 'Voice + Clips', icon: Volume2,  match: ['voice_generation'] },
+  { key: 'assembly', label: 'Assembly',      icon: Film,     match: ['video_assembly'] },
+  { key: 'upload',   label: 'Upload',        icon: Upload,   match: ['uploading', 'completed'] },
 ];
 
 function formatDuration(ms) {
@@ -209,16 +208,14 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
 
   // Determine current pipeline stage
   const jobStatus = job?.status || 'pending';
+  const currentStage = job?.current_stage || 'pending';
   const currentStageIdx = useMemo(() => {
+    // Match on current_stage (what the Python service writes)
     for (let i = PIPELINE_STAGES.length - 1; i >= 0; i--) {
-      if (PIPELINE_STAGES[i].match.includes(jobStatus)) return i;
+      if (PIPELINE_STAGES[i].match.includes(currentStage)) return i;
     }
-    // Infer from progress
-    if (progress.mixDone > 0) return 3;
-    if (progress.audioDone > 0) return 2;
-    if (progress.framesRendered > 0) return 1;
     return 0;
-  }, [jobStatus, progress]);
+  }, [currentStage]);
 
   // Cancel handler
   const handleCancel = useCallback(async () => {
@@ -233,8 +230,8 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
     }
   }, [topicId]);
 
-  const isActive = ['rendering_frames', 'frames', 'tts', 'audio', 'mixing', 'mix', 'assembling', 'assembly'].includes(jobStatus);
-  const isComplete = jobStatus === 'complete' || jobStatus === 'uploaded' || jobStatus === 'published';
+  const isActive = jobStatus === 'processing';
+  const isComplete = jobStatus === 'completed' || currentStage === 'completed';
   const isFailed = jobStatus === 'failed';
 
   if (jobLoading || scenesLoading) {
