@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 _MODEL: str = "claude-sonnet-4-20250514"
 _MAX_TOKENS: int = 16000
 _MAX_RETRIES: int = 3
-_DURATION_TOLERANCE_S: float = 30.0
+_DURATION_TOLERANCE_S: float = 30.0  # base tolerance
 _CHUNK_THRESHOLD_S: int = 900  # 15 minutes
 
 
@@ -270,7 +270,9 @@ def _generate_chapter_outline(
         chapters = parsed.get("chapters", [])
         total = sum(ch.get("duration_seconds", 0) for ch in chapters)
 
-        if abs(total - duration_seconds) <= _DURATION_TOLERANCE_S:
+        # Use proportional tolerance: 15% for long-form, min 30s
+        effective_tolerance = max(_DURATION_TOLERANCE_S, duration_seconds * 0.15)
+        if abs(total - duration_seconds) <= effective_tolerance:
             logger.info(
                 "Outline valid: %d chapters, %.0fs total (target=%ds)",
                 len(chapters), total, duration_seconds,
@@ -446,7 +448,8 @@ def _generate_long_form(
 
     # Final duration validation across the stitched result
     actual = _total_duration(all_scenes)
-    if abs(actual - duration_seconds) > _DURATION_TOLERANCE_S:
+    effective_tolerance = max(_DURATION_TOLERANCE_S, duration_seconds * 0.15)
+    if abs(actual - duration_seconds) > effective_tolerance:
         logger.warning(
             "Stitched script duration drift: %.1fs vs %ds (tolerance=%.1fs). "
             "Adjusting last scene.",

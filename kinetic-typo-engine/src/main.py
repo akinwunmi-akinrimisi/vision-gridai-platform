@@ -76,6 +76,12 @@ logging.basicConfig(
 _active_jobs: Dict[str, Dict[str, Any]] = {}
 _job_lock = threading.Lock()
 
+def _is_cancelled(job_id: str) -> bool:
+    with _job_lock:
+        job_state = _active_jobs.get(job_id, {})
+        return job_state.get('status') == 'failed' and 'cancel' in (job_state.get('error_message', '') or '').lower()
+
+
 # ---------------------------------------------------------------------------
 # FastAPI Application
 # ---------------------------------------------------------------------------
@@ -117,6 +123,10 @@ class GenerateRequest(BaseModel):
     drive_folder_id: Optional[str] = Field(
         default=None,
         description="Google Drive folder to upload the final video into",
+    )
+    script_json: Optional[str] = Field(
+        default=None,
+        description="Pre-generated script JSON from n8n pipeline. If provided, skips script generation entirely.",
     )
 
 
@@ -271,32 +281,56 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
 
     try:
         # ------------------------------------------------------------------
-        # Stage 1: Script generation
+        # Stage 1: Script generation (or use pre-generated script)
         # ------------------------------------------------------------------
         _update("script_generation", pct=0.0)
-        logger.info("[%s] Stage 1/6 - Generating script", job_id)
 
-        if generate_script is None:
-            raise RuntimeError(
-                "script_generator module not implemented yet"
+        if req.script_json:
+            # Use the pre-generated script from the n8n pipeline
+            logger.info("[%s] Stage 1/6 - Using pre-generated script (skipping generation)", job_id)
+            import json as _json
+            try:
+                script_raw = req.script_json if isinstance(req.script_json, list) else _json.loads(req.script_json)
+            except (TypeError, _json.JSONDecodeError):
+                script_raw = []
+
+            # Convert n8n script format to kinetic scene format
+            scenes = []
+            for i, s in enumerate(script_raw if isinstance(script_raw, list) else []):
+                narration = s.get("narration_text", s.get("narration", ""))
+                scene_type = "statement"
+                text_lower = narration.lower() if narration else ""
+                if i == 0:
+                    scene_type = "hook"
+                elif any(w in text_lower for w in ["percent", "million", "billion", "trillion", "$"]):
+                    scene_type = "stats"
+                elif i == len(script_raw) - 1:
+                    scene_type = "cta"
+
+                word_count = len(narration.split()) if narration else 0
+                duration = max(5, round(word_count / 150 * 60))
+
+                scenes.append({
+                    "scene_id": s.get("scene_id", f"scene_{i+1:03d}"),
+                    "scene_type": scene_type,
+                    "duration_seconds": duration,
+                    "chapter": s.get("chapter", ""),
+                    "elements": [
+                        {"text": narration, "style": "BODY", "animation": "fade_in", "delay_ms": 0, "duration_ms": duration * 1000}
+                    ],
+                })
+            total_scenes = len(scenes)
+            if total_scenes == 0:
+                raise ValueError("Pre-generated script has zero scenes")
+            logger.info("[%s] Loaded %d scenes from pre-generated script", job_id, total_scenes)
+        else:
+            raise ValueError(
+                "script_json is required. The kinetic service does not generate scripts. "
+                "Scripts must come from the n8n pipeline (topics.script_json)."
             )
 
-        script_data = generate_script(
-            keyword=req.keyword,
-            niche=req.niche,
-            duration_seconds=req.duration_seconds,
-            anthropic_key=None,  # uses ANTHROPIC_API_KEY from env
-        )
-        scenes = script_data.get("scenes", [])
-        total_scenes = len(scenes)
-
-        if total_scenes == 0:
-            raise ValueError("Script generation returned zero scenes")
-
         _update("script_generation", total=total_scenes, pct=5.0)
-        logger.info(
-            "[%s] Script generated: %d scenes", job_id, total_scenes
-        )
+        logger.info("[%s] Script ready: %d scenes", job_id, total_scenes)
 
         # ------------------------------------------------------------------
         # Stage 2: Frame rendering (scene by scene with GC)
@@ -323,12 +357,19 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
             import os, gc
             scene_dir = os.path.join(config.OUTPUT_DIR, job_id, f"scene_{idx:03d}")
             os.makedirs(scene_dir, exist_ok=True)
-            frame_count = render_scene(
-                scene=scene,
-                output_dir=scene_dir,
-                start_frame=cumulative_frames,
-                particles=None,
-            )
+
+            # Resume: skip scenes with existing frames
+            existing_frames = [f for f in os.listdir(scene_dir) if f.endswith('.jpg')]
+            if len(existing_frames) > 10:
+                frame_count = len(existing_frames)
+                logger.info("[%s] Resuming: skipping scene %d (%d frames exist)", job_id, idx, frame_count)
+            else:
+                frame_count = render_scene(
+                    scene=scene,
+                    output_dir=scene_dir,
+                    start_frame=cumulative_frames,
+                    particles=None,
+                )
             all_frame_paths.append(scene_dir)
             cumulative_frames += frame_count
             gc.collect()
@@ -369,6 +410,13 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
         for scene_idx, scene in enumerate(scenes):
             if _is_cancelled(job_id):
                 return
+
+            # Resume: skip scenes that already have clips
+            clip_path_check = os.path.join(config.OUTPUT_DIR, job_id, f'clip_{scene_idx:03d}.mp4')
+            if os.path.exists(clip_path_check) and os.path.getsize(clip_path_check) > 1000:
+                clip_paths.append(clip_path_check)
+                logger.info('[%s] Resuming: skipping scene %d (clip exists)', job_id, scene_idx)
+                continue
 
             scene_elements = scene.get("elements", [])
             scene_duration = scene.get("duration_seconds", 15)

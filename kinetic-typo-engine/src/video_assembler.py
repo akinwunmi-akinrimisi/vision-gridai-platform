@@ -138,6 +138,15 @@ def assemble_video(
 
     frame_pattern = os.path.join(frames_dir, "frame_%06d.jpg")
 
+    # Detect start_number from first frame file (handles global numbering)
+    start_number = 0
+    try:
+        frame_files = sorted(f for f in os.listdir(frames_dir) if f.startswith("frame_") and f.endswith(".jpg"))
+        if frame_files:
+            start_number = int(frame_files[0].replace("frame_", "").replace(".jpg", ""))
+    except (ValueError, OSError):
+        pass
+
     cmd: List[str] = [ffmpeg, "-y"]
 
     if low_memory:
@@ -145,6 +154,7 @@ def assemble_video(
 
     cmd.extend([
         "-framerate", "30",
+        "-start_number", str(start_number),
         "-i", frame_pattern,
         "-i", audio_path,
         "-c:v", "libx264",

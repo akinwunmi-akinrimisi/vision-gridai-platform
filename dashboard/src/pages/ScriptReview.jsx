@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
-import { ArrowLeft, ChevronLeft, ChevronRight, FileText, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, FileText, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useScript } from '../hooks/useScript';
 import { useScenes } from '../hooks/useScenes';
 import { useTopics } from '../hooks/useTopics';
@@ -252,6 +252,29 @@ export default function ScriptReview() {
             startedAt={topic.last_status_change}
             forcePass={topic.script_force_passed === true}
           />
+        </div>
+      )}
+
+      {/* Script Approved → Go to Production Banner (both kinetic and AI cinematic) */}
+      {hasScript && topic.script_review_status === 'approved' && (
+        <div className="bg-success/10 border border-success/30 rounded-lg p-4 flex items-center justify-between gap-3 animate-slide-up mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4 text-success" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-success">Script Approved</p>
+              <p className="text-xs text-muted-foreground">
+                {isKinetic ? 'Kinetic typography rendering has been triggered.' : 'Production pipeline has been triggered.'}
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => navigate(`/project/${projectId}/production`)}
+          >
+            View Production →
+          </Button>
         </div>
       )}
 

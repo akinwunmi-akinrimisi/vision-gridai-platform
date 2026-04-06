@@ -364,28 +364,55 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
         </div>
       )}
 
-      {/* Per-stage progress bars */}
+      {/* Per-stage progress bars — labels match current pipeline stage */}
       <div className="space-y-1">
         <ProgressRow
           icon={Layers}
           label="Frames Rendered"
-          done={progress.framesRendered}
+          done={
+            // After frame_rendering stage is done, show total (complete)
+            ['voice_generation', 'video_assembly', 'uploading', 'completed'].includes(job?.current_stage)
+              ? (progress.total || job?.total_scenes || 0)
+              : (job?.current_scene || 0)
+          }
           total={progress.total}
-          status={jobStatus}
+          status={
+            ['voice_generation', 'video_assembly', 'uploading', 'completed'].includes(job?.current_stage)
+              ? 'complete' : jobStatus
+          }
         />
         <ProgressRow
           icon={Volume2}
-          label="TTS Audio"
-          done={progress.audioDone}
+          label="Voice + Clips"
+          done={
+            // During voice_generation, current_scene tracks TTS progress
+            job?.current_stage === 'voice_generation'
+              ? (job?.current_scene || 0)
+              : ['video_assembly', 'uploading', 'completed'].includes(job?.current_stage)
+                ? (progress.total || job?.total_scenes || 0)
+                : (progress.audioDone || 0)
+          }
           total={progress.total}
-          status={jobStatus}
+          status={
+            ['video_assembly', 'uploading', 'completed'].includes(job?.current_stage)
+              ? 'complete'
+              : job?.current_stage === 'voice_generation' ? jobStatus : 'pending'
+          }
         />
         <ProgressRow
           icon={Activity}
-          label="Audio Mix"
-          done={progress.mixDone}
-          total={progress.total}
-          status={jobStatus}
+          label="Assembly + Upload"
+          done={
+            ['uploading', 'completed'].includes(job?.current_stage) ? 1
+              : job?.current_stage === 'video_assembly' ? 0
+              : 0
+          }
+          total={1}
+          status={
+            job?.current_stage === 'completed' ? 'complete'
+              : ['video_assembly', 'uploading'].includes(job?.current_stage) ? jobStatus
+              : 'pending'
+          }
         />
       </div>
 

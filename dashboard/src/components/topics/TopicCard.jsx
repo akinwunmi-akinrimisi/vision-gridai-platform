@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
-  CheckCircle2, XCircle, RefreshCw, Pencil, FileText,
+  CheckCircle2, XCircle, RefreshCw, Pencil, FileText, Activity,
   ChevronDown, Play, Save, X, Loader2, User, Briefcase, Frown, MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -320,6 +320,15 @@ export default function TopicCard({
                   >
                     <Play className="w-4 h-4" />
                   </button>
+                )}
+                {['kinetic_rendering', 'producing', 'audio', 'images', 'assembling', 'assembled'].includes(topic.status) && (
+                  <Link
+                    to={`/project/${projectId || topic.project_id}/production`}
+                    className="p-1.5 rounded-lg text-success hover:bg-success/10 transition-colors cursor-pointer"
+                    title="View Production"
+                  >
+                    <Activity className="w-4 h-4" />
+                  </Link>
                 )}
                 <Link
                   to={`/project/${projectId || topic.project_id}/topics/${topic.id}/script`}
