@@ -128,6 +128,9 @@ def get_animation_progress(
     float
         Eased progress clamped to [0.0, 1.0].
     """
+    elapsed_ms = float(elapsed_ms)
+    delay_ms = float(delay_ms)
+    duration_ms = float(duration_ms)
     if duration_ms <= 0.0:
         return 1.0
 

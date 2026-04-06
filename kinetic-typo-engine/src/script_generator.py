@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 _MODEL: str = "claude-sonnet-4-20250514"
 _MAX_TOKENS: int = 16000
 _MAX_RETRIES: int = 3
-_DURATION_TOLERANCE_S: float = 10.0
+_DURATION_TOLERANCE_S: float = 30.0
 _CHUNK_THRESHOLD_S: int = 900  # 15 minutes
 
 

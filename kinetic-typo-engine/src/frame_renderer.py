@@ -38,6 +38,48 @@ from .typography import (
 )
 from .cards import render_card
 
+# ===========================================================================
+# Compatibility wrappers — bridge frame_renderer's style-based API to
+# typography.py's lower-level font_path/font_size API
+# ===========================================================================
+from .config import COLORS, STYLE_PRESETS, FONT_TITLE, FONT_BODY, FONT_BOLD
+
+def _resolve_style(style_name):
+    """Get font params from style preset name."""
+    key = style_name.upper() if style_name else "BODY"
+    preset = STYLE_PRESETS.get(key, STYLE_PRESETS.get("BODY", {}))
+    font_path = FONT_BOLD if preset.get("bold") else FONT_BODY
+    if key in ("HEADLINE", "STAT_VALUE", "CARD_INDEX"):
+        font_path = FONT_TITLE
+    return {
+        "font_path": font_path,
+        "font_size": preset.get("font_size", 36),
+        "color": preset.get("color", COLORS.get("text_white", (255,255,255))),
+        "bold": preset.get("bold", False),
+    }
+
+def _styled_text_layer(text, style="body", color=None, **kwargs):
+    """Render text using style preset name."""
+    params = _resolve_style(style)
+    if color:
+        params["color"] = color
+    return render_text_layer(
+        text=text,
+        font_path=params["font_path"],
+        font_size=params["font_size"],
+        color=params["color"],
+        canvas_width=VIDEO_WIDTH,
+        canvas_height=VIDEO_HEIGHT,
+        bold=params["bold"],
+    )
+
+def _styled_glow_layer(text, style="headline", color=None, **kwargs):
+    """Render glow from text using style preset name."""
+    text_layer = _styled_text_layer(text, style=style, color=color)
+    glow_color = color or COLORS.get("accent_purple", (155,89,182))
+    return render_glow_layer(text_layer, blur_radius=15, glow_color=glow_color)
+
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -499,33 +541,24 @@ def _pre_render_layer(layer: Layer) -> Optional[Image.Image]:
         return None
 
     if layer_type == "text":
-        return render_text_layer(
+        return _styled_text_layer(
             text=layer["content"],
             style=layer.get("style", "body"),
-            position=layer["position"],
-            anchor=layer.get("anchor", "mm"),
-            color=layer.get("color", COLORS["text_white"]),
-            max_width=layer.get("max_width"),
-            canvas_size=(VIDEO_WIDTH, VIDEO_HEIGHT),
+            color=layer.get("color"),
         )
 
     if layer_type == "glow":
-        return render_glow_layer(
+        return _styled_glow_layer(
             text=layer["content"],
             style=layer.get("style", "headline"),
-            position=layer["position"],
-            anchor=layer.get("anchor", "mm"),
-            color=layer.get("color", COLORS["accent_purple"]),
-            canvas_size=(VIDEO_WIDTH, VIDEO_HEIGHT),
+            color=layer.get("color"),
         )
 
     if layer_type == "divider":
         return render_divider_layer(
-            orientation=layer.get("orientation", "horizontal"),
-            position=layer["position"],
-            length=layer.get("length", 400),
-            color=layer.get("color", COLORS["accent_cyan"]),
-            canvas_size=(VIDEO_WIDTH, VIDEO_HEIGHT),
+            width=VIDEO_WIDTH,
+            height=4,
+            canvas_height=VIDEO_HEIGHT,
         )
 
     if layer_type == "card":
@@ -561,14 +594,10 @@ def _render_dynamic_layer(layer: Layer, progress: float) -> Optional[Image.Image
             canvas_size=(VIDEO_WIDTH, VIDEO_HEIGHT),
         )
 
-    return render_text_layer(
+    return _styled_text_layer(
         text=partial,
         style=layer.get("style", "body"),
-        position=layer["position"],
-        anchor=layer.get("anchor", "mm"),
-        color=layer.get("color", COLORS["text_white"]),
-        max_width=layer.get("max_width"),
-        canvas_size=(VIDEO_WIDTH, VIDEO_HEIGHT),
+        color=layer.get("color"),
     )
 
 
@@ -601,7 +630,7 @@ def _compute_layer_opacity(
     # Entrance phase
     elapsed = current_time - delay
     entrance_progress = get_animation_progress(
-        animation, elapsed, _ENTRANCE_DURATION,
+        elapsed_ms=elapsed*1000, delay_ms=0, duration_ms=_ENTRANCE_DURATION*1000, easing=animation if isinstance(animation, str) else "ease_out_cubic",
     )
     entrance_opacity = min(max(entrance_progress, 0.0), 1.0)
 
@@ -643,7 +672,7 @@ def _compute_layer_offset(
         return (0, 0)
 
     elapsed = current_time - delay
-    progress = get_animation_progress(animation, elapsed, _ENTRANCE_DURATION)
+    progress = get_animation_progress(elapsed_ms=elapsed*1000, delay_ms=0, duration_ms=_ENTRANCE_DURATION*1000, easing=animation if isinstance(animation, str) else "ease_out_cubic")
     progress = max(0.0, min(1.0, progress))
 
     if animation == "slide_up":
@@ -710,7 +739,6 @@ def render_scene(
     bg_base: Image.Image = render_background(
         width=VIDEO_WIDTH,
         height=VIDEO_HEIGHT,
-        color_mood=scene.get("color_mood", "cool_neutral"),
     )
     grid_overlay: Image.Image = render_grid_overlay(
         width=VIDEO_WIDTH,
@@ -748,12 +776,11 @@ def render_scene(
         frame: Image.Image = bg_base.copy()
 
         # Grid overlay
-        frame = Image.alpha_composite(frame, grid_overlay)
+        frame = frame.convert("RGBA"); frame = Image.alpha_composite(frame, grid_overlay)
 
         # Update and composite particles
-        particles = update_particles(particles, VIDEO_WIDTH, VIDEO_HEIGHT)
-        particle_layer = render_particles(particles, VIDEO_WIDTH, VIDEO_HEIGHT)
-        frame = Image.alpha_composite(frame, particle_layer)
+        update_particles(particles, VIDEO_WIDTH, VIDEO_HEIGHT)
+        frame = render_particles(frame, particles)
 
         # Composite each content layer with animation
         for layer_idx, layer in enumerate(layers):
@@ -789,7 +816,7 @@ def render_scene(
                 layer_img = shifted
 
             # Composite with animated opacity
-            frame = composite_with_opacity(frame, layer_img, opacity)
+            frame = composite_with_opacity(frame, layer_img, position=(0, 0), opacity=opacity)
 
         # ------------------------------------------------------------------
         # Convert RGBA -> RGB and save JPEG

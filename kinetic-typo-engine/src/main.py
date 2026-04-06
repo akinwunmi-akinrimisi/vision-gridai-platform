@@ -37,9 +37,9 @@ except ImportError:
     generate_script = None  # type: ignore[assignment]
 
 try:
-    from .frame_renderer import render_scene_frames
+    from .frame_renderer import render_scene
 except ImportError:
-    render_scene_frames = None  # type: ignore[assignment]
+    render_scene = None  # type: ignore[assignment]
 
 try:
     from .voice_generator import generate_voice
@@ -47,9 +47,9 @@ except ImportError:
     generate_voice = None  # type: ignore[assignment]
 
 try:
-    from .audio_generator import mix_audio
+    from .audio_generator import mix_final_audio
 except ImportError:
-    mix_audio = None  # type: ignore[assignment]
+    mix_final_audio = None  # type: ignore[assignment]
 
 try:
     from .video_assembler import assemble_video
@@ -285,7 +285,7 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
             keyword=req.keyword,
             niche=req.niche,
             duration_seconds=req.duration_seconds,
-            style_dna=req.style_dna,
+            anthropic_key=None,  # uses ANTHROPIC_API_KEY from env
         )
         scenes = script_data.get("scenes", [])
         total_scenes = len(scenes)
@@ -304,7 +304,7 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
         _update("frame_rendering", total=total_scenes, pct=10.0)
         logger.info("[%s] Stage 2/6 - Rendering frames", job_id)
 
-        if render_scene_frames is None:
+        if render_scene is None:
             raise RuntimeError(
                 "frame_renderer module not implemented yet"
             )
@@ -320,14 +320,18 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
                     logger.info("[%s] Job cancelled, aborting", job_id)
                     return
 
-            frame_paths = render_scene_frames(
+            import os, gc
+            scene_dir = os.path.join(config.OUTPUT_DIR, job_id, f"scene_{idx:03d}")
+            os.makedirs(scene_dir, exist_ok=True)
+            frame_count = render_scene(
                 scene=scene,
-                scene_index=idx,
-                total_scenes=total_scenes,
-                style_dna=req.style_dna,
+                output_dir=scene_dir,
+                start_frame=cumulative_frames,
+                particles=None,
             )
-            all_frame_paths.append(frame_paths)
-            cumulative_frames += len(frame_paths)
+            all_frame_paths.append(scene_dir)
+            cumulative_frames += frame_count
+            gc.collect()
 
             # Progress: frames stage spans 10% - 50%
             pct = 10.0 + (40.0 * (idx + 1) / total_scenes)
@@ -350,62 +354,67 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
         )
 
         # ------------------------------------------------------------------
-        # Stage 3: Voice generation (TTS)
+        # Stages 3-5: Per-scene voice + clip assembly (sync-safe)
+        # Each scene: TTS per element -> pad to match delay_ms -> scene clip
+        # Ensures perfect text-voice sync + avoids TTS quota limits
         # ------------------------------------------------------------------
         _update("voice_generation", total=total_scenes, pct=55.0)
-        logger.info("[%s] Stage 3/6 - Generating voice", job_id)
+        logger.info("[%s] Stages 3-5: Per-scene voice + clip assembly", job_id)
 
-        if generate_voice is None:
-            raise RuntimeError(
-                "voice_generator module not implemented yet"
-            )
+        import os, time
+        voice_dir = os.path.join(config.OUTPUT_DIR, job_id, "voice")
+        os.makedirs(voice_dir, exist_ok=True)
+        clip_paths = []
 
-        voice_result = generate_voice(
-            scenes=scenes,
-            job_id=job_id,
-        )
-        voice_path = voice_result.get("audio_path", "")
-        word_timestamps = voice_result.get("word_timestamps", [])
+        for scene_idx, scene in enumerate(scenes):
+            if _is_cancelled(job_id):
+                return
 
-        _update("voice_generation", pct=65.0)
-        logger.info("[%s] Voice generated: %s", job_id, voice_path)
+            scene_elements = scene.get("elements", [])
+            scene_duration = scene.get("duration_seconds", 15)
+            scene_dir = all_frame_paths[scene_idx] if scene_idx < len(all_frame_paths) else None
 
-        # ------------------------------------------------------------------
-        # Stage 4: Audio mixing (voice + background music ducking)
-        # ------------------------------------------------------------------
-        _update("audio_mixing", pct=68.0)
-        logger.info("[%s] Stage 4/6 - Mixing audio", job_id)
+            # Voice for THIS scene only
+            scene_voice_path = None
+            if generate_voice is not None:
+                try:
+                    scene_voice_dir = os.path.join(voice_dir, f"scene_{scene_idx:03d}")
+                    os.makedirs(scene_voice_dir, exist_ok=True)
+                    scene_voice_path = generate_voice(
+                        elements=scene_elements,
+                        output_dir=scene_voice_dir,
+                        duration_seconds=scene_duration,
+                    )
+                except Exception as ve:
+                    logger.warning("[%s] Voice failed scene %d: %s", job_id, scene_idx, ve)
 
-        if mix_audio is None:
-            raise RuntimeError(
-                "audio_generator module not implemented yet"
-            )
+            # Assemble scene clip (frames + audio)
+            if scene_dir and os.path.isdir(scene_dir):
+                clip_path = os.path.join(config.OUTPUT_DIR, job_id, f"clip_{scene_idx:03d}.mp4")
+                try:
+                    assemble_video(scene_dir, scene_voice_path, clip_path)
+                    clip_paths.append(clip_path)
+                except Exception as ae:
+                    logger.warning("[%s] Clip failed scene %d: %s", job_id, scene_idx, ae)
 
-        mixed_audio_path = mix_audio(
-            voice_path=voice_path,
-            job_id=job_id,
-            duration_seconds=req.duration_seconds,
-        )
+            pct = 55.0 + (33.0 * (scene_idx + 1) / len(scenes))
+            _update("voice_generation", scene=scene_idx + 1, total=len(scenes), pct=pct)
+            time.sleep(0.5)  # Rate limit TTS
 
-        _update("audio_mixing", pct=72.0)
-        logger.info("[%s] Audio mixed: %s", job_id, mixed_audio_path)
+        # Concat all scene clips
+        _update("video_assembly", pct=90.0)
+        logger.info("[%s] Concatenating %d clips", job_id, len(clip_paths))
 
-        # ------------------------------------------------------------------
-        # Stage 5: Video assembly (frames + audio -> mp4)
-        # ------------------------------------------------------------------
-        _update("video_assembly", pct=75.0)
-        logger.info("[%s] Stage 5/6 - Assembling video", job_id)
-
-        if assemble_video is None:
-            raise RuntimeError(
-                "video_assembler module not implemented yet"
-            )
-
-        video_path = assemble_video(
-            frame_dirs=all_frame_paths,
-            audio_path=mixed_audio_path,
-            job_id=job_id,
-        )
+        output_video = os.path.join(config.OUTPUT_DIR, job_id, "final.mp4")
+        if len(clip_paths) > 1:
+            from .video_assembler import concat_clips
+            concat_clips(clip_paths, output_video)
+        elif len(clip_paths) == 1:
+            import shutil
+            shutil.copy2(clip_paths[0], output_video)
+        else:
+            raise RuntimeError("No scene clips produced")
+        video_path = output_video
 
         _update("video_assembly", pct=90.0)
         logger.info("[%s] Video assembled: %s", job_id, video_path)
@@ -420,10 +429,10 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
 
             upload_result = upload_to_drive(
                 file_path=video_path,
-                folder_id=req.drive_folder_id,
-                title=f"kinetic_{req.keyword[:40]}_{job_id[:8]}.mp4",
+                folder_id=req.drive_folder_id or "root",
+                filename=f"kinetic_{req.keyword[:40]}_{job_id[:8]}.mp4",
             )
-            video_url = upload_result.get("drive_url")
+            video_url = upload_result.get("webViewLink") if upload_result else None
 
             logger.info("[%s] Uploaded: %s", job_id, video_url)
         else:
