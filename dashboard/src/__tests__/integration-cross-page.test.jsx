@@ -35,6 +35,7 @@ vi.mock('../hooks/useProjects', () => ({
   useProjects: () => ({ data: [], isLoading: false, error: null }),
   useCreateProject: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useRetryResearch: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteProject: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock('../lib/supabase', () => ({

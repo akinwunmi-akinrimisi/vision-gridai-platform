@@ -10,6 +10,7 @@ let mockProjectsLoading = false;
 let mockProjectsError = null;
 let mockMutateAsync = vi.fn().mockResolvedValue({ success: true });
 let mockRetryMutate = vi.fn();
+let mockDeleteMutate = vi.fn();
 
 // Mock the hooks
 vi.mock('../hooks/useProjects', () => ({
@@ -24,6 +25,10 @@ vi.mock('../hooks/useProjects', () => ({
   }),
   useRetryResearch: () => ({
     mutate: mockRetryMutate,
+    isPending: false,
+  }),
+  useDeleteProject: () => ({
+    mutate: mockDeleteMutate,
     isPending: false,
   }),
 }));
@@ -69,6 +74,7 @@ beforeEach(() => {
   mockProjectsError = null;
   mockMutateAsync = vi.fn().mockResolvedValue({ success: true });
   mockRetryMutate = vi.fn();
+  mockDeleteMutate = vi.fn();
 });
 
 describe('ProjectsHome (NICH-07)', () => {

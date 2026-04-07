@@ -87,7 +87,9 @@ describe('CreateProjectModal (NICH-01)', () => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
         niche: 'US Credit Cards',
         description: undefined,
+        production_style: 'ai_cinematic',
         target_video_count: 25,
+        reference_analyses: undefined,
       });
     });
   });

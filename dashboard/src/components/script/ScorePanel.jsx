@@ -181,7 +181,7 @@ export default function ScorePanel({ topic, onApprove, onReject, onRefine, isLoa
           const raw = dimensions[dim.key];
           const score = typeof raw === 'object' ? raw?.score : raw;
           const note = typeof raw === 'object' ? raw?.note : null;
-          const feedback = note || combined?.feedback?.[dim.key] || combined?.notes?.[dim.key] || null;
+          const feedback = note || null;
           return (
             <div key={dim.key} data-testid={`dimension-${dim.key}`} className="group relative">
               <div className="flex items-center justify-between mb-0.5">

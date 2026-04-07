@@ -88,6 +88,7 @@ vi.mock('../hooks/useProjects', () => ({
   useProjects: () => ({ data: [], isLoading: false, error: null }),
   useCreateProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRetryResearch: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteProject: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock('../hooks/useTopics', () => ({
@@ -194,11 +195,13 @@ vi.mock('../hooks/useResearch', () => ({
 
 vi.mock('../hooks/useYouTubeDiscovery', () => ({
   NICHES: [
-    { key: 'narrative_storytelling', label: 'Narrative Storytelling' },
-    { key: 'real_estate', label: 'Real Estate & Property' },
+    { key: 'business_case_studies', label: 'Business & Entrepreneurship Case Studies' },
+    { key: 'jungian_psychology', label: 'Jungian Psychology' },
+    { key: 'history_documentaries', label: 'History Documentaries & Storytelling' },
     { key: 'personal_finance', label: 'Personal Finance & Investing' },
-    { key: 'business_marketing', label: 'Business & Digital Marketing' },
-    { key: 'legal_tax', label: 'Legal & Tax Education' },
+    { key: 'health_fitness', label: 'Health, Fitness & Longevity' },
+    { key: 'betrayal_revenge', label: 'Betrayal/Revenge Stories' },
+    { key: 'literary_analysis', label: 'Literary Analysis & Reviews' },
   ],
   useLatestDiscoveryRun: () => ({ data: null, isLoading: false }),
   useDiscoveryResults: () => ({ data: [], isLoading: false }),

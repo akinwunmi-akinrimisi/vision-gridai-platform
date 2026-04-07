@@ -50,8 +50,8 @@ function wrapper({ children }) {
 }
 
 describe('NICHES constant', () => {
-  it('has exactly 5 niches', () => {
-    expect(NICHES).toHaveLength(5);
+  it('has exactly 7 niches', () => {
+    expect(NICHES).toHaveLength(7);
   });
 
   it('each niche has key and label', () => {
@@ -63,11 +63,13 @@ describe('NICHES constant', () => {
 
   it('includes all expected categories', () => {
     const keys = NICHES.map((n) => n.key);
-    expect(keys).toContain('narrative_storytelling');
-    expect(keys).toContain('real_estate');
+    expect(keys).toContain('business_case_studies');
+    expect(keys).toContain('jungian_psychology');
+    expect(keys).toContain('history_documentaries');
     expect(keys).toContain('personal_finance');
-    expect(keys).toContain('business_marketing');
-    expect(keys).toContain('legal_tax');
+    expect(keys).toContain('health_fitness');
+    expect(keys).toContain('betrayal_revenge');
+    expect(keys).toContain('literary_analysis');
   });
 });
 
@@ -104,7 +106,7 @@ describe('useRunDiscovery', () => {
     });
 
     await waitFor(() => {
-      expect(webhookCall).toHaveBeenCalledWith('youtube/discover', { time_range: '1y' });
+      expect(webhookCall).toHaveBeenCalledWith('youtube/discover', { time_range: '1y', niches: null });
     });
   });
 

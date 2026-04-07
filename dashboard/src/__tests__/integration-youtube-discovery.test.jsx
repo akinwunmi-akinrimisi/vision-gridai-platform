@@ -20,7 +20,7 @@ const mockVideos = [
     published_at: '2026-01-15T00:00:00Z',
   },
   {
-    id: 'v-2', run_id: 'disc-run-1', niche_category: 'narrative_storytelling',
+    id: 'v-2', run_id: 'disc-run-1', niche_category: 'betrayal_revenge',
     title: 'The Greatest Betrayal in History', channel_name: 'CrimeTV',
     views: 5000000, likes: 150000, comments: 25000, duration_seconds: 7200,
     video_url: 'https://youtube.com/watch?v=crime1', video_id: 'crime1',
@@ -41,11 +41,13 @@ const mockWebhookCall = vi.fn().mockResolvedValue({ message: 'started' });
 // Mock at the HOOK level — much more reliable than mocking supabase internals
 vi.mock('../hooks/useYouTubeDiscovery', () => ({
   NICHES: [
-    { key: 'narrative_storytelling', label: 'Narrative Storytelling' },
-    { key: 'real_estate', label: 'Real Estate & Property' },
+    { key: 'business_case_studies', label: 'Business & Entrepreneurship Case Studies' },
+    { key: 'jungian_psychology', label: 'Jungian Psychology' },
+    { key: 'history_documentaries', label: 'History Documentaries & Storytelling' },
     { key: 'personal_finance', label: 'Personal Finance & Investing' },
-    { key: 'business_marketing', label: 'Business & Digital Marketing' },
-    { key: 'legal_tax', label: 'Legal & Tax Education' },
+    { key: 'health_fitness', label: 'Health, Fitness & Longevity' },
+    { key: 'betrayal_revenge', label: 'Betrayal/Revenge Stories' },
+    { key: 'literary_analysis', label: 'Literary Analysis & Reviews' },
   ],
   useLatestDiscoveryRun: () => ({ data: mockRun, isLoading: false }),
   useDiscoveryResults: (runId, niche) => ({
@@ -119,21 +121,26 @@ describe('YouTubeDiscovery — Niche Tabs', () => {
     expect(screen.getByText(/^All \(/)).toBeTruthy();
   });
 
-  it('renders all 5 niche tabs', () => {
+  it('renders all 7 niche tabs', () => {
     renderPage();
-    expect(screen.getByText(/Narrative Storytelling/)).toBeTruthy();
-    expect(screen.getByText(/Real Estate/)).toBeTruthy();
-    expect(screen.getByText(/Personal Finance/)).toBeTruthy();
-    expect(screen.getByText(/Business.*Marketing/)).toBeTruthy();
-    expect(screen.getByText(/Legal.*Tax/)).toBeTruthy();
+    // Each niche label appears twice (search niches + filter tabs), so use getAllByText
+    expect(screen.getAllByText(/Business.*Entrepreneurship/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Jungian Psychology/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/History Documentaries/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Personal Finance/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Health.*Fitness/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Betrayal.*Revenge/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Literary Analysis/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('clicking a niche tab filters videos', () => {
     renderPage();
-    fireEvent.click(screen.getByText(/Narrative Storytelling/));
+    // Each niche label appears twice (search niches section + filter tabs), use getAllByText
+    const tabs = screen.getAllByText(/Jungian Psychology/);
+    // Click the last occurrence (the filter tab in the results section)
+    fireEvent.click(tabs[tabs.length - 1]);
     // After clicking, the tab should be active (has primary styling)
-    const tab = screen.getByText(/Narrative Storytelling/);
-    expect(tab.className).toContain('bg-primary');
+    expect(tabs[tabs.length - 1].className).toContain('bg-primary');
   });
 });
 

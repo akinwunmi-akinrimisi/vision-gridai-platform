@@ -65,6 +65,7 @@ vi.mock('../hooks/useProjects', () => ({
   useProjects: () => ({ data: [], isLoading: false, error: null }),
   useCreateProject: () => ({ mutateAsync: vi.fn() }),
   useRetryResearch: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteProject: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock('../hooks/useTopics', () => ({

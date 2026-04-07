@@ -36,6 +36,52 @@ vi.mock('../lib/api', () => ({
   webhookCall: vi.fn().mockResolvedValue({ success: true }),
 }));
 
+// v3.0 pass scores with underscore keys (pass_1, pass_2, pass_3) and scores sub-object
+const mockPassScores = {
+  pass_1: {
+    score: 7.2,
+    final_score: 7.2,
+    attempts: 1,
+    scores: {
+      word_count_compliance: 7.5,
+      citation_density: 8.0,
+      narrative_structure: 7.0,
+      actionable_specificity: 7.5,
+      retention_engineering: 6.8,
+      format_compliance: 7.0,
+      anti_pattern_compliance: 7.5,
+    },
+  },
+  pass_2: {
+    score: 7.9,
+    final_score: 7.9,
+    attempts: 1,
+    scores: {
+      word_count_compliance: 8.0,
+      citation_density: 8.5,
+      narrative_structure: 7.5,
+      actionable_specificity: 8.0,
+      retention_engineering: 7.5,
+      format_compliance: 7.5,
+      anti_pattern_compliance: 8.0,
+    },
+  },
+  pass_3: {
+    score: 8.1,
+    final_score: 8.1,
+    attempts: 1,
+    scores: {
+      word_count_compliance: 8.5,
+      citation_density: 8.0,
+      narrative_structure: 8.0,
+      actionable_specificity: 8.0,
+      retention_engineering: 8.0,
+      format_compliance: 8.0,
+      anti_pattern_compliance: 8.0,
+    },
+  },
+};
+
 // Mock the hooks to control data
 const mockTopicData = {
   id: 'test-topic-id',
@@ -52,12 +98,7 @@ const mockTopicData = {
   word_count: 18742,
   scene_count: 172,
   script_quality_score: 7.8,
-  script_pass_scores: {
-    pass1: { score: 7.2, dimensions: { persona_integration: 7.5, hook_strength: 8.0, pacing: 7.0, specificity: 7.5, tts_readability: 6.8, visual_prompts: 7.0, anti_patterns: 7.5 } },
-    pass2: { score: 7.9, dimensions: { persona_integration: 8.0, hook_strength: 8.5, pacing: 7.5, specificity: 8.0, tts_readability: 7.5, visual_prompts: 7.5, anti_patterns: 8.0 } },
-    pass3: { score: 8.1, dimensions: { persona_integration: 8.5, hook_strength: 8.0, pacing: 8.0, specificity: 8.0, tts_readability: 8.0, visual_prompts: 8.0, anti_patterns: 8.0 } },
-    combined: { score: 7.8, dimensions: { persona_integration: 8.0, hook_strength: 8.2, pacing: 7.5, specificity: 7.8, tts_readability: 7.4, visual_prompts: 7.5, anti_patterns: 7.8 } },
-  },
+  script_pass_scores: mockPassScores,
   script_json: {
     scenes: [
       { scene_id: 'scene_001', scene_number: 1, chapter: 'Chapter 1: The Amex Platinum Myth', narration_text: 'Meet Marcus. He is thirty-four years old.', image_prompt: 'A professional man in his mid-thirties.', visual_type: 'static_image', emotional_beat: 'curiosity' },
@@ -82,9 +123,17 @@ const mockTopics = [
   { ...mockTopicData, id: 'topic-3', topic_number: 3, review_status: 'approved' },
 ];
 
+const mockProject = {
+  id: 'test-project-id',
+  name: 'Test Project',
+  niche: 'Credit Cards',
+  production_style: 'ai_cinematic',
+};
+
 let mockUseScriptReturn = { data: mockTopicData, isLoading: false, error: null };
 let mockUseScenesReturn = { data: mockScenes, isLoading: false, error: null };
 let mockUseTopicsReturn = { data: mockTopics, isLoading: false, error: null };
+let mockUseProjectReturn = { data: mockProject, isLoading: false, error: null };
 
 vi.mock('../hooks/useScript', () => ({
   useScript: () => mockUseScriptReturn,
@@ -96,6 +145,12 @@ vi.mock('../hooks/useScenes', () => ({
 
 vi.mock('../hooks/useTopics', () => ({
   useTopics: () => mockUseTopicsReturn,
+}));
+
+// Mock useProject from useNicheProfile (used for isKinetic check)
+vi.mock('../hooks/useNicheProfile', () => ({
+  useProject: () => mockUseProjectReturn,
+  useNicheProfile: () => ({ data: null, isLoading: false, error: null }),
 }));
 
 vi.mock('../hooks/useScriptMutations', () => ({
@@ -126,6 +181,7 @@ beforeEach(() => {
   mockUseScriptReturn = { data: mockTopicData, isLoading: false, error: null };
   mockUseScenesReturn = { data: mockScenes, isLoading: false, error: null };
   mockUseTopicsReturn = { data: mockTopics, isLoading: false, error: null };
+  mockUseProjectReturn = { data: mockProject, isLoading: false, error: null };
 });
 
 describe('ScriptReview -- Header Bar (SCPT-10)', () => {
@@ -239,5 +295,36 @@ describe('ScriptReview -- Force Pass Warning', () => {
 
     renderWithProviders(<ScriptReview />);
     expect(screen.getByTestId('force-pass-banner')).toBeTruthy();
+  });
+});
+
+describe('ScriptReview -- Script Approved Banner', () => {
+  it('shows approved banner with "View Production" button when script is approved', () => {
+    mockUseScriptReturn = {
+      data: { ...mockTopicData, script_review_status: 'approved' },
+      isLoading: false,
+      error: null,
+    };
+
+    renderWithProviders(<ScriptReview />);
+    expect(screen.getByText('Script Approved')).toBeTruthy();
+    expect(screen.getByText(/View Production/)).toBeTruthy();
+  });
+
+  it('shows kinetic message when project is kinetic typography', () => {
+    mockUseScriptReturn = {
+      data: { ...mockTopicData, script_review_status: 'approved' },
+      isLoading: false,
+      error: null,
+    };
+    mockUseProjectReturn = {
+      data: { ...mockProject, production_style: 'kinetic_typography' },
+      isLoading: false,
+      error: null,
+    };
+
+    renderWithProviders(<ScriptReview />);
+    expect(screen.getByText('Script Approved')).toBeTruthy();
+    expect(screen.getByText(/Kinetic typography rendering/)).toBeTruthy();
   });
 });
