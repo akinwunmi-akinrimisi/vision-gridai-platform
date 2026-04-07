@@ -508,26 +508,40 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
         logger.info("[%s] Video assembled: %s", job_id, video_path)
 
         # ------------------------------------------------------------------
-        # Stage 6: Upload to Google Drive
+        # Stage 6: Notify n8n completion webhook (Drive upload via n8n OAuth2)
+        # The kinetic service does NOT upload to Drive directly.
+        # n8n's WF_KINETIC_COMPLETE handles Drive upload via OAuth2 credential.
         # ------------------------------------------------------------------
-        video_url: Optional[str] = None
-        if req.drive_folder_id and upload_to_drive is not None:
-            _update("uploading", pct=92.0)
-            logger.info("[%s] Stage 6/6 - Uploading to Drive", job_id)
+        video_url: Optional[str] = video_path
+        _update("uploading", pct=92.0)
+        logger.info("[%s] Stage 6/6 - Notifying n8n completion webhook", job_id)
 
-            upload_result = upload_to_drive(
-                file_path=video_path,
-                folder_id=req.drive_folder_id or "root",
-                filename=f"kinetic_{req.keyword[:40]}_{job_id[:8]}.mp4",
-            )
-            video_url = upload_result.get("webViewLink") if upload_result else None
+        # Copy video to n8n-accessible path
+        import shutil
+        n8n_video_path = f"/data/n8n-production/kinetic_{req.topic_id[:8]}.mp4"
+        try:
+            shutil.copy2(video_path, n8n_video_path)
+            logger.info("[%s] Video copied to %s", job_id, n8n_video_path)
+        except Exception as e:
+            logger.warning("[%s] Failed to copy video for n8n: %s", job_id, e)
+            n8n_video_path = None
 
-            logger.info("[%s] Uploaded: %s", job_id, video_url)
-        else:
-            logger.info(
-                "[%s] Stage 6/6 - Skipping Drive upload (no folder_id or uploader)",
-                job_id,
-            )
+        # Call WF_KINETIC_COMPLETE webhook
+        try:
+            import httpx
+            callback_url = "http://localhost:5678/webhook/kinetic/drive-upload"
+            callback_body = {
+                "topic_id": req.topic_id,
+                "project_id": req.project_id,
+                "job_id": job_id,
+                "video_path": n8n_video_path,
+                "drive_folder_id": req.drive_folder_id,
+                "status": "completed",
+            }
+            resp = httpx.post(callback_url, json=callback_body, timeout=30)
+            logger.info("[%s] Callback response: %d", job_id, resp.status_code)
+        except Exception as e:
+            logger.warning("[%s] Callback failed (non-fatal): %s", job_id, e)
 
         # ------------------------------------------------------------------
         # Done
