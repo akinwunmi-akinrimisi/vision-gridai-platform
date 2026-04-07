@@ -59,12 +59,17 @@ def _resolve_style(style_name):
     }
 
 def _styled_text_layer(text, style="body", color=None, **kwargs):
-    """Render text using style preset name."""
+    """Render text using style preset name, with automatic word wrapping."""
+    import textwrap
     params = _resolve_style(style)
     if color:
         params["color"] = color
+    # Auto-wrap text to fit screen width (75% of canvas)
+    fs = params["font_size"]
+    chars_per_line = max(10, int(VIDEO_WIDTH * 0.75 / (fs * 0.55)))
+    wrapped = "\n".join(textwrap.wrap(text, width=chars_per_line)) if text else text
     return render_text_layer(
-        text=text,
+        text=wrapped,
         font_path=params["font_path"],
         font_size=params["font_size"],
         color=params["color"],
@@ -72,6 +77,7 @@ def _styled_text_layer(text, style="body", color=None, **kwargs):
         canvas_height=VIDEO_HEIGHT,
         bold=params["bold"],
     )
+
 
 def _styled_glow_layer(text, style="headline", color=None, **kwargs):
     """Render glow from text using style preset name."""

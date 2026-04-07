@@ -130,7 +130,7 @@ STYLE_PRESETS: Dict[str, Dict] = {
         "bold": False,
     },
     "HEADLINE": {
-        "font_size": 140,
+        "font_size": 72,
         "color": "text_white",
         "bold": True,
     },
@@ -145,7 +145,7 @@ STYLE_PRESETS: Dict[str, Dict] = {
         "bold": False,
     },
     "STAT_VALUE": {
-        "font_size": 200,
+        "font_size": 120,
         "color": "text_white",
         "bold": True,
     },

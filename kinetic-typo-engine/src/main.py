@@ -300,60 +300,124 @@ def _run_pipeline(job_id: str, req: GenerateRequest) -> None:
                 script_raw = []
 
             # Convert n8n script format to kinetic scene format
-            # IMPORTANT: frame_renderer reads scene["type"] and scene["text"]/["headline"]
-            # at the TOP level — NOT nested inside elements.
-            # Color moods rotate per chapter for visual variety.
-            color_accents = ["accent_purple", "accent_cyan", "accent_orange"]
+            # KEY DESIGN: kinetic typography shows SHORT key phrases (3-6 words),
+            # NOT full narration paragraphs. Narration is for TTS voiceover only.
+            import re as _re
             scenes = []
             script_list = script_raw if isinstance(script_raw, list) else []
             total = len(script_list)
+            prev_chapter = ""
+
+            def _extract_key_phrase(text, max_words=6):
+                """Extract the most impactful 3-6 word phrase from narration."""
+                if not text:
+                    return ""
+                # Split into sentences
+                sentences = [s.strip() for s in _re.split(r'[.!?]', text) if s.strip()]
+                if not sentences:
+                    return text[:40]
+                # Take the shortest impactful sentence, or first
+                best = sentences[0]
+                for s in sentences:
+                    words = s.split()
+                    if 3 <= len(words) <= max_words:
+                        best = s
+                        break
+                # Trim to max_words
+                words = best.split()
+                if len(words) > max_words:
+                    words = words[:max_words]
+                return " ".join(words)
+
+            def _extract_stat(text):
+                """Extract dollar amounts, percentages, or large numbers."""
+                patterns = [
+                    r'\$[\d,.]+[BMKTbmkt]?\w*',
+                    r'\d+\.?\d*\s*(?:percent|%)',
+                    r'\d{1,3}(?:,\d{3})+',
+                    r'\d+\.?\d*\s*(?:million|billion|trillion)',
+                ]
+                for p in patterns:
+                    m = _re.search(p, text, _re.IGNORECASE)
+                    if m:
+                        return m.group(0)
+                return ""
+
+            # Scene type rotation for visual variety
+            type_cycle = ["statement", "hook", "statement", "statement",
+                          "hook", "statement", "statement"]
+
             for i, s in enumerate(script_list):
                 narration = s.get("narration_text", s.get("narration", ""))
                 chapter = s.get("chapter", "")
                 chapter_num = s.get("chapter_number", i // 15)
-
-                # Infer scene type from position and content
                 text_lower = narration.lower() if narration else ""
+
+                # Smart scene type detection
+                stat_value = _extract_stat(narration)
+                is_new_chapter = chapter and chapter != prev_chapter
+                prev_chapter = chapter
+
                 if i == 0:
                     scene_type = "hook"
                 elif i == total - 1:
                     scene_type = "cta"
-                elif any(w in text_lower for w in ["percent", "million", "billion", "trillion", "$", "number"]):
-                    scene_type = "stats"
-                elif chapter and chapter != (script_list[i-1].get("chapter", "") if i > 0 else ""):
+                elif is_new_chapter:
                     scene_type = "chapter_title"
-                elif any(w in text_lower for w in ["said", "told", "asked", "replied", "remember"]):
+                elif stat_value:
+                    scene_type = "stats"
+                elif any(w in text_lower for w in ['"', "said", "told me", "asked"]):
                     scene_type = "quote"
-                elif i % 7 == 3:
-                    scene_type = "hook"  # variety every ~7 scenes
                 else:
-                    scene_type = "statement"
+                    scene_type = type_cycle[i % len(type_cycle)]
 
                 word_count = len(narration.split()) if narration else 0
                 duration = max(5, round(word_count / 150 * 60))
 
-                # Extract short headline from narration (first sentence or first 60 chars)
-                headline = narration.split(".")[0][:80] if narration else ""
-                body = narration[len(headline):].strip(". ") if len(narration) > len(headline) else ""
+                # Extract SHORT key phrase (3-6 words) — NOT full narration
+                key_phrase = _extract_key_phrase(narration)
 
-                # Rotate accent color per chapter for visual variety
-                accent = color_accents[chapter_num % len(color_accents)]
+                # For stats scenes, extract the number
+                stat_label = ""
+                if scene_type == "stats" and stat_value:
+                    # Label is the phrase around the stat
+                    stat_label = _extract_key_phrase(
+                        narration.replace(stat_value, "").strip(), max_words=5
+                    )
+
+                # Quote scenes: extract the quoted text
+                quote_text = ""
+                quote_author = ""
+                if scene_type == "quote":
+                    q_match = _re.search(r'"([^"]{10,80})"', narration)
+                    if q_match:
+                        quote_text = q_match.group(1)
+                    # Author from "X said" or "X told"
+                    a_match = _re.search(r'(\w+(?:\s\w+)?)\s+(?:said|told|asked)', narration)
+                    if a_match:
+                        quote_author = a_match.group(1)
+
+                # Animation variety
+                animations = ["fade_in", "fade_in", "typewriter", "fade_in",
+                              "word_by_word", "fade_in", "fade_in"]
+                animation = animations[i % len(animations)]
 
                 scenes.append({
                     "scene_id": s.get("scene_id", f"scene_{i+1:03d}"),
-                    "type": scene_type,  # KEY: "type" not "scene_type"
+                    "type": scene_type,
                     "duration_seconds": duration,
                     "chapter": chapter,
                     "chapter_number": chapter_num,
-                    # TOP-LEVEL text keys that frame_renderer reads:
-                    "text": headline,
-                    "headline": headline,
-                    "body": body,
-                    "label": chapter.upper() if chapter and scene_type == "chapter_title" else "",
-                    "stat_value": "",
-                    "stat_label": "",
-                    "accent_color": accent,
-                    "animation": "fade_in",
+                    # SHORT key phrases for visual display:
+                    "text": key_phrase,
+                    "headline": key_phrase,
+                    "body": "",  # body intentionally empty — narration is for TTS
+                    "label": chapter.upper() if is_new_chapter else "",
+                    "stat_value": stat_value if scene_type == "stats" else "",
+                    "stat_label": stat_label if scene_type == "stats" else "",
+                    "quote_text": quote_text if scene_type == "quote" else "",
+                    "quote_author": quote_author if scene_type == "quote" else "",
+                    "animation": animation,
                     "elements": [
                         {"text": narration, "style": "BODY", "animation": "fade_in",
                          "delay_ms": 0, "duration_ms": duration * 1000}
