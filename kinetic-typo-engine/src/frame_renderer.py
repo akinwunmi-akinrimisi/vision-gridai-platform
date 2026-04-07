@@ -591,13 +591,10 @@ def _render_dynamic_layer(layer: Layer, progress: float) -> Optional[Image.Image
         return None
 
     if layer["type"] == "glow":
-        return render_glow_layer(
+        return _styled_glow_layer(
             text=partial,
             style=layer.get("style", "headline"),
-            position=layer["position"],
-            anchor=layer.get("anchor", "mm"),
             color=layer.get("color", COLORS["accent_purple"]),
-            canvas_size=(VIDEO_WIDTH, VIDEO_HEIGHT),
         )
 
     return _styled_text_layer(
