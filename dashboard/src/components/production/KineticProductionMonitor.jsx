@@ -144,6 +144,22 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
     refetchInterval: 10000, // also poll every 10s as fallback
   });
 
+  // Fetch topic drive_video_url (primary source for Drive link)
+  const { data: topicData } = useQuery({
+    queryKey: ['kinetic-topic-url', topicId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('topics')
+        .select('drive_video_url, status')
+        .eq('id', topicId)
+        .single();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!topicId,
+    refetchInterval: isComplete ? false : 15000,
+  });
+
   // Fetch kinetic scene progress
   const { data: kineticScenes, isLoading: scenesLoading } = useQuery({
     queryKey: ['kinetic-scenes', topicId],
@@ -425,7 +441,7 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
         </div>
       )}
 
-      {/* Completed: show video link */}
+      {/* Completed: show video link (primary: topic.drive_video_url, fallback: job.video_url) */}
       {isComplete && (
         <div className="mt-3 p-3 rounded-md bg-success/10 border border-success/30">
           <div className="flex items-center justify-between">
@@ -433,10 +449,9 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
               <Check className="w-4 h-4 text-success" />
               <p className="text-sm font-semibold text-success">Production Complete</p>
             </div>
-            {job?.video_url && (
-              job.video_url.startsWith('http') ? (
+            {(topicData?.drive_video_url || (job?.video_url?.startsWith('http') ? job.video_url : null)) ? (
                 <a
-                  href={job.video_url}
+                  href={topicData?.drive_video_url || job.video_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-success text-success-foreground text-xs font-medium hover:bg-success/90 transition-colors"
@@ -446,10 +461,10 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
                 </a>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  Video saved: {job.video_url.split('/').pop()}
+                  Video saved: {(job?.video_url || '').split('/').pop()}
                 </span>
               )
-            )}
+            }
           </div>
         </div>
       )}
