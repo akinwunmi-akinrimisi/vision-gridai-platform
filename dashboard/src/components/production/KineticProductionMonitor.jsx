@@ -157,7 +157,7 @@ export default function KineticProductionMonitor({ topicId, projectId }) {
       return data;
     },
     enabled: !!topicId,
-    refetchInterval: isComplete ? false : 15000,
+    refetchInterval: job?.status === 'completed' || job?.current_stage === 'completed' ? false : 15000,
   });
 
   // Fetch kinetic scene progress
