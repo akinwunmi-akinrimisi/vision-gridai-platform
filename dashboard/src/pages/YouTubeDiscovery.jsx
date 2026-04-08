@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import {
   NICHES,
+  NICHE_GROUPS,
   useLatestDiscoveryRun,
   useDiscoveryResults,
   useAllDiscoveryRuns,
@@ -270,8 +271,8 @@ export default function YouTubeDiscovery() {
   return (
     <div className="animate-slide-up">
       <PageHeader
-        title="YouTube Discovery"
-        subtitle="Find top-performing long-form videos (45min+) across selected niches"
+        title="Niche Research"
+        subtitle="Discover top-performing long-form videos across your niches"
       >
         <div className="flex items-center gap-2">
           <select
@@ -307,32 +308,69 @@ export default function YouTubeDiscovery() {
         </div>
       </PageHeader>
 
-      {/* Niche selection for search */}
-      <div className="flex flex-wrap items-center gap-2 mb-6 mt-4">
-        <span className="text-[10px] text-muted-foreground mr-1 uppercase tracking-wider">Search niches:</span>
-        <button
-          onClick={toggleAllSearchNiches}
-          className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
-            searchNiches.size === NICHES.length
-              ? 'bg-primary/15 text-primary border-primary/30'
-              : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
-          }`}
-        >
-          All
-        </button>
-        {NICHES.map((n) => (
+      {/* Niche selection for search — grouped by parent niche, wraps to multiple lines */}
+      <div className="mb-6 mt-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Select niches to search</span>
           <button
-            key={n.key}
-            onClick={() => toggleSearchNiche(n.key)}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
-              searchNiches.has(n.key)
+            onClick={toggleAllSearchNiches}
+            className={`px-2.5 py-1 rounded-full text-[10px] font-medium border transition-all cursor-pointer ${
+              searchNiches.size === NICHES.length
                 ? 'bg-primary/15 text-primary border-primary/30'
                 : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
             }`}
           >
-            {n.label}
+            {searchNiches.size === NICHES.length ? 'Deselect All' : 'Select All'}
           </button>
-        ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {NICHE_GROUPS.map((group) => {
+            const allChildKeys = group.children.map((c) => c.key);
+            const allSelected = allChildKeys.every((k) => searchNiches.has(k));
+            const someSelected = allChildKeys.some((k) => searchNiches.has(k));
+            return (
+              <div key={group.key} className="flex flex-wrap items-center gap-1.5 bg-card/50 border border-border/50 rounded-lg px-2.5 py-1.5">
+                <button
+                  onClick={() => {
+                    setSearchNiches((prev) => {
+                      const next = new Set(prev);
+                      if (allSelected) {
+                        allChildKeys.forEach((k) => next.delete(k));
+                        if (next.size === 0) return prev;
+                      } else {
+                        allChildKeys.forEach((k) => next.add(k));
+                      }
+                      return next;
+                    });
+                  }}
+                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                    allSelected
+                      ? 'text-accent'
+                      : someSelected
+                        ? 'text-accent/60'
+                        : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {group.label}
+                </button>
+                <span className="text-border/40 text-[10px]">|</span>
+                {group.children.map((child) => (
+                  <button
+                    key={child.key}
+                    onClick={() => toggleSearchNiche(child.key)}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer ${
+                      searchNiches.has(child.key)
+                        ? 'bg-primary/15 text-primary border-primary/30'
+                        : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
+                    }`}
+                  >
+                    {child.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Just started */}
@@ -381,7 +419,7 @@ export default function YouTubeDiscovery() {
         <EmptyState
           icon={Play}
           title="No discovery runs yet"
-          description="Click 'Discover Videos' to find top-performing long-form YouTube videos across 5 niches."
+          description="Click 'Discover Videos' to find top-performing long-form YouTube videos across your niches."
         />
       )}
 
@@ -429,11 +467,11 @@ export default function YouTubeDiscovery() {
       {/* Results: Niche tabs + video grid */}
       {hasRun && isComplete && (
         <>
-          {/* Niche tabs */}
-          <div className="flex gap-2 mb-6 mt-2 overflow-x-auto pb-2">
+          {/* Niche filter tabs — wrapping layout */}
+          <div className="flex flex-wrap gap-2 mb-6 mt-2">
             <button
               onClick={() => setSelectedNiche('all')}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
                 selectedNiche === 'all'
                   ? 'bg-primary/15 text-primary border-primary/30'
                   : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
@@ -441,19 +479,30 @@ export default function YouTubeDiscovery() {
             >
               All ({activeRun.total_results || 0})
             </button>
-            {NICHES.map((n) => (
-              <button
-                key={n.key}
-                onClick={() => setSelectedNiche(n.key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer whitespace-nowrap ${
-                  selectedNiche === n.key
-                    ? 'bg-primary/15 text-primary border-primary/30'
-                    : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
-                }`}
-              >
-                {n.label} ({totalByNiche[n.key] || 0})
-              </button>
-            ))}
+            {NICHE_GROUPS.map((group) => {
+              const groupCount = group.children.reduce((sum, c) => sum + (totalByNiche[c.key] || 0), 0);
+              const isGroupSelected = group.children.some((c) => c.key === selectedNiche);
+              return (
+                <span key={group.key} className="contents">
+                  <span className={`px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider ${isGroupSelected ? 'text-accent' : 'text-muted-foreground/60'}`}>
+                    {group.label} ({groupCount})
+                  </span>
+                  {group.children.map((n) => (
+                    <button
+                      key={n.key}
+                      onClick={() => setSelectedNiche(n.key)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                        selectedNiche === n.key
+                          ? 'bg-primary/15 text-primary border-primary/30'
+                          : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
+                      }`}
+                    >
+                      {n.label} ({totalByNiche[n.key] || 0})
+                    </button>
+                  ))}
+                </span>
+              );
+            })}
           </div>
 
           {/* Video grid */}

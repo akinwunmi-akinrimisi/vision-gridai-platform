@@ -50,22 +50,22 @@ describe('DotGrid -- Dot Colors', () => {
     expect(dot.className).toMatch(/bg-muted/);
   });
 
-  it('colors dot with warning bg for audio-complete scenes (audio_status=uploaded)', () => {
+  it('colors dot with amber for audio-complete scenes (audio_status=uploaded)', () => {
     render(<DotGrid scenes={[audioCompleteScene]} />);
     const dot = screen.getByTestId('dot-2');
-    expect(dot.className).toMatch(/bg-warning/);
+    expect(dot.className).toMatch(/bg-\[#f59e0b\]/);
   });
 
-  it('colors dot with primary bg for image-complete scenes (image_status=uploaded)', () => {
+  it('colors dot with purple for image-complete scenes (image_status=uploaded)', () => {
     render(<DotGrid scenes={[imageCompleteScene]} />);
     const dot = screen.getByTestId('dot-3');
-    expect(dot.className).toMatch(/bg-primary/);
+    expect(dot.className).toMatch(/bg-\[#8b5cf6\]/);
   });
 
-  it('colors dot with info bg for video-complete scenes (video_status=uploaded)', () => {
+  it('colors dot with purple for video-complete scenes (image takes priority)', () => {
     render(<DotGrid scenes={[videoCompleteScene]} />);
     const dot = screen.getByTestId('dot-4');
-    expect(dot.className).toMatch(/bg-info/);
+    expect(dot.className).toMatch(/bg-\[#8b5cf6\]/);
   });
 
   it('colors dot with success bg for fully complete scenes (clip_status=complete)', () => {

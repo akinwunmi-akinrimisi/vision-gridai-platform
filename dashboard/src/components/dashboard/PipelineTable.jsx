@@ -107,18 +107,6 @@ function MobileTopicCard({ topic, projectId }) {
         </div>
       )}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        {(topic.classification_status === 'classified' || topic.classification_status === 'reviewed') && topic.scenes_fal_count != null && (
-          <span className="inline-flex items-center gap-1 font-mono tabular-nums">
-            <Scan className="w-3 h-3 text-warning" />
-            {topic.scenes_fal_count ?? 0}F / {topic.scenes_remotion_count ?? 0}R
-          </span>
-        )}
-        {topic.classification_status === 'classifying' && (
-          <span className="inline-flex items-center gap-1 text-info">
-            <Scan className="w-3 h-3 animate-pulse" />
-            Classifying
-          </span>
-        )}
         {topic.script_quality_score != null && (
           <span className="font-mono tabular-nums">Score: {topic.script_quality_score}</span>
         )}
@@ -129,6 +117,18 @@ function MobileTopicCard({ topic, projectId }) {
           <span className="font-mono tabular-nums text-success">${topic.yt_estimated_revenue}</span>
         )}
       </div>
+      {topic.drive_video_url && (
+        <a
+          href={topic.drive_video_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold bg-accent/15 text-accent border border-accent/30 hover:bg-accent/25 transition-colors"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          View Video
+        </a>
+      )}
     </div>
   );
 }
@@ -364,6 +364,7 @@ export default function PipelineTable({ topics, projectId, statusFilter: externa
               const isFailed = statusInfo.group === 'failed';
               const hasReviewAction = (topic.status === 'assembled' || topic.status === 'ready_review' || topic.video_review_status === 'approved') && topic.status !== 'published' && topic.status !== 'publishing';
               const isPublished = topic.status === 'published' && topic.youtube_url;
+              const hasDriveVideo = !!topic.drive_video_url;
               const hasErrorLog = isFailed && topic.error_log;
               const isExpanded = expandedErrors[topic.id];
 
@@ -473,6 +474,18 @@ export default function PipelineTable({ topics, projectId, statusFilter: externa
                         >
                           <RotateCcw className="w-3 h-3" />
                         </button>
+                      )}
+                      {hasDriveVideo && (
+                        <a
+                          href={topic.drive_video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-accent/15 text-accent border border-accent/30 hover:bg-accent/25 transition-colors"
+                        >
+                          <Eye className="w-3 h-3" />
+                          View Video
+                        </a>
                       )}
                       {hasReviewAction && (
                         <Link

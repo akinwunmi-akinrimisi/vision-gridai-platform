@@ -41,26 +41,21 @@ describe('StageProgress -- Display', () => {
   const mockStageProgress = {
     audio: { completed: 172, total: 172 },
     images: { completed: 50, total: 100 },
-    i2v: { completed: 10, total: 25 },
-    t2v: { completed: 0, total: 72 },
     captions: { completed: 0, total: 0 },
     assembly: { completed: 0, total: 1 },
   };
 
-  it('renders 6 stage indicators', () => {
+  it('renders 4 stage indicators', () => {
     render(<StageProgress stageProgress={mockStageProgress} />);
     expect(screen.getByTestId('stage-progress')).toBeTruthy();
     expect(screen.getByTestId('stage-audio')).toBeTruthy();
     expect(screen.getByTestId('stage-images')).toBeTruthy();
-    expect(screen.getByTestId('stage-i2v')).toBeTruthy();
-    expect(screen.getByTestId('stage-t2v')).toBeTruthy();
     expect(screen.getByTestId('stage-captions')).toBeTruthy();
     expect(screen.getByTestId('stage-assembly')).toBeTruthy();
   });
 
   it('shows completed stage with success styling', () => {
     render(<StageProgress stageProgress={mockStageProgress} />);
-    // Audio is 172/172, so completed
     const audioStage = screen.getByTestId('stage-audio');
     expect(audioStage.textContent).toContain('Audio');
   });
@@ -69,7 +64,5 @@ describe('StageProgress -- Display', () => {
     render(<StageProgress stageProgress={mockStageProgress} />);
     // Images is 50/100
     expect(screen.getByText('50/100')).toBeTruthy();
-    // I2V is 10/25
-    expect(screen.getByText('10/25')).toBeTruthy();
   });
 });

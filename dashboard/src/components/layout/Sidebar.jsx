@@ -49,8 +49,7 @@ import { cn } from '@/lib/utils';
 // ── Nav configuration ────────────────────────────────
 
 const platformNavItems = [
-  { label: 'Topic Research', icon: Microscope, path: '/research' },
-  { label: 'YT Discovery', icon: Youtube, path: '/youtube-discovery' },
+  { label: 'Niche Research', icon: Microscope, path: '/youtube-discovery' },
   { label: 'Projects', icon: LayoutDashboard, path: '/' },
   { label: 'Shorts Creator', icon: Clapperboard, path: '/shorts' },
   { label: 'Social Publisher', icon: Share2, path: '/social' },

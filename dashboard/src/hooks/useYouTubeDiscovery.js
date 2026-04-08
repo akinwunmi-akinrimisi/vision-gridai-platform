@@ -4,17 +4,42 @@ import { useRealtimeSubscription } from './useRealtimeSubscription';
 import { webhookCall } from '../lib/api';
 import { toast } from 'sonner';
 
-const NICHES = [
-  { key: 'business_case_studies', label: 'Business & Entrepreneurship Case Studies' },
-  { key: 'jungian_psychology', label: 'Jungian Psychology' },
-  { key: 'history_documentaries', label: 'History Documentaries & Storytelling' },
-  { key: 'personal_finance', label: 'Personal Finance & Investing' },
-  { key: 'health_fitness', label: 'Health, Fitness & Longevity' },
-  { key: 'betrayal_revenge', label: 'Betrayal/Revenge Stories' },
-  { key: 'literary_analysis', label: 'Literary Analysis & Reviews' },
+const NICHE_GROUPS = [
+  {
+    key: 'betrayal_revenge',
+    label: 'Betrayal & Revenge Stories',
+    children: [
+      { key: 'betrayals_changed_history', label: 'Betrayals That Changed History' },
+      { key: 'family_betrayals_inheritance', label: 'Family Betrayals & Inheritance Wars' },
+      { key: 'revenge_stories_gone_wrong', label: 'Revenge Stories Gone Wrong' },
+    ],
+  },
+  {
+    key: 'legal_court_drama',
+    label: 'Legal & Court Drama',
+    children: [
+      { key: 'shocking_courtroom_moments', label: 'Shocking Courtroom Moments' },
+      { key: 'landmark_cases_changed_law', label: 'Landmark Cases That Changed Law' },
+      { key: 'legal_corruption_scandals', label: 'Legal Corruption & Scandals' },
+    ],
+  },
+  {
+    key: 'true_crime',
+    label: 'True Crime',
+    children: [
+      { key: 'unsolved_mysteries_cold_cases', label: 'Unsolved Mysteries & Cold Cases' },
+      { key: 'serial_killers_criminal_profiling', label: 'Serial Killers & Criminal Profiling' },
+      { key: 'heists_frauds_con_artists', label: 'Heists, Frauds & Con Artists' },
+    ],
+  },
 ];
 
-export { NICHES };
+// Flat list for workflow compatibility + filtering
+const NICHES = NICHE_GROUPS.flatMap((g) =>
+  g.children.map((c) => ({ ...c, group: g.key, groupLabel: g.label }))
+);
+
+export { NICHES, NICHE_GROUPS };
 
 export function useLatestDiscoveryRun() {
   useRealtimeSubscription('yt_discovery_runs', null, [['yt-discovery-run']]);
@@ -82,7 +107,7 @@ export function useRunDiscovery() {
       return result;
     },
     onSuccess: () => {
-      toast.success('YouTube Discovery started — searching across 5 niches...');
+      toast.success('YouTube Discovery started — searching across selected niches...');
       const poll = (attempt) => {
         if (attempt > 30) return;
         setTimeout(() => {

@@ -123,6 +123,6 @@ function computeStageProgress(scenes, topicData) {
     i2v: { completed: i2vCompleted, total: i2vScenes.length },
     t2v: { completed: t2vCompleted, total: t2vScenes.length },
     captions: { completed: captionsCompleted, total },
-    clips: { completed: clipsCompleted, total },
+    assembly: { completed: clipsCompleted, total },
   };
 }

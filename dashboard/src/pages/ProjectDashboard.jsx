@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Video,
@@ -13,6 +13,7 @@ import {
   Download,
   RefreshCw,
   Activity,
+  ListChecks,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTopics } from '../hooks/useTopics';
@@ -75,6 +76,7 @@ function KPISkeleton() {
 /* ------------------------------------------------------------------ */
 export default function ProjectDashboard() {
   const { id: projectId } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: topics, isLoading: topicsLoading } = useTopics(projectId);
   const { metrics, isLoading: metricsLoading } = useProjectMetrics(projectId);
@@ -283,10 +285,14 @@ export default function ProjectDashboard() {
           </Button>
         )}
         {metrics.pendingReview > 0 && (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-warning-bg text-warning border border-warning-border">
-            <AlertCircle className="w-3 h-3" />
-            {metrics.pendingReview} Pending Review
-          </span>
+          <Button
+            size="sm"
+            onClick={() => navigate(`/project/${projectId}/topics`)}
+            className="bg-gradient-to-r from-warning to-accent hover:from-warning/90 hover:to-accent/90 text-background shadow-glow-primary"
+          >
+            <ListChecks className="w-3.5 h-3.5" />
+            Review {metrics.pendingReview} Topics
+          </Button>
         )}
         {metrics.scheduled > 0 && (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-info-bg text-info border border-info-border">

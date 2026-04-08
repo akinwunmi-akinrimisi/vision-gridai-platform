@@ -12,15 +12,15 @@ const mockRun = {
 
 const mockVideos = [
   {
-    id: 'v-1', run_id: 'disc-run-1', niche_category: 'personal_finance',
-    title: 'Complete Guide to Financial Freedom', channel_name: 'FinanceGuru',
+    id: 'v-1', run_id: 'disc-run-1', niche_category: 'unsolved_mysteries_cold_cases',
+    title: 'Complete Guide to Cold Case Investigation', channel_name: 'CrimeDocs',
     views: 2500000, likes: 80000, comments: 12000, duration_seconds: 5400,
     video_url: 'https://youtube.com/watch?v=fin1', video_id: 'fin1',
     thumbnail_url: 'https://img.youtube.com/vi/fin1/hq.jpg',
     published_at: '2026-01-15T00:00:00Z',
   },
   {
-    id: 'v-2', run_id: 'disc-run-1', niche_category: 'betrayal_revenge',
+    id: 'v-2', run_id: 'disc-run-1', niche_category: 'betrayals_changed_history',
     title: 'The Greatest Betrayal in History', channel_name: 'CrimeTV',
     views: 5000000, likes: 150000, comments: 25000, duration_seconds: 7200,
     video_url: 'https://youtube.com/watch?v=crime1', video_id: 'crime1',
@@ -41,13 +41,32 @@ const mockWebhookCall = vi.fn().mockResolvedValue({ message: 'started' });
 // Mock at the HOOK level — much more reliable than mocking supabase internals
 vi.mock('../hooks/useYouTubeDiscovery', () => ({
   NICHES: [
-    { key: 'business_case_studies', label: 'Business & Entrepreneurship Case Studies' },
-    { key: 'jungian_psychology', label: 'Jungian Psychology' },
-    { key: 'history_documentaries', label: 'History Documentaries & Storytelling' },
-    { key: 'personal_finance', label: 'Personal Finance & Investing' },
-    { key: 'health_fitness', label: 'Health, Fitness & Longevity' },
-    { key: 'betrayal_revenge', label: 'Betrayal/Revenge Stories' },
-    { key: 'literary_analysis', label: 'Literary Analysis & Reviews' },
+    { key: 'betrayals_changed_history', label: 'Betrayals That Changed History', group: 'betrayal_revenge', groupLabel: 'Betrayal & Revenge Stories' },
+    { key: 'family_betrayals_inheritance', label: 'Family Betrayals & Inheritance Wars', group: 'betrayal_revenge', groupLabel: 'Betrayal & Revenge Stories' },
+    { key: 'revenge_stories_gone_wrong', label: 'Revenge Stories Gone Wrong', group: 'betrayal_revenge', groupLabel: 'Betrayal & Revenge Stories' },
+    { key: 'shocking_courtroom_moments', label: 'Shocking Courtroom Moments', group: 'legal_court_drama', groupLabel: 'Legal & Court Drama' },
+    { key: 'landmark_cases_changed_law', label: 'Landmark Cases That Changed Law', group: 'legal_court_drama', groupLabel: 'Legal & Court Drama' },
+    { key: 'legal_corruption_scandals', label: 'Legal Corruption & Scandals', group: 'legal_court_drama', groupLabel: 'Legal & Court Drama' },
+    { key: 'unsolved_mysteries_cold_cases', label: 'Unsolved Mysteries & Cold Cases', group: 'true_crime', groupLabel: 'True Crime' },
+    { key: 'serial_killers_criminal_profiling', label: 'Serial Killers & Criminal Profiling', group: 'true_crime', groupLabel: 'True Crime' },
+    { key: 'heists_frauds_con_artists', label: 'Heists, Frauds & Con Artists', group: 'true_crime', groupLabel: 'True Crime' },
+  ],
+  NICHE_GROUPS: [
+    { key: 'betrayal_revenge', label: 'Betrayal & Revenge Stories', children: [
+      { key: 'betrayals_changed_history', label: 'Betrayals That Changed History' },
+      { key: 'family_betrayals_inheritance', label: 'Family Betrayals & Inheritance Wars' },
+      { key: 'revenge_stories_gone_wrong', label: 'Revenge Stories Gone Wrong' },
+    ]},
+    { key: 'legal_court_drama', label: 'Legal & Court Drama', children: [
+      { key: 'shocking_courtroom_moments', label: 'Shocking Courtroom Moments' },
+      { key: 'landmark_cases_changed_law', label: 'Landmark Cases That Changed Law' },
+      { key: 'legal_corruption_scandals', label: 'Legal Corruption & Scandals' },
+    ]},
+    { key: 'true_crime', label: 'True Crime', children: [
+      { key: 'unsolved_mysteries_cold_cases', label: 'Unsolved Mysteries & Cold Cases' },
+      { key: 'serial_killers_criminal_profiling', label: 'Serial Killers & Criminal Profiling' },
+      { key: 'heists_frauds_con_artists', label: 'Heists, Frauds & Con Artists' },
+    ]},
   ],
   useLatestDiscoveryRun: () => ({ data: mockRun, isLoading: false }),
   useDiscoveryResults: (runId, niche) => ({
@@ -97,7 +116,7 @@ function renderPage(route = '/youtube-discovery') {
 describe('YouTubeDiscovery — Page Structure', () => {
   it('renders page header', () => {
     renderPage();
-    expect(screen.getByText('YouTube Discovery')).toBeTruthy();
+    expect(screen.getByText('Niche Research')).toBeTruthy();
   });
 
   it('renders all 7 time range options', () => {
@@ -121,22 +140,21 @@ describe('YouTubeDiscovery — Niche Tabs', () => {
     expect(screen.getByText(/^All \(/)).toBeTruthy();
   });
 
-  it('renders all 7 niche tabs', () => {
+  it('renders all 3 niche groups with sub-niches', () => {
     renderPage();
-    // Each niche label appears twice (search niches + filter tabs), so use getAllByText
-    expect(screen.getAllByText(/Business.*Entrepreneurship/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Jungian Psychology/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/History Documentaries/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Personal Finance/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Health.*Fitness/).length).toBeGreaterThanOrEqual(1);
+    // Parent group labels appear in both search section and filter tabs
     expect(screen.getAllByText(/Betrayal.*Revenge/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Literary Analysis/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Legal.*Court/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/True Crime/).length).toBeGreaterThanOrEqual(1);
+    // Sub-niche labels
+    expect(screen.getAllByText(/Betrayals That Changed History/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Unsolved Mysteries/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Shocking Courtroom/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('clicking a niche tab filters videos', () => {
+  it('clicking a sub-niche tab filters videos', () => {
     renderPage();
-    // Each niche label appears twice (search niches section + filter tabs), use getAllByText
-    const tabs = screen.getAllByText(/Jungian Psychology/);
+    const tabs = screen.getAllByText(/Betrayals That Changed History/);
     // Click the last occurrence (the filter tab in the results section)
     fireEvent.click(tabs[tabs.length - 1]);
     // After clicking, the tab should be active (has primary styling)
@@ -171,13 +189,13 @@ describe('YouTubeDiscovery — History', () => {
 describe('YouTubeDiscovery — Video Cards', () => {
   it('renders video titles', () => {
     renderPage();
-    expect(screen.getByText('Complete Guide to Financial Freedom')).toBeTruthy();
+    expect(screen.getByText('Complete Guide to Cold Case Investigation')).toBeTruthy();
     expect(screen.getByText('The Greatest Betrayal in History')).toBeTruthy();
   });
 
   it('shows channel names', () => {
     renderPage();
-    expect(screen.getByText('FinanceGuru')).toBeTruthy();
+    expect(screen.getByText('CrimeDocs')).toBeTruthy();
     expect(screen.getByText('CrimeTV')).toBeTruthy();
   });
 

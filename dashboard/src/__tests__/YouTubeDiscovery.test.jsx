@@ -46,7 +46,7 @@ describe('YouTubeDiscovery Page', () => {
 
   it('renders the page header', () => {
     renderPage();
-    expect(screen.getByText('YouTube Discovery')).toBeTruthy();
+    expect(screen.getByText('Niche Research')).toBeTruthy();
   });
 
   it('renders the subtitle', () => {

@@ -195,13 +195,32 @@ vi.mock('../hooks/useResearch', () => ({
 
 vi.mock('../hooks/useYouTubeDiscovery', () => ({
   NICHES: [
-    { key: 'business_case_studies', label: 'Business & Entrepreneurship Case Studies' },
-    { key: 'jungian_psychology', label: 'Jungian Psychology' },
-    { key: 'history_documentaries', label: 'History Documentaries & Storytelling' },
-    { key: 'personal_finance', label: 'Personal Finance & Investing' },
-    { key: 'health_fitness', label: 'Health, Fitness & Longevity' },
-    { key: 'betrayal_revenge', label: 'Betrayal/Revenge Stories' },
-    { key: 'literary_analysis', label: 'Literary Analysis & Reviews' },
+    { key: 'betrayals_changed_history', label: 'Betrayals That Changed History', group: 'betrayal_revenge', groupLabel: 'Betrayal & Revenge Stories' },
+    { key: 'family_betrayals_inheritance', label: 'Family Betrayals & Inheritance Wars', group: 'betrayal_revenge', groupLabel: 'Betrayal & Revenge Stories' },
+    { key: 'revenge_stories_gone_wrong', label: 'Revenge Stories Gone Wrong', group: 'betrayal_revenge', groupLabel: 'Betrayal & Revenge Stories' },
+    { key: 'shocking_courtroom_moments', label: 'Shocking Courtroom Moments', group: 'legal_court_drama', groupLabel: 'Legal & Court Drama' },
+    { key: 'landmark_cases_changed_law', label: 'Landmark Cases That Changed Law', group: 'legal_court_drama', groupLabel: 'Legal & Court Drama' },
+    { key: 'legal_corruption_scandals', label: 'Legal Corruption & Scandals', group: 'legal_court_drama', groupLabel: 'Legal & Court Drama' },
+    { key: 'unsolved_mysteries_cold_cases', label: 'Unsolved Mysteries & Cold Cases', group: 'true_crime', groupLabel: 'True Crime' },
+    { key: 'serial_killers_criminal_profiling', label: 'Serial Killers & Criminal Profiling', group: 'true_crime', groupLabel: 'True Crime' },
+    { key: 'heists_frauds_con_artists', label: 'Heists, Frauds & Con Artists', group: 'true_crime', groupLabel: 'True Crime' },
+  ],
+  NICHE_GROUPS: [
+    { key: 'betrayal_revenge', label: 'Betrayal & Revenge Stories', children: [
+      { key: 'betrayals_changed_history', label: 'Betrayals That Changed History' },
+      { key: 'family_betrayals_inheritance', label: 'Family Betrayals & Inheritance Wars' },
+      { key: 'revenge_stories_gone_wrong', label: 'Revenge Stories Gone Wrong' },
+    ]},
+    { key: 'legal_court_drama', label: 'Legal & Court Drama', children: [
+      { key: 'shocking_courtroom_moments', label: 'Shocking Courtroom Moments' },
+      { key: 'landmark_cases_changed_law', label: 'Landmark Cases That Changed Law' },
+      { key: 'legal_corruption_scandals', label: 'Legal Corruption & Scandals' },
+    ]},
+    { key: 'true_crime', label: 'True Crime', children: [
+      { key: 'unsolved_mysteries_cold_cases', label: 'Unsolved Mysteries & Cold Cases' },
+      { key: 'serial_killers_criminal_profiling', label: 'Serial Killers & Criminal Profiling' },
+      { key: 'heists_frauds_con_artists', label: 'Heists, Frauds & Con Artists' },
+    ]},
   ],
   useLatestDiscoveryRun: () => ({ data: null, isLoading: false }),
   useDiscoveryResults: () => ({ data: [], isLoading: false }),
@@ -312,7 +331,7 @@ describe('SMOKE: Platform Pages', () => {
   it('YouTubeDiscovery renders without crashing', async () => {
     const { default: Page } = await import('../pages/YouTubeDiscovery');
     renderPage(Page, '/youtube-discovery');
-    expect(screen.getByText('YouTube Discovery')).toBeTruthy();
+    expect(screen.getByText('Niche Research')).toBeTruthy();
     expect(consoleErrors).toHaveLength(0);
   });
 

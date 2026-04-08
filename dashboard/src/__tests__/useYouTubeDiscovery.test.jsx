@@ -50,26 +50,30 @@ function wrapper({ children }) {
 }
 
 describe('NICHES constant', () => {
-  it('has exactly 7 niches', () => {
-    expect(NICHES).toHaveLength(7);
+  it('has exactly 9 sub-niches (3 groups × 3)', () => {
+    expect(NICHES).toHaveLength(9);
   });
 
-  it('each niche has key and label', () => {
+  it('each niche has key, label, group, and groupLabel', () => {
     for (const n of NICHES) {
       expect(n.key).toBeTruthy();
       expect(n.label).toBeTruthy();
+      expect(n.group).toBeTruthy();
+      expect(n.groupLabel).toBeTruthy();
     }
   });
 
-  it('includes all expected categories', () => {
+  it('includes all expected sub-niches', () => {
     const keys = NICHES.map((n) => n.key);
-    expect(keys).toContain('business_case_studies');
-    expect(keys).toContain('jungian_psychology');
-    expect(keys).toContain('history_documentaries');
-    expect(keys).toContain('personal_finance');
-    expect(keys).toContain('health_fitness');
-    expect(keys).toContain('betrayal_revenge');
-    expect(keys).toContain('literary_analysis');
+    expect(keys).toContain('betrayals_changed_history');
+    expect(keys).toContain('family_betrayals_inheritance');
+    expect(keys).toContain('revenge_stories_gone_wrong');
+    expect(keys).toContain('shocking_courtroom_moments');
+    expect(keys).toContain('landmark_cases_changed_law');
+    expect(keys).toContain('legal_corruption_scandals');
+    expect(keys).toContain('unsolved_mysteries_cold_cases');
+    expect(keys).toContain('serial_killers_criminal_profiling');
+    expect(keys).toContain('heists_frauds_con_artists');
   });
 });
 

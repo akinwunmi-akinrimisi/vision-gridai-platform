@@ -8,12 +8,10 @@ function getDotColor(scene) {
     return 'bg-danger shadow-[0_0_4px_rgba(248,113,113,0.5)]';
   if (scene.clip_status === 'complete' || scene.clip_status === 'uploaded')
     return 'bg-success shadow-[0_0_4px_rgba(52,211,153,0.4)]';
-  if (scene.video_status === 'uploaded' || scene.video_status === 'generated')
-    return 'bg-info';
   if (scene.image_status === 'uploaded' || scene.image_status === 'generated')
-    return 'bg-primary';
+    return 'bg-[#8b5cf6] shadow-[0_0_4px_rgba(139,92,246,0.4)]';
   if (scene.audio_status === 'uploaded' || scene.audio_status === 'generated')
-    return 'bg-warning';
+    return 'bg-[#f59e0b] shadow-[0_0_3px_rgba(245,158,11,0.3)]';
   return 'bg-muted';
 }
 
@@ -39,9 +37,8 @@ function getDotTooltipStatus(scene) {
 
 const LEGEND = [
   { label: 'Pending', color: 'bg-muted' },
-  { label: 'Audio', color: 'bg-warning' },
-  { label: 'Image', color: 'bg-primary' },
-  { label: 'Video', color: 'bg-info' },
+  { label: 'Audio', color: 'bg-[#f59e0b]' },
+  { label: 'Image', color: 'bg-[#8b5cf6]' },
   { label: 'Complete', color: 'bg-success' },
   { label: 'Failed', color: 'bg-danger' },
   { label: 'Skipped', color: 'bg-muted-foreground' },
@@ -57,13 +54,28 @@ export default function DotGrid({ scenes = [], onSceneClick }) {
     return acc;
   }, {});
 
-  const completedCount = scenes.filter(
-    (s) => s.clip_status === 'complete' || s.clip_status === 'uploaded'
-  ).length;
+  const audioCount = scenes.filter((s) => s.audio_status === 'uploaded' || s.audio_status === 'generated').length;
+  const imageCount = scenes.filter((s) => s.image_status === 'uploaded' || s.image_status === 'generated').length;
+  const clipCount = scenes.filter((s) => s.clip_status === 'complete' || s.clip_status === 'uploaded').length;
   const failedCount = scenes.filter(
     (s) => s.audio_status === 'failed' || s.image_status === 'failed' || s.video_status === 'failed'
   ).length;
-  const pct = scenes.length > 0 ? Math.round((completedCount / scenes.length) * 100) : 0;
+
+  // Show progress for the current active stage
+  let activeStageLabel, activeStageCount, pct;
+  if (clipCount > 0 || (audioCount >= scenes.length && imageCount >= scenes.length)) {
+    activeStageLabel = 'assembled';
+    activeStageCount = clipCount;
+    pct = scenes.length > 0 ? Math.round((clipCount / scenes.length) * 100) : 0;
+  } else if (imageCount > 0 || audioCount >= scenes.length) {
+    activeStageLabel = 'images generated';
+    activeStageCount = imageCount;
+    pct = scenes.length > 0 ? Math.round((imageCount / scenes.length) * 100) : 0;
+  } else {
+    activeStageLabel = 'audio generated';
+    activeStageCount = audioCount;
+    pct = scenes.length > 0 ? Math.round((audioCount / scenes.length) * 100) : 0;
+  }
 
   return (
     <div data-testid="dot-grid" className="bg-card border border-border rounded-xl p-4 sm:p-6">
@@ -74,7 +86,7 @@ export default function DotGrid({ scenes = [], onSceneClick }) {
           <h3 className="text-sm font-semibold">Scene Progress</h3>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 text-2xs text-muted-foreground tabular-nums">
-          <span>{completedCount}/{scenes.length} done</span>
+          <span>{activeStageCount}/{scenes.length} {activeStageLabel}</span>
           {failedCount > 0 && (
             <span className="text-danger">{failedCount} failed</span>
           )}

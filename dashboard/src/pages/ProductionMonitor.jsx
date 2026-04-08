@@ -60,7 +60,8 @@ export default function ProductionMonitor() {
   const { data: topics = [], isLoading } = useTopics(projectId);
   const mutations = useProductionMutations(projectId);
 
-  const activeTopic = useMemo(() => topics.find((t) => t.status === 'producing'), [topics]);
+  const ACTIVE_STATUSES = new Set(['producing', 'audio', 'images', 'i2v', 't2v', 'assembly', 'assembling', 'scripting', 'classifying']);
+  const activeTopic = useMemo(() => topics.find((t) => ACTIVE_STATUSES.has(t.status)), [topics]);
   const stoppedTopic = useMemo(() => topics.find((t) => t.status === 'stopped'), [topics]);
   const queuedTopics = useMemo(
     () => topics.filter((t) => t.status === 'queued').sort((a, b) => a.topic_number - b.topic_number),
@@ -127,14 +128,21 @@ export default function ProductionMonitor() {
     return ((totalScenes - doneScenes) / doneScenes) * elapsed;
   }, [stageProgress, elapsed, scenes]);
 
-  // Overall progress
+  // Overall progress — weighted across 4 stages (audio, images, captions, assembly)
   const overallPct = useMemo(() => {
-    if (!scenes.length) return 0;
-    const done = scenes.filter(
-      (s) => s.clip_status === 'complete' || s.clip_status === 'uploaded'
-    ).length;
-    return Math.round((done / scenes.length) * 100);
-  }, [scenes]);
+    if (!stageProgress || !scenes.length) return 0;
+    const stages = ['audio', 'images', 'captions', 'assembly'];
+    let totalWeight = 0;
+    let completedWeight = 0;
+    for (const key of stages) {
+      const s = stageProgress[key];
+      if (s && s.total > 0) {
+        totalWeight += s.total;
+        completedWeight += s.completed;
+      }
+    }
+    return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
+  }, [stageProgress, scenes]);
 
   // Handlers
   const handleStartProduction = () => {
@@ -262,18 +270,31 @@ export default function ProductionMonitor() {
                 </h2>
               </div>
 
-              {activeTopic && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowStopDialog(true)}
-                  className="gap-1.5 flex-shrink-0"
-                  data-testid="stop-production-btn"
-                >
-                  <StopCircle className="w-3.5 h-3.5" />
-                  Stop
-                </Button>
-              )}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {currentTopic.drive_video_url && (
+                  <a
+                    href={currentTopic.drive_video_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-accent/15 text-accent border border-accent/30 hover:bg-accent/25 transition-colors"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    View Video
+                  </a>
+                )}
+                {activeTopic && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowStopDialog(true)}
+                    className="gap-1.5"
+                    data-testid="stop-production-btn"
+                  >
+                    <StopCircle className="w-3.5 h-3.5" />
+                    Stop
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Overall progress */}

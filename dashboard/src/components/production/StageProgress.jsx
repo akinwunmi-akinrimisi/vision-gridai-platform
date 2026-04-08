@@ -1,19 +1,14 @@
 import {
   Mic,
   Image,
-  Film,
   Subtitles,
   Clapperboard,
   CheckCircle2,
-  Scan,
 } from 'lucide-react';
 
 const STAGES = [
-  { key: 'classification', label: 'Classify', icon: Scan },
   { key: 'audio', label: 'Audio', icon: Mic },
   { key: 'images', label: 'Images', icon: Image },
-  { key: 'i2v', label: 'I2V', icon: Film },
-  { key: 't2v', label: 'T2V', icon: Film },
   { key: 'captions', label: 'Captions', icon: Subtitles },
   { key: 'assembly', label: 'Assembly', icon: Clapperboard },
 ];
@@ -25,7 +20,7 @@ function getStageState(key, stageProgress) {
   if (stage.completed >= stage.total) return 'completed';
   if (stage.completed > 0) return 'active';
 
-  const stageOrder = ['classification', 'audio', 'images', 'i2v', 't2v', 'captions', 'assembly'];
+  const stageOrder = ['audio', 'images', 'captions', 'assembly'];
   const idx = stageOrder.indexOf(key);
   if (idx > 0) {
     const allPriorComplete = stageOrder.slice(0, idx).every((k) => {
@@ -85,9 +80,7 @@ export default function StageProgress({ stageProgress }) {
                 ? 'text-primary'
                 : 'text-muted-foreground'
             }`}>
-              {state === 'completed' && stage.key === 'classification' && progress?.falai != null ? (
-                <span className="tabular-nums">{progress.falai}F / {progress.remotion}R</span>
-              ) : state === 'completed' ? (
+              {state === 'completed' ? (
                 stage.label
               ) : progress && progress.total > 0 ? (
                 <span className="tabular-nums">{progress.completed}/{progress.total}</span>
