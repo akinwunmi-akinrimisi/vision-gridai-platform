@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router';
-import { Activity, Play, StopCircle, RotateCcw, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Activity, Play, StopCircle, RotateCcw, CheckCircle2, AlertTriangle, Image as ImageIcon, FileText, Tag, RefreshCw } from 'lucide-react';
 
 import { useTopics } from '../hooks/useTopics';
 import { useProductionProgress } from '../hooks/useProductionProgress';
 import { useProductionMutations } from '../hooks/useProductionMutations';
 import { useProductionLog } from '../hooks/useProductionLog';
 import { useProject } from '../hooks/useNicheProfile';
+import { webhookCall } from '../lib/api';
 
 import PageHeader from '../components/shared/PageHeader';
 import HeroCard from '../components/shared/HeroCard';
@@ -102,14 +103,32 @@ export default function ProductionMonitor() {
     );
   }, [hookFailedScenes, scenes]);
 
+  // Overall progress — weighted across 4 stages (must be before timer effect)
+  const overallPct = useMemo(() => {
+    if (!stageProgress || !scenes.length) return 0;
+    const stages = ['audio', 'images', 'captions', 'assembly'];
+    let totalWeight = 0;
+    let completedWeight = 0;
+    for (const key of stages) {
+      const s = stageProgress[key];
+      if (s && s.total > 0) {
+        totalWeight += s.total;
+        completedWeight += s.completed;
+      }
+    }
+    return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
+  }, [stageProgress, scenes]);
+
   useEffect(() => {
     if (!activeTopic?.last_status_change) { setElapsed(0); return; }
+    // Freeze timer when all scenes are done (handles task runner crash leaving status as 'assembling')
+    if (overallPct >= 100) return;
     const start = new Date(activeTopic.last_status_change).getTime();
     const tick = () => setElapsed(Date.now() - start);
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [activeTopic?.last_status_change]);
+  }, [activeTopic?.last_status_change, overallPct]);
 
   useEffect(() => {
     const trigger = searchParams.get('trigger');
@@ -127,22 +146,6 @@ export default function ProductionMonitor() {
     if (doneScenes === 0) return null;
     return ((totalScenes - doneScenes) / doneScenes) * elapsed;
   }, [stageProgress, elapsed, scenes]);
-
-  // Overall progress — weighted across 4 stages (audio, images, captions, assembly)
-  const overallPct = useMemo(() => {
-    if (!stageProgress || !scenes.length) return 0;
-    const stages = ['audio', 'images', 'captions', 'assembly'];
-    let totalWeight = 0;
-    let completedWeight = 0;
-    for (const key of stages) {
-      const s = stageProgress[key];
-      if (s && s.total > 0) {
-        totalWeight += s.total;
-        completedWeight += s.completed;
-      }
-    }
-    return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
-  }, [stageProgress, scenes]);
 
   // Handlers
   const handleStartProduction = () => {
@@ -175,6 +178,22 @@ export default function ProductionMonitor() {
 
   const handleRemoveFromQueue = (topicId) => {
     mutations.stopProduction.mutate({ topic_id: topicId });
+  };
+
+  const [assetLoading, setAssetLoading] = useState({});
+  const handleGenerateThumbnails = async () => {
+    if (!currentTopic?.id) return;
+    setAssetLoading(prev => ({ ...prev, thumbnail: true }));
+    try { await webhookCall('thumbnail/generate', { topic_id: currentTopic.id }, { timeoutMs: 120000 }); }
+    catch (e) { console.error('Thumbnail trigger failed:', e); }
+    setAssetLoading(prev => ({ ...prev, thumbnail: false }));
+  };
+  const handleGenerateSEO = async () => {
+    if (!currentTopic?.id) return;
+    setAssetLoading(prev => ({ ...prev, seo: true }));
+    try { await webhookCall('metadata/generate', { topic_id: currentTopic.id }); }
+    catch (e) { console.error('SEO trigger failed:', e); }
+    setAssetLoading(prev => ({ ...prev, seo: false }));
   };
 
   const handleRetryScene = (sceneId) => {
@@ -345,6 +364,122 @@ export default function ProductionMonitor() {
                     <RotateCcw className="w-3.5 h-3.5" />
                     Restart
                   </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Publishing Assets — Thumbnail + SEO Description + Tags */}
+          {currentTopic && (overallPct >= 50 || currentTopic.thumbnail_url || currentTopic.yt_description) && (
+            <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Publishing Assets</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleGenerateThumbnails}
+                    disabled={assetLoading.thumbnail}
+                    className="gap-1.5 text-xs"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${assetLoading.thumbnail ? 'animate-spin' : ''}`} />
+                    {currentTopic.thumbnail_url ? 'Regenerate Thumbnails' : 'Generate Thumbnails'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleGenerateSEO}
+                    disabled={assetLoading.seo}
+                    className="gap-1.5 text-xs"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${assetLoading.seo ? 'animate-spin' : ''}`} />
+                    {currentTopic.yt_description ? 'Regenerate SEO' : 'Generate SEO'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Thumbnail */}
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <ImageIcon className="w-3 h-3" /> Thumbnail
+                  </h4>
+                  {currentTopic.thumbnail_url ? (
+                    <a
+                      href={currentTopic.thumbnail_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-lg border border-border overflow-hidden hover:border-primary/50 transition-colors"
+                    >
+                      <img
+                        src={`https://drive.google.com/thumbnail?id=${(currentTopic.thumbnail_url.match(/\/d\/([^/]+)/) || [])[1]}&sz=w400`}
+                        alt="Thumbnail"
+                        className="w-full aspect-video object-cover bg-muted"
+                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                      />
+                      <div className="hidden items-center justify-center aspect-video bg-muted text-xs text-muted-foreground">
+                        Click to view on Drive
+                      </div>
+                    </a>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-border flex items-center justify-center aspect-video bg-muted/30">
+                      <span className="text-xs text-muted-foreground">Not generated yet</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* SEO Description + Tags */}
+                <div className="md:col-span-2 space-y-3">
+                  <div>
+                    <h4 className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                      <FileText className="w-3 h-3" /> SEO Description
+                      {currentTopic.yt_description && (
+                        <span className="text-2xs text-muted-foreground/60 ml-1">
+                          ({currentTopic.yt_description.length} chars)
+                        </span>
+                      )}
+                    </h4>
+                    {currentTopic.yt_description ? (
+                      <p className="text-xs text-foreground/70 leading-relaxed line-clamp-4 bg-muted/20 rounded-lg p-3 border border-border/50">
+                        {currentTopic.yt_description.substring(0, 300)}
+                        {currentTopic.yt_description.length > 300 && '...'}
+                      </p>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-border p-3 bg-muted/10">
+                        <span className="text-xs text-muted-foreground">Not generated yet</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                      <Tag className="w-3 h-3" /> SEO Tags
+                      {currentTopic.yt_tags && (
+                        <span className="text-2xs text-muted-foreground/60 ml-1">
+                          ({currentTopic.yt_tags.length} tags)
+                        </span>
+                      )}
+                    </h4>
+                    {currentTopic.yt_tags && currentTopic.yt_tags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {currentTopic.yt_tags.map((tag, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex px-2 py-0.5 rounded-full text-2xs font-medium bg-primary/10 text-primary border border-primary/20"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-border p-2 bg-muted/10">
+                        <span className="text-xs text-muted-foreground">Not generated yet</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
