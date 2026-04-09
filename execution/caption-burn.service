@@ -1,0 +1,16 @@
+[Unit]
+Description=Caption Burn Service (FFmpeg outside n8n)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/caption-burn
+ExecStart=/usr/bin/python3 /opt/caption-burn/caption_burn_service.py
+Restart=always
+RestartSec=5
+Environment=N8N_WEBHOOK_BASE=https://n8n.srv1297445.hstgr.cloud/webhook
+
+[Install]
+WantedBy=multi-user.target

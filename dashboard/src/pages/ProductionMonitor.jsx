@@ -443,10 +443,11 @@ export default function ProductionMonitor() {
                       )}
                     </h4>
                     {currentTopic.yt_description ? (
-                      <p className="text-xs text-foreground/70 leading-relaxed line-clamp-4 bg-muted/20 rounded-lg p-3 border border-border/50">
-                        {currentTopic.yt_description.substring(0, 300)}
-                        {currentTopic.yt_description.length > 300 && '...'}
-                      </p>
+                      <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                        <p className="text-xs text-foreground/70 leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">
+                          {currentTopic.yt_description}
+                        </p>
+                      </div>
                     ) : (
                       <div className="rounded-lg border border-dashed border-border p-3 bg-muted/10">
                         <span className="text-xs text-muted-foreground">Not generated yet</span>
