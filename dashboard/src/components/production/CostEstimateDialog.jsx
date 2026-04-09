@@ -22,20 +22,18 @@ export default function CostEstimateDialog({
   loading = false,
 }) {
   const sceneCount = projectConfig.target_scene_count || 172;
-  const imagesCount = projectConfig.images_per_video || 100;
-  const i2vCount = projectConfig.i2v_clips_per_video || 25;
-  const t2vCount = projectConfig.t2v_clips_per_video || 72;
+  const imagesCount = sceneCount; // All scenes get images (static_image + Ken Burns)
 
-  const ttsCost = sceneCount * 0.002; // ~$0.30 per video
-  const imagesCost = imagesCount * (projectConfig.image_cost || 0.032);
-  const i2vCost = i2vCount * (projectConfig.i2v_cost || 0.050);
-  const t2vCost = t2vCount * (projectConfig.t2v_cost || 0.050);
-  const perTopicCost = ttsCost + imagesCost + i2vCost + t2vCost;
+  const scriptCost = 1.80; // 3-pass script generation
+  const ttsCost = sceneCount * 0.002;
+  const imagesCost = imagesCount * (projectConfig.image_cost || 0.030);
+  const assemblyMusicCost = 0.06; // Ken Burns + color grade + music + end card + thumbnail
+  const perTopicCost = scriptCost + ttsCost + imagesCost + assemblyMusicCost;
   const totalCost = perTopicCost * topics.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg w-[95vw]">
         <DialogHeader>
           <DialogTitle>Start Production</DialogTitle>
           <DialogDescription>
@@ -70,20 +68,20 @@ export default function CostEstimateDialog({
             </p>
             <div className="space-y-1 text-xs">
               <div className="flex justify-between">
+                <span className="text-muted-foreground">3-Pass Script Generation</span>
+                <span className="tabular-nums font-medium">${scriptCost.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">TTS Audio ({sceneCount} scenes)</span>
                 <span className="tabular-nums font-medium">${ttsCost.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Images ({imagesCount} x Seedream)</span>
+                <span className="text-muted-foreground">Images ({imagesCount} x Seedream 4.0)</span>
                 <span className="tabular-nums font-medium">${imagesCost.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">I2V ({i2vCount} x Wan 2.5)</span>
-                <span className="tabular-nums font-medium">${i2vCost.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">T2V ({t2vCount} x Wan 2.5)</span>
-                <span className="tabular-nums font-medium">${t2vCost.toFixed(2)}</span>
+                <span className="text-muted-foreground">Ken Burns + Assembly + Music</span>
+                <span className="tabular-nums font-medium">${assemblyMusicCost.toFixed(2)}</span>
               </div>
               <div className="h-px bg-border my-1" />
               <div className="flex justify-between font-semibold">

@@ -75,8 +75,6 @@ export async function clearProductionData(projectId) {
       status: 'pending',
       audio_progress: 'pending',
       images_progress: 'pending',
-      i2v_progress: 'pending',
-      t2v_progress: 'pending',
       assembly_status: 'pending',
       script_json: null,
       script_metadata: null,

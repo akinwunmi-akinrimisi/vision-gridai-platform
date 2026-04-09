@@ -92,26 +92,6 @@ const ASSET_STAGES = [
     appliesTo: 'all',
   },
   {
-    key: 'i2v',
-    label: 'Image-to-Video',
-    icon: Film,
-    color: 'text-accent',
-    bgColor: 'bg-accent/10',
-    statusField: 'video_status',
-    description: 'Wan 2.5 image-to-video clips',
-    appliesTo: 'i2v',
-  },
-  {
-    key: 't2v',
-    label: 'Text-to-Video',
-    icon: Film,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
-    statusField: 'video_status',
-    description: 'Wan 2.5 text-to-video clips',
-    appliesTo: 't2v',
-  },
-  {
     key: 'assembly',
     label: 'Assembly',
     icon: Clapperboard,
@@ -134,8 +114,6 @@ const PIPELINE_ROADMAP = [
   { key: 'scene_segmentation',  label: 'Segments',    icon: Scissors,     group: 'production' },
   { key: 'audio_generation',    label: 'Audio',       icon: Mic,          group: 'production', progressKey: 'audio' },
   { key: 'image_generation',    label: 'Images',      icon: Image,        group: 'production', progressKey: 'images' },
-  { key: 'i2v_generation',      label: 'I2V',         icon: Film,         group: 'production', progressKey: 'i2v' },
-  { key: 't2v_generation',      label: 'T2V',         icon: Film,         group: 'production', progressKey: 't2v' },
   { key: 'caption_generation',  label: 'Captions',    icon: Type,         group: 'production' },
   { key: 'ffmpeg_assembly',     label: 'Assembly',    icon: Clapperboard, group: 'assembly',   progressKey: 'clips' },
   { key: 'video_review',        label: 'Review',      icon: Eye,          group: 'publish' },
@@ -192,7 +170,7 @@ function getStageLifecycleStatus(counts, stageKey, stageProgress) {
   if (counts.failed > 0 && counts.in_progress === 0 && counts.done + counts.failed + counts.skipped === counts.total) return 'failed';
   if (counts.in_progress > 0 || counts.done > 0) return 'in_progress';
 
-  const stageOrder = ['audio', 'images', 'i2v', 't2v', 'assembly'];
+  const stageOrder = ['audio', 'images', 'assembly'];
   const idx = stageOrder.indexOf(stageKey);
   if (idx > 0) {
     const allPriorComplete = stageOrder.slice(0, idx).every((k) => {

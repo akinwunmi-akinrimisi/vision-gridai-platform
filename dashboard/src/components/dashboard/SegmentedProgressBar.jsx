@@ -5,14 +5,12 @@ import { useState } from 'react';
  * Each segment maps to a production phase with its own color and weight.
  */
 const SEGMENTS = [
-  { key: 'script',         label: 'Script',   color: 'bg-info',       weight: 0.08 },
-  { key: 'classification', label: 'Classify',  color: 'bg-warning',    weight: 0.07 },
-  { key: 'audio',          label: 'Audio',    color: 'bg-primary',    weight: 0.14 },
-  { key: 'images',         label: 'Images',   color: 'bg-accent',     weight: 0.14 },
-  { key: 'i2v',            label: 'I2V',      color: 'bg-success',    weight: 0.14 },
-  { key: 't2v',            label: 'T2V',      color: 'bg-info',       weight: 0.14 },
-  { key: 'captions',       label: 'Captions', color: 'bg-warning',    weight: 0.14 },
-  { key: 'assembly',       label: 'Assembly', color: 'bg-success',    weight: 0.15 },
+  { key: 'script',         label: 'Script',   color: 'bg-info',       weight: 0.10 },
+  { key: 'classification', label: 'Classify',  color: 'bg-warning',    weight: 0.08 },
+  { key: 'audio',          label: 'Audio',    color: 'bg-primary',    weight: 0.22 },
+  { key: 'images',         label: 'Images',   color: 'bg-accent',     weight: 0.22 },
+  { key: 'captions',       label: 'Captions', color: 'bg-warning',    weight: 0.18 },
+  { key: 'assembly',       label: 'Assembly', color: 'bg-success',    weight: 0.20 },
 ];
 
 /** Statuses that mean scripting is fully complete */
@@ -60,7 +58,7 @@ function parseProgressLabel(val) {
  * Compute individual segment fill percentages from topic data.
  */
 function computeSegments(topic) {
-  const { status, classification_status, audio_progress, images_progress, i2v_progress, t2v_progress, assembly_status } = topic;
+  const { status, classification_status, audio_progress, images_progress, assembly_status } = topic;
 
   // Script
   let script = 0;
@@ -91,17 +89,11 @@ function computeSegments(topic) {
   // Images
   const images = POST_SCRIPT_STATUSES.includes(status) ? parseProgressString(images_progress) : 0;
 
-  // I2V
-  const i2v = POST_SCRIPT_STATUSES.includes(status) ? parseProgressString(i2v_progress) : 0;
-
-  // T2V
-  const t2v = POST_SCRIPT_STATUSES.includes(status) ? parseProgressString(t2v_progress) : 0;
-
   // Captions
   let captions = 0;
   if (POST_CAPTIONS_STATUSES.includes(status)) captions = 100;
   else if (status === 'images' || status === 'producing') {
-    const mediaComplete = audio === 100 && images === 100 && i2v === 100 && t2v === 100;
+    const mediaComplete = audio === 100 && images === 100;
     captions = mediaComplete ? 50 : 0;
   }
 
@@ -115,8 +107,6 @@ function computeSegments(topic) {
     classification: { pct: classification, label: classLabel },
     audio:          { pct: audio,          label: parseProgressLabel(audio_progress) },
     images:         { pct: images,         label: parseProgressLabel(images_progress) },
-    i2v:            { pct: i2v,            label: parseProgressLabel(i2v_progress) },
-    t2v:            { pct: t2v,            label: parseProgressLabel(t2v_progress) },
     captions:       { pct: captions,       label: captions === 100 ? 'Complete' : captions > 0 ? 'In progress' : null },
     assembly:       { pct: assembly,       label: assembly === 100 ? 'Complete' : assembly > 0 ? 'In progress' : null },
   };
