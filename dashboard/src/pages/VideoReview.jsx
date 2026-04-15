@@ -27,6 +27,7 @@ import {
   useScoreThumbnail,
   useStartABTest,
 } from '../hooks/useCTROptimization';
+import { useCalculatePPS } from '../hooks/usePPS';
 import { supabase } from '../lib/supabase';
 import VideoPlayer from '../components/video/VideoPlayer';
 import ThumbnailPreview from '../components/video/ThumbnailPreview';
@@ -39,6 +40,7 @@ import RejectDialog from '../components/video/RejectDialog';
 import TitlePicker from '../components/video/TitlePicker';
 import ThumbnailScorePanel from '../components/video/ThumbnailScorePanel';
 import StartABTestModal from '../components/video/StartABTestModal';
+import PPSCard from '../components/video/PPSCard';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import {
@@ -202,6 +204,9 @@ export default function VideoReview() {
   const scoreThumbnail = useScoreThumbnail(topicId, projectId);
   const startABTest = useStartABTest(projectId);
 
+  /* -- Sprint S4: PPS (CF13) -- */
+  const calculatePPS = useCalculatePPS(topicId, projectId);
+
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showABTestModal, setShowABTestModal] = useState(false);
@@ -317,6 +322,20 @@ export default function VideoReview() {
     },
     [startABTest],
   );
+
+  /* -- Sprint S4: PPS recalculate -- */
+  const handleCalculatePPS = useCallback(async () => {
+    try {
+      const res = await calculatePPS.mutateAsync({ force: true });
+      if (res?.success === false) {
+        toast.error(res.error || 'Failed to calculate PPS');
+      } else {
+        toast.success('Performance score calculated');
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Failed to calculate PPS');
+    }
+  }, [calculatePPS]);
 
   if (isLoading) {
     return (
@@ -498,6 +517,13 @@ export default function VideoReview() {
 
         {/* Right: Video content */}
         <div className="lg:col-span-8 space-y-4">
+          {/* Sprint S4: Predicted Performance Score (Gate 3 top surface) */}
+          <PPSCard
+            topic={topic}
+            onCalculate={handleCalculatePPS}
+            isCalculating={calculatePPS.isPending}
+          />
+
           <VideoPlayer topic={topic} />
 
           {/* Sprint S3: Title picker (CTR optimizer) */}

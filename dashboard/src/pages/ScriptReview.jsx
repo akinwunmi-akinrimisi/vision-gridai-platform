@@ -1,6 +1,15 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
-import { ArrowLeft, ChevronLeft, ChevronRight, FileText, Sparkles, CheckCircle2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Sparkles,
+  CheckCircle2,
+  Zap,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { useScript } from '../hooks/useScript';
 import { useScenes } from '../hooks/useScenes';
 import { useTopics } from '../hooks/useTopics';
@@ -12,15 +21,18 @@ import {
   useRefineScript,
   useRegenPrompts,
 } from '../hooks/useScriptMutations';
+import { useAnalyzeHooks } from '../hooks/useHookAnalysis';
 import ScorePanel from '../components/script/ScorePanel';
 import PassTracker from '../components/script/PassTracker';
 import ForcePassBanner from '../components/script/ForcePassBanner';
 import ScriptContent from '../components/script/ScriptContent';
 import ScriptRefinePanel from '../components/script/ScriptRefinePanel';
+import HookAnalyzerTab from '../components/script/HookAnalyzerTab';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const SCRIPT_STATUS_MAP = {
   pending: 'pending',
@@ -44,11 +56,13 @@ export default function ScriptReview() {
   const rejectScript = useRejectScript(topicId);
   const refineScript = useRefineScript(topicId);
   const regenPrompts = useRegenPrompts(topicId);
+  const analyzeHooks = useAnalyzeHooks(topicId, projectId);
 
   // UI state
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectFeedback, setRejectFeedback] = useState('');
   const [showRefinePanel, setShowRefinePanel] = useState(false);
+  const [activeTab, setActiveTab] = useState('script');
 
   // Prev/Next navigation among approved topics
   const approvedTopics = useMemo(
@@ -108,6 +122,20 @@ export default function ScriptReview() {
     },
     [regenPrompts, topicId]
   );
+
+  /* -- Sprint S4: Analyze hooks (CF12) -- */
+  const handleAnalyzeHooks = useCallback(async () => {
+    try {
+      const res = await analyzeHooks.mutateAsync({ force: true });
+      if (res?.success === false) {
+        toast.error(res.error || 'Hook analysis failed');
+      } else {
+        toast.success('Hook analysis started');
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Hook analysis failed');
+    }
+  }, [analyzeHooks]);
 
   // Loading state
   if (isLoading) {
@@ -335,14 +363,45 @@ export default function ScriptReview() {
               />
             </div>
 
-            {/* Right: Script Content (flex-1) */}
+            {/* Right: Script Content / Hook Analyzer (flex-1, tabbed) */}
             <div className="flex-1 overflow-y-auto max-h-[calc(100vh-8rem)] scrollbar-thin">
-              <ScriptContent
-                scenes={displayScenes}
-                topic={topic}
-                onSceneEdit={handleSceneEdit}
-                onRegenPrompts={handleRegenPrompts}
-              />
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <div className="px-4 pt-4">
+                  <TabsList>
+                    <TabsTrigger value="script" data-testid="tab-script">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span className="ml-1.5">Script</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="hooks" data-testid="tab-hooks">
+                      <Zap className="w-3.5 h-3.5" />
+                      <span className="ml-1.5">Hooks</span>
+                      {typeof topic?.weak_hook_count === 'number' &&
+                        topic.weak_hook_count > 0 && (
+                          <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-sm text-[9px] font-bold bg-warning-bg text-warning border border-warning-border tabular-nums">
+                            {topic.weak_hook_count}
+                          </span>
+                        )}
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="script" className="mt-0">
+                  <ScriptContent
+                    scenes={displayScenes}
+                    topic={topic}
+                    onSceneEdit={handleSceneEdit}
+                    onRegenPrompts={handleRegenPrompts}
+                  />
+                </TabsContent>
+
+                <TabsContent value="hooks" className="mt-0 p-4">
+                  <HookAnalyzerTab
+                    topic={topic}
+                    onAnalyze={handleAnalyzeHooks}
+                    isAnalyzing={analyzeHooks.isPending}
+                  />
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </>

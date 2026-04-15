@@ -1,0 +1,105 @@
+{
+  "name": "WF_HOOK_ANALYZER",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "trigger-hook-exec",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 240],
+      "parameters": {}
+    },
+    {
+      "id": "trigger-hook-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 440],
+      "parameters": {
+        "path": "hooks/analyze",
+        "httpMethod": "POST",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "hooks-analyze"
+    },
+    {
+      "id": "code-hook-fetch",
+      "name": "Normalize + Fetch Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// CF12 WF_HOOK_ANALYZER — normalize trigger, idempotency, fetch topic + scenes.\n// Group scenes by chapter, extract first 2 scenes per chapter as hook opening.\n// Global fetch + $env per MEMORY.md.\n\nconst raw = $input.first().json;\nconst viaWebhook = !!raw.body;\nconst payload = raw.body || raw;\n\nconst topicId = payload.topic_id;\nconst force = payload.force === true;\n\nif (!topicId) {\n  return [{\n    json: {\n      success: false,\n      error: 'Provide { topic_id }',\n      http_status: 400,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nasync function sbGet(url, label) {\n  const res = await fetch(url, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) throw new Error(`${label} failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);\n  return res.json();\n}\n\n// 1. Fetch topic\nconst topicUrl = `${supabaseUrl}/rest/v1/topics?id=eq.${topicId}&select=id,project_id,seo_title,selected_title,script_json,script_metadata,hook_scores,avg_hook_score,weak_hook_count,hook_analyzed_at`;\nconst topics = await sbGet(topicUrl, 'fetch topic');\nconst topic = Array.isArray(topics) && topics[0] ? topics[0] : null;\n\nif (!topic) {\n  return [{ json: { success: false, error: `Topic ${topicId} not found`, http_status: 404, via_webhook: viaWebhook } }];\n}\n\n// 2. Idempotency\nif (!force && topic.hook_analyzed_at) {\n  return [{\n    json: {\n      success: true,\n      skipped: true,\n      reason: 'Hooks already analyzed (pass force=true to re-analyze)',\n      topic_id: topicId,\n      project_id: topic.project_id,\n      hook_scores: topic.hook_scores,\n      avg_hook_score: topic.avg_hook_score,\n      weak_hook_count: topic.weak_hook_count,\n      hook_analyzed_at: topic.hook_analyzed_at,\n      http_status: 200,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst projectId = topic.project_id;\n\n// 3. Fetch project context for niche\nlet project = {};\ntry {\n  const projArr = await sbGet(`${supabaseUrl}/rest/v1/projects?id=eq.${projectId}&select=niche,niche_description`, 'fetch project');\n  project = (projArr && projArr[0]) || {};\n} catch (_) { }\n\n// 4. Fetch scenes ordered\nconst scenesUrl = `${supabaseUrl}/rest/v1/scenes?topic_id=eq.${topicId}&select=scene_number,narration_text,chapter&order=scene_number.asc&limit=500`;\nlet scenes = [];\ntry {\n  scenes = await sbGet(scenesUrl, 'fetch scenes');\n} catch (e) {\n  return [{ json: { success: false, error: `Failed to fetch scenes: ${e.message}`, http_status: 500, via_webhook: viaWebhook } }];\n}\n\nif (!Array.isArray(scenes) || scenes.length === 0) {\n  return [{ json: { success: false, error: 'No scenes found for topic — cannot analyze hooks', http_status: 422, via_webhook: viaWebhook } }];\n}\n\n// 5. Group scenes by chapter. Fall back to global \"Chapter 1 Opener\" if no chapter metadata.\nconst hasChapters = scenes.some(s => s.chapter && String(s.chapter).trim() !== '');\n\nconst chapters = [];\nif (hasChapters) {\n  const byChapter = new Map();\n  const order = [];\n  for (const s of scenes) {\n    const name = String(s.chapter || '').trim() || 'Unassigned';\n    if (!byChapter.has(name)) {\n      byChapter.set(name, []);\n      order.push(name);\n    }\n    byChapter.get(name).push(s);\n  }\n  for (let i = 0; i < order.length; i++) {\n    const name = order[i];\n    const list = byChapter.get(name);\n    const first2 = list.slice(0, 2).map(x => x.narration_text || '').join(' ').trim();\n    const opening = first2.slice(0, 400);\n    if (opening.length > 0) {\n      chapters.push({\n        name,\n        chapter_index: i,\n        opening_text: opening\n      });\n    }\n  }\n} else {\n  const first3 = scenes.slice(0, 3).map(x => x.narration_text || '').join(' ').trim();\n  chapters.push({\n    name: 'Chapter 1 Opener',\n    chapter_index: 0,\n    opening_text: first3.slice(0, 400)\n  });\n}\n\nif (chapters.length === 0) {\n  return [{ json: { success: false, error: 'No chapter openings could be extracted', http_status: 422, via_webhook: viaWebhook } }];\n}\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    project_id: projectId,\n    topic,\n    project,\n    chapters,\n    has_chapters: hasChapters,\n    scene_count: scenes.length,\n    via_webhook: viaWebhook,\n    force,\n    started_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-hook-score",
+      "name": "Opus 5-Dimension Hook Scorer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Single Opus 4.6 call scores all chapter hooks on 5 dimensions. Inline backoff.\nconst data = $input.first().json;\nif (data.success === false || data.skipped) return $input.item;\n\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nconst topic = data.topic || {};\nconst project = data.project || {};\nconst chapters = data.chapters || [];\n\nconst seoTitle = topic.selected_title || topic.seo_title || '(untitled)';\nconst nicheContext = project.niche_description || project.niche || 'general audience';\n\nconst chaptersBlock = chapters\n  .map((c, i) => `[${i + 1}] ${c.name}:\\n\"${c.opening_text}\"`)\n  .join('\\n\\n');\n\nconst prompt = `You are a viral YouTube hook writing coach. Score each chapter opening on 5 hook dimensions. Be strict — most openings score 50-65. A 90+ score is rare.\n\nTopic: ${seoTitle}\nNiche: ${nicheContext}\n\nChapters to score:\n${chaptersBlock}\n\nFor EACH chapter opening, score these 5 dimensions (each 0-20):\n1. curiosity_gap — does it open a loop viewer must close by watching?\n2. emotional_trigger — fear, surprise, curiosity, validation, or desire activated?\n3. specificity — concrete numbers/names/places rather than vague claims?\n4. pattern_interrupt — breaks listener's expected narrative flow?\n5. open_loop — implicit \"but wait, what happens next?\" left dangling?\n\nTotal per chapter = sum of 5 dimensions (0-100).\nweak_flag = total_score < 60.\nFor weak hooks, provide a one-sentence rewrite_suggestion that preserves content but strengthens hook.\n\nReturn ONLY valid JSON (no markdown fences):\n{\n  \"chapters\": [\n    {\n      \"chapter_name\": \"<name>\",\n      \"chapter_index\": <int>,\n      \"opening_text\": \"<first 150 chars of input>\",\n      \"breakdown\": {\"curiosity_gap\": <int>, \"emotional_trigger\": <int>, \"specificity\": <int>, \"pattern_interrupt\": <int>, \"open_loop\": <int>},\n      \"total_score\": <int>,\n      \"weak_flag\": <bool>,\n      \"rewrite_suggestion\": \"<only if weak_flag=true, else empty string>\"\n    }\n  ],\n  \"avg_score\": <int>,\n  \"weakest_chapter_index\": <int>,\n  \"overall_summary\": \"<1 sentence on the strongest and weakest hooks>\"\n}`;\n\nasync function callClaude(maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch('https://api.anthropic.com/v1/messages', {\n        method: 'POST',\n        headers: {\n          'x-api-key': anthropicKey,\n          'anthropic-version': '2023-06-01',\n          'content-type': 'application/json'\n        },\n        body: JSON.stringify({\n          model: 'claude-opus-4-6',\n          max_tokens: 2500,\n          messages: [{ role: 'user', content: prompt }]\n        })\n      });\n      if (res.ok) {\n        const body = await res.json();\n        return { ok: true, text: body.content?.[0]?.text || '', attempts: attempt };\n      }\n      const errBody = await res.text();\n      if (res.status === 429) await sleep(30000);\n      lastErr = new Error(`HTTP ${res.status}: ${errBody.slice(0, 300)}`);\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || 'opus_hook_analyzer failed', attempts: maxRetries };\n}\n\nfunction parseJson(text) {\n  if (!text) return null;\n  const clean = text.replace(/```json|```/g, '').trim();\n  try { return JSON.parse(clean); } catch {}\n  const m = clean.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch {} }\n  return null;\n}\n\nfunction clampDim(n) { const v = Number(n) || 0; return Math.max(0, Math.min(20, Math.round(v))); }\n\nconst opusStart = Date.now();\nconst opusRes = await callClaude(4);\nconst parsed = opusRes.ok ? parseJson(opusRes.text) : null;\n\nlet chapterResults = [];\nlet overallSummary = '';\nlet weakestIdx = 0;\n\nif (parsed && Array.isArray(parsed.chapters) && parsed.chapters.length > 0) {\n  // Clamp dimensions and recompute total authoritatively\n  chapterResults = parsed.chapters.map((c, i) => {\n    const bd = c.breakdown || {};\n    const breakdown = {\n      curiosity_gap: clampDim(bd.curiosity_gap),\n      emotional_trigger: clampDim(bd.emotional_trigger),\n      specificity: clampDim(bd.specificity),\n      pattern_interrupt: clampDim(bd.pattern_interrupt),\n      open_loop: clampDim(bd.open_loop)\n    };\n    const total = breakdown.curiosity_gap + breakdown.emotional_trigger + breakdown.specificity + breakdown.pattern_interrupt + breakdown.open_loop;\n    const weak = total < 60;\n    return {\n      chapter_name: String(c.chapter_name || chapters[i]?.name || `Chapter ${i + 1}`).slice(0, 200),\n      chapter_index: Number.isInteger(c.chapter_index) ? c.chapter_index : i,\n      opening_text: String(c.opening_text || chapters[i]?.opening_text || '').slice(0, 400),\n      breakdown,\n      total_score: total,\n      weak_flag: weak,\n      rewrite_suggestion: weak ? String(c.rewrite_suggestion || '').slice(0, 500) : ''\n    };\n  });\n  overallSummary = String(parsed.overall_summary || '').slice(0, 500);\n  if (Number.isInteger(parsed.weakest_chapter_index) && parsed.weakest_chapter_index >= 0 && parsed.weakest_chapter_index < chapterResults.length) {\n    weakestIdx = parsed.weakest_chapter_index;\n  } else {\n    // Derive from lowest total_score\n    let minIdx = 0;\n    let minVal = Infinity;\n    chapterResults.forEach((c, i) => { if (c.total_score < minVal) { minVal = c.total_score; minIdx = i; } });\n    weakestIdx = minIdx;\n  }\n} else {\n  // Fallback: neutral 60s per chapter, no rewrite suggestions\n  chapterResults = chapters.map((c, i) => ({\n    chapter_name: c.name,\n    chapter_index: c.chapter_index,\n    opening_text: c.opening_text.slice(0, 400),\n    breakdown: {\n      curiosity_gap: 12,\n      emotional_trigger: 12,\n      specificity: 12,\n      pattern_interrupt: 12,\n      open_loop: 12\n    },\n    total_score: 60,\n    weak_flag: false,\n    rewrite_suggestion: ''\n  }));\n  overallSummary = 'Hook analyzer fallback — Opus call failed or returned invalid JSON';\n  weakestIdx = 0;\n}\n\nconst totals = chapterResults.map(c => c.total_score);\nconst avgHookScore = totals.length ? Math.round(totals.reduce((a, b) => a + b, 0) / totals.length) : 0;\nconst weakHookCount = chapterResults.filter(c => c.weak_flag).length;\n\nconst opusOk = !!parsed;\nconst opusCostUsd = opusOk ? 0.05 : 0;\n\nreturn [{\n  json: {\n    ...data,\n    hook_scores_envelope: {\n      chapters: chapterResults,\n      avg_score: avgHookScore,\n      weakest_chapter_index: weakestIdx,\n      overall_summary: overallSummary\n    },\n    avg_hook_score: avgHookScore,\n    weak_hook_count: weakHookCount,\n    opus_ok: opusOk,\n    opus_error: opusOk ? null : (opusRes.error || 'parse_failed'),\n    opus_duration_ms: Date.now() - opusStart,\n    opus_cost_usd: opusCostUsd\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-hook-persist",
+      "name": "Persist + Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// PATCH topic with hook_scores envelope + scalar helpers. Log to production_logs.\nconst data = $input.first().json;\nif (data.success === false) return [{ json: data }];\nif (data.skipped) return [{ json: data }];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst topicId = data.topic_id;\nconst projectId = data.project_id;\nconst envelope = data.hook_scores_envelope;\nconst nowIso = new Date().toISOString();\n\nconst patch = {\n  hook_scores: envelope,\n  avg_hook_score: data.avg_hook_score,\n  weak_hook_count: data.weak_hook_count,\n  hook_analyzed_at: nowIso\n};\n\nlet patchError = null;\ntry {\n  const res = await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${topicId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify(patch)\n  });\n  if (!res.ok) patchError = `PATCH failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;\n} catch (e) {\n  patchError = e.message;\n}\n\n// production_logs\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: topicId,\n      stage: 'hook_analyzer',\n      scene_number: null,\n      action: 'opus_5dim',\n      status: patchError ? 'partial' : (data.opus_ok ? 'success' : 'fallback'),\n      duration_ms: data.opus_duration_ms || 0,\n      cost_usd: data.opus_cost_usd || 0,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\nreturn [{\n  json: {\n    success: !patchError,\n    topic_id: topicId,\n    project_id: projectId,\n    hook_scores: envelope,\n    avg_hook_score: data.avg_hook_score,\n    weak_hook_count: data.weak_hook_count,\n    hook_analyzed_at: nowIso,\n    opus_ok: data.opus_ok,\n    opus_cost_usd: data.opus_cost_usd,\n    patch_error: patchError,\n    http_status: patchError ? 500 : 200,\n    via_webhook: data.via_webhook\n  }\n}];"
+      }
+    },
+    {
+      "id": "respond-hook",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1240, 340],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.http_status || 200 }}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Normalize + Fetch Script", "type": "main", "index": 0 }]]
+    },
+    "Webhook Trigger": {
+      "main": [[{ "node": "Normalize + Fetch Script", "type": "main", "index": 0 }]]
+    },
+    "Normalize + Fetch Script": {
+      "main": [[{ "node": "Opus 5-Dimension Hook Scorer", "type": "main", "index": 0 }]]
+    },
+    "Opus 5-Dimension Hook Scorer": {
+      "main": [[{ "node": "Persist + Log", "type": "main", "index": 0 }]]
+    },
+    "Persist + Log": {
+      "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 300,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "tags": []
+}

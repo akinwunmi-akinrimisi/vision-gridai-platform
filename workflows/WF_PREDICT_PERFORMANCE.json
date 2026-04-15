@@ -1,0 +1,105 @@
+{
+  "name": "WF_PREDICT_PERFORMANCE",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "trigger-pps-exec",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 240],
+      "parameters": {}
+    },
+    {
+      "id": "trigger-pps-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 440],
+      "parameters": {
+        "path": "pps/calculate",
+        "httpMethod": "POST",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "pps-calculate"
+    },
+    {
+      "id": "code-pps-fetch",
+      "name": "Normalize + Fetch Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// CF13 WF_PREDICT_PERFORMANCE — normalize trigger, idempotency check,\n// fetch topic + project + pps_config. Global fetch + $env per MEMORY.md.\n\nconst raw = $input.first().json;\nconst viaWebhook = !!raw.body;\nconst payload = raw.body || raw;\n\nconst topicId = payload.topic_id;\nconst force = payload.force === true;\n\nif (!topicId) {\n  return [{\n    json: {\n      success: false,\n      error: 'Provide { topic_id }',\n      http_status: 400,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nasync function sbGet(url, label) {\n  const res = await fetch(url, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) throw new Error(`${label} failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);\n  return res.json();\n}\n\n// 1. Fetch topic with all PPS input columns\nconst topicUrl = `${supabaseUrl}/rest/v1/topics?id=eq.${topicId}&select=id,project_id,seo_title,selected_title,outlier_score,seo_score,script_quality_score,thumbnail_ctr_score,title_ctr_score,predicted_performance_score,pps_light,pps_recommendation,pps_breakdown,pps_missing_inputs,pps_calculated_at`;\nconst topics = await sbGet(topicUrl, 'fetch topic');\nconst topic = Array.isArray(topics) && topics[0] ? topics[0] : null;\n\nif (!topic) {\n  return [{ json: { success: false, error: `Topic ${topicId} not found`, http_status: 404, via_webhook: viaWebhook } }];\n}\n\n// 2. Idempotency: if already calculated and not forced, return existing row\nif (!force && topic.pps_calculated_at) {\n  return [{\n    json: {\n      success: true,\n      skipped: true,\n      reason: 'PPS already calculated (pass force=true to recompute)',\n      topic_id: topicId,\n      project_id: topic.project_id,\n      predicted_performance_score: topic.predicted_performance_score,\n      pps_light: topic.pps_light,\n      pps_recommendation: topic.pps_recommendation,\n      pps_breakdown: topic.pps_breakdown,\n      pps_missing_inputs: topic.pps_missing_inputs,\n      pps_calculated_at: topic.pps_calculated_at,\n      http_status: 200,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst projectId = topic.project_id;\n\n// 3. Fetch project context (niche_health_score may not exist yet — migration 010 default 50)\nlet project = {};\ntry {\n  const projArr = await sbGet(`${supabaseUrl}/rest/v1/projects?id=eq.${projectId}&select=niche,niche_description,niche_health_score`, 'fetch project');\n  project = (projArr && projArr[0]) || {};\n} catch (_) { /* non-fatal — CF11 may not be live */ }\n\n// 4. Fetch pps_config — seeded row exists per migration 013\nlet ppsConfig = null;\ntry {\n  const cfgArr = await sbGet(`${supabaseUrl}/rest/v1/pps_config?project_id=eq.${projectId}&limit=1&select=outlier_weight,seo_weight,script_quality_weight,niche_health_weight,thumbnail_ctr_weight,title_ctr_weight`, 'fetch pps_config');\n  ppsConfig = (cfgArr && cfgArr[0]) || null;\n} catch (_) { /* will default */ }\n\n// Default weights if config missing\nif (!ppsConfig) {\n  ppsConfig = {\n    outlier_weight: 0.30,\n    seo_weight: 0.20,\n    script_quality_weight: 0.20,\n    niche_health_weight: 0.15,\n    thumbnail_ctr_weight: 0.10,\n    title_ctr_weight: 0.05\n  };\n}\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    project_id: projectId,\n    topic,\n    project,\n    pps_config: ppsConfig,\n    via_webhook: viaWebhook,\n    force,\n    started_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-pps-compute",
+      "name": "Compute PPS + Opus Recommendation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Compute weighted PPS, classify light, build breakdown, generate natural-language\n// recommendation via Claude Opus 4.6. Inline backoff on Anthropic call.\n\nconst data = $input.first().json;\nif (data.success === false || data.skipped) return $input.item;\n\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nconst topic = data.topic || {};\nconst project = data.project || {};\nconst cfg = data.pps_config || {};\n\nconst seoTitle = topic.selected_title || topic.seo_title || '(untitled)';\n\n// 1. Normalize each factor to 0-100 scale. Track which inputs are fallback.\nconst missing = [];\n\nconst outlierRaw = topic.outlier_score;\nconst outlierIsFallback = outlierRaw === null || outlierRaw === undefined;\nconst outlierNorm = outlierIsFallback ? 50 : Math.max(0, Math.min(100, Number(outlierRaw)));\nif (outlierIsFallback) missing.push('outlier_score');\n\nconst seoRaw = topic.seo_score;\nconst seoIsFallback = seoRaw === null || seoRaw === undefined;\nconst seoNorm = seoIsFallback ? 50 : Math.max(0, Math.min(100, Number(seoRaw)));\nif (seoIsFallback) missing.push('seo_score');\n\n// script_quality_score is DECIMAL(3,1) 0-10 scale → multiply by 10\nconst sqRaw = topic.script_quality_score;\nconst sqIsFallback = sqRaw === null || sqRaw === undefined;\nconst sqNorm = sqIsFallback ? 50 : Math.max(0, Math.min(100, Number(sqRaw) * 10));\nif (sqIsFallback) missing.push('script_quality_score');\n\n// niche_health_score — CF11 not live yet; default 50\nconst nhRaw = project.niche_health_score;\nconst nhIsFallback = nhRaw === null || nhRaw === undefined;\nconst nhNorm = nhIsFallback ? 50 : Math.max(0, Math.min(100, Number(nhRaw)));\nif (nhIsFallback) missing.push('niche_health_score');\n\nconst tnRaw = topic.thumbnail_ctr_score;\nconst tnIsFallback = tnRaw === null || tnRaw === undefined;\nconst tnNorm = tnIsFallback ? 50 : Math.max(0, Math.min(100, Number(tnRaw)));\nif (tnIsFallback) missing.push('thumbnail_ctr_score');\n\nconst ttRaw = topic.title_ctr_score;\nconst ttIsFallback = ttRaw === null || ttRaw === undefined;\nconst ttNorm = ttIsFallback ? 50 : Math.max(0, Math.min(100, Number(ttRaw)));\nif (ttIsFallback) missing.push('title_ctr_score');\n\n// 2. Apply weights\nconst wOutlier = Number(cfg.outlier_weight) || 0.30;\nconst wSeo = Number(cfg.seo_weight) || 0.20;\nconst wSq = Number(cfg.script_quality_weight) || 0.20;\nconst wNh = Number(cfg.niche_health_weight) || 0.15;\nconst wTn = Number(cfg.thumbnail_ctr_weight) || 0.10;\nconst wTt = Number(cfg.title_ctr_weight) || 0.05;\n\nconst contribOutlier = outlierNorm * wOutlier;\nconst contribSeo = seoNorm * wSeo;\nconst contribSq = sqNorm * wSq;\nconst contribNh = nhNorm * wNh;\nconst contribTn = tnNorm * wTn;\nconst contribTt = ttNorm * wTt;\n\nconst ppsRaw = contribOutlier + contribSeo + contribSq + contribNh + contribTn + contribTt;\nconst pps = Math.max(0, Math.min(100, Math.round(ppsRaw)));\n\n// 3. Classify light\nlet light;\nif (pps >= 75) light = 'green';\nelse if (pps >= 55) light = 'yellow';\nelse light = 'red';\n\n// 4. Build breakdown — per-factor {raw, normalized, weight, contribution, is_fallback}\nconst factorDefs = [\n  { key: 'outlier', label: 'Outlier', raw: outlierRaw, norm: outlierNorm, weight: wOutlier, contrib: contribOutlier, fallback: outlierIsFallback },\n  { key: 'seo', label: 'SEO', raw: seoRaw, norm: seoNorm, weight: wSeo, contrib: contribSeo, fallback: seoIsFallback },\n  { key: 'script_quality', label: 'Script Quality', raw: sqRaw, norm: sqNorm, weight: wSq, contrib: contribSq, fallback: sqIsFallback },\n  { key: 'niche_health', label: 'Niche Health', raw: nhRaw, norm: nhNorm, weight: wNh, contrib: contribNh, fallback: nhIsFallback },\n  { key: 'thumbnail_ctr', label: 'Thumbnail CTR', raw: tnRaw, norm: tnNorm, weight: wTn, contrib: contribTn, fallback: tnIsFallback },\n  { key: 'title_ctr', label: 'Title CTR', raw: ttRaw, norm: ttNorm, weight: wTt, contrib: contribTt, fallback: ttIsFallback }\n];\n\nconst breakdown = {};\nfor (const f of factorDefs) {\n  breakdown[f.key] = {\n    raw: f.raw === null || f.raw === undefined ? null : Number(f.raw),\n    normalized: Math.round(f.norm * 10) / 10,\n    weight: Math.round(f.weight * 1000) / 1000,\n    contribution: Math.round(f.contrib * 10) / 10,\n    is_fallback: f.fallback\n  };\n}\n\n// Dragged-by: 2 lowest contributors by contribution\nconst sortedByContrib = [...factorDefs].sort((a, b) => a.contrib - b.contrib);\nconst draggedBy = sortedByContrib.slice(0, 2).map(f => f.label);\nbreakdown.dragged_by = draggedBy;\n\n// 5. Build Opus recommendation prompt\nconst factorLines = factorDefs.map(f =>\n  `- ${f.label} ${Math.round(f.norm)}/100 (weight ${f.weight})${f.fallback ? ' — fallback' : ''}`\n).join('\\n');\n\nconst recPrompt = `You are a YouTube growth advisor. Given this predicted performance score of ${pps}/100 (${light} light), write a 2-3 sentence recommendation focused on the top 2 drag factors.\n\nTopic: ${seoTitle}\nScore breakdown:\n${factorLines}\n\nTop drag factors: ${draggedBy.join(', ')}\n\nIf green (>=75): affirm strongly + 1 optimization opportunity.\nIf yellow (55-74): identify the specific fix that would push to green.\nIf red (<55): be blunt — either rework the specific weak factor or deprioritize this topic. No hedging.\n\nReturn only the recommendation text, no preamble.`;\n\nasync function callClaude(maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch('https://api.anthropic.com/v1/messages', {\n        method: 'POST',\n        headers: {\n          'x-api-key': anthropicKey,\n          'anthropic-version': '2023-06-01',\n          'content-type': 'application/json'\n        },\n        body: JSON.stringify({\n          model: 'claude-opus-4-6',\n          max_tokens: 350,\n          messages: [{ role: 'user', content: recPrompt }]\n        })\n      });\n      if (res.ok) {\n        const body = await res.json();\n        return { ok: true, text: body.content?.[0]?.text || '', attempts: attempt };\n      }\n      const errBody = await res.text();\n      if (res.status === 429) await sleep(30000);\n      lastErr = new Error(`HTTP ${res.status}: ${errBody.slice(0, 300)}`);\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || 'opus_recommendation failed', attempts: maxRetries };\n}\n\nconst recStart = Date.now();\nconst recRes = await callClaude(4);\n\nlet recommendation;\nif (recRes.ok && recRes.text.trim().length > 10) {\n  recommendation = recRes.text.trim().slice(0, 2000);\n} else {\n  // Deterministic fallback based on light\n  if (light === 'green') {\n    recommendation = `Strong predicted performance at ${pps}/100. Consider tightening ${draggedBy[0].toLowerCase()} further before publishing for maximum reach.`;\n  } else if (light === 'yellow') {\n    recommendation = `Middling prediction at ${pps}/100. The biggest lift is fixing ${draggedBy[0]} and ${draggedBy[1]} — push those up and this becomes a green topic.`;\n  } else {\n    recommendation = `Weak prediction at ${pps}/100. Either rework ${draggedBy[0]} and ${draggedBy[1]} before publishing, or deprioritize this topic.`;\n  }\n}\n\nconst recCostUsd = recRes.ok ? 0.02 : 0;\n\nreturn [{\n  json: {\n    ...data,\n    pps,\n    pps_light: light,\n    pps_recommendation: recommendation,\n    pps_breakdown: breakdown,\n    pps_missing_inputs: missing,\n    rec_ok: recRes.ok,\n    rec_error: recRes.ok ? null : (recRes.error || 'fallback'),\n    rec_duration_ms: Date.now() - recStart,\n    rec_cost_usd: recCostUsd\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-pps-persist",
+      "name": "Persist + Calibration Snapshot + Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// PATCH topic with PPS outputs. INSERT pps_calibration snapshot so S7 can backfill\n// actuals and compute variance_pct. Log to production_logs.\n\nconst data = $input.first().json;\nif (data.success === false) return [{ json: data }];\nif (data.skipped) return [{ json: data }];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst topicId = data.topic_id;\nconst projectId = data.project_id;\nconst nowIso = new Date().toISOString();\n\nconst patch = {\n  predicted_performance_score: data.pps,\n  pps_light: data.pps_light,\n  pps_recommendation: data.pps_recommendation,\n  pps_breakdown: data.pps_breakdown,\n  pps_missing_inputs: data.pps_missing_inputs,\n  pps_calculated_at: nowIso\n};\n\nlet patchError = null;\ntry {\n  const res = await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${topicId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify(patch)\n  });\n  if (!res.ok) patchError = `PATCH failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;\n} catch (e) {\n  patchError = e.message;\n}\n\n// Calibration snapshot — best-effort, non-fatal\nlet calibrationError = null;\ntry {\n  const calRes = await fetch(`${supabaseUrl}/rest/v1/pps_calibration`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      topic_id: topicId,\n      project_id: projectId,\n      predicted_pps: data.pps,\n      pps_breakdown: data.pps_breakdown,\n      calibration_run_at: nowIso\n    })\n  });\n  if (!calRes.ok) calibrationError = `calibration insert HTTP ${calRes.status}`;\n} catch (e) {\n  calibrationError = e.message;\n}\n\n// production_logs\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: topicId,\n      stage: 'predict_performance',\n      scene_number: null,\n      action: 'pps_calculate',\n      status: patchError ? 'partial' : (data.rec_ok ? 'success' : 'fallback'),\n      duration_ms: data.rec_duration_ms || 0,\n      cost_usd: data.rec_cost_usd || 0,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\nreturn [{\n  json: {\n    success: !patchError,\n    topic_id: topicId,\n    project_id: projectId,\n    predicted_performance_score: data.pps,\n    pps_light: data.pps_light,\n    pps_recommendation: data.pps_recommendation,\n    pps_breakdown: data.pps_breakdown,\n    pps_missing_inputs: data.pps_missing_inputs,\n    pps_calculated_at: nowIso,\n    calibration_snapshotted: !calibrationError,\n    calibration_error: calibrationError,\n    rec_ok: data.rec_ok,\n    rec_cost_usd: data.rec_cost_usd,\n    patch_error: patchError,\n    http_status: patchError ? 500 : 200,\n    via_webhook: data.via_webhook\n  }\n}];"
+      }
+    },
+    {
+      "id": "respond-pps",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1240, 340],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.http_status || 200 }}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Normalize + Fetch Inputs", "type": "main", "index": 0 }]]
+    },
+    "Webhook Trigger": {
+      "main": [[{ "node": "Normalize + Fetch Inputs", "type": "main", "index": 0 }]]
+    },
+    "Normalize + Fetch Inputs": {
+      "main": [[{ "node": "Compute PPS + Opus Recommendation", "type": "main", "index": 0 }]]
+    },
+    "Compute PPS + Opus Recommendation": {
+      "main": [[{ "node": "Persist + Calibration Snapshot + Log", "type": "main", "index": 0 }]]
+    },
+    "Persist + Calibration Snapshot + Log": {
+      "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 180,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "tags": []
+}
