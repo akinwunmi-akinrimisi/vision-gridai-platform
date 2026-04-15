@@ -1,7 +1,7 @@
--- Migration: 014_ai_advisory.sql
+-- Migration: 015_ai_advisory.sql
 -- Sprint: S6 (AI Advisory — CF08 Daily Ideas + CF09 AI Coach)
 -- Status: STUB — filled during Sprint S6 execution
--- Depends on: 013_prediction_engine.sql
+-- Depends on: 014_music_settings.sql
 --
 -- Will contain:
 --   CREATE daily_ideas (15-20 scored ideas per project per day — CF08)

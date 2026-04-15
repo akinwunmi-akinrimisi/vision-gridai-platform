@@ -25,6 +25,9 @@ import {
   DollarSign,
   Eye,
   RefreshCw,
+  Volume2,
+  VolumeX,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjectSettings, useUpdateSettings } from '../../hooks/useProjectSettings';
@@ -739,7 +742,262 @@ function formatDuration(ms) {
   return `${min}:${sec.toString().padStart(2, '0')}`;
 }
 
-function MusicLibrarySection() {
+const MUSIC_MOOD_OPTIONS = [
+  { value: 'cinematic', label: 'Cinematic', hint: 'Sweeping, orchestral, emotional' },
+  { value: 'upbeat', label: 'Upbeat', hint: 'Energetic, bright, propulsive' },
+  { value: 'somber', label: 'Somber', hint: 'Reflective, melancholy, restrained' },
+  { value: 'tense', label: 'Tense', hint: 'Suspenseful, uneasy, low strings' },
+  { value: 'inspirational', label: 'Inspirational', hint: 'Uplifting, hopeful, soaring' },
+  { value: 'ambient', label: 'Ambient', hint: 'Atmospheric, textural, minimal' },
+  { value: 'epic', label: 'Epic', hint: 'Grand, percussive, triumphant' },
+  { value: 'mysterious', label: 'Mysterious', hint: 'Uncanny, curious, unresolved' },
+];
+
+const MUSIC_SOURCE_OPTIONS = [
+  {
+    value: 'lyria',
+    label: 'AI Generated (Lyria)',
+    description: 'Composes per-video tracks via Google Vertex AI Lyria',
+    icon: Sparkles,
+  },
+  {
+    value: 'library',
+    label: 'Music Library',
+    description: 'Pick from uploaded tracks below',
+    icon: Music,
+  },
+  {
+    value: 'auto',
+    label: 'Auto (Lyria + fallback)',
+    description: 'Prefers Lyria, falls back to the library on failure',
+    icon: Zap,
+  },
+];
+
+function MusicPreferencesCard({ data, onSave, isPending }) {
+  const defaults = {
+    music_enabled: true,
+    music_source: 'lyria',
+    music_mood_override: null,
+    music_volume: 0.12,
+  };
+
+  const [values, setValues] = useState({
+    music_enabled: data?.music_enabled ?? defaults.music_enabled,
+    music_source: data?.music_source ?? defaults.music_source,
+    music_mood_override: data?.music_mood_override ?? null,
+    music_volume: data?.music_volume ?? defaults.music_volume,
+  });
+  const [dirty, setDirty] = useState(false);
+
+  // Keep local state in sync if project data reloads (e.g., after save)
+  useEffect(() => {
+    if (!data) return;
+    setValues({
+      music_enabled: data.music_enabled ?? defaults.music_enabled,
+      music_source: data.music_source ?? defaults.music_source,
+      music_mood_override: data.music_mood_override ?? null,
+      music_volume: data.music_volume ?? defaults.music_volume,
+    });
+    setDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    data?.music_enabled,
+    data?.music_source,
+    data?.music_mood_override,
+    data?.music_volume,
+  ]);
+
+  const update = (patch) => {
+    setValues((prev) => ({ ...prev, ...patch }));
+    setDirty(true);
+  };
+
+  const handleSave = () => {
+    onSave({
+      music_enabled: values.music_enabled,
+      music_source: values.music_source,
+      music_mood_override: values.music_mood_override || null,
+      music_volume: Number(values.music_volume),
+      music_prefs_updated_at: new Date().toISOString(),
+    });
+    setDirty(false);
+  };
+
+  const handleReset = () => {
+    setValues({ ...defaults });
+    setDirty(true);
+  };
+
+  const enabled = values.music_enabled;
+  const volumePct = Math.round(Number(values.music_volume ?? 0) * 100);
+  const dimClass = enabled ? '' : 'opacity-50 pointer-events-none';
+
+  return (
+    <div className="space-y-4">
+      {/* Header + save controls */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            {enabled ? (
+              <Volume2 className="w-4 h-4 text-accent" />
+            ) : (
+              <VolumeX className="w-4 h-4 text-muted-foreground" />
+            )}
+            Music Preferences
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Per-project controls for background music generation and mixing
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            disabled={isPending}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Reset
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={isPending || !dirty}>
+            {isPending ? 'Saving...' : dirty ? 'Save' : 'Saved'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Enable toggle — always active */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Music Enabled</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              When off, videos generate with no background music. Narration audio is unaffected.
+            </p>
+          </div>
+          <Switch
+            checked={values.music_enabled}
+            onCheckedChange={(checked) => update({ music_enabled: checked })}
+          />
+        </div>
+      </div>
+
+      {/* Source + mood + volume — dimmed when disabled */}
+      <div className={`space-y-4 ${dimClass}`} aria-disabled={!enabled}>
+        {/* Source selector */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-sm font-medium mb-1">Music Source</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Where the background track comes from
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {MUSIC_SOURCE_OPTIONS.map((opt) => {
+              const Icon = opt.icon;
+              const active = values.music_source === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => update({ music_source: opt.value })}
+                  className={[
+                    'text-left rounded-lg border p-3 transition-colors',
+                    active
+                      ? 'border-accent bg-accent/10'
+                      : 'border-border bg-muted/30 hover:bg-muted/60',
+                  ].join(' ')}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon
+                      className={`w-3.5 h-3.5 ${active ? 'text-accent' : 'text-muted-foreground'}`}
+                    />
+                    <span
+                      className={`text-xs font-semibold ${active ? 'text-accent' : 'text-foreground'}`}
+                    >
+                      {opt.label}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    {opt.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Mood override */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Mood Override</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Force a specific mood, or let the system derive one from the script.
+              </p>
+            </div>
+            <Select
+              value={values.music_mood_override ?? '__auto__'}
+              onValueChange={(val) =>
+                update({ music_mood_override: val === '__auto__' ? null : val })
+              }
+            >
+              <SelectTrigger className="w-48 h-9 text-sm shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__auto__">Auto (script-derived)</SelectItem>
+                {MUSIC_MOOD_OPTIONS.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {values.music_mood_override && (
+            <p className="text-[11px] text-muted-foreground mt-3 pl-3 border-l-2 border-accent/40">
+              {MUSIC_MOOD_OPTIONS.find((m) => m.value === values.music_mood_override)?.hint}
+            </p>
+          )}
+        </div>
+
+        {/* Volume slider */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-sm font-medium">Music Volume</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                How loudly background music plays under the narrator's voice. 12% is the default &mdash; barely perceptible.
+              </p>
+            </div>
+            <span className="text-sm font-semibold tabular-nums bg-muted px-2 py-1 rounded-md shrink-0 ml-3">
+              {volumePct}%
+            </span>
+          </div>
+          <div className="flex items-center gap-3 mt-3">
+            <VolumeX className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <input
+              type="range"
+              min="0"
+              max="0.30"
+              step="0.01"
+              value={values.music_volume ?? 0.12}
+              onChange={(e) => update({ music_volume: parseFloat(e.target.value) })}
+              className="flex-1 h-2 rounded-full appearance-none bg-muted accent-accent cursor-pointer"
+            />
+            <Volume2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground mt-1 px-5">
+            <span>0%</span>
+            <span>12% (default)</span>
+            <span>30%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MusicLibrarySection({ data, onSave, isPending }) {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
@@ -790,16 +1048,14 @@ function MusicLibrarySection() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-8 max-w-2xl">
+      {/* Per-project music preferences */}
+      <MusicPreferencesCard data={data} onSave={onSave} isPending={isPending} />
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -872,7 +1128,11 @@ function MusicLibrarySection() {
       )}
 
       {/* Tracks table */}
-      {tracks.length === 0 ? (
+      {loading ? (
+        <div className="bg-card border border-border rounded-xl p-8 flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      ) : tracks.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-8 text-center">
           <Music className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
           <p className="text-sm text-muted-foreground">No tracks in library</p>
@@ -1173,7 +1433,7 @@ export default function ConfigTab({ projectId, section = 'general' }) {
   if (section === 'music') {
     return (
       <div data-testid="config-tab">
-        <MusicLibrarySection />
+        <MusicLibrarySection data={data} onSave={handleSave} isPending={isPending} />
       </div>
     );
   }

@@ -1,7 +1,7 @@
--- Migration: 015_analytics_and_niche_health.sql
+-- Migration: 016_analytics_and_niche_health.sql
 -- Sprint: S7 (Analytics Loop — CF10 + CF15 + CF11)
 -- Status: STUB — filled during Sprint S7 execution
--- Depends on: 014_ai_advisory.sql
+-- Depends on: 015_ai_advisory.sql
 --
 -- Will contain:
 --   ALTER projects:

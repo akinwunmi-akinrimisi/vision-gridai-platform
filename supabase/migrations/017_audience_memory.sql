@@ -1,7 +1,7 @@
--- Migration: 016_audience_memory.sql
+-- Migration: 017_audience_memory.sql
 -- Sprint: S8 (Audience Intelligence — CF16)
 -- Status: STUB — filled during Sprint S8 execution
--- Depends on: 015_analytics_and_niche_health.sql
+-- Depends on: 016_analytics_and_niche_health.sql
 --
 -- Will contain:
 --   CREATE audience_insights (weekly comment-synthesis per project — CF16):

@@ -31,6 +31,11 @@ const SETTINGS_COLUMNS = [
   'auto_pilot_script_threshold',
   'auto_pilot_default_visibility',
   'monthly_budget_usd',
+  'music_enabled',
+  'music_volume',
+  'music_mood_override',
+  'music_source',
+  'music_prefs_updated_at',
 ].join(', ');
 
 /**
