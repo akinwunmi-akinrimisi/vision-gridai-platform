@@ -42,6 +42,7 @@ import PageHeader from '../components/shared/PageHeader';
 import KPICard from '../components/shared/KPICard';
 import EmptyState from '../components/shared/EmptyState';
 import Modal from '../components/ui/Modal';
+import AudienceInsightsSection from '../components/audience/AudienceInsightsSection';
 import {
   OutlierBadge,
   SEOBadge,
@@ -1122,6 +1123,9 @@ export default function IntelligenceHub() {
           </div>
         )}
       </div>
+
+      {/* Audience Memory (Sprint S8 — CF16) */}
+      <AudienceInsightsSection projectId={projectId} />
 
       {/* Weekly Competitor Intelligence Summary */}
       {weeklyIntel && weeklyIntel.summary_markdown && (
