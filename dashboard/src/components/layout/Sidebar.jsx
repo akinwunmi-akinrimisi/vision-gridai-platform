@@ -23,6 +23,7 @@ import {
   MessageCircle,
   Youtube,
   Hash,
+  Brain,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -61,6 +62,7 @@ const projectNavItems = [
   { label: 'Research', icon: Search, path: '/project/:id/research' },
   { label: 'Topics', icon: ListChecks, path: '/project/:id/topics' },
   { label: 'Keywords', icon: Hash, path: '/project/:id/keywords' },
+  { label: 'Intelligence', icon: Brain, path: '/project/:id/intelligence' },
   { label: 'Scripts', icon: FileText, path: '/project/:id/topics' }, // scripts route doesn't exist yet
   { label: 'Production', icon: Activity, path: '/project/:id/production' },
   { label: 'Analytics', icon: BarChart3, path: '/project/:id/analytics' },

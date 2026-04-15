@@ -23,6 +23,7 @@ const SocialPublisher = lazy(() => import('./pages/SocialPublisher'));
 const ContentCalendar = lazy(() => import('./pages/ContentCalendar'));
 const EngagementHub = lazy(() => import('./pages/EngagementHub'));
 const Keywords = lazy(() => import('./pages/Keywords'));
+const IntelligenceHub = lazy(() => import('./pages/IntelligenceHub'));
 
 const PageFallback = (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="/project/:id/research" element={<NicheResearch />} />
             <Route path="/project/:id/topics" element={<TopicReview />} />
             <Route path="/project/:id/keywords" element={<Keywords />} />
+            <Route path="/project/:id/intelligence" element={<IntelligenceHub />} />
             <Route path="/project/:id/topics/:topicId" element={<TopicDetail />} />
             <Route path="/project/:id/topics/:topicId/script" element={<ScriptReview />} />
             <Route path="/project/:id/topics/:topicId/review" element={<VideoReview />} />
