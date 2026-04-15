@@ -32,8 +32,6 @@ import {
 
 import { useScript } from '../hooks/useScript';
 import { useProductionProgress } from '../hooks/useProductionProgress';
-import { useProject } from '../hooks/useNicheProfile';
-import KineticProductionMonitor from '../components/production/KineticProductionMonitor';
 import { useProductionLog } from '../hooks/useProductionLog';
 import { useProductionMutations } from '../hooks/useProductionMutations';
 import ActivityLog from '../components/production/ActivityLog';
@@ -663,8 +661,6 @@ export default function TopicDetail() {
   const [expandedStage, setExpandedStage] = useState(null);
 
   const { data: topic, isLoading: topicLoading } = useScript(topicId);
-  const { data: project } = useProject(projectId);
-  const isKinetic = project?.production_style === 'kinetic_typography';
   const { scenes, stageProgress, failedScenes, isLoading: scenesLoading } =
     useProductionProgress(topicId, topic);
   const { logs } = useProductionLog(topicId);
@@ -868,19 +864,8 @@ export default function TopicDetail() {
         </div>
       )}
 
-      {/* ---- Kinetic Production Monitor (for kinetic projects) ---- */}
-      {isKinetic && (
-        <div className="mb-6">
-          <h2 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-2 mb-3">
-            <Type className="w-3.5 h-3.5 text-primary" />
-            Kinetic Production
-          </h2>
-          <KineticProductionMonitor topicId={topicId} projectId={projectId} />
-        </div>
-      )}
-
-      {/* ---- Asset stage cards (AI Cinematic only) ---- */}
-      {!isKinetic && hasScenes ? (
+      {/* ---- Asset stage cards ---- */}
+      {hasScenes ? (
         <div className="space-y-3 mb-6">
           <h2 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-2">
             <Hash className="w-3.5 h-3.5 text-primary" />
@@ -904,7 +889,7 @@ export default function TopicDetail() {
             );
           })}
         </div>
-      ) : !isKinetic ? (
+      ) : (
         <div
           className="bg-card border border-border rounded-xl p-8 text-center mb-6 animate-slide-up"
           style={{ opacity: 0, animationDelay: '450ms' }}
@@ -921,7 +906,7 @@ export default function TopicDetail() {
                 : 'Scene data is not yet available for this topic.'}
           </p>
         </div>
-      ) : null}
+      )}
 
       {/* ---- Cost breakdown ---- */}
       {topic.cost_breakdown && (

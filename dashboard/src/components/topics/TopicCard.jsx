@@ -321,7 +321,7 @@ export default function TopicCard({
                     <Play className="w-4 h-4" />
                   </button>
                 )}
-                {['kinetic_rendering', 'producing', 'audio', 'images', 'assembling', 'assembled'].includes(topic.status) && (
+                {['producing', 'audio', 'images', 'assembling', 'assembled'].includes(topic.status) && (
                   <Link
                     to={`/project/${projectId || topic.project_id}/production`}
                     className="p-1.5 rounded-lg text-success hover:bg-success/10 transition-colors cursor-pointer"

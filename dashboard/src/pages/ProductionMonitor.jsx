@@ -6,7 +6,6 @@ import { useTopics } from '../hooks/useTopics';
 import { useProductionProgress } from '../hooks/useProductionProgress';
 import { useProductionMutations } from '../hooks/useProductionMutations';
 import { useProductionLog } from '../hooks/useProductionLog';
-import { useProject } from '../hooks/useNicheProfile';
 import { webhookCall } from '../lib/api';
 
 import PageHeader from '../components/shared/PageHeader';
@@ -21,7 +20,6 @@ import SupervisorAlert from '../components/production/SupervisorAlert';
 import SceneDetailPanel from '../components/production/SceneDetailPanel';
 import ErrorLogModal from '../components/production/ErrorLogModal';
 import CostEstimateDialog from '../components/production/CostEstimateDialog';
-import KineticProductionMonitor from '../components/production/KineticProductionMonitor';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,8 +45,6 @@ function formatEta(ms) {
 export default function ProductionMonitor() {
   const { id: projectId } = useParams();
   const [searchParams] = useSearchParams();
-  const { data: project } = useProject(projectId);
-  const isKinetic = project?.production_style === 'kinetic_typography';
 
   const [showCostDialog, setShowCostDialog] = useState(false);
   const [showStopDialog, setShowStopDialog] = useState(false);
@@ -61,7 +57,7 @@ export default function ProductionMonitor() {
   const { data: topics = [], isLoading } = useTopics(projectId);
   const mutations = useProductionMutations(projectId);
 
-  const ACTIVE_STATUSES = new Set(['producing', 'audio', 'images', 'i2v', 't2v', 'assembly', 'assembling', 'scripting', 'classifying']);
+  const ACTIVE_STATUSES = new Set(['producing', 'audio', 'images', 'i2v', 't2v', 'assembly', 'assembling', 'scripting']);
   const activeTopic = useMemo(() => topics.find((t) => ACTIVE_STATUSES.has(t.status)), [topics]);
   const stoppedTopic = useMemo(() => topics.find((t) => t.status === 'stopped'), [topics]);
   const queuedTopics = useMemo(
@@ -217,45 +213,6 @@ export default function ProductionMonitor() {
   const handleSkipAllFailed = () => {
     if (mutations.skipAllFailed) mutations.skipAllFailed.mutate({ topic_id: currentTopic?.id });
   };
-
-  // Kinetic Typography projects get their own production monitor
-  if (isKinetic) {
-    // Find the active kinetic topic (any topic in kinetic_rendering, script_approved, or processing state)
-    const kineticTopic = topics.find(t =>
-      ['kinetic_rendering', 'script_approved', 'assembled', 'published'].includes(t.status)
-    ) || topics.find(t => t.script_review_status === 'approved') || topics[0];
-
-    return (
-      <div className="animate-slide-up space-y-6">
-        <PageHeader
-          title="Kinetic Production"
-          subtitle="Real-time kinetic typography rendering progress"
-        />
-        {kineticTopic ? (
-          <>
-            <div className="mb-2">
-              <h3 className="text-sm font-semibold text-foreground truncate">
-                #{kineticTopic.topic_number} — {kineticTopic.seo_title || 'Untitled'}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Status: <span className="text-accent capitalize">{kineticTopic.status?.replace(/_/g, ' ')}</span>
-              </p>
-            </div>
-            <KineticProductionMonitor
-              topicId={kineticTopic.id}
-              projectId={projectId}
-            />
-          </>
-        ) : (
-          <div className="bg-card border border-border rounded-lg p-8 text-center">
-            <Activity className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No topics ready for kinetic production.</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Approve a script to start kinetic rendering.</p>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="animate-slide-up space-y-6">

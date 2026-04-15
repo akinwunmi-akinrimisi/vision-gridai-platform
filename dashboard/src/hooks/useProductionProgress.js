@@ -7,7 +7,7 @@ import { useRealtimeSubscription } from './useRealtimeSubscription';
  * Subscribes to Supabase Realtime for live updates.
  *
  * @param {string|null} topicId - Topic UUID
- * @param {object} [topicData] - Optional topic row with classification_status
+ * @param {object} [topicData] - Optional topic row (reserved for future use)
  * @returns {{ scenes: Array, stageProgress: object, failedScenes: Array, isLoading: boolean, error: any }}
  */
 export function useProductionProgress(topicId, topicData) {
@@ -60,22 +60,6 @@ export function useProductionProgress(topicId, topicData) {
 function computeStageProgress(scenes, topicData) {
   const total = scenes.length;
 
-  // Classification stage: driven by topic.classification_status
-  // pending=0, classifying=partial, classified/reviewed=complete
-  const classStatus = topicData?.classification_status || 'pending';
-  const classTotal = total || 1; // use 1 as a single "task" if no scenes yet
-  let classCompleted = 0;
-  if (classStatus === 'reviewed' || classStatus === 'classified') {
-    classCompleted = classTotal;
-  } else if (classStatus === 'classifying') {
-    // Show as partially done (half)
-    classCompleted = Math.max(1, Math.floor(classTotal / 2));
-  }
-
-  // Count Fal.ai vs Remotion scenes by render_method
-  const falaiCount = scenes.filter((s) => s.render_method === 'fal').length;
-  const remotionCount = scenes.filter((s) => s.render_method === 'remotion').length;
-
   // Script stage: if scenes exist with narration_text, script is complete
   const scriptComplete = scenes.length > 0 && scenes.every((s) => s.narration_text);
   const scriptCompleted = scriptComplete ? total : 0;
@@ -111,12 +95,6 @@ function computeStageProgress(scenes, topicData) {
   ).length;
 
   return {
-    classification: {
-      completed: classCompleted,
-      total: classTotal,
-      falai: falaiCount,
-      remotion: remotionCount,
-    },
     script: { completed: scriptCompleted, total },
     audio: { completed: audioCompleted, total },
     images: { completed: imagesCompleted, total },

@@ -1,8 +1,10 @@
 # Complete Build: Remotion + Missing Workflows + Dashboard — Implementation Plan
 
+> **⚠️ HISTORICAL / SUPERSEDED (2026-04-15).** This plan was executed and then reversed by the Remotion + Kinetic Typography removal refactor on branch `remove-remotion-kinetic`. The Remotion hybrid rendering pipeline (WF_SCENE_CLASSIFY, WF_REMOTION_RENDER, 17 Remotion components, render service on :3100) has been permanently removed from the platform. The `render_method`, `classification_status`, `data_payload`, and `remotion_template` columns have been dropped from Supabase. The current pipeline is **AI Cinematic only** — every scene uses Fal.ai Seedream 4.0 + FFmpeg Ken Burns. See `memory/feedback_ai_cinematic_only.md` and `memory/project_remotion_kinetic_removal.md` for rationale. The WF_SOCIAL_POSTER, WF_SOCIAL_ANALYTICS, WF_MASTER router, and non-Remotion dashboard tasks in this plan may still be relevant. Keep this file as historical record; do not use it as an active build guide.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build all unbuilt code (5 workflows, 17 Remotion components, render service, 3 dashboard files) so the platform is 100% code-complete.
+**Goal (historical):** Build all unbuilt code (5 workflows, 17 Remotion components, render service, 3 dashboard files) so the platform is 100% code-complete.
 
 **Architecture:** Parallel workstreams — n8n workflows, Remotion templates, and dashboard components are independent. Workflow modification (WF_IMAGE_GENERATION split) depends on the Remotion render service existing. All workflows use `$env` variables for secrets and stored credential IDs for auth.
 

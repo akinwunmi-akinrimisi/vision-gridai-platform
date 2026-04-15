@@ -127,7 +127,6 @@ const mockProject = {
   id: 'test-project-id',
   name: 'Test Project',
   niche: 'Credit Cards',
-  production_style: 'ai_cinematic',
 };
 
 let mockUseScriptReturn = { data: mockTopicData, isLoading: false, error: null };
@@ -311,20 +310,4 @@ describe('ScriptReview -- Script Approved Banner', () => {
     expect(screen.getByText(/View Production/)).toBeTruthy();
   });
 
-  it('shows kinetic message when project is kinetic typography', () => {
-    mockUseScriptReturn = {
-      data: { ...mockTopicData, script_review_status: 'approved' },
-      isLoading: false,
-      error: null,
-    };
-    mockUseProjectReturn = {
-      data: { ...mockProject, production_style: 'kinetic_typography' },
-      isLoading: false,
-      error: null,
-    };
-
-    renderWithProviders(<ScriptReview />);
-    expect(screen.getByText('Script Approved')).toBeTruthy();
-    expect(screen.getByText(/Kinetic typography rendering/)).toBeTruthy();
-  });
 });
