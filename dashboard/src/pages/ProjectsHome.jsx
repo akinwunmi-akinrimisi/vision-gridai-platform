@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router';
 import { Plus, Folder, TrendingUp, DollarSign, Video, Sparkles } from 'lucide-react';
 import { useProjects, useRetryResearch, useDeleteProject } from '../hooks/useProjects';
+import { useNicheHealthHistoryBatch } from '../hooks/useAnalyticsIntelligence';
 import PageHeader from '../components/shared/PageHeader';
 import KPICard from '../components/shared/KPICard';
 import EmptyState from '../components/shared/EmptyState';
@@ -24,6 +25,14 @@ export default function ProjectsHome() {
   const { data: projects, isLoading, error } = useProjects();
   const retryResearchMutation = useRetryResearch();
   const deleteProjectMutation = useDeleteProject();
+
+  // Sprint S7: batch-fetch niche health history (last 8 weeks) for every
+  // project in a single Supabase call — avoids N+1 queries.
+  const projectIds = useMemo(() => (projects || []).map((p) => p.id), [projects]);
+  const { data: healthHistoryByProject = {} } = useNicheHealthHistoryBatch(
+    projectIds,
+    { weeks: 8 },
+  );
 
   const totalProjects = projects?.length || 0;
   const publishedCount = projects?.reduce((sum, p) => {
@@ -162,6 +171,7 @@ export default function ProjectsHome() {
                 onRetry={retryResearchMutation.mutate}
                 onDelete={(projectId) => deleteProjectMutation.mutate(projectId)}
                 isDeleting={deleteProjectMutation.isPending}
+                healthHistory={healthHistoryByProject[project.id]}
               />
             </div>
           ))}

@@ -8,9 +8,16 @@ import {
   RotateCcw,
   ArrowRight,
   Trash2,
+  Heart,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import StatusBadge from '../shared/StatusBadge';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import { useRunNicheHealth } from '../../hooks/useAnalyticsIntelligence';
 import { Button } from '@/components/ui/button';
 
 /* ── Status → StatusBadge mapping ─────────────────────────────── */
@@ -192,6 +199,41 @@ function computeProjectStatus(projectStatus, topics) {
   return { label, badgeStatus, detail: null, ...base };
 }
 
+/* ── Sprint S7: Niche health styling + inline sparkline ───────── */
+
+const HEALTH_STYLES = {
+  thriving: { pill: 'bg-success-bg text-success border-success-border', stroke: '#34D399' },
+  stable:   { pill: 'bg-accent/20 text-accent border-accent/40',         stroke: '#FBBF24' },
+  warning:  { pill: 'bg-warning-bg text-warning border-warning-border',  stroke: '#F59E0B' },
+  critical: { pill: 'bg-danger-bg text-danger border-danger-border',     stroke: '#F87171' },
+};
+
+/**
+ * Inline SVG sparkline (no Recharts — kept lightweight per-card).
+ * points = [{ health_score, week_over_week_delta, ... }] oldest-first
+ */
+function HealthSparkline({ points, stroke }) {
+  if (!points || points.length < 2) return null;
+  const W = 80;
+  const H = 24;
+  const pad = 2;
+  const xs = points.map((_, i) => (i / (points.length - 1)) * (W - pad * 2) + pad);
+  const minY = 0;
+  const maxY = 100;
+  const ys = points.map(
+    (p) => H - pad - ((p.health_score - minY) / (maxY - minY)) * (H - pad * 2),
+  );
+  const d = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+  const lastX = xs[xs.length - 1];
+  const lastY = ys[ys.length - 1];
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="flex-shrink-0">
+      <path d={d} fill="none" stroke={stroke || '#71717A'} strokeWidth={1.5} />
+      <circle cx={lastX} cy={lastY} r={2} fill={stroke || '#71717A'} />
+    </svg>
+  );
+}
+
 /* ── Niche emoji picker ──────────────────────────────────────── */
 
 function getNicheEmoji(niche) {
@@ -216,16 +258,60 @@ function getNicheEmoji(niche) {
 
 /* ── Component ───────────────────────────────────────────────── */
 
-export default function ProjectCard({ project, onRetry, onDelete, isDeleting }) {
+export default function ProjectCard({ project, onRetry, onDelete, isDeleting, healthHistory }) {
   const navigate = useNavigate();
-  const { id, name, niche, status, created_at, updated_at, topics_summary } = project;
+  const {
+    id,
+    name,
+    niche,
+    status,
+    created_at,
+    updated_at,
+    topics_summary,
+    // Sprint S7 niche intelligence columns
+    niche_health_score,
+    niche_health_classification,
+    niche_health_last_computed_at,
+    estimated_rpm_low,
+    estimated_rpm_mid,
+    estimated_rpm_high,
+  } = project;
   const [, setTick] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const runHealthMut = useRunNicheHealth(id);
 
   const computedStatus = useMemo(
     () => computeProjectStatus(status, topics_summary),
     [status, topics_summary]
   );
+
+  // Sprint S7 — derive niche health display state
+  const healthStyle = niche_health_classification
+    ? HEALTH_STYLES[niche_health_classification]
+    : null;
+  // WoW delta from latest history row
+  const latestHealthRow =
+    Array.isArray(healthHistory) && healthHistory.length > 0
+      ? healthHistory[healthHistory.length - 1]
+      : null;
+  const wowDelta = latestHealthRow?.week_over_week_delta ?? null;
+  const hasHealth = niche_health_score != null && niche_health_last_computed_at != null;
+  const hasRPM = estimated_rpm_low != null && estimated_rpm_high != null;
+
+  const handleRefreshHealth = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const res = await runHealthMut.mutateAsync();
+      if (res?.success === false) {
+        toast.error(res.error || 'Failed to refresh niche health');
+      } else {
+        toast.success('Niche health refresh queued');
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Failed to refresh niche health');
+    }
+  };
 
   const route = getSmartRoute(status, id);
   const showResearchProgress = isResearching(status);
@@ -359,6 +445,89 @@ export default function ProjectCard({ project, onRetry, onDelete, isDeleting }) 
             />
           </div>
         </>
+      )}
+
+      {/* Sprint S7 — Niche health + RPM (hidden while researching) */}
+      {!showResearchProgress && (hasHealth || hasRPM) && (
+        <div
+          className="mt-3 pt-3 border-t border-border flex items-center gap-2.5 flex-wrap"
+          data-testid="niche-health-section"
+        >
+          {hasHealth ? (
+            <>
+              {/* Badge: score + classification */}
+              <span
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold tabular-nums ${
+                  healthStyle?.pill || 'bg-muted text-muted-foreground border-border'
+                }`}
+              >
+                <Heart className="w-3 h-3" />
+                {niche_health_score}/100
+                {niche_health_classification && (
+                  <span className="capitalize font-normal opacity-80">
+                    {niche_health_classification}
+                  </span>
+                )}
+              </span>
+
+              {/* WoW delta */}
+              {wowDelta != null && (
+                <span
+                  className={`inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums ${
+                    wowDelta > 0 ? 'text-success' : wowDelta < 0 ? 'text-danger' : 'text-muted-foreground'
+                  }`}
+                  title="Week-over-week health delta"
+                >
+                  {wowDelta > 0 ? (
+                    <TrendingUp className="w-3 h-3" />
+                  ) : wowDelta < 0 ? (
+                    <TrendingDown className="w-3 h-3" />
+                  ) : (
+                    <Minus className="w-3 h-3" />
+                  )}
+                  {wowDelta > 0 ? '+' : ''}
+                  {wowDelta}
+                </span>
+              )}
+
+              {/* Sparkline */}
+              {Array.isArray(healthHistory) && healthHistory.length >= 2 && (
+                <HealthSparkline
+                  points={healthHistory}
+                  stroke={healthStyle?.stroke}
+                />
+              )}
+            </>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] text-muted-foreground border border-border">
+              <Heart className="w-3 h-3" />
+              Health not yet computed
+            </span>
+          )}
+
+          {/* RPM range */}
+          {hasRPM && (
+            <span className="text-[11px] text-muted-foreground tabular-nums ml-auto">
+              <span className="font-semibold text-foreground">
+                ${parseFloat(estimated_rpm_low).toFixed(2)}&ndash;${parseFloat(estimated_rpm_high).toFixed(2)}
+              </span>
+              <span className="opacity-70"> / 1K</span>
+            </span>
+          )}
+
+          {/* Refresh health on demand */}
+          <button
+            onClick={handleRefreshHealth}
+            disabled={runHealthMut.isPending}
+            className="p-1 rounded-md text-muted-foreground/60 hover:text-accent hover:bg-accent/10 transition-colors"
+            title="Run niche health now"
+            data-testid={`refresh-health-${id}`}
+          >
+            <RefreshCw
+              className={`w-3 h-3 ${runHealthMut.isPending ? 'animate-spin' : ''}`}
+            />
+          </button>
+        </div>
       )}
 
       {/* Footer: time + delete + arrow */}

@@ -30,6 +30,13 @@ import CostRevenueChart from '../components/analytics/CostRevenueChart';
 import PerformanceTable from '../components/analytics/PerformanceTable';
 import TimeRangeFilter from '../components/analytics/TimeRangeFilter';
 import ABTestList from '../components/analytics/ABTestList';
+// Sprint S7: Analytics intelligence
+import NicheHealthCard from '../components/analytics/NicheHealthCard';
+import PPSAccuracyScatter from '../components/analytics/PPSAccuracyScatter';
+import TrafficSourceDonut from '../components/analytics/TrafficSourceDonut';
+import RevenueWaterfall from '../components/analytics/RevenueWaterfall';
+import PPSWeightsEditor from '../components/analytics/PPSWeightsEditor';
+import { usePPSCalibration } from '../hooks/useAnalyticsIntelligence';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -333,6 +340,12 @@ export default function Analytics() {
   const analytics = useAnalytics(id, timeRange);
   const { data: topics, isLoading } = analytics;
 
+  // Sprint S7: guard PPS scatter (only render when there are calibration rows
+  // with actual results). Hook runs cheap — empty array when none exist.
+  const { data: ppsCalibrationRows = [] } = usePPSCalibration(id);
+  const hasCalibrationData = Array.isArray(ppsCalibrationRows)
+    && ppsCalibrationRows.some((r) => r.actual_views_30d != null);
+
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -549,6 +562,9 @@ export default function Analytics() {
         ))}
       </div>
 
+      {/* Sprint S7: Niche Health (primary intelligence surface, full width) */}
+      <NicheHealthCard projectId={id} />
+
       {/* Top performer */}
       {analytics.topPerformer && (
         <div className="mb-8" data-testid="top-performer-card">
@@ -558,6 +574,13 @@ export default function Analytics() {
 
       {/* Sprint S3: A/B Tests */}
       <ABTestList projectId={id} />
+
+      {/* Sprint S7: PPS Accuracy scatter (hidden until we have calibrated data) */}
+      {hasCalibrationData && (
+        <div className="mb-8">
+          <PPSAccuracyScatter projectId={id} />
+        </div>
+      )}
 
       {/* Empty state */}
       {topics.length === 0 && (
@@ -595,11 +618,27 @@ export default function Analytics() {
         </>
       )}
 
-      {/* Platform breakdown */}
-      <PlatformBreakdown projectId={id} topics={topics} />
+      {/* Platform breakdown paired with Sprint S7 Traffic Sources */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+        <div className="lg:col-span-2">
+          <PlatformBreakdown projectId={id} topics={topics} />
+        </div>
+        <div className="mt-8">
+          {/* mt-8 aligns with PlatformBreakdown's internal header offset */}
+          <TrafficSourceDonut projectId={id} />
+        </div>
+      </div>
+
+      {/* Sprint S7: Revenue ROI waterfall */}
+      <div className="mb-8">
+        <RevenueWaterfall projectId={id} />
+      </div>
 
       {/* Niche comparison */}
       <NicheComparisonTable />
+
+      {/* Sprint S7: Advanced PPS weights editor (collapsed by default) */}
+      <PPSWeightsEditor projectId={id} />
     </div>
   );
 }

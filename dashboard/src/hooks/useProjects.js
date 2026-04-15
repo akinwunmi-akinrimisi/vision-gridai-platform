@@ -16,7 +16,9 @@ export function useProjects() {
   return useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      // Fetch projects
+      // Fetch projects (Sprint S7: niche_health_* + RPM columns are on the row;
+      // `select('*')` already returns them, but we invalidate the cache on
+      // niche_health_history inserts below via useNicheHealthHistoryBatch.)
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
         .select('*')
