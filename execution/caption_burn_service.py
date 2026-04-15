@@ -101,9 +101,9 @@ def burn_captions(topic_id, srt_filename, video_filename, drive_folder_id):
         os.replace(host_output, host_original)
         log(f"[BURN] Swapped: original → _no_captions.mp4, captioned → original name")
 
-        # Trigger Drive re-upload via WF_KINETIC_DRIVE_UPLOAD webhook
+        # Trigger Drive re-upload via WF_DRIVE_UPLOAD webhook
         if drive_folder_id:
-            upload_url = f"{N8N_WEBHOOK_BASE}/kinetic/drive-upload"
+            upload_url = f"{N8N_WEBHOOK_BASE}/drive-upload"
             file_url = f"http://172.18.0.1:9999/{topic_id}/final/{quote(video_filename)}"
             payload = json.dumps({
                 "topic_id": topic_id,

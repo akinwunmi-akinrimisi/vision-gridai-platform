@@ -17,7 +17,6 @@ import PassTracker from '../components/script/PassTracker';
 import ForcePassBanner from '../components/script/ForcePassBanner';
 import ScriptContent from '../components/script/ScriptContent';
 import ScriptRefinePanel from '../components/script/ScriptRefinePanel';
-import KineticScriptReview from '../components/script/KineticScriptReview';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -38,10 +37,6 @@ export default function ScriptReview() {
   const { data: topic, isLoading: topicLoading } = useScript(topicId);
   const { data: scenes, isLoading: scenesLoading } = useScenes(topicId);
   const { data: allTopics } = useTopics(projectId);
-  const { data: project } = useProject(projectId);
-
-  // Determine if this is a kinetic typography project
-  const isKinetic = project?.production_style === 'kinetic_typography';
 
   // Mutation hooks
   const generateScript = useGenerateScript(topicId);
@@ -255,7 +250,7 @@ export default function ScriptReview() {
         </div>
       )}
 
-      {/* Script Approved → Go to Production Banner (both kinetic and AI cinematic) */}
+      {/* Script Approved → Go to Production Banner */}
       {hasScript && topic.script_review_status === 'approved' && (
         <div className="bg-success/10 border border-success/30 rounded-lg p-4 flex items-center justify-between gap-3 animate-slide-up mb-4">
           <div className="flex items-center gap-3">
@@ -265,7 +260,7 @@ export default function ScriptReview() {
             <div>
               <p className="text-sm font-semibold text-success">Script Approved</p>
               <p className="text-xs text-muted-foreground">
-                {isKinetic ? 'Kinetic typography rendering has been triggered.' : 'Production pipeline has been triggered.'}
+                Production pipeline has been triggered.
               </p>
             </div>
           </div>
@@ -279,7 +274,7 @@ export default function ScriptReview() {
       )}
 
       {/* Split-panel layout -- when script exists */}
-      {hasScript && !isKinetic && (
+      {hasScript && (
         <>
           {/* Force Pass Banner */}
           <ForcePassBanner
@@ -353,57 +348,37 @@ export default function ScriptReview() {
         </>
       )}
 
-      {/* Kinetic Typography script review -- when script exists and project is kinetic */}
-      {hasScript && isKinetic && (
-        <KineticScriptReview
-          topic={topic}
-          scenes={displayScenes}
-          onApprove={handleApprove}
-          onReject={(feedback) => {
-            rejectScript.mutate({ topic_id: topicId, feedback: feedback || '' });
-          }}
-          onRefine={(instructions) => {
-            refineScript.mutate({ topic_id: topicId, instructions });
-          }}
-          isLoading={anyMutationPending}
+      {/* Reject ConfirmDialog */}
+      <ConfirmDialog
+        isOpen={showRejectDialog}
+        onClose={() => {
+          setShowRejectDialog(false);
+          setRejectFeedback('');
+        }}
+        onConfirm={handleReject}
+        title="Reject Script"
+        message="Are you sure you want to reject this script? You can provide optional feedback."
+        confirmText="Reject Script"
+        confirmVariant="danger"
+        loading={rejectScript.isPending}
+      >
+        <Textarea
+          value={rejectFeedback}
+          onChange={(e) => setRejectFeedback(e.target.value)}
+          rows={3}
+          placeholder="Optional feedback for regeneration..."
+          className="mt-3 resize-none bg-muted border-border"
         />
-      )}
+      </ConfirmDialog>
 
-      {/* Reject ConfirmDialog -- only for AI Cinematic flow (kinetic has its own) */}
-      {!isKinetic && (
-        <ConfirmDialog
-          isOpen={showRejectDialog}
-          onClose={() => {
-            setShowRejectDialog(false);
-            setRejectFeedback('');
-          }}
-          onConfirm={handleReject}
-          title="Reject Script"
-          message="Are you sure you want to reject this script? You can provide optional feedback."
-          confirmText="Reject Script"
-          confirmVariant="danger"
-          loading={rejectScript.isPending}
-        >
-          <Textarea
-            value={rejectFeedback}
-            onChange={(e) => setRejectFeedback(e.target.value)}
-            rows={3}
-            placeholder="Optional feedback for regeneration..."
-            className="mt-3 resize-none bg-muted border-border"
-          />
-        </ConfirmDialog>
-      )}
-
-      {/* Refine SidePanel -- only for AI Cinematic flow (kinetic has its own) */}
-      {!isKinetic && (
-        <ScriptRefinePanel
-          isOpen={showRefinePanel}
-          onClose={() => setShowRefinePanel(false)}
-          topic={topic}
-          onSubmit={handleRefine}
-          isLoading={refineScript.isPending}
-        />
-      )}
+      {/* Refine SidePanel */}
+      <ScriptRefinePanel
+        isOpen={showRefinePanel}
+        onClose={() => setShowRefinePanel(false)}
+        topic={topic}
+        onSubmit={handleRefine}
+        isLoading={refineScript.isPending}
+      />
     </div>
   );
 }

@@ -6,16 +6,15 @@ import { useState } from 'react';
  */
 const SEGMENTS = [
   { key: 'script',         label: 'Script',   color: 'bg-info',       weight: 0.10 },
-  { key: 'classification', label: 'Classify',  color: 'bg-warning',    weight: 0.08 },
-  { key: 'audio',          label: 'Audio',    color: 'bg-primary',    weight: 0.22 },
-  { key: 'images',         label: 'Images',   color: 'bg-accent',     weight: 0.22 },
-  { key: 'captions',       label: 'Captions', color: 'bg-warning',    weight: 0.18 },
-  { key: 'assembly',       label: 'Assembly', color: 'bg-success',    weight: 0.20 },
+  { key: 'audio',          label: 'Audio',    color: 'bg-primary',    weight: 0.24 },
+  { key: 'images',         label: 'Images',   color: 'bg-accent',     weight: 0.24 },
+  { key: 'captions',       label: 'Captions', color: 'bg-warning',    weight: 0.20 },
+  { key: 'assembly',       label: 'Assembly', color: 'bg-success',    weight: 0.22 },
 ];
 
 /** Statuses that mean scripting is fully complete */
 const POST_SCRIPT_STATUSES = [
-  'script_approved', 'classifying', 'queued', 'producing', 'audio', 'images',
+  'script_approved', 'queued', 'producing', 'audio', 'images',
   'assembling', 'assembled', 'ready_review', 'video_approved',
   'publishing', 'scheduled', 'published',
 ];
@@ -58,30 +57,12 @@ function parseProgressLabel(val) {
  * Compute individual segment fill percentages from topic data.
  */
 function computeSegments(topic) {
-  const { status, classification_status, audio_progress, images_progress, assembly_status } = topic;
+  const { status, audio_progress, images_progress, assembly_status } = topic;
 
   // Script
   let script = 0;
   if (status === 'scripting') script = 50;
   else if (POST_SCRIPT_STATUSES.includes(status)) script = 100;
-
-  // Classification (after script approval, before production)
-  let classification = 0;
-  let classLabel = null;
-  if (classification_status === 'reviewed') {
-    classification = 100;
-    classLabel = 'Reviewed';
-  } else if (classification_status === 'classified') {
-    classification = 100;
-    classLabel = 'Classified';
-  } else if (classification_status === 'classifying') {
-    classification = 50;
-    classLabel = 'In progress';
-  } else if (POST_SCRIPT_STATUSES.includes(status) && status !== 'script_approved') {
-    // If we're past script_approved and into production, classification must be done
-    classification = 100;
-    classLabel = 'Complete';
-  }
 
   // Audio
   const audio = POST_SCRIPT_STATUSES.includes(status) ? parseProgressString(audio_progress) : 0;
@@ -104,7 +85,6 @@ function computeSegments(topic) {
 
   return {
     script:         { pct: script,         label: script === 100 ? 'Complete' : script > 0 ? 'In progress' : null },
-    classification: { pct: classification, label: classLabel },
     audio:          { pct: audio,          label: parseProgressLabel(audio_progress) },
     images:         { pct: images,         label: parseProgressLabel(images_progress) },
     captions:       { pct: captions,       label: captions === 100 ? 'Complete' : captions > 0 ? 'In progress' : null },
@@ -119,7 +99,7 @@ export function computeWeightedProgress(topic) {
   const { status } = topic;
   if (['published', 'assembled', 'ready_review', 'video_approved', 'scheduled'].includes(status)) return 100;
   if (status === 'publishing') return 95;
-  if (!['scripting', 'script_approved', 'classifying', 'queued', 'producing', 'audio', 'images', 'assembling'].includes(status)) return null;
+  if (!['scripting', 'script_approved', 'queued', 'producing', 'audio', 'images', 'assembling'].includes(status)) return null;
 
   const segments = computeSegments(topic);
   let total = 0;
@@ -130,9 +110,8 @@ export function computeWeightedProgress(topic) {
 }
 
 /**
- * SegmentedProgressBar - Shows an 8-segment pipeline progress bar.
+ * SegmentedProgressBar - Shows a 5-segment pipeline progress bar.
  * Each segment represents a production stage with independent fill levels.
- * Includes Scene Classification between Script and Audio.
  * Uses Neon Pipeline design tokens.
  *
  * @param {{ topic: object }} props
