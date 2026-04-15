@@ -1,0 +1,16 @@
+-- Migration: 010_intelligence_foundation.sql
+-- Sprint: S1 (Intelligence Foundation — CF01 + CF02 + CF03)
+-- Status: STUB — filled during Sprint S1 execution
+-- Depends on: 009_remove_remotion_kinetic.sql
+--
+-- Will contain:
+--   ALTER topics: outlier_score, algorithm_momentum, competing_videos_count,
+--                 outlier_data_available, seo_score, seo_classification,
+--                 primary_keyword, keyword_variants, search_volume_proxy,
+--                 competition_level
+--   ALTER projects: niche_rpm_category, estimated_rpm_low, estimated_rpm_mid,
+--                   estimated_rpm_high, revenue_potential_score
+--   CREATE rpm_benchmarks (static lookup, seed data inline)
+--   CREATE keywords + topic_keywords (keyword research — CF02)
+
+-- Empty on purpose. Sprint S1 will populate this file.

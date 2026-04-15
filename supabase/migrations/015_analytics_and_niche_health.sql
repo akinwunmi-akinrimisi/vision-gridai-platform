@@ -1,0 +1,22 @@
+-- Migration: 015_analytics_and_niche_health.sql
+-- Sprint: S7 (Analytics Loop — CF10 + CF15 + CF11)
+-- Status: STUB — filled during Sprint S7 execution
+-- Depends on: 014_ai_advisory.sql
+--
+-- Will contain:
+--   ALTER projects:
+--     niche_health_score INTEGER DEFAULT 50,     -- CF11
+--     niche_health_classification VARCHAR(20)    -- thriving/stable/warning/critical
+--   CREATE niche_health_history (weekly score + trend — CF11)
+--   CREATE revenue_attribution (per-topic production cost → actual revenue — CF15)
+--   Extensions to existing analytics columns via ALTER topics:
+--     yt_traffic_source_breakdown JSONB,
+--     yt_impressions_30d INTEGER,
+--     production_cost_usd DECIMAL(6,2),
+--     roi_pct DECIMAL(6,2),
+--     break_even_views INTEGER
+--
+-- Note per execution-gate decision #3: Analytics page is EXTENDED, not replaced.
+-- No new /analytics route — continues at /project/:id/analytics.
+
+-- Empty on purpose. Sprint S7 will populate this file.

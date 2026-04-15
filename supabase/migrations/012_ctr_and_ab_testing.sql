@@ -1,0 +1,20 @@
+-- Migration: 012_ctr_and_ab_testing.sql
+-- Sprint: S3 (CTR Optimization + A/B Testing — CF05 + CF06 + CF17)
+-- Status: STUB — filled during Sprint S3 execution
+-- Depends on: 011_competitor_intel.sql
+--
+-- Will contain:
+--   ALTER topics:
+--     title_options JSONB,              -- 5 CTR-scored variants (CF05)
+--     selected_title VARCHAR(200),
+--     title_ctr_score INTEGER,          -- predicted CTR score, NOT actual yt_ctr
+--     thumbnail_ctr_score INTEGER,      -- predicted, from Vision scoring (CF06)
+--     thumbnail_score_breakdown JSONB,  -- 7-factor breakdown
+--     thumbnail_regen_attempts INTEGER DEFAULT 0
+--   CREATE ab_tests (rotation tracking + impression thresholds — CF17)
+--   CREATE ab_test_variants (per-variant CTR, impressions, duration)
+--
+-- Note per execution-gate decision #2: Script gen is Opus 4.6; title/thumbnail
+-- CTR scoring also Opus 4.6 (Vision for thumbnails).
+
+-- Empty on purpose. Sprint S3 will populate this file.

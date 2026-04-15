@@ -1,0 +1,21 @@
+-- Migration: 016_audience_memory.sql
+-- Sprint: S8 (Audience Intelligence — CF16)
+-- Status: STUB — filled during Sprint S8 execution
+-- Depends on: 015_analytics_and_niche_health.sql
+--
+-- Will contain:
+--   CREATE audience_insights (weekly comment-synthesis per project — CF16):
+--     recurring_questions JSONB,
+--     content_complaints JSONB,
+--     audience_persona_summary TEXT,
+--     vocabulary_level VARCHAR(20),
+--     topic_suggestions JSONB,
+--     week_of TIMESTAMPTZ,
+--     created_at TIMESTAMPTZ DEFAULT NOW()
+--   Index on (project_id, week_of DESC)
+--
+-- Integration note: audience_insights is read during script generation
+-- (Pass 1) and injected as {{audience_context}} into the prompt. No schema
+-- change to existing topics/scripts tables.
+
+-- Empty on purpose. Sprint S8 will populate this file.

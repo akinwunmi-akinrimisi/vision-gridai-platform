@@ -1,0 +1,21 @@
+-- Migration: 013_prediction_engine.sql
+-- Sprint: S4 (Prediction Engine — CF13 + CF12)
+-- Status: STUB — filled during Sprint S4 execution
+-- Depends on: 012_ctr_and_ab_testing.sql
+--
+-- Will contain:
+--   ALTER topics:
+--     predicted_performance_score INTEGER,  -- 0-100 (CF13 PPS)
+--     pps_light VARCHAR(10),                -- 'green' | 'yellow' | 'red'
+--     pps_recommendation TEXT,              -- NL improvement advice
+--     pps_breakdown JSONB,                  -- per-factor contribution
+--     viral_moments JSONB,                  -- CF12 Pass-3 viral tags
+--     hook_scores JSONB                     -- CF12 per-chapter hook scoring
+--   CREATE pps_calibration (post-publish: predicted vs actual comparison)
+--   CREATE pps_config (per-project weight tuning, defaults:
+--     outlier=0.30, seo=0.20, script_quality=0.20, niche_health=0.15,
+--     thumbnail_ctr=0.10, title_ctr=0.05)
+--
+-- Note per execution-gate decision #1: CF18 (Cost Optimizer) DROPPED from S4.
+
+-- Empty on purpose. Sprint S4 will populate this file.

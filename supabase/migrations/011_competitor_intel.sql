@@ -1,0 +1,17 @@
+-- Migration: 011_competitor_intel.sql
+-- Sprint: S2 (Competitive Intel — CF04 + CF14)
+-- Status: STUB — filled during Sprint S2 execution
+-- Depends on: 010_intelligence_foundation.sql
+--
+-- Will contain (extending existing yt_discovery_* tables):
+--   CREATE competitor_channels (per project; FK to yt_discovery_results where relevant)
+--   CREATE competitor_videos (detailed tracking of competitor uploads)
+--   CREATE competitor_alerts (outlier breakout + topic match notifications)
+--   CREATE competitor_intelligence (weekly Claude-synthesized summary)
+--   CREATE style_profiles (CF14 Style DNA per competitor channel)
+--   REPLICA IDENTITY FULL on competitor_alerts for Realtime dashboard updates
+--
+-- Note per execution-gate decision #5: WF_YOUTUBE_DISCOVERY is the backbone —
+-- competitor_* tables extend it rather than replace it.
+
+-- Empty on purpose. Sprint S2 will populate this file.

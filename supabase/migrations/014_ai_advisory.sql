@@ -1,0 +1,15 @@
+-- Migration: 014_ai_advisory.sql
+-- Sprint: S6 (AI Advisory — CF08 Daily Ideas + CF09 AI Coach)
+-- Status: STUB — filled during Sprint S6 execution
+-- Depends on: 013_prediction_engine.sql
+--
+-- Will contain:
+--   CREATE daily_ideas (15-20 scored ideas per project per day — CF08)
+--   CREATE coach_sessions (chat history with context injection — CF09)
+--   CREATE coach_messages (individual turns with token usage tracked)
+--   Indexes on (project_id, created_at desc) for fast recent-lookups
+--   REPLICA IDENTITY FULL on daily_ideas for Realtime dashboard
+--
+-- Note per execution-gate decision #2: Coach uses Opus 4.6 (same as script gen).
+
+-- Empty on purpose. Sprint S6 will populate this file.
