@@ -8,7 +8,9 @@ import {
   ExternalLink,
   ChevronDown,
   ClipboardCheck,
+  FlaskConical,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useVideoReview } from '../hooks/useVideoReview';
 import { useTopics } from '../hooks/useTopics';
 import { useProjectSettings } from '../hooks/useProjectSettings';
@@ -19,6 +21,12 @@ import {
   useUpdateMetadata,
   useRetryUpload,
 } from '../hooks/usePublishMutations';
+import {
+  useGenerateTitleVariants,
+  useSelectTitle,
+  useScoreThumbnail,
+  useStartABTest,
+} from '../hooks/useCTROptimization';
 import { supabase } from '../lib/supabase';
 import VideoPlayer from '../components/video/VideoPlayer';
 import ThumbnailPreview from '../components/video/ThumbnailPreview';
@@ -28,6 +36,9 @@ import UploadProgress from '../components/video/UploadProgress';
 import MetadataPanel from '../components/video/MetadataPanel';
 import PublishDialog from '../components/video/PublishDialog';
 import RejectDialog from '../components/video/RejectDialog';
+import TitlePicker from '../components/video/TitlePicker';
+import ThumbnailScorePanel from '../components/video/ThumbnailScorePanel';
+import StartABTestModal from '../components/video/StartABTestModal';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import {
@@ -185,8 +196,15 @@ export default function VideoReview() {
   const updateMetadata = useUpdateMetadata(projectId);
   const retryUpload = useRetryUpload(projectId);
 
+  /* -- Sprint S3: CTR intelligence + A/B testing -- */
+  const generateTitles = useGenerateTitleVariants(topicId, projectId);
+  const selectTitle = useSelectTitle(topicId);
+  const scoreThumbnail = useScoreThumbnail(topicId, projectId);
+  const startABTest = useStartABTest(projectId);
+
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showABTestModal, setShowABTestModal] = useState(false);
   const [visibility, setVisibility] = useState(null);
 
   const reviewableTopics = useMemo(
@@ -237,6 +255,68 @@ export default function VideoReview() {
   const handleRetryUpload = useCallback(() => {
     retryUpload.mutate({ topicId });
   }, [retryUpload, topicId]);
+
+  /* -- Sprint S3 handlers -- */
+  const handleGenerateTitles = useCallback(
+    async ({ force = false } = {}) => {
+      try {
+        const res = await generateTitles.mutateAsync({ force });
+        if (res?.success === false) {
+          toast.error(res.error || 'Failed to generate title variants');
+        } else {
+          toast.success('Title variants generated');
+        }
+      } catch (err) {
+        toast.error(err?.message || 'Failed to generate title variants');
+      }
+    },
+    [generateTitles],
+  );
+
+  const handleSelectTitle = useCallback(
+    ({ title, ctr_score }) => {
+      if (!title) return;
+      selectTitle.mutate(
+        { title, ctr_score },
+        {
+          onError: (err) =>
+            toast.error(err?.message || 'Failed to select title'),
+        },
+      );
+    },
+    [selectTitle],
+  );
+
+  const handleScoreThumbnail = useCallback(
+    async ({ thumbnail_url, force = false } = {}) => {
+      try {
+        const res = await scoreThumbnail.mutateAsync({ thumbnail_url, force });
+        if (res?.success === false) {
+          toast.error(res.error || 'Thumbnail scoring failed');
+        } else {
+          toast.success(
+            force ? 'Thumbnail regeneration queued' : 'Thumbnail scored',
+          );
+        }
+      } catch (err) {
+        toast.error(err?.message || 'Thumbnail scoring failed');
+      }
+    },
+    [scoreThumbnail],
+  );
+
+  const handleRegenerateThumbnailCTR = useCallback(
+    ({ thumbnail_url } = {}) => handleScoreThumbnail({ thumbnail_url, force: true }),
+    [handleScoreThumbnail],
+  );
+
+  const handleStartABTest = useCallback(
+    async (payload) => {
+      const res = await startABTest.mutateAsync(payload);
+      return res;
+    },
+    [startABTest],
+  );
 
   if (isLoading) {
     return (
@@ -419,11 +499,56 @@ export default function VideoReview() {
         {/* Right: Video content */}
         <div className="lg:col-span-8 space-y-4">
           <VideoPlayer topic={topic} />
+
+          {/* Sprint S3: Title picker (CTR optimizer) */}
+          <TitlePicker
+            topic={topic}
+            onSelect={handleSelectTitle}
+            onGenerate={handleGenerateTitles}
+            isSelecting={selectTitle.isPending}
+            isGenerating={generateTitles.isPending}
+          />
+
           <ThumbnailPreview
             thumbnailUrl={topic.thumbnail_url}
             onGenerate={() => handleRegenThumbnail()}
             isGenerating={regenThumbnail.isPending}
           />
+
+          {/* Sprint S3: Thumbnail CTR scoring */}
+          <ThumbnailScorePanel
+            topic={topic}
+            onScore={handleScoreThumbnail}
+            onRegenerate={handleRegenerateThumbnailCTR}
+            isScoring={scoreThumbnail.isPending}
+          />
+
+          {/* Sprint S3: A/B Test launcher — published only */}
+          {topic.youtube_video_id && (
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-accent" />
+                    A/B Testing
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Rotate title or thumbnail variants on the live video to find
+                    the winner.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setShowABTestModal(true)}
+                  data-testid="start-ab-test-btn"
+                >
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  Start A/B Test
+                </Button>
+              </div>
+            </div>
+          )}
+
           <UploadProgress
             publishProgress={topic.publish_progress}
             onRetry={handleRetryUpload}
@@ -478,6 +603,15 @@ export default function VideoReview() {
         onClose={() => setShowRejectDialog(false)}
         onConfirm={handleReject}
         loading={rejectVideo.isPending}
+      />
+
+      {/* Sprint S3: Start A/B Test Modal */}
+      <StartABTestModal
+        isOpen={showABTestModal}
+        onClose={() => setShowABTestModal(false)}
+        topic={topic}
+        onStart={handleStartABTest}
+        isPending={startABTest.isPending}
       />
     </div>
   );

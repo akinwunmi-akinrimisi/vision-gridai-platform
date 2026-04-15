@@ -1,0 +1,105 @@
+{
+  "name": "WF_THUMBNAIL_SCORE",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "trigger-ts-exec",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 240],
+      "parameters": {}
+    },
+    {
+      "id": "trigger-ts-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 440],
+      "parameters": {
+        "path": "thumbnail/score",
+        "httpMethod": "POST",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "thumbnail-score"
+    },
+    {
+      "id": "code-ts-fetch",
+      "name": "Normalize + Fetch Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// CF06 WF_THUMBNAIL_SCORE — normalize, idempotency, fetch topic + project + applied style_profile.\n// Global fetch + $env per MEMORY.md (n8n 2.8.4 task runner compat).\n\nconst raw = $input.first().json;\nconst viaWebhook = !!raw.body;\nconst payload = raw.body || raw;\n\nconst topicId = payload.topic_id;\nconst thumbnailUrl = payload.thumbnail_url;\nconst force = payload.force === true;\n\nif (!topicId || !thumbnailUrl) {\n  return [{\n    json: {\n      success: false,\n      error: 'Provide { topic_id, thumbnail_url }',\n      http_status: 400,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nasync function sbGet(url, label) {\n  const res = await fetch(url, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) throw new Error(`${label} failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);\n  return res.json();\n}\n\n// 1. Fetch topic\nconst topicUrl = `${supabaseUrl}/rest/v1/topics?id=eq.${topicId}&select=id,project_id,seo_title,selected_title,primary_keyword,thumbnail_regen_attempts,thumbnail_regen_history,thumbnail_scored_at,thumbnail_decision,thumbnail_ctr_score,thumbnail_score_breakdown,thumbnail_primary_weakness,thumbnail_improvement_suggestions`;\nconst topics = await sbGet(topicUrl, 'fetch topic');\nconst topic = Array.isArray(topics) && topics[0] ? topics[0] : null;\n\nif (!topic) {\n  return [{ json: { success: false, error: `Topic ${topicId} not found`, http_status: 404, via_webhook: viaWebhook } }];\n}\n\n// 2. Idempotency: if already accepted, return existing score\nif (!force && topic.thumbnail_scored_at && topic.thumbnail_decision === 'accept') {\n  return [{\n    json: {\n      success: true,\n      skipped: true,\n      reason: 'Thumbnail already accepted (pass force=true to rescore)',\n      topic_id: topicId,\n      thumbnail_ctr_score: topic.thumbnail_ctr_score,\n      thumbnail_decision: topic.thumbnail_decision,\n      thumbnail_score_breakdown: topic.thumbnail_score_breakdown,\n      thumbnail_primary_weakness: topic.thumbnail_primary_weakness,\n      thumbnail_improvement_suggestions: topic.thumbnail_improvement_suggestions,\n      http_status: 200,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst projectId = topic.project_id;\n\n// 3. Fetch project context\nconst projUrl = `${supabaseUrl}/rest/v1/projects?id=eq.${projectId}&select=niche,niche_description,niche_expertise_profile`;\nconst projArr = await sbGet(projUrl, 'fetch project');\nconst project = (projArr && projArr[0]) || {};\n\n// 4. Fetch applied style_profile (optional — may be null)\nlet styleProfile = null;\nlet channelStyleDescription = 'Not specified';\ntry {\n  const spUrl = `${supabaseUrl}/rest/v1/style_profiles?project_id=eq.${projectId}&applied_to_project=eq.true&order=applied_at.desc.nullslast&limit=1&select=style_summary,thumbnail_visual_summary,thumbnail_dna`;\n  const spRes = await fetch(spUrl, { method: 'GET', headers: sbHeaders });\n  if (spRes.ok) {\n    const arr = await spRes.json();\n    if (Array.isArray(arr) && arr[0]) {\n      styleProfile = arr[0];\n      channelStyleDescription = styleProfile.thumbnail_visual_summary || styleProfile.style_summary || 'Not specified';\n    }\n  }\n} catch (_) { /* non-fatal */ }\n\nconst attempts = Number(topic.thumbnail_regen_attempts || 0);\nconst history = Array.isArray(topic.thumbnail_regen_history) ? topic.thumbnail_regen_history : [];\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    project_id: projectId,\n    thumbnail_url: thumbnailUrl,\n    topic,\n    project,\n    style_profile: styleProfile,\n    channel_style_description: channelStyleDescription,\n    attempts,\n    history,\n    via_webhook: viaWebhook,\n    force,\n    started_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-ts-score",
+      "name": "Opus Vision 7-Factor Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Opus 4.6 Vision call — 7-factor thumbnail_ctr_scorer.md. Inline backoff + 30s retry on 429.\nconst data = $input.first().json;\nif (data.success === false || data.skipped) return $input.item;\n\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nconst topic = data.topic || {};\nconst project = data.project || {};\nconst selectedTitle = topic.selected_title || topic.seo_title || '';\nconst nicheContext = project.niche_description || project.niche || 'general audience';\nconst channelStyle = data.channel_style_description || 'Not specified';\nconst thumbUrl = data.thumbnail_url;\n\nasync function callClaudeVision(imageUrl, textPrompt, maxTokens, label, maxRetries = 4) {\n  let lastErr = null;\n  let sawRateLimit = false;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch('https://api.anthropic.com/v1/messages', {\n        method: 'POST',\n        headers: {\n          'x-api-key': anthropicKey,\n          'anthropic-version': '2023-06-01',\n          'content-type': 'application/json'\n        },\n        body: JSON.stringify({\n          model: 'claude-opus-4-6',\n          max_tokens: maxTokens,\n          messages: [{\n            role: 'user',\n            content: [\n              { type: 'image', source: { type: 'url', url: imageUrl } },\n              { type: 'text', text: textPrompt }\n            ]\n          }]\n        })\n      });\n      if (res.ok) {\n        const body = await res.json();\n        return { ok: true, text: body.content?.[0]?.text || '', attempts: attempt };\n      }\n      const errBody = await res.text();\n      if (res.status === 429) {\n        // Extra 30s retry once on rate limit per spec\n        if (!sawRateLimit) { sawRateLimit = true; await sleep(30000); continue; }\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${errBody.slice(0, 300)}`);\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\nfunction parseJson(text) {\n  if (!text) return null;\n  const clean = text.replace(/```json|```/g, '').trim();\n  try { return JSON.parse(clean); } catch {}\n  const m = clean.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch {} }\n  return null;\n}\n\nconst prompt = `THUMBNAIL ANALYSIS REQUEST\n\nVideo Title: ${selectedTitle}\nNiche: ${nicheContext}\nChannel Style: ${channelStyle}\n\nAnalyze this thumbnail and score it on exactly these 7 factors. Be strict — a score of 85+ should be genuinely exceptional. Most thumbnails score 55–72.\n\nFACTOR 1: Face + Emotional Clarity (max 20 points)\n- Full (20): Face prominent, strong readable emotion at small size (shock, excitement, fear, joy)\n- Partial (10): Face present but emotion unclear or small\n- Zero (0): No face, or blank/neutral expression\n- Bonus already baked in — cap at 20\n\nFACTOR 2: Text Readability at Small Size (max 20 points)\n- Mentally shrink the image to 160x90px. Can the text still be read?\n- Full (20): All text readable (high contrast, bold, ≤5 words)\n- Partial (10): Text present but too small/low contrast/too many words\n- Zero (0): No text or unreadable at small size\n\nFACTOR 3: Color Contrast (max 15 points)\n- Full (15): High contrast (subject stands out clearly)\n- Partial (7): Moderate\n- Zero (0): Low contrast — subject blends in\n\nFACTOR 4: Visual Complexity (max 15 points — INVERSE SCORING)\n- 1-3 elements: 15 points\n- 4 elements: 10 points\n- 5 elements: 5 points\n- 6+ elements: 0 points\n\nFACTOR 5: Curiosity / Visual Hook (max 10 points)\n- Full (10): Clear visual question / implied incomplete story\n- Partial (5): Mildly interesting\n- Zero (0): Generic, no intrigue\n\nFACTOR 6: Niche Relevance (max 15 points)\n- Full (15): Topic instantly clear without reading title\n- Partial (7): Inferable with effort\n- Zero (0): Could be any video\n\nFACTOR 7: Brand / Style Consistency (max 5 points)\n- Full (5): Matches channel visual identity\n- If \"Not specified\": default to 3 points (neutral)\n- Zero (0): Clearly inconsistent\n\nCALCULATE:\ntotal_score = sum of all 7 factors (cap at 100)\ndecision = \"accept\" if total_score >= 75\n         = \"review\" if total_score >= 60\n         = \"regenerate\" if total_score < 60\n\nIf decision is \"regenerate\" or \"review\", include an improvement_prompt — a rewritten Fal.ai Seedream 4.0 image generation prompt that specifically addresses the failing factors.\n\nReturn ONLY this JSON (no other text):\n{\n  \"thumbnail_ctr_score\": <integer 0-100>,\n  \"decision\": \"<accept|review|regenerate>\",\n  \"score_breakdown\": {\n    \"face_emotion\": <int>,\n    \"text_readability\": <int>,\n    \"color_contrast\": <int>,\n    \"visual_complexity\": <int>,\n    \"curiosity_hook\": <int>,\n    \"niche_relevance\": <int>,\n    \"brand_consistency\": <int>\n  },\n  \"improvement_suggestions\": [\"<string>\", \"<string>\"],\n  \"improvement_prompt\": \"<string — only if regenerate or review>\",\n  \"primary_weakness\": \"<single most impactful thing to fix>\"\n}`;\n\nconst scoreStart = Date.now();\nconst visionRes = await callClaudeVision(thumbUrl, prompt, 1500, 'opus_vision_thumbnail', 4);\n\nconst parsed = visionRes.ok ? parseJson(visionRes.text) : null;\n\nfunction clampScore(n, max) { const v = Number(n) || 0; return Math.max(0, Math.min(max, Math.round(v))); }\n\nlet breakdown = parsed?.score_breakdown || {};\nbreakdown = {\n  face_emotion: clampScore(breakdown.face_emotion, 20),\n  text_readability: clampScore(breakdown.text_readability, 20),\n  color_contrast: clampScore(breakdown.color_contrast, 15),\n  visual_complexity: clampScore(breakdown.visual_complexity, 15),\n  curiosity_hook: clampScore(breakdown.curiosity_hook, 10),\n  niche_relevance: clampScore(breakdown.niche_relevance, 15),\n  brand_consistency: clampScore(breakdown.brand_consistency, 5)\n};\n\n// Authoritative score = sum of clamped breakdown (prevents Claude drift between total + breakdown)\nconst authoritativeScore = Object.values(breakdown).reduce((a, b) => a + b, 0);\n\n// Derive decision from authoritative score (ignore Claude's decision if it contradicts)\nlet decision;\nif (authoritativeScore >= 75) decision = 'accept';\nelse if (authoritativeScore >= 60) decision = 'review';\nelse decision = 'regenerate';\n\nconst improvementSuggestions = Array.isArray(parsed?.improvement_suggestions) ? parsed.improvement_suggestions.slice(0, 6).map(String) : [];\nconst improvementPrompt = String(parsed?.improvement_prompt || '').slice(0, 2000);\nconst primaryWeakness = String(parsed?.primary_weakness || '').slice(0, 500);\n\nconst scored = !!parsed;\nconst costUsd = scored ? 0.08 : 0;\n\nreturn [{\n  json: {\n    ...data,\n    score: {\n      thumbnail_ctr_score: authoritativeScore,\n      decision,\n      score_breakdown: breakdown,\n      improvement_suggestions: improvementSuggestions,\n      improvement_prompt: improvementPrompt,\n      primary_weakness: primaryWeakness\n    },\n    vision_ok: scored,\n    vision_error: scored ? null : (visionRes.error || 'parse_failed'),\n    vision_duration_ms: Date.now() - scoreStart,\n    vision_cost_usd: costUsd\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-ts-persist",
+      "name": "Persist + Regen Dispatch + Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Persist score to topics, append to regen_history. If decision='regenerate' AND attempts<3,\n// fire-and-forget call to WF_THUMBNAIL_GENERATE webhook with improvement_prompt (simpler than\n// Execute Workflow nested wait — re-entry flows back through /webhook/thumbnail/score).\n// If decision='review', DO NOT auto-regen — leave for Gate 3.\n// If decision='accept' OR attempts>=3, finalize.\n\nconst data = $input.first().json;\nif (data.success === false) return [{ json: data }];\nif (data.skipped) return [{ json: data }];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst n8nBase = $env.N8N_WEBHOOK_BASE;\nconst dashToken = $env.DASHBOARD_API_TOKEN;\n\nconst topicId = data.topic_id;\nconst projectId = data.project_id;\nconst score = data.score;\nconst thumbnailUrl = data.thumbnail_url;\nconst attempts = Number(data.attempts || 0);\nconst history = Array.isArray(data.history) ? data.history.slice() : [];\nconst nowIso = new Date().toISOString();\n\n// Append new attempt to history (attempt # is 1-indexed)\nhistory.push({\n  attempt: attempts + 1,\n  thumbnail_url: thumbnailUrl,\n  score: score.thumbnail_ctr_score,\n  decision: score.decision,\n  primary_weakness: score.primary_weakness,\n  scored_at: nowIso\n});\n\n// Determine finalization:\n// - accept OR attempts+1 >= 3 (meaning this is the 3rd+ attempt) -> finalize with current decision\n// - review -> finalize with review (await human)\n// - regenerate AND attempts+1 < 3 -> dispatch regen (attempts increments on next entry)\nconst isFinal = (score.decision === 'accept') || (score.decision === 'review') || (attempts + 1 >= 3);\nconst shouldRegen = (score.decision === 'regenerate') && ((attempts + 1) < 3);\n\n// If we're at attempt 3 with regenerate decision, force-accept with a note\nlet finalDecision = score.decision;\nif (!isFinal && !shouldRegen) {\n  // Edge case safety — should not hit\n  finalDecision = 'review';\n}\nif (score.decision === 'regenerate' && !shouldRegen) {\n  finalDecision = 'accept'; // exhausted retries\n}\n\nconst patch = {\n  thumbnail_ctr_score: score.thumbnail_ctr_score,\n  thumbnail_score_breakdown: score.score_breakdown,\n  thumbnail_decision: finalDecision,\n  thumbnail_primary_weakness: score.primary_weakness || null,\n  thumbnail_improvement_suggestions: score.improvement_suggestions || [],\n  thumbnail_regen_attempts: attempts + 1,\n  thumbnail_regen_history: history,\n  thumbnail_scored_at: nowIso\n};\n\nlet patchError = null;\ntry {\n  const res = await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${topicId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify(patch)\n  });\n  if (!res.ok) patchError = `PATCH failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;\n} catch (e) {\n  patchError = e.message;\n}\n\n// Fire-and-forget regen dispatch\nlet regenDispatched = false;\nlet regenError = null;\nif (shouldRegen && !patchError && score.improvement_prompt) {\n  try {\n    // Call WF_THUMBNAIL_GENERATE webhook. That workflow will:\n    //   1. Generate a new thumbnail via Seedream 4.0 using improvement_prompt\n    //   2. Upload to Drive\n    //   3. POST back to /webhook/thumbnail/score with { topic_id, thumbnail_url: new_url }\n    // We do not await the full regen — dispatch and return current score to caller.\n    const regenRes = await fetch(`${n8nBase}/thumbnail/generate`, {\n      method: 'POST',\n      headers: {\n        'Authorization': `Bearer ${dashToken}`,\n        'Content-Type': 'application/json'\n      },\n      body: JSON.stringify({\n        topic_id: topicId,\n        improvement_prompt: score.improvement_prompt,\n        attempt_count: attempts + 1,\n        score_callback: `${n8nBase}/thumbnail/score`\n      })\n    });\n    regenDispatched = regenRes.ok;\n    if (!regenRes.ok) regenError = `Regen dispatch HTTP ${regenRes.status}`;\n  } catch (e) {\n    regenError = e.message;\n  }\n}\n\n// production_logs\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: topicId,\n      stage: 'thumbnail_score',\n      scene_number: null,\n      action: shouldRegen ? 'opus_vision_regen_dispatched' : 'opus_vision_7factor',\n      status: patchError ? 'partial' : (data.vision_ok ? 'success' : 'fallback'),\n      duration_ms: data.vision_duration_ms || 0,\n      cost_usd: data.vision_cost_usd || 0,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\nreturn [{\n  json: {\n    success: !patchError,\n    topic_id: topicId,\n    project_id: projectId,\n    thumbnail_url: thumbnailUrl,\n    thumbnail_ctr_score: score.thumbnail_ctr_score,\n    thumbnail_decision: finalDecision,\n    thumbnail_score_breakdown: score.score_breakdown,\n    thumbnail_primary_weakness: score.primary_weakness,\n    thumbnail_improvement_suggestions: score.improvement_suggestions,\n    thumbnail_improvement_prompt: shouldRegen ? score.improvement_prompt : null,\n    thumbnail_regen_attempts: attempts + 1,\n    thumbnail_scored_at: nowIso,\n    regen_dispatched: regenDispatched,\n    regen_error: regenError,\n    vision_ok: data.vision_ok,\n    vision_cost_usd: data.vision_cost_usd,\n    patch_error: patchError,\n    http_status: patchError ? 500 : 200,\n    via_webhook: data.via_webhook\n  }\n}];"
+      }
+    },
+    {
+      "id": "respond-ts",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1240, 340],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.http_status || 200 }}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Normalize + Fetch Context", "type": "main", "index": 0 }]]
+    },
+    "Webhook Trigger": {
+      "main": [[{ "node": "Normalize + Fetch Context", "type": "main", "index": 0 }]]
+    },
+    "Normalize + Fetch Context": {
+      "main": [[{ "node": "Opus Vision 7-Factor Score", "type": "main", "index": 0 }]]
+    },
+    "Opus Vision 7-Factor Score": {
+      "main": [[{ "node": "Persist + Regen Dispatch + Log", "type": "main", "index": 0 }]]
+    },
+    "Persist + Regen Dispatch + Log": {
+      "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 600,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "tags": []
+}

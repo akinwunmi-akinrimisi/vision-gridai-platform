@@ -29,6 +29,7 @@ import CostDonut from '../components/analytics/CostDonut';
 import CostRevenueChart from '../components/analytics/CostRevenueChart';
 import PerformanceTable from '../components/analytics/PerformanceTable';
 import TimeRangeFilter from '../components/analytics/TimeRangeFilter';
+import ABTestList from '../components/analytics/ABTestList';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -554,6 +555,9 @@ export default function Analytics() {
           <TopPerformerCard topic={analytics.topPerformer} />
         </div>
       )}
+
+      {/* Sprint S3: A/B Tests */}
+      <ABTestList projectId={id} />
 
       {/* Empty state */}
       {topics.length === 0 && (

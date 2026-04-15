@@ -1,0 +1,105 @@
+{
+  "name": "WF_CTR_OPTIMIZE",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "trigger-ctr-exec",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 240],
+      "parameters": {}
+    },
+    {
+      "id": "trigger-ctr-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 440],
+      "parameters": {
+        "path": "ctr/optimize",
+        "httpMethod": "POST",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "ctr-optimize"
+    },
+    {
+      "id": "code-ctr-fetch",
+      "name": "Normalize + Fetch Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// CF05 WF_CTR_OPTIMIZE — normalize trigger, idempotency, fetch topic/project/competitor/scenes.\n// Global fetch + $env per MEMORY.md (n8n 2.8.4 task runner compat).\n\nconst raw = $input.first().json;\nconst viaWebhook = !!raw.body;\nconst payload = raw.body || raw;\n\nconst topicId = payload.topic_id;\nconst force = payload.force === true;\n\nif (!topicId) {\n  return [{\n    json: {\n      success: false,\n      error: 'Provide { topic_id }',\n      http_status: 400,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nasync function sbGet(url, label) {\n  const res = await fetch(url, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) throw new Error(`${label} failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);\n  return res.json();\n}\n\n// 1. Fetch topic\nconst topicUrl = `${supabaseUrl}/rest/v1/topics?id=eq.${topicId}&select=id,project_id,seo_title,original_title,narrative_hook,primary_keyword,title_variants_generated_at,script_review_status,topic_number`;\nconst topics = await sbGet(topicUrl, 'fetch topic');\nconst topic = Array.isArray(topics) && topics[0] ? topics[0] : null;\n\nif (!topic) {\n  return [{ json: { success: false, error: `Topic ${topicId} not found`, http_status: 404, via_webhook: viaWebhook } }];\n}\n\n// 2. Idempotency\nif (!force && topic.title_variants_generated_at) {\n  return [{\n    json: {\n      success: true,\n      skipped: true,\n      reason: 'Title variants already generated (pass force=true to regenerate)',\n      topic_id: topicId,\n      title_variants_generated_at: topic.title_variants_generated_at,\n      http_status: 200,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst projectId = topic.project_id;\n\n// 3. Fetch project context\nconst projUrl = `${supabaseUrl}/rest/v1/projects?id=eq.${projectId}&select=niche,niche_description,niche_expertise_profile`;\nconst projArr = await sbGet(projUrl, 'fetch project');\nconst project = (projArr && projArr[0]) || {};\n\n// 4. Fetch top-5 competitor outlier titles (may be empty if S2 hasn't run)\nlet competitorTitles = [];\ntry {\n  const compUrl = `${supabaseUrl}/rest/v1/competitor_videos?project_id=eq.${projectId}&is_outlier=eq.true&select=title,views_7d&order=views_7d.desc.nullslast&limit=5`;\n  const compRes = await fetch(compUrl, { method: 'GET', headers: sbHeaders });\n  if (compRes.ok) {\n    const arr = await compRes.json();\n    competitorTitles = (arr || []).map(r => r.title).filter(Boolean);\n  }\n} catch (_) { /* non-fatal */ }\n\n// 5. Fetch scenes for script text (narration_text) — script summary source\nlet scriptText = '';\ntry {\n  const scenesUrl = `${supabaseUrl}/rest/v1/scenes?topic_id=eq.${topicId}&select=scene_number,narration_text&order=scene_number.asc&limit=400`;\n  const scRes = await fetch(scenesUrl, { method: 'GET', headers: sbHeaders });\n  if (scRes.ok) {\n    const arr = await scRes.json();\n    scriptText = (arr || []).map(s => s.narration_text || '').join(' ').trim();\n  }\n} catch (_) { /* non-fatal */ }\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    project_id: projectId,\n    topic,\n    project,\n    competitor_titles: competitorTitles,\n    script_text: scriptText,\n    has_script_text: scriptText.length > 200,\n    via_webhook: viaWebhook,\n    force,\n    started_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-ctr-score",
+      "name": "Summarize + Generate 5 Variants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Step A: Haiku 4.5 summarizer (cost-sensitive) -> 200-word script summary.\n// Step B: Opus 4.6 generator -> 5 CTR-scored title variants via title_ctr_scorer.md template.\n// Inline exponential backoff on both. Graceful fallback if either fails.\n\nconst data = $input.first().json;\nif (data.success === false || data.skipped) return $input.item;\n\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nconst topic = data.topic || {};\nconst project = data.project || {};\nconst topicTitle = topic.seo_title || topic.original_title || '';\nconst narrativeHook = topic.narrative_hook || '';\nconst primaryKeyword = topic.primary_keyword || topicTitle.split(' ').slice(0, 3).join(' ');\nconst niche = project.niche || '';\nconst nicheContext = project.niche_description || niche || 'general audience';\nconst targetAudience = project.niche_expertise_profile || 'YouTube viewers interested in this topic';\nconst competitorTitles = data.competitor_titles || [];\nconst scriptText = data.script_text || '';\n\nasync function callClaude(model, maxTokens, userPrompt, label, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch('https://api.anthropic.com/v1/messages', {\n        method: 'POST',\n        headers: {\n          'x-api-key': anthropicKey,\n          'anthropic-version': '2023-06-01',\n          'content-type': 'application/json'\n        },\n        body: JSON.stringify({\n          model,\n          max_tokens: maxTokens,\n          messages: [{ role: 'user', content: userPrompt }]\n        })\n      });\n      if (res.ok) {\n        const body = await res.json();\n        return { ok: true, text: body.content?.[0]?.text || '', attempts: attempt };\n      }\n      const errBody = await res.text();\n      if (res.status === 429) await sleep(30000);\n      lastErr = new Error(`HTTP ${res.status}: ${errBody.slice(0, 300)}`);\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\nfunction parseJson(text) {\n  if (!text) return null;\n  const clean = text.replace(/```json|```/g, '').trim();\n  try { return JSON.parse(clean); } catch {}\n  const m = clean.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch {} }\n  return null;\n}\n\n// Step A: Summarize script (Haiku) or fallback\nlet scriptSummary;\nlet summaryCostUsd = 0;\nconst summaryStart = Date.now();\n\nif (scriptText.length > 200) {\n  // Cap script at ~50k chars to stay under Haiku input window comfortably\n  const cappedScript = scriptText.slice(0, 50000);\n  const summaryPrompt = `Summarize this YouTube video script in exactly 200 words, focusing on the core argument, the main claims revealed, and the specific numbers/facts/stories that anchor the narrative. No preamble — just the summary.\\n\\nSCRIPT:\\n${cappedScript}`;\n  const haikuRes = await callClaude('claude-haiku-4-5-20251001', 500, summaryPrompt, 'haiku_summary', 4);\n  if (haikuRes.ok && haikuRes.text.length > 50) {\n    scriptSummary = haikuRes.text.trim();\n    summaryCostUsd = 0.005;\n  } else {\n    scriptSummary = `${topicTitle}. ${narrativeHook}`.trim().slice(0, 800);\n  }\n} else {\n  scriptSummary = `${topicTitle}. ${narrativeHook}`.trim().slice(0, 800) || 'No script summary available';\n}\n\n// Step B: Build title_ctr_scorer user prompt\nconst competitorBlock = competitorTitles.length\n  ? competitorTitles.map(t => `  - \"${t}\"`).join('\\n')\n  : '  (no competitor outlier titles available — generate from formulas alone)';\n\nconst userPrompt = `TITLE GENERATION + SCORING REQUEST\n\nVideo Topic: ${topicTitle}\nNiche: ${nicheContext}\nTarget Audience: ${targetAudience}\nScript Summary (200 words): ${scriptSummary}\nPrimary Keyword: ${primaryKeyword}\nCompetitor Top Titles (for pattern reference):\n${competitorBlock}\n\nGENERATE 5 TITLE VARIANTS using these formulas:\n\nFORMULA A — NUMBERS + CONSEQUENCE:\nStructure: [Specific Number] [Topic Nouns] That [Consequence for Audience]\n\nFORMULA B — HIDDEN TRUTH:\nStructure: Why [Common Belief/Behavior] Is [Surprising Negative Consequence]\n\nFORMULA C — INSIDER REVEAL:\nStructure: The [Topic] [Strategy/Secret/Trick] [Authority Group] [Does/Doesn't Want You to Know]\n\nFORMULA D — IDENTITY CHALLENGE:\nStructure: [What You Think Is True] vs [What's Actually True] (or \"Stop [Doing X]\" format)\n\nFORMULA E — STORY HOOK:\nStructure: I [Did Surprising Thing Related to Topic] — Here's What Happened After [Timeframe/Scale]\n\nFor each of the 5 titles, score against these factors (be strict):\n- Length (55-70 chars) — max 20 (55-65 = 20pts, 65-70 = 15pts, 50-55 = 10pts, other = 0)\n- Number present — max 15 (contains specific number = 15pts)\n- Power word (secret/never/stop/actually/hidden/real/truth/worst/best) — max 10\n- Curiosity gap — max 15 (clear info gap only the video can close = 15, partial = 7)\n- Emotional trigger — max 10 (Fear=10, Desire=8, Curiosity=6, Neutral=0)\n- Keyword in first 40 chars — max 10\n- No clickbait penalty (deliverability) — max 20\n\nRULES:\n- Never use ALL CAPS for entire words (1-2 words max).\n- Never end in \"...\".\n- Titles must match actual script content.\n- Primary keyword appears naturally.\n- Prefer concrete numbers over vague claims.\n\nReturn ONLY valid JSON:\n{\n  \"title_options\": [\n    {\n      \"title\": \"<string>\",\n      \"ctr_score\": <int 0-100>,\n      \"formula_pattern\": \"<A|B|C|D|E>\",\n      \"char_count\": <int>,\n      \"scoring_breakdown\": {\n        \"length\": <int>, \"number\": <int>, \"power_word\": <int>, \"curiosity_gap\": <int>,\n        \"emotional_trigger\": <int>, \"keyword_position\": <int>, \"deliverability\": <int>\n      },\n      \"reasoning\": \"<1 sentence>\"\n    }\n  ],\n  \"recommended_index\": <0-4>,\n  \"recommended_reasoning\": \"<1 sentence>\"\n}`;\n\nconst opusStart = Date.now();\nconst opusRes = await callClaude('claude-opus-4-6', 2500, userPrompt, 'opus_5_variants', 4);\n\nlet parsed = opusRes.ok ? parseJson(opusRes.text) : null;\n\n// Normalize — pad to 5, clamp scores, coerce fields\nfunction fallbackVariant(title) {\n  return {\n    title: String(title || topicTitle).slice(0, 500),\n    ctr_score: 50,\n    formula_pattern: 'fallback',\n    char_count: String(title || topicTitle).length,\n    scoring_breakdown: { length: 0, number: 0, power_word: 0, curiosity_gap: 0, emotional_trigger: 0, keyword_position: 0, deliverability: 0 },\n    reasoning: 'Fallback — CTR generation failed or produced fewer than 5 variants'\n  };\n}\n\nlet titleOptions = Array.isArray(parsed?.title_options) ? parsed.title_options : [];\ntitleOptions = titleOptions.slice(0, 5).map(v => ({\n  title: String(v.title || topicTitle).slice(0, 500),\n  ctr_score: Math.max(0, Math.min(100, Math.round(Number(v.ctr_score) || 0))),\n  formula_pattern: ['A', 'B', 'C', 'D', 'E', 'fallback'].includes(v.formula_pattern) ? v.formula_pattern : 'A',\n  char_count: Number.isFinite(v.char_count) ? v.char_count : String(v.title || '').length,\n  scoring_breakdown: v.scoring_breakdown || {},\n  reasoning: String(v.reasoning || '').slice(0, 500)\n}));\n\nwhile (titleOptions.length < 5) titleOptions.push(fallbackVariant(topicTitle));\n\nlet recommendedIndex = Number.isInteger(parsed?.recommended_index) ? parsed.recommended_index : 0;\nif (recommendedIndex < 0 || recommendedIndex > 4) recommendedIndex = 0;\nconst recommendedReasoning = String(parsed?.recommended_reasoning || titleOptions[recommendedIndex]?.reasoning || 'Highest CTR score among variants').slice(0, 1000);\n\nconst opusOk = !!parsed;\nconst opusCostUsd = opusOk ? 0.035 : 0;\nconst totalCostUsd = Math.round((summaryCostUsd + opusCostUsd) * 1000) / 1000;\n\nreturn [{\n  json: {\n    ...data,\n    script_summary: scriptSummary,\n    summary_duration_ms: Date.now() - summaryStart,\n    summary_cost_usd: summaryCostUsd,\n    title_options: titleOptions,\n    title_recommended_index: recommendedIndex,\n    title_ctr_reasoning: recommendedReasoning,\n    opus_ok: opusOk,\n    opus_error: opusOk ? null : (opusRes.error || 'parse_failed'),\n    opus_duration_ms: Date.now() - opusStart,\n    opus_cost_usd: opusCostUsd,\n    total_cost_usd: totalCostUsd\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-ctr-persist",
+      "name": "Persist + Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 340],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// PATCH topics with variants + recommended index. Log to production_logs.\nconst data = $input.first().json;\n\nif (data.success === false) {\n  return [{ json: data }];\n}\nif (data.skipped) {\n  return [{ json: data }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst topicId = data.topic_id;\nconst projectId = data.project_id;\nconst titleOptions = data.title_options || [];\nconst recIdx = data.title_recommended_index || 0;\nconst recommended = titleOptions[recIdx] || titleOptions[0] || null;\nconst nowIso = new Date().toISOString();\n\nconst patch = {\n  title_options: titleOptions,\n  title_ctr_score: recommended?.ctr_score ?? null,\n  title_recommended_index: recIdx,\n  title_ctr_reasoning: data.title_ctr_reasoning,\n  selected_title: recommended?.title || null,\n  title_variants_generated_at: nowIso\n};\n\nlet patchError = null;\ntry {\n  const res = await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${topicId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify(patch)\n  });\n  if (!res.ok) patchError = `PATCH failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;\n} catch (e) {\n  patchError = e.message;\n}\n\n// production_logs — record the Opus variant generation\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: topicId,\n      stage: 'ctr_optimize',\n      scene_number: null,\n      action: 'opus_5_variants',\n      status: patchError ? 'partial' : (data.opus_ok ? 'success' : 'fallback'),\n      duration_ms: (data.opus_duration_ms || 0) + (data.summary_duration_ms || 0),\n      cost_usd: data.total_cost_usd || 0,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\nreturn [{\n  json: {\n    success: !patchError,\n    topic_id: topicId,\n    project_id: projectId,\n    title_options: titleOptions,\n    title_ctr_score: patch.title_ctr_score,\n    title_recommended_index: recIdx,\n    title_ctr_reasoning: patch.title_ctr_reasoning,\n    selected_title: patch.selected_title,\n    title_variants_generated_at: nowIso,\n    opus_ok: data.opus_ok,\n    total_cost_usd: data.total_cost_usd,\n    patch_error: patchError,\n    http_status: patchError ? 500 : 200,\n    via_webhook: data.via_webhook\n  }\n}];"
+      }
+    },
+    {
+      "id": "respond-ctr",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1240, 340],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.http_status || 200 }}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Normalize + Fetch Context", "type": "main", "index": 0 }]]
+    },
+    "Webhook Trigger": {
+      "main": [[{ "node": "Normalize + Fetch Context", "type": "main", "index": 0 }]]
+    },
+    "Normalize + Fetch Context": {
+      "main": [[{ "node": "Summarize + Generate 5 Variants", "type": "main", "index": 0 }]]
+    },
+    "Summarize + Generate 5 Variants": {
+      "main": [[{ "node": "Persist + Log", "type": "main", "index": 0 }]]
+    },
+    "Persist + Log": {
+      "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 300,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "tags": []
+}
