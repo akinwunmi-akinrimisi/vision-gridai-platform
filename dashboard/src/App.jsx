@@ -24,6 +24,8 @@ const ContentCalendar = lazy(() => import('./pages/ContentCalendar'));
 const EngagementHub = lazy(() => import('./pages/EngagementHub'));
 const Keywords = lazy(() => import('./pages/Keywords'));
 const IntelligenceHub = lazy(() => import('./pages/IntelligenceHub'));
+const DailyIdeas = lazy(() => import('./pages/DailyIdeas'));
+const AICoach = lazy(() => import('./pages/AICoach'));
 
 const PageFallback = (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -56,6 +58,8 @@ export default function App() {
             <Route path="/project/:id/analytics" element={<Analytics />} />
             <Route path="/project/:id/calendar" element={<ContentCalendar />} />
             <Route path="/project/:id/engagement" element={<EngagementHub />} />
+            <Route path="/project/:id/ideas" element={<DailyIdeas />} />
+            <Route path="/project/:id/coach" element={<AICoach />} />
             <Route path="/research" element={<Research />} />
             <Route path="/youtube-discovery" element={<YouTubeDiscovery />} />
             <Route path="/youtube-discovery/analysis/:analysisId" element={<VideoAnalysis />} />

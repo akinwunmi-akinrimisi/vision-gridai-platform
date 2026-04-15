@@ -24,6 +24,7 @@ import {
   Youtube,
   Hash,
   Brain,
+  Lightbulb,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -63,6 +64,8 @@ const projectNavItems = [
   { label: 'Topics', icon: ListChecks, path: '/project/:id/topics' },
   { label: 'Keywords', icon: Hash, path: '/project/:id/keywords' },
   { label: 'Intelligence', icon: Brain, path: '/project/:id/intelligence' },
+  { label: 'Daily Ideas', icon: Lightbulb, path: '/project/:id/ideas' },
+  { label: 'AI Coach', icon: MessageCircle, path: '/project/:id/coach' },
   { label: 'Scripts', icon: FileText, path: '/project/:id/topics' }, // scripts route doesn't exist yet
   { label: 'Production', icon: Activity, path: '/project/:id/production' },
   { label: 'Analytics', icon: BarChart3, path: '/project/:id/analytics' },
