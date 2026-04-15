@@ -18,7 +18,7 @@ A complete AI video production platform where you:
 8. **One click to publish** to YouTube with full metadata + captions + thumbnails
 9. **Analytics flow back** into the dashboard showing performance per video, per niche
 
-All powered by: Supabase (database) + n8n (orchestration) + Dashboard (UI) + Claude (intelligence) + Fal.ai (media generation) + FFmpeg (assembly) + Remotion (kinetic captions) + Agency Agents (61 AI specialists)
+All powered by: Supabase (database) + n8n (orchestration) + Dashboard (UI) + Claude (intelligence) + Fal.ai Seedream 4.0 (image generation) + FFmpeg (Ken Burns motion, color grading, assembly, caption burn via libass) + Agency Agents (61 AI specialists)
 
 ---
 
@@ -827,12 +827,12 @@ Per-project configuration:
    - Hashtags (editable)
    - Actions: Approve / Skip / Edit
    - Bulk actions: Approve All / Approve Top 10
-3. **Production monitor:** After approval, shows progress per clip (audio → images → I2V → T2V → captions → assembly)
+3. **Production monitor:** After approval, shows progress per clip (audio → images → Ken Burns + color grade → captions → assembly)
 4. **Preview:** Play finished 9:16 clips in embedded player
 
 **Thumbnail spec:** Diagonal slant divider, AI-generated image on one side, bold short phrase (3-6 words) filling 70-80% of text area on the other. Vibrant TikTok aesthetic.
 
-**Caption spec:** Remotion word-by-word pop-in, center screen, emphasis words in yellow/red, bold sans-serif font, strong drop shadow.
+**Caption spec:** Kinetic ASS subtitles (word-by-word pop-in), center screen, emphasis words in yellow/red, bold sans-serif font, strong drop shadow. Burned via FFmpeg libass through the caption burn service (:9998).
 
 ### Page 9: 📤 Social Media Publisher
 
@@ -1012,7 +1012,7 @@ Body:
 | Shorts: Fresh TTS audio | $0.28 | $7.00 | $8.40 |
 | Shorts: 9:16 images + thumbnails (Fal.ai) | $2.46 | $61.50 | $73.80 |
 | Shorts: 9:16 I2V + T2V clips (Fal.ai) | $19.50 | $487.50 | $585.00 |
-| Shorts: Remotion captions + FFmpeg | Free | Free | Free |
+| Shorts: FFmpeg libass caption burn | Free | Free | Free |
 | **Subtotal: Shorts (20/topic)** | **~$22** | **~$558** | **~$670** |
 | Supervisor agent | — | — | ~$14.40 |
 | Web search (topic research) | — | ~$0.50 | — |
@@ -1035,7 +1035,7 @@ Body:
 | Review gates | 4 gates | Topics, Scripts, Video (pre-YouTube), Shorts (viral clips) |
 | Shorts audio | Fresh TTS with rewritten narration | Punchier pacing for short-form, not reused from long-form |
 | Shorts visuals | Native 9:16, TikTok-bold aesthetic | Not cropped/letterboxed 16:9. Different visual style from main video. |
-| Shorts captions | Remotion kinetic (word-by-word, center, emphasis in yellow/red) | Hormozi/MrBeast style. Free tool, React-based. |
+| Shorts captions | Kinetic ASS subtitles (word-by-word, center, emphasis in yellow/red) | Hormozi/MrBeast style. Burned via FFmpeg libass on caption burn service (:9998). |
 | Shorts thumbnails | AI-generated, diagonal slant, short phrase 70-80% fill | Fully automated via Claude prompt → Seedream 4.0 |
 | YouTube Shorts | Same channel as long-form | Drives subscribers from shorts to 2-hour videos |
 | Social posting | Both scheduling and immediate | Auto-schedule with peak hours, manual override available |

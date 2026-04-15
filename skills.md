@@ -62,7 +62,7 @@
 | FFmpeg Color Science | 7 color mood filter chains (eq + colorbalance + curves) |
 | FFmpeg xfade Transitions | 5 transition types with offset calculation |
 | FFmpeg Audio Ducking | Background music mixing under voiceover |
-| ASS Subtitle Generation | Two-tone kinetic captions from word timestamps |
+| ASS Subtitle Generation | Word-by-word animated captions from word timestamps (libass) |
 | Style DNA System | Locked visual identity per project (composition + subject + DNA) |
 | Composition Library | 8 composition prefixes for image prompt architecture |
 | Selective Color | Monochrome + one colored element prompt injection |
@@ -85,27 +85,6 @@
 | Structured Production Logs | Per-API-call logging to production_logs table |
 | Automated QA (13 checks) | Visual, caption, audio, platform compliance |
 
-### Remotion Hybrid Rendering
-| Skill | Purpose |
-|-------|---------|
-| Remotion Still Rendering | `npx remotion still` for single-frame data graphics |
-| Remotion Template Design | React components following MoodTheme system |
-| AI Scene Classification | Claude Haiku batch classification (fal_ai vs remotion) |
-| Data Payload Extraction | Structured data generation for Remotion templates |
-| Template Props Schema | JSON Schema validation for data_payload |
-
-### Kinetic Typography Production
-| Skill | Purpose |
-|-------|---------|
-| Pillow Frame Rendering | Background gradients, particle compositing, JPEG output |
-| pycairo Text Rendering | Anti-aliased text, kerning, variable weight, glow effects |
-| Animation Easing | ease_out_cubic, ease_in_out_quad, ease_out_back, ease_out_elastic |
-| Cached Layer Optimization | Pre-render static layers ONCE per scene, composite per frame |
-| Procedural Particles | Generate, update, render floating particles with drift |
-| Chunked Script Generation | Chapter outline + per-chapter scenes for long-form (>15min) |
-| TTS Preprocessing | ALL_CAPS conversion, symbol expansion, card index skip |
-| Scene-by-Scene Rendering | Render → assemble → delete frames per scene (memory management) |
-
 ### Development Workflow Tools
 | Tool | Type | Purpose |
 |------|------|---------|
@@ -116,7 +95,6 @@
 | UI UX Pro Max | Auto-activating skill | Design system generator (67 styles, 96 palettes). |
 | Agency Agents (61) | Context-activated | Domain specialists. Auto-activate by task. |
 | n8n Agent Commands | Slash commands | Workflow audit, Supabase queries. |
-| Remotion | npm package | Kinetic captions for shorts. |
 
 ---
 
@@ -188,22 +166,13 @@ All 61 agents from [msitarzewski/agency-agents](https://github.com/msitarzewski/
 | **D7:** Platform Renders | Platform Export Profiles | — |
 | **E:** QA → GATE 3 → Publish | Automated QA (13 checks) | — |
 | **F:** Analytics (cron) | YouTube/TikTok/Instagram APIs | Supabase |
-| **G:** Shorts (clipped from long-form) → GATE 4 | Remotion, FFmpeg | — |
+| **G:** Shorts (clipped from long-form) → GATE 4 | FFmpeg, Fal.ai | — |
 | **H:** Social Posting (calendar-scheduled) | Content Calendar, TikTok/Instagram APIs | Cron |
 | **TI:** Topic Intelligence | Reddit, YouTube, TikTok, Trends, Quora scraping | AI Categorization |
 | **Engagement:** Comment Management | YouTube/TikTok/Instagram Comment APIs | AI Sentiment, AI Reply |
-| **C+:** Scene Classification | AI Classification (Haiku), Supabase | Dashboard review UI |
-| **D2a:** Fal.ai Image Gen | Fal.ai, Style DNA, Composition Library | Negative Prompt, Resume |
-| **D2b:** Remotion Rendering | Remotion Still, Template Design, MoodTheme | Data Payload Schema |
 | **Supervisor** | n8n Workflow, Supabase | — |
-| **Dashboard (15 pages)** | React, **frontend-design**, Supabase Realtime, **UI UX Pro Max** | shadcn/ui |
+| **Dashboard** | React, **frontend-design**, Supabase Realtime, **UI UX Pro Max** | shadcn/ui |
 | **Build Process** | **Superpowers**, **Agency Agents** (61) | **gstack** (selective) |
-| **K1:** Kinetic Script Gen | Claude API, Chunked Prompts | Supabase |
-| **K2:** Frame Rendering | Pillow, pycairo, Animation Easing, Cached Layers | Particles, JPEG |
-| **K3:** Voice (TTS) | Google Cloud TTS, TTS Preprocessing | Audio sync |
-| **K4:** Audio Mix | Music Library, Audio Ducking | pydub, numpy |
-| **K5:** Assembly | FFmpeg, Scene-by-Scene Assembly | Disk management |
-| **K6:** Upload | Google Drive API | Supabase status update |
 
 ---
 
@@ -220,10 +189,6 @@ All 61 agents from [msitarzewski/agency-agents](https://github.com/msitarzewski/
 **Before merging into main?** → `/freeze` then `/review`.
 **Debugging a pipeline crash?** → Check `production_logs` table first. Then `topics.pipeline_stage` for resume point. Then scene-level status fields.
 **Credential issues?** → `API Credentials Manager`. Never hardcode. All keys in n8n credential store.
-**Scene shows numbers, charts, comparisons?** → Likely `remotion`. The AI classifier catches these, but if building manually: any scene where textual accuracy matters more than photorealism goes to Remotion.
-**Building a new Remotion template?** → Start from `shared/MoodTheme.js` for colors. Follow the `props_schema` pattern from `remotion_templates` table. Test with all 7 color moods before shipping.
-**Classification results look wrong?** → Operator can override any scene on the dashboard. If the classifier consistently misclassifies a scene type, refine the Classification Prompt in `prompt_configs`.
-**Remotion render failing?** → Check `data_payload` matches `props_schema`. Check render service is running (`curl localhost:3100/health`). Check Remotion + Chrome dependencies installed.
 
 ---
 
@@ -235,27 +200,15 @@ All 61 agents from [msitarzewski/agency-agents](https://github.com/msitarzewski/
 |------|------|
 | Niche research + topics | ~$0.80 |
 | 3-pass script + eval | ~$1.80 |
-| **Scene classification (Haiku)** | **~$0.03** |
 | TTS (172 scenes) | ~$0.30 |
-| Images: Fal.ai (~108 × $0.03) | ~$3.24 |
-| Images: Remotion (~64 × $0.00) | $0.00 |
+| Images: Fal.ai Seedream 4.0 (172 × $0.03) | ~$5.16 |
 | Ken Burns + Color Grade | $0.00 |
 | Captions + Assembly | $0.00 |
 | Music + End Card + Thumbnail | ~$0.03 |
 | Platform renders | $0.00 |
-| **Total** | **~$6.17** |
+| **Total** | **~$8.09** |
 
-*Was $8.06 (all Fal.ai). Saving: $1.89/video. Niche-dependent: historical niche may save less.*
-
-### Per-Video Cost (Kinetic Typography)
-
-| Duration | Script | TTS | Music | Total |
-|----------|--------|-----|-------|-------|
-| 5 min | ~$0.05 | ~$0.10 | $0 | ~$0.15 |
-| 15 min | ~$0.15 | ~$0.15 | $0 | ~$0.30 |
-| 2 hours | ~$1.20 | ~$0.30 | $0 | ~$1.50 |
-
-*Compare AI Cinematic 2hr: ~$6.17. Kinetic is 76% cheaper.*
+*All scenes use Fal.ai Seedream 4.0 → FFmpeg Ken Burns. Single visual pipeline, photorealistic only.*
 
 ### Topic Intelligence Per Run: ~$0.13 | Monthly (16 runs): ~$2.08
 ### Engagement (comment sync + analysis): ~$0.02/day via Haiku

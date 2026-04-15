@@ -2,19 +2,19 @@
 # ═══════════════════════════════════════════════════════════════
 # Vision GridAI — Detailed Integration Test Suite (v1.0)
 # Tests actual application flows: webhooks, data pipelines,
-# Supabase CRUD, n8n workflow triggers, Remotion rendering,
+# Supabase CRUD, n8n workflow triggers, caption burn service,
 # dashboard endpoints, auth enforcement, and data integrity.
 #
 # Run from VPS (NOT inside n8n container):
 #   bash integration_test.sh [SUITE]
 #   No args = run all suites
-#   SUITE = auth|webhooks|supabase|classification|remotion|dashboard|pipeline|shorts|data|cleanup
+#   SUITE = auth|webhooks|supabase|dashboard|pipeline|shorts|data|ai
 #
 # Prerequisites:
 #   - .env or env vars: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
 #     DASHBOARD_API_TOKEN, N8N_WEBHOOK_BASE, ANTHROPIC_API_KEY
 #   - n8n running with all workflows active
-#   - Remotion render service on port 3100
+#   - Caption burn service on port 9998
 #   - Dashboard deployed
 # ═══════════════════════════════════════════════════════════════
 
@@ -27,7 +27,6 @@ set -uo pipefail
 SUPABASE_URL="${SUPABASE_URL:-https://supabase.operscale.cloud}"
 N8N_WEBHOOK_BASE="${N8N_WEBHOOK_BASE:-http://localhost:5678/webhook}"
 DASHBOARD_URL="${DASHBOARD_URL:-https://dashboard.operscale.cloud}"
-REMOTION_URL="${REMOTION_URL:-http://localhost:3100}"
 PROJECT_ID="75eb2712-ef3e-47b7-b8db-5be3740233ff"
 TOPIC_ID="224cdff6-5ac2-48d4-b8cb-0eeea9cb878c"
 
@@ -224,39 +223,28 @@ test_supabase() {
   header "Suite 3: Supabase CRUD & Schema Integrity"
 
   subheader "3.1 Table Existence (all 20 tables)"
-  local TABLES="projects topics scenes niche_profiles prompt_configs avatars production_log shorts social_accounts research_runs research_results research_categories scheduled_posts platform_metadata comments music_library renders production_logs remotion_templates"
+  local TABLES="projects topics scenes niche_profiles prompt_configs avatars production_log shorts social_accounts research_runs research_results research_categories scheduled_posts platform_metadata comments music_library renders production_logs"
   for table in $TABLES; do
     code=$(curl -s -o /dev/null -w "%{http_code}" "${SUPABASE_URL}/rest/v1/${table}?select=id&limit=1" \
       -H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" 2>/dev/null)
     [ "$code" = "200" ] && pass "Table: $table" || fail "Table: $table" "HTTP $code"
   done
 
-  subheader "3.2 Schema Fields — Migration 001-005"
+  subheader "3.2 Schema Fields — Migration 001-009"
   # Projects: core + auto-pilot + style_dna
   resp=$(sb_get "projects?select=id,niche,style_dna,auto_pilot_enabled,monthly_budget_usd&limit=1")
   echo "$resp" | grep -q "style_dna" && pass "projects: style_dna field exists" || fail "projects: style_dna" "Missing"
   echo "$resp" | grep -q "auto_pilot_enabled" && pass "projects: auto_pilot fields exist" || fail "projects: auto_pilot" "Missing"
 
-  # Scenes: cinematic + classification
-  resp=$(sb_get "scenes?select=color_mood,zoom_direction,render_method,remotion_template,classification_status&limit=1")
+  # Scenes: cinematic fields only
+  resp=$(sb_get "scenes?select=color_mood,zoom_direction,transition_to_next,pipeline_stage&limit=1")
   echo "$resp" | grep -q "color_mood" && pass "scenes: cinematic fields" || fail "scenes: cinematic" "Missing"
-  echo "$resp" | grep -q "render_method" && pass "scenes: classification fields" || fail "scenes: classification" "Missing"
 
-  # Topics: classification_status
-  resp=$(sb_get "topics?select=classification_status,pipeline_stage&limit=1")
-  echo "$resp" | grep -q "classification_status" && pass "topics: classification_status" || fail "topics: classification_status" "Missing"
+  # Topics: pipeline_stage
+  resp=$(sb_get "topics?select=pipeline_stage&limit=1")
+  echo "$resp" | grep -q "pipeline_stage" && pass "topics: pipeline_stage" || fail "topics: pipeline_stage" "Missing"
 
-  subheader "3.3 Remotion Templates (12 seeded)"
-  count=$(sb_get "remotion_templates?select=template_key" | grep -o "template_key" | wc -l)
-  [ "$count" -ge 12 ] && pass "remotion_templates: $count templates seeded" || fail "remotion_templates" "Only $count (need 12)"
-
-  # Verify each template has valid props_schema
-  for tmpl in stat_callout comparison_layout bar_chart; do
-    resp=$(sb_get "remotion_templates?template_key=eq.$tmpl&select=props_schema")
-    echo "$resp" | grep -q "properties" && pass "Template $tmpl has valid props_schema" || fail "Template $tmpl" "Missing props_schema"
-  done
-
-  subheader "3.4 CRUD Operations"
+  subheader "3.3 CRUD Operations"
   # Insert into production_logs
   result=$(sb_post "production_logs" '{"stage":"integration_crud","action":"insert_test","status":"completed"}')
   LOG_ID=$(echo "$result" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
@@ -277,7 +265,7 @@ test_supabase() {
     echo "$deleted" | grep -q "$LOG_ID" && fail "DELETE production_logs" "Record still exists" || pass "DELETE production_logs"
   fi
 
-  subheader "3.5 Foreign Key Integrity"
+  subheader "3.4 Foreign Key Integrity"
   # Topics belong to project
   topic_proj=$(sb_get "topics?id=eq.$TOPIC_ID&select=project_id")
   echo "$topic_proj" | grep -q "$PROJECT_ID" && pass "FK: topic → project" || skip "FK: topic → project" "Topic not found"
@@ -292,175 +280,10 @@ test_supabase() {
 }
 
 # ═══════════════════════════════════════════════════════════════
-# SUITE 4: Scene Classification (AI + Database)
-# ═══════════════════════════════════════════════════════════════
-test_classification() {
-  header "Suite 4: Scene Classification (AI)"
-
-  if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
-    skip "Classification tests" "ANTHROPIC_API_KEY not set"
-    return
-  fi
-
-  subheader "4.1 Classification Prompt Accuracy"
-  # 5 test scenes: 2 should be fal_ai, 3 should be remotion
-  PROMPT='You are a video production visual classifier. For each scene, classify as "fal_ai" (photorealistic) or "remotion" (data graphic). Rules: specific numbers/prices → remotion. Mood imagery → fal_ai. When in doubt → fal_ai. For remotion scenes, select template from: stat_callout, comparison_layout, bar_chart, percentage_ring, before_after.
-
-SCENES: [
-  {"scene_number":1,"narration":"Maria walks into her small restaurant at dawn, the neon sign flickering.","image_prompt_subject":"woman entering restaurant at dawn"},
-  {"scene_number":2,"narration":"Card processing fees hit $172 billion in 2023.","image_prompt_subject":"$172 billion bar chart"},
-  {"scene_number":3,"narration":"Storm clouds gather over the financial district as regulators prepare their case.","image_prompt_subject":"storm clouds over city"},
-  {"scene_number":4,"narration":"The approval rate for premium cards is 73% among high-income applicants.","image_prompt_subject":"approval rate percentage"},
-  {"scene_number":5,"narration":"Before the settlement: $11.2 billion. After: $7.25 billion in reduced fees.","image_prompt_subject":"before after fee comparison"}
-]
-
-OUTPUT: JSON array [{scene_number,render_method,reasoning,remotion_template,data_payload}]. RESPOND ONLY WITH JSON.'
-
-  resp=$(curl -s -m 60 "https://api.anthropic.com/v1/messages" \
-    -H "x-api-key: ${ANTHROPIC_API_KEY}" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
-    -d "$(printf '{"model":"claude-haiku-4-5-20251001","max_tokens":2048,"temperature":0.2,"messages":[{"role":"user","content":"%s"}]}' "$(echo "$PROMPT" | sed 's/"/\\"/g' | tr '\n' ' ')")" 2>/dev/null)
-
-  if echo "$resp" | grep -q "content"; then
-    # Extract the text content
-    text=$(echo "$resp" | grep -o '"text":"[^"]*' | head -1 | sed 's/"text":"//')
-
-    # Scene 1: person at restaurant → fal_ai
-    echo "$resp" | grep -q "fal_ai" && pass "Scene 1 (restaurant) → fal_ai" || fail "Scene 1 classification" "Expected fal_ai"
-
-    # Scene 2: $172B → remotion
-    echo "$resp" | grep -q "remotion" && pass "Scene 2 (172B) → remotion" || fail "Scene 2" "Expected remotion"
-
-    # Scene 3+: mix of fal_ai and remotion
-    fal_count=$(echo "$resp" | grep -o "fal_ai" | wc -l)
-    rem_count=$(echo "$resp" | grep -o "remotion" | wc -l)
-    [ "$fal_count" -ge 2 ] && pass "At least 2 scenes classified as fal_ai ($fal_count)" || fail "fal_ai count" "Only $fal_count"
-    [ "$rem_count" -ge 2 ] && pass "At least 2 scenes classified as remotion ($rem_count)" || fail "remotion count" "Only $rem_count"
-
-    # Check remotion scenes have templates
-    echo "$resp" | grep -q "remotion_template" && pass "Remotion scenes have template assignment" || fail "Template assignment" "Missing"
-
-    # Check data_payload present for remotion scenes
-    echo "$resp" | grep -q "data_payload" && pass "Remotion scenes have data_payload" || fail "data_payload" "Missing"
-
-    pass "Classification prompt produces structured response"
-  else
-    fail "Classification API call" "No response"
-  fi
-
-  subheader "4.2 Classification Webhook"
-  code=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -X POST "${N8N_WEBHOOK_BASE}/classify-scenes" \
-    -H "Authorization: Bearer ${DASHBOARD_API_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{\"topic_id\":\"$TOPIC_ID\"}" 2>/dev/null)
-  [ "$code" = "200" ] || [ "$code" = "202" ] && pass "classify-scenes webhook accepts request (HTTP $code)" \
-    || fail "classify-scenes webhook" "HTTP $code"
-
-  subheader "4.3 Classification Fields Writable"
-  # Test we can write classification data to a scene
-  SCENE_ID=$(sb_get "scenes?topic_id=eq.$TOPIC_ID&select=id&limit=1" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-  if [ -n "$SCENE_ID" ]; then
-    resp=$(sb_patch "scenes?id=eq.$SCENE_ID" '{"render_method":"fal_ai","classification_status":"classified","classification_reasoning":"Integration test"}')
-    echo "$resp" | grep -q "classified" && pass "Scene classification fields writable" || fail "Scene classification write" "Update failed"
-    # Reset
-    sb_patch "scenes?id=eq.$SCENE_ID" '{"classification_status":"pending","classification_reasoning":null}' &>/dev/null
-  else
-    skip "Classification write test" "No scene found"
-  fi
-}
-
-# ═══════════════════════════════════════════════════════════════
-# SUITE 5: Remotion Render Service
-# ═══════════════════════════════════════════════════════════════
-test_remotion() {
-  header "Suite 5: Remotion Render Service"
-
-  subheader "5.1 Health Check"
-  health=$(curl -s -m 10 "$REMOTION_URL/health" 2>/dev/null)
-  if echo "$health" | grep -q '"status":"ok"'; then
-    count=$(echo "$health" | grep -o '"templates_loaded":[0-9]*' | cut -d: -f2)
-    pass "Render service healthy ($count templates)"
-  else
-    skip "Remotion render tests" "Service not running at $REMOTION_URL"
-    return
-  fi
-
-  subheader "5.2 Template Rendering (all 12)"
-  # Test each template with minimal valid data
-  declare -A TEMPLATE_DATA
-  TEMPLATE_DATA[stat_callout]='{"primary_value":"99%","label":"Test"}'
-  TEMPLATE_DATA[comparison_layout]='{"left":{"title":"A","subtitle":"$10","features":[]},"right":{"title":"B","subtitle":"$20","features":[]}}'
-  TEMPLATE_DATA[bar_chart]='{"chart_title":"Test","bars":[{"label":"X","value":80,"display_value":"80%"}]}'
-  TEMPLATE_DATA[timeline_graphic]='{"events":[{"date":"2023","label":"Start"},{"date":"2024","label":"End"}]}'
-  TEMPLATE_DATA[quote_card]='{"quote":"Test quote","author":"Author"}'
-  TEMPLATE_DATA[list_breakdown]='{"title":"List","items":[{"text":"Item 1"}]}'
-  TEMPLATE_DATA[chapter_title]='{"chapter_number":1,"chapter_title":"Test Chapter"}'
-  TEMPLATE_DATA[data_table]='{"headers":["A","B"],"rows":[["1","2"]]}'
-  TEMPLATE_DATA[before_after]='{"before":{"value":"Old","label":"Before","mood":"negative"},"after":{"value":"New","label":"After","mood":"positive"}}'
-  TEMPLATE_DATA[percentage_ring]='{"percentage":75,"label":"Complete"}'
-  TEMPLATE_DATA[map_visual]='{"regions":[{"name":"US","value":"300M","highlight":true}]}'
-  TEMPLATE_DATA[metric_highlight]='{"metrics":[{"value":"42","label":"Answer","trend":"up"}]}'
-
-  for tmpl in stat_callout comparison_layout bar_chart timeline_graphic quote_card list_breakdown chapter_title data_table before_after percentage_ring map_visual metric_highlight; do
-    data="${TEMPLATE_DATA[$tmpl]}"
-    resp=$(curl -s -m 30 -X POST "$REMOTION_URL/render" \
-      -H "Content-Type: application/json" \
-      -d "{\"template_key\":\"$tmpl\",\"data_payload\":$data,\"color_mood\":\"cool_neutral\",\"format\":\"long\",\"output_path\":\"/tmp/renders/test_${tmpl}.png\"}" 2>/dev/null)
-    if echo "$resp" | grep -q '"success":true'; then
-      rtime=$(echo "$resp" | grep -o '"render_time_ms":[0-9]*' | cut -d: -f2)
-      pass "Render: $tmpl (${rtime}ms)"
-    else
-      err=$(echo "$resp" | grep -o '"error":"[^"]*"' | head -1)
-      fail "Render: $tmpl" "$err"
-    fi
-  done
-
-  subheader "5.3 Color Mood Variants"
-  for mood in cold_desat warm_gold dark_mono full_natural muted_selective warm_sepia cool_neutral; do
-    resp=$(curl -s -m 30 -X POST "$REMOTION_URL/render" \
-      -H "Content-Type: application/json" \
-      -d "{\"template_key\":\"stat_callout\",\"data_payload\":{\"primary_value\":\"42\",\"label\":\"$mood\"},\"color_mood\":\"$mood\",\"format\":\"long\",\"output_path\":\"/tmp/renders/mood_${mood}.png\"}" 2>/dev/null)
-    echo "$resp" | grep -q '"success":true' && pass "Mood: $mood" || fail "Mood: $mood" "Render failed"
-  done
-
-  subheader "5.4 Format Variants"
-  for fmt in long short; do
-    resp=$(curl -s -m 30 -X POST "$REMOTION_URL/render" \
-      -H "Content-Type: application/json" \
-      -d "{\"template_key\":\"stat_callout\",\"data_payload\":{\"primary_value\":\"100\",\"label\":\"Format\"},\"color_mood\":\"cool_neutral\",\"format\":\"$fmt\",\"output_path\":\"/tmp/renders/fmt_${fmt}.png\"}" 2>/dev/null)
-    echo "$resp" | grep -q '"success":true' && pass "Format: $fmt" || fail "Format: $fmt" "Render failed"
-  done
-
-  subheader "5.5 Preview Endpoint"
-  resp=$(curl -s -m 30 -X POST "$REMOTION_URL/preview" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"chapter_title","data_payload":{"chapter_number":1,"chapter_title":"Preview Test"},"color_mood":"warm_gold","format":"long"}' 2>/dev/null)
-  echo "$resp" | grep -q "preview_url" && pass "Preview endpoint returns URL" || fail "Preview endpoint" "No preview_url"
-
-  subheader "5.6 Error Handling"
-  # Invalid template
-  code=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -X POST "$REMOTION_URL/render" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"nonexistent","data_payload":{}}' 2>/dev/null)
-  [ "$code" = "400" ] && pass "Invalid template → 400" || fail "Invalid template rejection" "HTTP $code"
-
-  # Missing data_payload
-  code=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -X POST "$REMOTION_URL/render" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"stat_callout"}' 2>/dev/null)
-  [ "$code" = "400" ] && pass "Missing data_payload → 400" || fail "Missing data_payload rejection" "HTTP $code"
-
-  # Empty body
-  code=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -X POST "$REMOTION_URL/render" \
-    -H "Content-Type: application/json" \
-    -d '{}' 2>/dev/null)
-  [ "$code" = "400" ] && pass "Empty body → 400" || fail "Empty body rejection" "HTTP $code"
-}
-
-# ═══════════════════════════════════════════════════════════════
-# SUITE 6: Dashboard
+# SUITE 4: Dashboard
 # ═══════════════════════════════════════════════════════════════
 test_dashboard() {
-  header "Suite 6: Dashboard"
+  header "Suite 4: Dashboard"
 
   subheader "6.1 Page Loading"
   # Index
@@ -516,10 +339,10 @@ test_dashboard() {
 }
 
 # ═══════════════════════════════════════════════════════════════
-# SUITE 7: Production Pipeline Data Flow
+# SUITE 5: Production Pipeline Data Flow
 # ═══════════════════════════════════════════════════════════════
 test_pipeline() {
-  header "Suite 7: Production Pipeline Data Flow"
+  header "Suite 5: Production Pipeline Data Flow"
 
   subheader "7.1 Project Data Completeness"
   proj=$(sb_get "projects?id=eq.$PROJECT_ID&select=id,name,niche,style_dna,niche_system_prompt,niche_expertise_profile,playlist1_name,status")
@@ -570,10 +393,10 @@ test_pipeline() {
 }
 
 # ═══════════════════════════════════════════════════════════════
-# SUITE 8: Shorts Pipeline
+# SUITE 6: Shorts Pipeline
 # ═══════════════════════════════════════════════════════════════
 test_shorts() {
-  header "Suite 8: Shorts Pipeline"
+  header "Suite 6: Shorts Pipeline"
 
   subheader "8.1 Shorts Analysis Data"
   shorts_count=$(sb_get "shorts?topic_id=eq.$TOPIC_ID&select=id" | grep -o '"id"' | wc -l)
@@ -626,10 +449,10 @@ test_shorts() {
 }
 
 # ═══════════════════════════════════════════════════════════════
-# SUITE 9: Data Integrity & Consistency
+# SUITE 7: Data Integrity & Consistency
 # ═══════════════════════════════════════════════════════════════
 test_data_integrity() {
-  header "Suite 9: Data Integrity & Consistency"
+  header "Suite 7: Data Integrity & Consistency"
 
   subheader "9.1 Project-Topic Consistency"
   topic_count=$(sb_get "topics?project_id=eq.$PROJECT_ID&select=id" | grep -o '"id"' | wc -l)
@@ -687,10 +510,10 @@ test_data_integrity() {
 }
 
 # ═══════════════════════════════════════════════════════════════
-# SUITE 10: AI API Integration
+# SUITE 8: AI API Integration
 # ═══════════════════════════════════════════════════════════════
 test_ai() {
-  header "Suite 10: AI API Integration"
+  header "Suite 8: AI API Integration"
 
   if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
     skip "AI API tests" "ANTHROPIC_API_KEY not set"
@@ -734,8 +557,6 @@ case "$SUITE" in
     test_auth
     test_webhooks
     test_supabase
-    test_classification
-    test_remotion
     test_dashboard
     test_pipeline
     test_shorts
@@ -745,8 +566,6 @@ case "$SUITE" in
   auth)           test_auth ;;
   webhooks)       test_webhooks ;;
   supabase)       test_supabase ;;
-  classification) test_classification ;;
-  remotion)       test_remotion ;;
   dashboard)      test_dashboard ;;
   pipeline)       test_pipeline ;;
   shorts)         test_shorts ;;
@@ -754,7 +573,7 @@ case "$SUITE" in
   ai)             test_ai ;;
   *)
     echo "Unknown suite: $SUITE"
-    echo "Available: all|auth|webhooks|supabase|classification|remotion|dashboard|pipeline|shorts|data|ai"
+    echo "Available: all|auth|webhooks|supabase|dashboard|pipeline|shorts|data|ai"
     ;;
 esac
 

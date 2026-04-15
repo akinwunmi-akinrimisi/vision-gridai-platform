@@ -33,9 +33,8 @@ function getStageState(key, stageProgress) {
 }
 
 /**
- * StageProgress: 7-stage horizontal progress bar showing Classify, Audio, Images, I2V, T2V, Captions, Assembly.
+ * StageProgress: 4-stage horizontal progress bar showing Audio, Images, Captions, Assembly.
  * Each stage has a thin progress bar, icon, label, and count.
- * Classification stage shows Fal.ai/Remotion split counts when complete.
  */
 export default function StageProgress({ stageProgress }) {
   return (

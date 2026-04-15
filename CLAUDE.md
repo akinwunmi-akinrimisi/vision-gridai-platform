@@ -237,7 +237,7 @@ Quality commands (gstack selective):
 | Phase 5 | Publish | Video preview + Gate 3 + YouTube upload + Analytics |
 | Phase 6 | Polish | Cost tracker + Settings page + Supervisor agent + Mobile |
 | **v3.0 Milestone** | | |
-| Phase 7 | Shorts Foundation | `shorts` + `social_accounts` tables + Shorts Creator pages + Remotion setup |
+| Phase 7 | Shorts Foundation | `shorts` + `social_accounts` tables + Shorts Creator pages |
 | Phase 8 | Shorts Pipeline | Viral analysis + audio + images + video + captions + assembly workflows |
 | Phase 9 | Social Media | Social Media Publisher page + posting workflows + analytics pull |
 

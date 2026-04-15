@@ -34,11 +34,10 @@ Starts **after** a long-form topic is published.
 | **3** | Narration Rewrite | ⚡ Agentic | — | (part of analyze) | Rewrite narration for punchy short-form pacing + rewrite image prompts for 9:16 TikTok-bold aesthetic |
 | **4** | TTS Audio (Fresh) | Deterministic | — | WF_SHORTS_PRODUCE | Fresh Google Cloud TTS for rewritten narration (NOT reused from long-form) |
 | **5** | 9:16 Image Generation | Deterministic | — | WF_SHORTS_PRODUCE | Fal.ai Seedream 4.0 portrait_9_16 images with TikTok-bold style |
-| **6** | 9:16 I2V Video Generation | Deterministic | — | WF_SHORTS_PRODUCE | Fal.ai Wan 2.5 aspect_ratio 9:16 image-to-video |
-| **7** | 9:16 T2V Video Generation | Deterministic | — | WF_SHORTS_PRODUCE | Fal.ai Wan 2.5 aspect_ratio 9:16 text-to-video |
-| **8** | Kinetic Captions | Deterministic | — | WF_SHORTS_PRODUCE | Remotion renders word-by-word pop-in overlays (center screen, emphasis words in yellow/red) |
-| **9** | FFmpeg Assembly | Deterministic | — | WF_SHORTS_PRODUCE | Composite Remotion caption overlay onto video clips → final 9:16 portrait video |
-| **10** | Social Publishing | Dashboard/Cron | — | WF_SOCIAL_POST | Post to TikTok + Instagram Reels + YouTube Shorts (immediate or scheduled with peak-hour stagger) |
+| **6** | Ken Burns Motion + Color Grade | Deterministic | — | WF_SHORTS_PRODUCE | FFmpeg zoompan per scene (9:16 aspect) + mood-driven color grade — replaces I2V/T2V |
+| **7** | Kinetic ASS Captions | Deterministic | — | WF_SHORTS_PRODUCE | Whisper forced alignment → generate_kinetic_ass.py builds word-by-word pop-in ASS subtitle (center screen, emphasis words in yellow/red) |
+| **8** | FFmpeg Assembly + Caption Burn | Deterministic | — | WF_SHORTS_PRODUCE → caption burn service (:9998) | Concat clips → loudnorm → FFmpeg libass burn via `docker exec` (host-side, bypasses n8n OOM) → re-upload via WF_DRIVE_UPLOAD |
+| **9** | Social Publishing | Dashboard/Cron | — | WF_SOCIAL_POST | Post to TikTok + Instagram Reels + YouTube Shorts (immediate or scheduled with peak-hour stagger) |
 
 **Post-publish:** WF_SOCIAL_ANALYTICS pulls engagement metrics daily from all 3 platforms.
 
@@ -48,9 +47,9 @@ Starts **after** a long-form topic is published.
 
 | | Long-Form | Short-Form |
 |---|---|---|
-| **Total stages** | 14 | 10 |
+| **Total stages** | 14 | 9 |
 | **Approval gates** | 3 (Topics, Script, Video) | 1 (Viral clips) |
-| **Cost per unit** | ~$28/video | ~$22/topic (20 clips) |
+| **Cost per unit** | ~$8.09/video | ~$3.42/topic (20 clips) |
 | **Aspect ratio** | 16:9 | 9:16 (native, not cropped) |
-| **Captions** | SRT + FFmpeg burn-in | Remotion kinetic (word-by-word pop-in) |
+| **Captions** | Kinetic ASS + FFmpeg libass (caption burn service :9998) | Kinetic ASS + FFmpeg libass (same service) |
 | **Audio** | Original TTS | Fresh TTS with rewritten narration |

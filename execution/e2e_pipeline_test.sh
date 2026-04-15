@@ -1,12 +1,12 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Vision GridAI — End-to-End Pipeline Test (v5.0 — Remotion Hybrid)
+# Vision GridAI — End-to-End Pipeline Test (v5.1 — AI Cinematic only)
 # Tests every stage: infrastructure, database, FFmpeg, AI, workflows,
-# Remotion rendering, scene classification, webhooks, dashboard, data integrity
+# webhooks, dashboard, data integrity
 #
 # Usage: bash e2e_pipeline_test.sh [STAGE]
-#   No args = run all 17 stages
-#   STAGE = infra|supabase|kenburns|color|transitions|platform|endcard|api|n8n|full|remotion|classify|webhooks|dashboard|realtime|integrity|production
+#   No args = run all 15 stages
+#   STAGE = infra|supabase|kenburns|color|transitions|platform|endcard|api|n8n|full|webhooks|dashboard|realtime|integrity|production
 # ═══════════════════════════════════════════════════════════════
 
 set -uo pipefail
@@ -126,7 +126,7 @@ test_infrastructure() {
 test_supabase() {
   header "Stage 2: Supabase Tables & Schema"
 
-  local TABLES="projects topics scenes niche_profiles prompt_configs avatars production_log shorts social_accounts research_runs research_results research_categories scheduled_posts platform_metadata comments music_library renders production_logs remotion_templates"
+  local TABLES="projects topics scenes niche_profiles prompt_configs avatars production_log shorts social_accounts research_runs research_results research_categories scheduled_posts platform_metadata comments music_library renders production_logs"
 
   for table in $TABLES; do
     code=$(curl -s -o /dev/null -w "%{http_code}" "${SUPABASE_URL}/rest/v1/${table}?select=id&limit=1" \
@@ -151,24 +151,6 @@ test_supabase() {
   else
     fail "Auto-pilot fields on projects" "Fields missing — run migration 004"
   fi
-
-  # Remotion templates seeded
-  rt_count=$(curl -s "${SUPABASE_URL}/rest/v1/remotion_templates?select=template_key" \
-    -H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" 2>/dev/null)
-  count=$(echo "$rt_count" | grep -o "template_key" | wc -l)
-  [ "$count" -ge 12 ] && pass "remotion_templates seeded ($count templates)" || fail "remotion_templates" "Only $count templates (need 12)"
-
-  # Classification fields on scenes
-  resp=$(curl -s "${SUPABASE_URL}/rest/v1/scenes?select=render_method,remotion_template,data_payload,classification_reasoning,classification_status&limit=1" \
-    -H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" 2>/dev/null)
-  echo "$resp" | grep -q "render_method" && pass "Classification fields on scenes (render_method, remotion_template, etc.)" \
-    || fail "Classification fields on scenes" "Missing — run migration 005"
-
-  # Classification status on topics
-  resp=$(curl -s "${SUPABASE_URL}/rest/v1/topics?select=classification_status&limit=1" \
-    -H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" 2>/dev/null)
-  echo "$resp" | grep -q "classification_status" && pass "Classification status on topics" \
-    || fail "Classification status on topics" "Missing — run migration 005"
 
   # style_dna populated
   resp=$(curl -s "${SUPABASE_URL}/rest/v1/projects?id=eq.75eb2712-ef3e-47b7-b8db-5be3740233ff&select=style_dna" \
@@ -371,7 +353,7 @@ test_api_calls() {
 test_n8n_workflows() {
   header "Stage 9: n8n Workflow Status"
 
-  local ACTIVE_EXPECTED="WF_IMAGE_GENERATION WF_TTS_AUDIO WF_CAPTIONS_ASSEMBLY WF_WEBHOOK_PRODUCTION WF_SCRIPT_GENERATE WF_THUMBNAIL_GENERATE WF_SCENE_CLASSIFY WF_REMOTION_RENDER WF_SOCIAL_POSTER WF_SOCIAL_ANALYTICS WF_RESEARCH_ORCHESTRATOR WF_ANALYTICS_CRON"
+  local ACTIVE_EXPECTED="WF_IMAGE_GENERATION WF_TTS_AUDIO WF_CAPTIONS_ASSEMBLY WF_WEBHOOK_PRODUCTION WF_SCRIPT_GENERATE WF_THUMBNAIL_GENERATE WF_SOCIAL_POSTER WF_SOCIAL_ANALYTICS WF_RESEARCH_ORCHESTRATOR WF_ANALYTICS_CRON"
 
   # Use n8n CLI (works inside container without API key)
   all_wfs=$(n8n list:workflow 2>/dev/null)
@@ -485,113 +467,9 @@ test_full_pipeline() {
   fi
 }
 
-# ─── STAGE 11: REMOTION RENDER SERVICE ───────────────────────
-test_remotion_service() {
-  header "Stage 11: Remotion Render Service"
-
-  # Health check
-  code=$(curl -s -o /tmp/remo_health.json -w "%{http_code}" "http://localhost:3100/health" 2>/dev/null || echo "000")
-  if [ "$code" = "200" ]; then
-    templates=$(cat /tmp/remo_health.json | grep -o '"templates_loaded":[0-9]*' | cut -d: -f2)
-    pass "Remotion render service health (HTTP $code, $templates templates)"
-  else
-    skip "Remotion render service" "Not running (HTTP $code) — start with: node dashboard/src/remotion/render-service.js"
-    return
-  fi
-
-  # Test render: stat_callout
-  resp=$(curl -s -o /tmp/remo_render.json -w "%{http_code}" -X POST "http://localhost:3100/render" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"stat_callout","data_payload":{"primary_value":"$4,700","label":"Annual Rewards","trend":"up"},"color_mood":"warm_gold","format":"long"}' 2>/dev/null)
-  if [ "$resp" = "200" ]; then
-    file=$(cat /tmp/remo_render.json | grep -o '"file_path":"[^"]*"' | cut -d'"' -f4)
-    rtime=$(cat /tmp/remo_render.json | grep -o '"render_time_ms":[0-9]*' | cut -d: -f2)
-    [ -f "$file" ] && pass "Render: stat_callout (${rtime}ms)" || fail "Render: stat_callout" "File not found: $file"
-  else
-    fail "Render: stat_callout" "HTTP $resp"
-  fi
-
-  # Test render: comparison_layout
-  resp=$(curl -s -o /tmp/remo_render2.json -w "%{http_code}" -X POST "http://localhost:3100/render" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"comparison_layout","data_payload":{"left":{"title":"Card A","subtitle":"$95/yr","features":[{"label":"APR","value":"21%","highlight":false}]},"right":{"title":"Card B","subtitle":"$250/yr","features":[{"label":"APR","value":"19%","highlight":true}]},"winner":"right"},"color_mood":"cool_neutral","format":"long"}' 2>/dev/null)
-  [ "$resp" = "200" ] && pass "Render: comparison_layout" || fail "Render: comparison_layout" "HTTP $resp"
-
-  # Test render: bar_chart
-  resp=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:3100/render" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"bar_chart","data_payload":{"chart_title":"Top Cards","bars":[{"label":"Chase","value":85,"display_value":"85%","highlight":true},{"label":"Amex","value":72,"display_value":"72%"}]},"color_mood":"cold_desat","format":"long"}' 2>/dev/null)
-  [ "$resp" = "200" ] && pass "Render: bar_chart" || fail "Render: bar_chart" "HTTP $resp"
-
-  # Test render: percentage_ring (short-form)
-  resp=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:3100/render" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"percentage_ring","data_payload":{"percentage":73,"label":"Approval Rate","sublabel":"Based on 10K applications"},"color_mood":"full_natural","format":"short"}' 2>/dev/null)
-  [ "$resp" = "200" ] && pass "Render: percentage_ring (9:16 short)" || fail "Render: percentage_ring" "HTTP $resp"
-
-  # Test preview endpoint
-  resp=$(curl -s -o /tmp/remo_preview.json -w "%{http_code}" -X POST "http://localhost:3100/preview" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"chapter_title","data_payload":{"chapter_number":1,"chapter_title":"The Hidden Fee","total_chapters":5},"color_mood":"dark_mono","format":"long"}' 2>/dev/null)
-  if [ "$resp" = "200" ]; then
-    preview_url=$(cat /tmp/remo_preview.json | grep -o '"preview_url":"[^"]*"' | cut -d'"' -f4)
-    pass "Preview: chapter_title → $preview_url"
-  else
-    fail "Preview: chapter_title" "HTTP $resp"
-  fi
-
-  # Test invalid template
-  resp=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:3100/render" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"nonexistent","data_payload":{}}' 2>/dev/null)
-  [ "$resp" = "400" ] && pass "Invalid template rejected (HTTP 400)" || fail "Invalid template rejection" "Expected 400, got $resp"
-
-  # Test missing data_payload
-  resp=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:3100/render" \
-    -H "Content-Type: application/json" \
-    -d '{"template_key":"stat_callout"}' 2>/dev/null)
-  [ "$resp" = "400" ] && pass "Missing data_payload rejected (HTTP 400)" || fail "Missing data_payload rejection" "Expected 400, got $resp"
-}
-
-# ─── STAGE 12: SCENE CLASSIFICATION (AI) ────────────────────
-test_scene_classification() {
-  header "Stage 12: Scene Classification (AI)"
-
-  if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
-    skip "Scene classification tests" "ANTHROPIC_API_KEY not set"
-    return
-  fi
-
-  # Test the classification prompt with a small batch of scenes
-  SCENES='[{"scene_number":1,"narration":"Meet Marcus. He is 34 years old, a software engineer.","image_prompt_subject":"young professional at desk","composition_prefix":"medium_closeup","b_roll_insert":null},{"scene_number":2,"narration":"The Chase Sapphire Preferred costs 95 dollars per year with a 60000 point welcome bonus.","image_prompt_subject":"credit card comparison","composition_prefix":"wide_establishing","b_roll_insert":null},{"scene_number":3,"narration":"He spent exactly 4700 dollars in dining last year.","image_prompt_subject":"spending chart","composition_prefix":"wide_establishing","b_roll_insert":null}]'
-
-  PROMPT="You are a video production visual classifier. For each scene, determine if the visual should be fal_ai (photorealistic) or remotion (data graphic). If remotion, select a template from: stat_callout, comparison_layout, bar_chart, timeline_graphic, quote_card, list_breakdown, chapter_title, data_table, before_after, percentage_ring, map_visual, metric_highlight. Rules: specific numbers/prices → remotion. Mood imagery → fal_ai. When in doubt → fal_ai. SCENES: $SCENES. OUTPUT: JSON array [{scene_number, render_method, reasoning, remotion_template, data_payload}]. RESPOND ONLY WITH JSON."
-
-  resp=$(curl -s "https://api.anthropic.com/v1/messages" \
-    -H "x-api-key: ${ANTHROPIC_API_KEY}" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
-    -d "$(printf '{"model":"claude-haiku-4-5-20251001","max_tokens":2048,"temperature":0.2,"messages":[{"role":"user","content":"%s"}]}' "$(echo "$PROMPT" | sed 's/"/\\"/g')")" 2>/dev/null)
-
-  if echo "$resp" | grep -q "content"; then
-    text=$(echo "$resp" | grep -o '"text":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
-
-    # Check scene 1 classified as fal_ai (person at desk)
-    echo "$resp" | grep -q "fal_ai" && pass "Scene 1 classified as fal_ai (human subject)" || fail "Scene 1 classification" "Expected fal_ai"
-
-    # Check scene 2 or 3 classified as remotion (has specific numbers)
-    echo "$resp" | grep -q "remotion" && pass "Scene 2/3 classified as remotion (specific numbers)" || fail "Scene 2/3 classification" "Expected some remotion scenes"
-
-    # Check it returned valid JSON with render_method
-    echo "$resp" | grep -q "render_method" && pass "Classification response has render_method field" || fail "Classification response" "Missing render_method"
-
-    pass "Classification prompt produces valid response"
-  else
-    fail "Classification API call" "$(echo "$resp" | head -c 200)"
-  fi
-}
-
-# ─── STAGE 13: WEBHOOK ENDPOINTS ────────────────────────────
+# ─── STAGE 11: WEBHOOK ENDPOINTS ────────────────────────────
 test_webhook_endpoints() {
-  header "Stage 13: Webhook Endpoints"
+  header "Stage 11: Webhook Endpoints"
 
   WEBHOOK_BASE="${N8N_WEBHOOK_BASE:-http://localhost:5678/webhook}"
   AUTH_HEADER="Authorization: Bearer ${DASHBOARD_API_TOKEN:-}"
@@ -642,9 +520,9 @@ test_webhook_endpoints() {
     || skip "Auth rejection test" "HTTP $code (may not enforce auth on test endpoint)"
 }
 
-# ─── STAGE 14: DASHBOARD DEPLOYMENT ─────────────────────────
+# ─── STAGE 12: DASHBOARD DEPLOYMENT ─────────────────────────
 test_dashboard() {
-  header "Stage 14: Dashboard Deployment"
+  header "Stage 12: Dashboard Deployment"
 
   DASH_URL="${DASHBOARD_URL:-https://dashboard.operscale.cloud}"
 
@@ -676,9 +554,9 @@ test_dashboard() {
     || fail "Webhook proxy" "HTTP $code"
 }
 
-# ─── STAGE 15: SUPABASE REALTIME ────────────────────────────
+# ─── STAGE 13: SUPABASE REALTIME ────────────────────────────
 test_realtime() {
-  header "Stage 15: Supabase Realtime"
+  header "Stage 13: Supabase Realtime"
 
   # Check REPLICA IDENTITY FULL on key tables (assumed — can't verify via REST)
   for table in scenes topics projects shorts; do
@@ -702,9 +580,9 @@ test_realtime() {
     -H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" &>/dev/null
 }
 
-# ─── STAGE 16: DATA INTEGRITY ───────────────────────────────
+# ─── STAGE 14: DATA INTEGRITY ───────────────────────────────
 test_data_integrity() {
-  header "Stage 16: Data Integrity"
+  header "Stage 14: Data Integrity"
 
   # Check project exists
   resp=$(curl -s "${SUPABASE_URL}/rest/v1/projects?id=eq.75eb2712-ef3e-47b7-b8db-5be3740233ff&select=id,name,niche,style_dna,status" \
@@ -732,22 +610,15 @@ test_data_integrity() {
     -H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" 2>/dev/null | grep -o '"id"' | wc -l)
   [ "$np_count" -gt 0 ] && pass "Niche profile exists" || skip "Niche profile" "None found"
 
-  # All 12 Remotion template keys present
-  for tmpl in stat_callout comparison_layout bar_chart timeline_graphic quote_card list_breakdown chapter_title data_table before_after percentage_ring map_visual metric_highlight; do
-    resp=$(curl -s "${SUPABASE_URL}/rest/v1/remotion_templates?template_key=eq.$tmpl&select=template_key,display_name" \
-      -H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" 2>/dev/null)
-    echo "$resp" | grep -q "$tmpl" && pass "Template: $tmpl" || fail "Template: $tmpl" "Not found in remotion_templates"
-  done
-
   # Check Google Drive folder IDs set
   resp=$(curl -s "${SUPABASE_URL}/rest/v1/projects?id=eq.75eb2712-ef3e-47b7-b8db-5be3740233ff&select=drive_root_folder_id,drive_assets_folder_id" \
     -H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" 2>/dev/null)
   echo "$resp" | grep -q "drive_root_folder_id" && pass "Drive folder IDs configured" || skip "Drive folder IDs" "Not set"
 }
 
-# ─── STAGE 17: PRODUCTION WORKFLOW READINESS ─────────────────
+# ─── STAGE 15: PRODUCTION WORKFLOW READINESS ─────────────────
 test_production_workflows() {
-  header "Stage 17: Production Workflow Readiness"
+  header "Stage 15: Production Workflow Readiness"
 
   # Check Vertex AI / Lyria availability (for WF_MUSIC_GENERATE)
   [ -n "${GCP_PROJECT:-}" ] && pass "GCP_PROJECT set ($GCP_PROJECT)" || skip "GCP_PROJECT" "Not set — Lyria music gen unavailable"
@@ -765,24 +636,14 @@ test_production_workflows() {
   [ -n "${TIKTOK_ACCESS_TOKEN:-}" ] && pass "TIKTOK_ACCESS_TOKEN set" || skip "TIKTOK_ACCESS_TOKEN" "Not set — social posting unavailable"
   [ -n "${INSTAGRAM_ACCESS_TOKEN:-}" ] && pass "INSTAGRAM_ACCESS_TOKEN set" || skip "INSTAGRAM_ACCESS_TOKEN" "Not set — social posting unavailable"
 
-  # Check Remotion packages installed
-  if [ -d "dashboard/node_modules/remotion" ] || [ -d "node_modules/remotion" ]; then
-    pass "Remotion npm package installed"
-  else
-    skip "Remotion npm package" "Not installed — run: cd dashboard && npm install remotion @remotion/cli @remotion/renderer @remotion/bundler"
-  fi
-
-  # Check Chrome/Chromium for Remotion rendering
-  if command -v chromium-browser &>/dev/null || command -v google-chrome &>/dev/null || command -v chromium &>/dev/null; then
-    pass "Chrome/Chromium available for Remotion"
-  else
-    skip "Chrome/Chromium" "Not found — needed for Remotion rendering"
-  fi
+  # Check caption burn service (host-side, :9998)
+  code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:9998/health" 2>/dev/null || echo "000")
+  [ "$code" = "200" ] && pass "Caption burn service reachable on :9998" || skip "Caption burn service" "Not reachable (HTTP $code)"
 }
 
 # ─── RUN STAGES ───────────────────────────────────────────────
 echo -e "\n${CYAN}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║  Vision GridAI — E2E Pipeline Test (v5.0)        ║${NC}"
+echo -e "${CYAN}║  Vision GridAI — E2E Pipeline Test (v5.1)        ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
 echo "  Stage: ${STAGE}"
@@ -801,8 +662,6 @@ case "$STAGE" in
     test_api_calls
     test_n8n_workflows
     test_full_pipeline
-    test_remotion_service
-    test_scene_classification
     test_webhook_endpoints
     test_dashboard
     test_realtime
@@ -820,8 +679,6 @@ case "$STAGE" in
   api)         test_api_calls ;;
   n8n)         test_n8n_workflows ;;
   full)        test_full_pipeline ;;
-  remotion)    test_remotion_service ;;
-  classify)    test_scene_classification ;;
   webhooks)    test_webhook_endpoints ;;
   dashboard)   test_dashboard ;;
   realtime)    test_realtime ;;
@@ -830,7 +687,7 @@ case "$STAGE" in
   captions)    echo "Caption tests require real word timing data — run with 'full' stage" ;;
   *)
     echo "Unknown stage: $STAGE"
-    echo "Available: all|infra|supabase|kenburns|color|transitions|platform|endcard|api|n8n|full|remotion|classify|webhooks|dashboard|realtime|integrity|production"
+    echo "Available: all|infra|supabase|kenburns|color|transitions|platform|endcard|api|n8n|full|webhooks|dashboard|realtime|integrity|production"
     ;;
 esac
 

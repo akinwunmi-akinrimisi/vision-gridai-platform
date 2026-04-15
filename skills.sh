@@ -435,26 +435,6 @@ echo "    /review   — Full code review before marking phase complete"
 echo "  DO NOT use gstack planning commands (/plan, /architect, /design)."
 echo "  Superpowers handles all planning."
 
-# ─── 4f. INSTALL REMOTION (KINETIC CAPTIONS) ────────────────
-
-echo ""
-echo "▶ Installing Remotion (kinetic caption renderer for shorts)..."
-
-if command -v npm &> /dev/null; then
-  # Check if remotion is already in dashboard dependencies
-  if [ -f "dashboard/package.json" ] && grep -q "remotion" dashboard/package.json 2>/dev/null; then
-    echo "  ⏭️  Remotion already in dashboard/package.json"
-  else
-    echo "  Remotion will be added to dashboard/package.json when building shorts pipeline."
-    echo "  Packages needed: remotion @remotion/cli @remotion/renderer"
-    echo "  Free for solo developers. No subscription."
-    echo "  Renders word-by-word kinetic caption overlays as transparent video."
-    echo "  ~3-5 min render time per 5-min clip on KVM 4 VPS."
-  fi
-else
-  echo "  ⚠️  npm not found — needed for Remotion install"
-fi
-
 # ─── 5. CREATE .ENV TEMPLATE ────────────────────────────────
 
 echo ""
@@ -965,96 +945,6 @@ if echo "$SCENE_CHECK" | grep -q "color_mood"; then
 else
     echo "  ❌ Cinematic fields missing — run migration 003"
 fi
-
-# ─── 6. REMOTION HYBRID RENDERING CHECKS ────────────────────
-echo ""
-echo "▶ Remotion Hybrid Rendering..."
-
-# Check Remotion installed
-if [ -f "dashboard/node_modules/.package-lock.json" ] && grep -q "remotion" dashboard/package.json 2>/dev/null; then
-    REMOTION_VER=$(cd dashboard && npx remotion --version 2>/dev/null || echo "unknown")
-    echo "  ✅ Remotion: $REMOTION_VER"
-else
-    echo "  ⚠️  Remotion not in dashboard dependencies. Run: cd dashboard && npm install remotion @remotion/cli"
-fi
-
-# Check render service
-RENDER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3100/health 2>/dev/null || echo "000")
-if [ "$RENDER_STATUS" = "200" ]; then
-    echo "  ✅ Remotion render service: running on :3100"
-else
-    echo "  ⚠️  Remotion render service not running (HTTP $RENDER_STATUS). Start with: node dashboard/src/remotion/render-service.js"
-fi
-
-# Check template directory
-TEMPLATE_COUNT=$(find dashboard/src/remotion/templates -name "*.jsx" 2>/dev/null | wc -l)
-if [ "$TEMPLATE_COUNT" -ge 12 ]; then
-    echo "  ✅ Remotion templates: $TEMPLATE_COUNT found"
-elif [ "$TEMPLATE_COUNT" -gt 0 ]; then
-    echo "  ⚠️  Remotion templates: only $TEMPLATE_COUNT of 12 built"
-else
-    echo "  ❌ No Remotion templates found at dashboard/src/remotion/templates/"
-fi
-
-# Check remotion_templates table seeded
-TEMPLATE_DB=$(curl -s "${SUPABASE_URL}/rest/v1/remotion_templates?select=template_key&limit=20" \
-    -H "apikey: ${SUPABASE_ANON_KEY:-none}" \
-    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY:-none}" 2>/dev/null || echo "error")
-if echo "$TEMPLATE_DB" | grep -q "stat_callout"; then
-    SEED_COUNT=$(echo "$TEMPLATE_DB" | grep -o "template_key" | wc -l)
-    echo "  ✅ remotion_templates seeded: $SEED_COUNT templates"
-else
-    echo "  ❌ remotion_templates not seeded — run migration 005"
-fi
-
-# Check classification fields on scenes
-CLASS_CHECK=$(curl -s "${SUPABASE_URL}/rest/v1/scenes?select=render_method,remotion_template&limit=1" \
-    -H "apikey: ${SUPABASE_ANON_KEY:-none}" \
-    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY:-none}" 2>/dev/null || echo "error")
-if echo "$CLASS_CHECK" | grep -q "render_method"; then
-    echo "  ✅ Classification fields present on scenes table"
-else
-    echo "  ❌ Classification fields missing — run migration 005"
-fi
-
-# ─── 7. KINETIC TYPOGRAPHY ENGINE CHECKS ─────────────────────
-echo ""
-echo "▶ Kinetic Typography Engine..."
-
-# Check service
-KINETIC_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3200/health 2>/dev/null || echo "000")
-if [ "$KINETIC_STATUS" = "200" ]; then
-    echo "  ✅ Kinetic service: running on :3200"
-else
-    echo "  ⚠️  Kinetic service not running (HTTP $KINETIC_STATUS)"
-    echo "     Start: cd kinetic-typo-engine && python -m uvicorn src.main:app --port 3200"
-fi
-
-# Check Python deps
-for pkg in pillow pycairo numpy scipy pydub anthropic fastapi uvicorn; do
-    python3 -c "import ${pkg//-/_}" 2>/dev/null && \
-        echo "  ✅ $pkg" || echo "  ⚠️  $pkg missing"
-done
-
-# Check kinetic tables
-for table in kinetic_scenes kinetic_jobs; do
-    RESP=$(curl -s -o /dev/null -w "%{http_code}" \
-        "${SUPABASE_URL}/rest/v1/${table}?select=id&limit=1" \
-        -H "apikey: ${SUPABASE_ANON_KEY:-none}" \
-        -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY:-none}" 2>/dev/null || echo "000")
-    [ "$RESP" = "200" ] && echo "  ✅ $table" || echo "  ❌ $table — run migration 006"
-done
-
-# Check production_style column on projects
-STYLE_CHECK=$(curl -s "${SUPABASE_URL}/rest/v1/projects?select=production_style&limit=1" \
-    -H "apikey: ${SUPABASE_ANON_KEY:-none}" \
-    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY:-none}" 2>/dev/null || echo "error")
-echo "$STYLE_CHECK" | grep -q "production_style" && \
-    echo "  ✅ production_style column on projects" || \
-    echo "  ❌ production_style column missing — run migration 006"
-
-# Check fonts directory
-[ -d "kinetic-typo-engine/fonts" ] && echo "  ✅ Fonts directory exists" || echo "  ⚠️  No fonts directory"
 
 # ─── DONE ───────────────────────────────────────────────────
 
