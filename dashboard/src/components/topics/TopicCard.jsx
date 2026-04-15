@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import StatusBadge from '../shared/StatusBadge';
+import { OutlierBadge, SEOBadge, CombinedScoreBadge, RecommendedBadge } from './IntelligenceBadges';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -100,6 +101,7 @@ function canStartProduction(topic) {
 export default function TopicCard({
   topic, projectId, isSelected, onToggleSelect,
   onApprove, onReject, onRefine, onEdit, onSave, onSaveAvatar,
+  isRecommended = false,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -185,6 +187,12 @@ export default function TopicCard({
           {topic.seo_title || topic.original_title}
         </span>
 
+        {/* Intelligence badges */}
+        <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
+          {isRecommended && <RecommendedBadge />}
+          <CombinedScoreBadge topic={topic} />
+        </div>
+
         {/* Angle */}
         <span className="text-xs text-muted-foreground hidden sm:inline">
           {topic.playlist_angle || '--'}
@@ -260,6 +268,12 @@ export default function TopicCard({
                 {topic.viral_potential}
               </span>
             )}
+
+            {/* Intelligence badges */}
+            {isRecommended && <RecommendedBadge />}
+            <OutlierBadge topic={topic} />
+            <SEOBadge topic={topic} />
+            <CombinedScoreBadge topic={topic} />
 
             {/* Script badge */}
             {(() => {

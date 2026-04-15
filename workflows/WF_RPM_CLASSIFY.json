@@ -1,0 +1,91 @@
+{
+  "name": "WF_RPM_CLASSIFY",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "trigger-rpm-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 220],
+      "parameters": {
+        "path": "rpm/classify",
+        "httpMethod": "POST",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "rpm-classify"
+    },
+    {
+      "id": "trigger-rpm-exec",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 400],
+      "parameters": {}
+    },
+    {
+      "id": "code-rpm-normalize",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 310],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize both trigger shapes to: { project_id, force, via_webhook }\nconst raw = $input.first().json;\n// Webhook payload lives in `body`; Execute Workflow trigger passes direct JSON\nconst payload = raw.body || raw;\n\nconst projectId = payload.project_id;\nif (!projectId) {\n  throw new Error('WF_RPM_CLASSIFY requires { project_id } in payload');\n}\n\nconst force = payload.force === true;\n\nreturn [{\n  json: {\n    project_id: projectId,\n    force,\n    via_webhook: !!raw.body,\n    triggered_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-rpm-classify",
+      "name": "Classify + Lookup + Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 310],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// CF03 WF_RPM_CLASSIFY — classify project niche into 1 of 12 categories,\n// look up rpm_benchmarks, compute revenue_potential_score, PATCH project,\n// log to production_logs, return structured response.\n// Global fetch + $env per MEMORY.md (n8n 2.8.4 task runner compat).\n\nconst input = $input.first().json;\nconst projectId = input.project_id;\nconst force = input.force === true;\nconst viaWebhook = input.via_webhook === true;\nconst runStart = Date.now();\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\n\nconst VALID_CATEGORIES = [\n  'finance', 'credit_cards', 'insurance', 'health_wellness',\n  'software_saas', 'education', 'business', 'gaming',\n  'entertainment', 'travel', 'cooking', 'tech_reviews'\n];\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\n// Compute revenue_potential_score (0-100) from rpm_mid using log scale.\n// mid=1 -> 32, mid=10 -> 62, mid=28 -> 78, mid=45 -> 86.\nfunction computeRevenueScore(rpmMid) {\n  const mid = Math.max(0, Number(rpmMid) || 0);\n  const raw = 40 * Math.log10(mid + 1) + 20;\n  return Math.max(0, Math.min(100, Math.round(raw)));\n}\n\nasync function logProduction(action, status, durationMs, costUsd, retryCount) {\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        project_id: projectId,\n        topic_id: null,\n        stage: 'rpm_classify',\n        scene_number: null,\n        action,\n        status,\n        duration_ms: durationMs,\n        cost_usd: costUsd,\n        retry_count: retryCount\n      })\n    });\n  } catch (_) { /* best-effort logging */ }\n}\n\nasync function lookupBenchmark(category) {\n  const url = `${supabaseUrl}/rest/v1/rpm_benchmarks?category=eq.${encodeURIComponent(category)}&select=rpm_low,rpm_mid,rpm_high,display_name`;\n  const res = await fetch(url, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) return null;\n  const arr = await res.json();\n  return Array.isArray(arr) && arr.length ? arr[0] : null;\n}\n\nasync function patchProject(patch) {\n  const res = await fetch(`${supabaseUrl}/rest/v1/projects?id=eq.${projectId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify(patch)\n  });\n  if (!res.ok) {\n    const body = await res.text();\n    throw new Error(`PATCH project failed: HTTP ${res.status}: ${body.slice(0, 200)}`);\n  }\n}\n\n// 1. Fetch project\nconst projUrl = `${supabaseUrl}/rest/v1/projects?id=eq.${projectId}&select=id,niche,niche_description,niche_expertise_profile,niche_rpm_category,estimated_rpm_low,estimated_rpm_mid,estimated_rpm_high,revenue_potential_score,rpm_classified_at`;\nconst projRes = await fetch(projUrl, { method: 'GET', headers: sbHeaders });\nif (!projRes.ok) {\n  throw new Error(`Fetch project failed: HTTP ${projRes.status}: ${await projRes.text()}`);\n}\nconst projArr = await projRes.json();\nconst project = projArr[0];\nif (!project) {\n  return [{\n    json: {\n      success: false,\n      project_id: projectId,\n      error: 'Project not found',\n      http_status: 404,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\n// 2. Idempotency: skip if already classified and not forced\nif (project.niche_rpm_category && !force) {\n  await logProduction('idempotent_skip', 'skipped', Date.now() - runStart, 0, 0);\n  return [{\n    json: {\n      success: true,\n      project_id: projectId,\n      category: project.niche_rpm_category,\n      rpm_low: project.estimated_rpm_low,\n      rpm_mid: project.estimated_rpm_mid,\n      rpm_high: project.estimated_rpm_high,\n      revenue_potential_score: project.revenue_potential_score,\n      classification_confidence: null,\n      reasoning: 'Already classified (pass force=true to reclassify)',\n      classified_by_fallback: false,\n      skipped: true,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\n// 3. Build Claude user prompt\nconst niche = project.niche || '';\nconst nicheDesc = project.niche_description || '';\nconst nicheExpertise = project.niche_expertise_profile || '';\n\nconst userPrompt = `Classify this YouTube channel niche into exactly one of these 12 categories.\n\nNiche: ${niche}\nDescription: ${nicheDesc}\nExpertise Profile: ${nicheExpertise}\n\nCategories (pick the best single fit):\n- finance           — general personal finance, investing, markets\n- credit_cards      — credit card rewards, travel cards, card comparisons\n- insurance         — life, auto, health, property insurance\n- health_wellness   — fitness, nutrition, supplements, mental health\n- software_saas     — B2B tools, dev tools, productivity software\n- education         — K-12, higher ed, online courses, study skills\n- business          — entrepreneurship, small business, career, sales\n- gaming            — video games, esports, gaming hardware\n- entertainment     — pop culture, reactions, comedy, celebrity\n- travel            — destinations, travel tips, hotel/flight reviews\n- cooking           — recipes, technique, kitchen gear, food travel\n- tech_reviews      — consumer electronics, gadget reviews, phones\n\nReturn ONLY this JSON (no other text, no code fences):\n{\"category\": \"<one of the 12>\", \"confidence\": <float 0-1>, \"reasoning\": \"<1 sentence>\"}`;\n\n// 4. Call Claude with inline exponential backoff (1s -> 2s -> 4s -> 8s, max 4)\nconst MAX_RETRIES = 4;\nlet retryCount = 0;\nlet claudeOk = false;\nlet claudeText = '';\nlet claudeError = null;\nconst claudeStart = Date.now();\n\nfor (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {\n  try {\n    const res = await fetch('https://api.anthropic.com/v1/messages', {\n      method: 'POST',\n      headers: {\n        'x-api-key': anthropicKey,\n        'anthropic-version': '2023-06-01',\n        'content-type': 'application/json'\n      },\n      body: JSON.stringify({\n        model: 'claude-opus-4-6',\n        max_tokens: 200,\n        messages: [{ role: 'user', content: userPrompt }]\n      })\n    });\n    if (res.ok) {\n      const body = await res.json();\n      claudeText = body.content?.[0]?.text || '';\n      claudeOk = true;\n      break;\n    }\n    const errBody = await res.text();\n    claudeError = `HTTP ${res.status}: ${errBody.slice(0, 200)}`;\n    // Non-retryable 4xx (except 429)\n    if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n  } catch (e) {\n    claudeError = e.message;\n  }\n  if (attempt < MAX_RETRIES) {\n    retryCount += 1;\n    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);\n    await sleep(delay);\n  }\n}\nconst claudeDuration = Date.now() - claudeStart;\n\n// 5. Parse Claude response\nlet parsed = null;\nif (claudeOk && claudeText) {\n  const clean = claudeText.replace(/```json|```/g, '').trim();\n  try {\n    parsed = JSON.parse(clean);\n  } catch {\n    const m = clean.match(/\\{[\\s\\S]*\\}/);\n    if (m) { try { parsed = JSON.parse(m[0]); } catch {} }\n  }\n}\n\n// 6. Determine category — use fallback if anything failed or invalid\nlet category;\nlet confidence;\nlet reasoning;\nlet usedFallback = false;\nlet logStatus;\n\nif (parsed && typeof parsed.category === 'string' && VALID_CATEGORIES.includes(parsed.category)) {\n  category = parsed.category;\n  confidence = typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : null;\n  reasoning = String(parsed.reasoning || '').slice(0, 1000);\n  logStatus = 'success';\n} else {\n  category = 'business';\n  confidence = 0.3;\n  reasoning = 'Classification fallback — low-confidence default';\n  usedFallback = true;\n  logStatus = claudeOk ? 'parse_fallback' : 'fallback';\n}\n\n// 7. Look up rpm_benchmarks\nlet benchmark = await lookupBenchmark(category);\n\n// Safety net: if lookup fails for any reason, fall back to business\nif (!benchmark) {\n  category = 'business';\n  usedFallback = true;\n  logStatus = 'benchmark_fallback';\n  reasoning = reasoning + ' | benchmark row missing, falling back to business';\n  benchmark = await lookupBenchmark('business');\n}\n\n// Hard guard: if even the business row is missing, bail with server-side fallback values.\nif (!benchmark) {\n  benchmark = { rpm_low: 8, rpm_mid: 15, rpm_high: 25, display_name: 'Business' };\n  logStatus = 'benchmark_hard_fallback';\n}\n\nconst rpmLow = Number(benchmark.rpm_low);\nconst rpmMid = Number(benchmark.rpm_mid);\nconst rpmHigh = Number(benchmark.rpm_high);\nconst revenueScore = computeRevenueScore(rpmMid);\n\n// 8. PATCH project\nconst nowIso = new Date().toISOString();\ntry {\n  await patchProject({\n    niche_rpm_category: category,\n    estimated_rpm_low: rpmLow,\n    estimated_rpm_mid: rpmMid,\n    estimated_rpm_high: rpmHigh,\n    revenue_potential_score: revenueScore,\n    rpm_classified_at: nowIso\n  });\n} catch (e) {\n  await logProduction('patch_project_failed', 'error', Date.now() - runStart, 0, retryCount);\n  throw e;\n}\n\n// 9. Log production_logs row\n// Cost estimate: Opus classify ~ $0.01 per run on success; $0 on full fallback.\nconst costUsd = claudeOk ? 0.01 : 0;\nawait logProduction('claude_opus_classify', logStatus, claudeDuration, costUsd, retryCount);\n\n// 10. Respond with structured payload\nreturn [{\n  json: {\n    success: true,\n    project_id: projectId,\n    category,\n    rpm_low: rpmLow,\n    rpm_mid: rpmMid,\n    rpm_high: rpmHigh,\n    revenue_potential_score: revenueScore,\n    classification_confidence: confidence,\n    reasoning,\n    classified_by_fallback: usedFallback,\n    claude_ok: claudeOk,\n    claude_error: claudeOk ? null : claudeError,\n    retry_count: retryCount,\n    rpm_classified_at: nowIso,\n    via_webhook: viaWebhook\n  }\n}];"
+      }
+    },
+    {
+      "id": "respond-rpm",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 310],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.http_status || 200 }}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Normalize Payload", "type": "main", "index": 0 }]]
+    },
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Normalize Payload", "type": "main", "index": 0 }]]
+    },
+    "Normalize Payload": {
+      "main": [[{ "node": "Classify + Lookup + Patch", "type": "main", "index": 0 }]]
+    },
+    "Classify + Lookup + Patch": {
+      "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 120,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "tags": []
+}

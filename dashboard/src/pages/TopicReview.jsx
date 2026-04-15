@@ -9,6 +9,9 @@ import TopicCard from '../components/topics/TopicCard';
 import TopicSummaryBar from '../components/topics/TopicSummaryBar';
 import TopicBulkBar from '../components/topics/TopicBulkBar';
 import RefinePanel from '../components/topics/RefinePanel';
+import IntelligenceScorePanel from '../components/topics/IntelligenceScorePanel';
+import TopicScatterChart from '../components/topics/TopicScatterChart';
+import { computeCombinedScore, OutlierBadge, SEOBadge } from '../components/topics/IntelligenceBadges';
 import FilterDropdown from '../components/ui/FilterDropdown';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
@@ -29,6 +32,25 @@ const PLAYLIST_OPTIONS = [
   { value: '1', label: 'Playlist 1' },
   { value: '2', label: 'Playlist 2' },
   { value: '3', label: 'Playlist 3' },
+];
+
+const CLASSIFICATION_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'blue-ocean', label: 'Blue Ocean' },
+  { value: 'competitive', label: 'Competitive' },
+  { value: 'red-ocean', label: 'Red Ocean' },
+  { value: 'dead-sea', label: 'Dead Sea' },
+  { value: 'not-scored', label: 'Not Scored' },
+];
+
+const SORT_OPTIONS_BASE = [
+  { value: 'topic_number', label: 'Topic # (default)' },
+  { value: 'outlier', label: 'Outlier Score' },
+  { value: 'seo', label: 'SEO Score' },
+];
+const SORT_OPTIONS_WITH_INTEL = [
+  { value: 'combined', label: 'Combined Intelligence (Rec.)' },
+  ...SORT_OPTIONS_BASE,
 ];
 
 /* ------------------------------------------------------------------ */
@@ -77,10 +99,56 @@ export default function TopicReview() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [statusFilter, setStatusFilter] = useState('all');
   const [playlistFilter, setPlaylistFilter] = useState('all');
+  const [classificationFilter, setClassificationFilter] = useState('all');
+  const [sortMode, setSortMode] = useState('auto');
+  const [scatterOpen, setScatterOpen] = useState(false);
   const [panelType, setPanelType] = useState(null);
   const [panelTopic, setPanelTopic] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [rejectFeedback, setRejectFeedback] = useState('');
+
+  // Any intelligence scores available? (enables combined sort + scatter)
+  const hasIntelligence = useMemo(
+    () => topics.some((t) => t.outlier_scored_at != null || t.seo_scored_at != null),
+    [topics]
+  );
+
+  // Effective sort: 'auto' maps to 'combined' if intelligence is present, else 'topic_number'
+  const effectiveSort = useMemo(() => {
+    if (sortMode !== 'auto') return sortMode;
+    return hasIntelligence ? 'combined' : 'topic_number';
+  }, [sortMode, hasIntelligence]);
+
+  // Top 5 combined-score topic ids — for Recommended badge
+  const recommendedIds = useMemo(() => {
+    if (!hasIntelligence) return new Set();
+    const scored = topics
+      .map((t) => ({ id: t.id, combined: computeCombinedScore(t) }))
+      .filter((x) => x.combined != null)
+      .sort((a, b) => b.combined - a.combined)
+      .slice(0, 5);
+    return new Set(scored.map((x) => x.id));
+  }, [topics, hasIntelligence]);
+
+  // Sort comparator
+  const sortTopics = useCallback((list) => {
+    const arr = [...list];
+    if (effectiveSort === 'combined') {
+      arr.sort((a, b) => {
+        const ca = computeCombinedScore(a) ?? -1;
+        const cb = computeCombinedScore(b) ?? -1;
+        if (cb !== ca) return cb - ca;
+        return (a.topic_number || 0) - (b.topic_number || 0);
+      });
+    } else if (effectiveSort === 'outlier') {
+      arr.sort((a, b) => (b.outlier_score ?? -1) - (a.outlier_score ?? -1));
+    } else if (effectiveSort === 'seo') {
+      arr.sort((a, b) => (b.seo_score ?? -1) - (a.seo_score ?? -1));
+    } else {
+      arr.sort((a, b) => (a.topic_number || 0) - (b.topic_number || 0));
+    }
+    return arr;
+  }, [effectiveSort]);
 
   // Counts
   const counts = useMemo(() => {
@@ -90,28 +158,39 @@ export default function TopicReview() {
     return { total: topics.length, approved, rejected, pending };
   }, [topics]);
 
-  // Filtered + grouped
-  const groupedTopics = useMemo(() => {
-    let filtered = topics;
+  // Common filter helper: status + playlist + classification
+  const applyFilters = useCallback((list) => {
+    let filtered = list;
     if (statusFilter !== 'all') filtered = filtered.filter((t) => t.review_status === statusFilter);
     if (playlistFilter !== 'all') filtered = filtered.filter((t) => String(t.playlist_group) === playlistFilter);
+    if (classificationFilter !== 'all') {
+      if (classificationFilter === 'not-scored') {
+        filtered = filtered.filter((t) => t.seo_classification == null);
+      } else {
+        filtered = filtered.filter((t) => t.seo_classification === classificationFilter);
+      }
+    }
+    return filtered;
+  }, [statusFilter, playlistFilter, classificationFilter]);
 
+  // Filtered + grouped (applies sort within each group)
+  const groupedTopics = useMemo(() => {
+    const filtered = applyFilters(topics);
     const groups = {};
     for (const topic of filtered) {
       const key = topic.playlist_angle || `Playlist ${topic.playlist_group || '?'}`;
       if (!groups[key]) groups[key] = { name: key, group: topic.playlist_group, topics: [] };
       groups[key].topics.push(topic);
     }
-    return Object.values(groups).sort((a, b) => (a.group || 0) - (b.group || 0));
-  }, [topics, statusFilter, playlistFilter]);
+    return Object.values(groups)
+      .map((g) => ({ ...g, topics: sortTopics(g.topics) }))
+      .sort((a, b) => (a.group || 0) - (b.group || 0));
+  }, [topics, applyFilters, sortTopics]);
 
-  // Flat filtered list
+  // Flat filtered list (sorted)
   const filteredTopics = useMemo(() => {
-    let filtered = topics;
-    if (statusFilter !== 'all') filtered = filtered.filter((t) => t.review_status === statusFilter);
-    if (playlistFilter !== 'all') filtered = filtered.filter((t) => String(t.playlist_group) === playlistFilter);
-    return filtered;
-  }, [topics, statusFilter, playlistFilter]);
+    return sortTopics(applyFilters(topics));
+  }, [topics, applyFilters, sortTopics]);
 
   const allResolved = counts.total > 0 && counts.pending === 0;
   const hasRejected = counts.rejected > 0;
@@ -228,10 +307,36 @@ export default function TopicReview() {
       {/* Summary bar */}
       <TopicSummaryBar {...counts} />
 
+      {/* Intelligence score panel */}
+      <IntelligenceScorePanel
+        topics={topics}
+        onToggleScatter={hasIntelligence ? () => setScatterOpen((v) => !v) : null}
+        scatterOpen={scatterOpen}
+      />
+
+      {/* Scatter chart (collapsible) */}
+      {scatterOpen && hasIntelligence && (
+        <div className="mb-5 animate-fade-in">
+          <TopicScatterChart topics={topics} />
+        </div>
+      )}
+
       {/* Filters + view mode toggle */}
       <div className="flex items-center gap-2 sm:gap-3 mb-5 overflow-x-auto">
         <FilterDropdown label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
         <FilterDropdown label="Playlist" value={playlistFilter} onChange={setPlaylistFilter} options={PLAYLIST_OPTIONS} />
+        <FilterDropdown
+          label="Classification"
+          value={classificationFilter}
+          onChange={setClassificationFilter}
+          options={CLASSIFICATION_OPTIONS}
+        />
+        <FilterDropdown
+          label="Sort by"
+          value={sortMode === 'auto' ? effectiveSort : sortMode}
+          onChange={setSortMode}
+          options={hasIntelligence ? SORT_OPTIONS_WITH_INTEL : SORT_OPTIONS_BASE}
+        />
 
         <div className="ml-auto flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
           {[
@@ -324,6 +429,7 @@ export default function TopicReview() {
                           onEdit={handleEdit}
                           onSave={(vars) => editMutation.mutateAsync(vars)}
                           onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
+                          isRecommended={recommendedIds.has(topic.id)}
                         />
                       </div>
                     ))}
@@ -349,6 +455,7 @@ export default function TopicReview() {
                     onEdit={handleEdit}
                     onSave={(vars) => editMutation.mutateAsync(vars)}
                     onSaveAvatar={(vars) => editAvatarMutation.mutateAsync(vars)}
+                    isRecommended={recommendedIds.has(topic.id)}
                   />
                 </div>
               ))}
@@ -359,48 +466,73 @@ export default function TopicReview() {
           {viewMode === 'table' && (
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[600px]">
+                <table className="w-full text-sm min-w-[800px]">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-10">#</th>
                       <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Title</th>
                       <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-28">Playlist</th>
+                      <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-24">Outlier</th>
+                      <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-20">SEO</th>
+                      <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-20">Combined</th>
                       <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-24">Status</th>
                       <th className="px-4 py-3 text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-32">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTopics.map((topic) => (
-                      <tr key={topic.id} className="border-b border-border last:border-b-0 hover:bg-card-hover transition-colors">
-                        <td className="px-4 py-3 text-xs font-bold text-muted-foreground tabular-nums font-mono">{topic.topic_number}</td>
-                        <td className="px-4 py-3 font-medium truncate max-w-[250px]">
-                          {topic.seo_title || topic.original_title}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{topic.playlist_angle || '--'}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium border ${
-                            topic.review_status === 'approved' ? 'bg-success-bg text-success border-success-border' :
-                            topic.review_status === 'rejected' ? 'bg-danger-bg text-danger border-danger-border' :
-                            'bg-warning-bg text-warning border-warning-border'
-                          }`}>
-                            {topic.review_status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center gap-1 justify-end">
-                            {topic.review_status === 'pending' && (
-                              <>
-                                <button onClick={() => handleApprove(topic)} className="text-xs text-success hover:text-success/80 font-medium cursor-pointer">Approve</button>
-                                <span className="text-border">|</span>
-                                <button onClick={() => handleReject(topic)} className="text-xs text-danger hover:text-danger/80 font-medium cursor-pointer">Reject</button>
-                                <span className="text-border">|</span>
-                                <button onClick={() => handleRefine(topic)} className="text-xs text-primary hover:text-primary-hover font-medium cursor-pointer">Refine</button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredTopics.map((topic) => {
+                      const combined = computeCombinedScore(topic);
+                      return (
+                        <tr key={topic.id} className="border-b border-border last:border-b-0 hover:bg-card-hover transition-colors">
+                          <td className="px-4 py-3 text-xs font-bold text-muted-foreground tabular-nums font-mono">{topic.topic_number}</td>
+                          <td className="px-4 py-3 font-medium truncate max-w-[250px]">
+                            <span className="inline-flex items-center gap-1.5">
+                              {recommendedIds.has(topic.id) && (
+                                <span
+                                  title="Recommended"
+                                  className="text-accent tabular-nums"
+                                >
+                                  {'\u2605'}
+                                </span>
+                              )}
+                              <span className="truncate">{topic.seo_title || topic.original_title}</span>
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{topic.playlist_angle || '--'}</td>
+                          <td className="px-4 py-3">
+                            <OutlierBadge topic={topic} />
+                          </td>
+                          <td className="px-4 py-3">
+                            <SEOBadge topic={topic} />
+                          </td>
+                          <td className="px-4 py-3 text-xs font-bold tabular-nums">
+                            {combined != null ? combined : '\u2014'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium border ${
+                              topic.review_status === 'approved' ? 'bg-success-bg text-success border-success-border' :
+                              topic.review_status === 'rejected' ? 'bg-danger-bg text-danger border-danger-border' :
+                              'bg-warning-bg text-warning border-warning-border'
+                            }`}>
+                              {topic.review_status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center gap-1 justify-end">
+                              {topic.review_status === 'pending' && (
+                                <>
+                                  <button onClick={() => handleApprove(topic)} className="text-xs text-success hover:text-success/80 font-medium cursor-pointer">Approve</button>
+                                  <span className="text-border">|</span>
+                                  <button onClick={() => handleReject(topic)} className="text-xs text-danger hover:text-danger/80 font-medium cursor-pointer">Reject</button>
+                                  <span className="text-border">|</span>
+                                  <button onClick={() => handleRefine(topic)} className="text-xs text-primary hover:text-primary-hover font-medium cursor-pointer">Refine</button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

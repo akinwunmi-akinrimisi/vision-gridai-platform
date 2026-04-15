@@ -22,6 +22,7 @@ import {
   CalendarDays,
   MessageCircle,
   Youtube,
+  Hash,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -59,6 +60,7 @@ const projectNavItems = [
   { label: 'Dashboard', icon: Monitor, path: '/project/:id' },
   { label: 'Research', icon: Search, path: '/project/:id/research' },
   { label: 'Topics', icon: ListChecks, path: '/project/:id/topics' },
+  { label: 'Keywords', icon: Hash, path: '/project/:id/keywords' },
   { label: 'Scripts', icon: FileText, path: '/project/:id/topics' }, // scripts route doesn't exist yet
   { label: 'Production', icon: Activity, path: '/project/:id/production' },
   { label: 'Analytics', icon: BarChart3, path: '/project/:id/analytics' },

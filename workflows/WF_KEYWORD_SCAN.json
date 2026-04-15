@@ -1,0 +1,131 @@
+{
+  "name": "WF_KEYWORD_SCAN",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "trigger-kw-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 220],
+      "parameters": {
+        "path": "keywords/scan",
+        "httpMethod": "POST",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "keywords-scan"
+    },
+    {
+      "id": "trigger-kw-exec",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 400],
+      "parameters": {}
+    },
+    {
+      "id": "code-kw-normalize",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 310],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize both trigger shapes to: { project_id, seed_keywords?, source }\nconst raw = $input.first().json;\n// Webhook payload lives in `body`; Execute Workflow trigger passes direct JSON\nconst payload = raw.body || raw;\n\nconst projectId = payload.project_id;\nif (!projectId) {\n  throw new Error('WF_KEYWORD_SCAN requires { project_id } in payload');\n}\n\nconst seedKeywords = Array.isArray(payload.seed_keywords)\n  ? payload.seed_keywords.map(k => String(k).trim()).filter(Boolean)\n  : null;\n\nreturn [{\n  json: {\n    project_id: projectId,\n    seed_keywords: seedKeywords,\n    via_webhook: !!raw.body,\n    triggered_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-kw-derive-seeds",
+      "name": "Derive Seeds If Missing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 310],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// If seed_keywords missing, derive 10 from project niche + description via Claude Opus.\nconst data = $input.first().json;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// Always fetch project for niche context (needed downstream)\nconst projRes = await fetch(`${supabaseUrl}/rest/v1/projects?id=eq.${data.project_id}&select=niche,niche_description`, {\n  method: 'GET',\n  headers: sbHeaders\n});\nif (!projRes.ok) {\n  throw new Error(`Fetch project failed: HTTP ${projRes.status}: ${await projRes.text()}`);\n}\nconst projArr = await projRes.json();\nconst project = projArr[0] || {};\nconst niche = project.niche || '';\nconst nicheDesc = project.niche_description || niche;\n\nlet seeds = data.seed_keywords;\n\nif (!seeds || seeds.length === 0) {\n  const prompt = `Niche: ${niche}\nDescription: ${nicheDesc}\n\nProduce 10 YouTube search keywords a creator in this niche would target. Mix broad + narrow + evergreen + trending angles. No duplicates. No quotes.\n\nReturn ONLY a JSON array of 10 strings: [\"keyword 1\", \"keyword 2\", ...]. No other text.`;\n\n  try {\n    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {\n      method: 'POST',\n      headers: {\n        'x-api-key': $env.ANTHROPIC_API_KEY,\n        'anthropic-version': '2023-06-01',\n        'content-type': 'application/json'\n      },\n      body: JSON.stringify({\n        model: 'claude-opus-4-6',\n        max_tokens: 400,\n        messages: [{ role: 'user', content: prompt }]\n      })\n    });\n    if (aiRes.ok) {\n      const body = await aiRes.json();\n      const text = body.content?.[0]?.text || '[]';\n      const clean = text.replace(/```json|```/g, '').trim();\n      let parsed = null;\n      try { parsed = JSON.parse(clean); } catch {\n        const m = clean.match(/\\[[\\s\\S]*\\]/);\n        if (m) { try { parsed = JSON.parse(m[0]); } catch {} }\n      }\n      if (Array.isArray(parsed) && parsed.length > 0) {\n        seeds = parsed.map(k => String(k).trim()).filter(Boolean).slice(0, 10);\n      }\n    }\n  } catch (e) { /* fall through to niche fallback */ }\n\n  if (!seeds || seeds.length === 0) {\n    seeds = niche ? [niche] : [];\n  }\n}\n\nif (!seeds || seeds.length === 0) {\n  throw new Error('Could not derive seed keywords (no niche + no seed_keywords + Claude derivation failed)');\n}\n\nreturn [{\n  json: {\n    project_id: data.project_id,\n    niche,\n    niche_description: nicheDesc,\n    seed_keywords: seeds,\n    seed_count: seeds.length,\n    triggered_at: data.triggered_at\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-kw-split",
+      "name": "Split Seeds Into Batches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 310],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const data = $input.first().json;\nconst seeds = data.seed_keywords || [];\nconst BATCH_SIZE = 5;\n\nconst items = [];\nfor (let i = 0; i < seeds.length; i += BATCH_SIZE) {\n  items.push({\n    json: {\n      project_id: data.project_id,\n      niche: data.niche,\n      batch_index: Math.floor(i / BATCH_SIZE),\n      batch: seeds.slice(i, i + BATCH_SIZE),\n      total_batches: Math.ceil(seeds.length / BATCH_SIZE),\n      total_seeds: seeds.length\n    }\n  });\n}\n\nif (items.length === 0) {\n  return [{\n    json: {\n      project_id: data.project_id,\n      skipped: true,\n      reason: 'No seed keywords to scan'\n    }\n  }];\n}\n\nreturn items;"
+      }
+    },
+    {
+      "id": "code-kw-scan",
+      "name": "Scan Batch (Autocomplete + YouTube + Upsert)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, 310],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Per-batch keyword expander + scorer.\n// Steps per seed:\n//   1. Autocomplete for 3 expansions (exact, \"how to X\", \"X vs\")\n//   2. For each unique keyword (exact + up to 5 expansion suggestions):\n//      a. YouTube search -> totalResults + videoIds\n//      b. YouTube videos.list -> top10 avg views\n//      c. Compute opportunity_score deterministically\n//      d. UPSERT to keywords table\n\nconst data = $input.item.json;\nif (data.skipped) return $input.item;\n\nconst seeds = data.batch || [];\nconst projectId = data.project_id;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst ytKey = $env.YOUTUBE_API_KEY;\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nlet quotaExhausted = false;\nlet totalUpserted = 0;\nlet totalQueriesMade = 0;\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  let lastStatus = 0;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      lastStatus = res.status;\n      if (res.ok) return { ok: true, json: await res.json(), attempts: attempt };\n      const body = await res.text();\n      if (res.status === 403 && /quotaExceeded|dailyLimitExceeded/i.test(body)) {\n        return { ok: false, quota: true, status: res.status, error: body, attempts: attempt };\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, status: lastStatus, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\nasync function autocomplete(q) {\n  const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(q)}`;\n  for (let attempt = 1; attempt <= 2; attempt++) {\n    try {\n      const res = await fetch(url, { method: 'GET' });\n      if (res.ok) {\n        const txt = await res.text();\n        try {\n          const parsed = JSON.parse(txt);\n          const arr = Array.isArray(parsed?.[1]) ? parsed[1] : [];\n          return { ok: true, suggestions: arr.map(s => String(s)), count: arr.length };\n        } catch { return { ok: true, suggestions: [], count: 0 }; }\n      }\n    } catch { }\n    if (attempt === 1) await sleep(500);\n  }\n  return { ok: false, suggestions: [], count: 0 };\n}\n\nfunction autocompleteDemandScore(count) {\n  if (count === 0) return 0;\n  if (count <= 2) return 20;\n  if (count <= 4) return 45;\n  if (count <= 6) return 65;\n  if (count <= 8) return 85;\n  return 100;\n}\n\nfunction competitionInverseScore(total) {\n  if (total > 500000) return 0;\n  if (total > 100000) return 15;\n  if (total > 50000) return 35;\n  if (total > 10000) return 55;\n  if (total > 5000) return 70;\n  if (total > 1000) return 85;\n  return 95;\n}\n\nfunction competitionLevel(total) {\n  if (total > 100000) return 'high';\n  if (total > 5000) return 'medium';\n  return 'low';\n}\n\nfunction seoClassification(total, acCount) {\n  if (total < 5000 && acCount > 4) return 'blue-ocean';\n  if (total < 1000 && acCount < 2) return 'dead-sea';\n  if (total > 100000) return 'red-ocean';\n  return 'competitive';\n}\n\nfunction normalize(k) {\n  return String(k).trim().toLowerCase();\n}\n\n// Collect the full expansion universe for this batch\nconst keywordMap = new Map(); // normalized -> { keyword, autocomplete_hits, related }\n\nfor (const seed of seeds) {\n  if (quotaExhausted) break;\n\n  const variants = [seed, `how to ${seed}`, `${seed} vs`];\n  const expansions = [];\n  for (let i = 0; i < variants.length; i++) {\n    const ac = await autocomplete(variants[i]);\n    expansions.push({ q: variants[i], suggestions: ac.suggestions, count: ac.count });\n    totalQueriesMade += 1;\n    if (i < variants.length - 1) await sleep(200);\n  }\n\n  const seedNorm = normalize(seed);\n  if (!keywordMap.has(seedNorm)) {\n    keywordMap.set(seedNorm, {\n      keyword: seed,\n      normalized_keyword: seedNorm,\n      autocomplete_hits: expansions[0]?.count || 0,\n      related_suggestions: expansions.flatMap(e => e.suggestions).slice(0, 20),\n      source: 'keyword_scan'\n    });\n  }\n\n  // Take up to 5 unique expansion suggestions across the 3 variants\n  const merged = [];\n  const seen = new Set([seedNorm]);\n  for (const e of expansions) {\n    for (const s of e.suggestions) {\n      const n = normalize(s);\n      if (!n || seen.has(n)) continue;\n      seen.add(n);\n      merged.push({ keyword: s, normalized: n });\n      if (merged.length >= 5) break;\n    }\n    if (merged.length >= 5) break;\n  }\n\n  for (const m of merged) {\n    if (!keywordMap.has(m.normalized)) {\n      keywordMap.set(m.normalized, {\n        keyword: m.keyword,\n        normalized_keyword: m.normalized,\n        autocomplete_hits: 1,\n        related_suggestions: [],\n        source: 'keyword_scan'\n      });\n    }\n  }\n}\n\n// For each unique keyword, run YouTube search + videos, compute score, upsert.\nconst keywords = Array.from(keywordMap.values());\n\nfor (const kw of keywords) {\n  if (quotaExhausted) break;\n\n  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(kw.keyword)}&type=video&maxResults=10&key=${ytKey}`;\n  const searchRes = await fetchWithRetry(searchUrl, { method: 'GET' }, 'yt_search_kw');\n  if (searchRes.quota) { quotaExhausted = true; break; }\n\n  const totalResults = searchRes.ok ? (searchRes.json?.pageInfo?.totalResults || 0) : 0;\n  const videoIds = searchRes.ok ? (searchRes.json?.items || []).map(i => i.id?.videoId).filter(Boolean) : [];\n\n  let top10AvgViews = 0;\n  if (videoIds.length > 0) {\n    const vUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds.join(',')}&key=${ytKey}`;\n    const vRes = await fetchWithRetry(vUrl, { method: 'GET' }, 'yt_videos_kw');\n    if (vRes.quota) { quotaExhausted = true; break; }\n    if (vRes.ok) {\n      const items = vRes.json?.items || [];\n      const views = items.map(v => parseInt(v.statistics?.viewCount || '0', 10)).filter(v => v > 0);\n      top10AvgViews = views.length ? Math.round(views.reduce((a, b) => a + b, 0) / views.length) : 0;\n    }\n  }\n\n  const acDemand = autocompleteDemandScore(kw.autocomplete_hits || 0);\n  const svp = Math.round((kw.autocomplete_hits || 0) * 12.5);\n  const compInv = competitionInverseScore(totalResults);\n  const opportunity = Math.round(acDemand * 0.40 + Math.min(svp, 100) * 0.30 + compInv * 0.30);\n\n  const row = {\n    project_id: projectId,\n    keyword: kw.keyword.slice(0, 300),\n    normalized_keyword: kw.normalized_keyword.slice(0, 300),\n    search_volume_proxy: svp,\n    autocomplete_hits: kw.autocomplete_hits || 0,\n    competing_videos_count: totalResults,\n    competition_level: competitionLevel(totalResults),\n    opportunity_score: Math.max(0, Math.min(100, opportunity)),\n    seo_classification: seoClassification(totalResults, kw.autocomplete_hits || 0),\n    related_keywords: (kw.related_suggestions || []).map(k => ({ keyword: String(k).slice(0, 300), autocomplete_hits: null })),\n    trend_signal: null,\n    source: kw.source || 'keyword_scan',\n    last_scanned_at: new Date().toISOString()\n  };\n\n  try {\n    const upsertRes = await fetch(`${supabaseUrl}/rest/v1/keywords?on_conflict=project_id,normalized_keyword`, {\n      method: 'POST',\n      headers: {\n        ...sbHeaders,\n        'Prefer': 'resolution=merge-duplicates,return=minimal'\n      },\n      body: JSON.stringify(row)\n    });\n    if (upsertRes.ok) {\n      totalUpserted += 1;\n    }\n  } catch (_) { /* continue scanning */ }\n}\n\nif (data.batch_index + 1 < data.total_batches) {\n  await sleep(2000);\n}\n\nreturn {\n  json: {\n    project_id: projectId,\n    batch_index: data.batch_index,\n    total_batches: data.total_batches,\n    keywords_considered: keywords.length,\n    keywords_upserted: totalUpserted,\n    yt_queries_made: totalQueriesMade + keywords.length * 2,\n    quota_exhausted: quotaExhausted\n  }\n};"
+      }
+    },
+    {
+      "id": "code-kw-summary",
+      "name": "Summary + Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 310],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aggregate + write a production_logs summary row.\nconst items = $input.all().map(i => i.json).filter(j => !j.skipped);\n\nif (items.length === 0) {\n  return [{ json: { success: true, keywords_scanned: 0, message: 'No seed keywords to scan' } }];\n}\n\nconst projectId = items[0]?.project_id;\nconst totalUpserted = items.reduce((s, b) => s + (b.keywords_upserted || 0), 0);\nconst totalConsidered = items.reduce((s, b) => s + (b.keywords_considered || 0), 0);\nconst quota = items.some(b => b.quota_exhausted);\n\n// Rough cost estimate: 2 YouTube units per keyword (search=100 + videos=1 per keyword, but we batch videos)\n// Autocomplete is free. Very rough — real cost is tracked per API call elsewhere.\nconst ytCost = totalConsidered * 0.0005;\nconst claudeCost = 0.004; // Opus seed derivation, ~once per run\n\ntry {\n  await fetch(`${$env.SUPABASE_URL}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: {\n      'apikey': $env.SUPABASE_ANON_KEY,\n      'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=minimal'\n    },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: null,\n      stage: 'keyword_scan',\n      scene_number: null,\n      action: 'scan_complete',\n      status: quota ? 'partial_quota_exhausted' : 'success',\n      duration_ms: null,\n      cost_usd: Math.round((ytCost + claudeCost) * 10000) / 10000,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\nreturn [{\n  json: {\n    success: true,\n    project_id: projectId,\n    keywords_scanned: totalUpserted,\n    keywords_considered: totalConsidered,\n    quota_exhausted: quota,\n    batches_processed: items.length,\n    finished_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "respond-kw",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1640, 310],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Normalize Payload", "type": "main", "index": 0 }]]
+    },
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Normalize Payload", "type": "main", "index": 0 }]]
+    },
+    "Normalize Payload": {
+      "main": [[{ "node": "Derive Seeds If Missing", "type": "main", "index": 0 }]]
+    },
+    "Derive Seeds If Missing": {
+      "main": [[{ "node": "Split Seeds Into Batches", "type": "main", "index": 0 }]]
+    },
+    "Split Seeds Into Batches": {
+      "main": [[{ "node": "Scan Batch (Autocomplete + YouTube + Upsert)", "type": "main", "index": 0 }]]
+    },
+    "Scan Batch (Autocomplete + YouTube + Upsert)": {
+      "main": [[{ "node": "Summary + Log", "type": "main", "index": 0 }]]
+    },
+    "Summary + Log": {
+      "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 1200,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "tags": []
+}
