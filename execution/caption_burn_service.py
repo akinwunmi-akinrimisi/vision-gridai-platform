@@ -81,7 +81,7 @@ def burn_captions(topic_id, srt_filename, video_filename, drive_folder_id):
             cmd,
             capture_output=True,
             text=True,
-            timeout=3600  # 60 min max for 2hr videos
+            timeout=10800  # 3 hours max for 2.5hr+ videos with subtitle overlay
         )
         if result.returncode != 0:
             log(f"[BURN] FFmpeg FAILED: {result.stderr[-500:]}")

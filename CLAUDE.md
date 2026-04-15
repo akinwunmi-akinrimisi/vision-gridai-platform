@@ -317,7 +317,7 @@ Quality commands (gstack selective):
 - Fal.ai is async — POST to `queue.fal.run/...` creates a task, poll `queue.fal.run/.../requests/{id}` for result. Auth header: `Authorization: Key {{FAL_API_KEY}}`
 - Fal.ai supports native 9:16 via `image_size: "portrait_9_16"` for images — no post-processing crop needed
 - YouTube API quota: 10,000 units/day, 1,600 per upload = max 6 uploads/day
-- FFmpeg concat with `-c copy` avoids re-encoding and OOM on 2hr videos
+- FFmpeg concat with `-c:v copy` requires ALL clips to have IDENTICAL fps, sample_rate, and codec. Mixed specs (e.g., 30fps + 25fps) cause silent truncation where the output video is shorter than the sum of clips. WF_CAPTIONS_ASSEMBLY now auto-validates all clips before concat and re-encodes any mismatches. Target: 30fps, 24kHz, h264, aac. Post-concat verification checks output duration is >95% of expected and video/audio drift <5s.
 - React build must be deployed to Nginx's root directory after each dashboard change
 - Topic refinement is expensive (~$0.15/refinement) because it includes all 24 other topics as context
 - Remotion caption rendering: ~3-5 min per clip on KVM 4 VPS. Budget ~90 min for 20 clips. Runs in background.
@@ -359,6 +359,8 @@ Quality commands (gstack selective):
 - The kinetic Python service writes directly to Supabase (kinetic_jobs, kinetic_scenes). n8n polls for status changes.
 - For chunked script generation (>15min), each chapter prompt receives the previous chapter's last scene as context for continuity.
 - Frame render avg: 42ms. Full 2hr video: ~2.5 hours render time. This is expected and communicated in dashboard.
+- Assembly workflow (WF_CAPTIONS_ASSEMBLY) has 3-layer crash prevention: (1) Build Scene Clip verifies each clip's fps/sample_rate after generation and auto-re-encodes mismatches, (2) Concat Video scans ALL clips before concat and fixes any outliers, (3) Post-concat duration check verifies output is >95% of expected total and video/audio drift <5s. If any check fails, it logs a WARNING in stdout for the downstream If-node to catch.
+- Caption burn service (:9998) timeout is 60 minutes. For videos >3 hours, increase the timeout in caption_burn_service.py.
 
 ## Skill routing
 
