@@ -306,27 +306,9 @@ export function useAddCompetitorChannel(projectId) {
       let channelId = kind === 'channel_id' ? value : `handle:${value}`;
       let channelName = kind === 'handle' ? `@${value}` : 'Pending\u2026';
 
-      // If we only have a handle, try to resolve to a real UC... channel ID
-      // via the YouTube Data API so WF_COMPETITOR_MONITOR can call channels.list?id=...
-      if (channelId.startsWith('handle:')) {
-        const handle = channelId.replace('handle:', '');
-        const ytApiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
-        if (ytApiKey) {
-          try {
-            const ytResp = await fetch(
-              `https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=@${encodeURIComponent(handle)}&key=${ytApiKey}`,
-            );
-            const ytData = await ytResp.json();
-            if (ytData.items?.[0]?.id) {
-              channelId = ytData.items[0].id;
-              channelName = ytData.items[0].snippet?.title || channelName;
-            }
-          } catch {
-            // Resolution failed — keep handle:<value>, monitor will skip it
-          }
-        }
-        // If resolution fails or no API key, keep handle:<value> as fallback
-      }
+      // Handle resolution is done server-side by WF_COMPETITOR_MONITOR on first run.
+      // The dashboard inserts with handle:<value> and the monitor resolves it to UC... ID.
+      // This avoids exposing the YouTube API key in the client bundle.
 
       const { data, error } = await supabase
         .from('competitor_channels')
