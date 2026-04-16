@@ -27,7 +27,7 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - @skills.md — Skills reference map (18 skills across pipeline stages)
 - @skills.sh — Skill installer + environment verification
 - @Dashboard_Implementation_Plan.md — Detailed dashboard page specs and Supabase Realtime patterns
-- @design-system/MASTER.md — Dashboard design system (colors, typography, spacing, components). Read before building any dashboard page.
+- @design-system/MASTER.md — DEPRECATED design system doc. Use Tailwind tokens (bg-card, bg-muted, border-border) + src/components/ui/ instead.
 - @.planning/ — GSD state files (PROJECT.md, ROADMAP.md, STATE.md). Read for current sprint context.
 - @GUIDE.md — Consolidated build guide (31 features, Superpowers + gstack + Agency Agents)
 - @VisionGridAI_Video_Effects_Playbook.docx — Cinematic production playbook (prompts, FFmpeg, color science)
@@ -102,7 +102,7 @@ vision-gridai-platform/
 
 **IMPORTANT: This project uses Superpowers (obra/superpowers) as the PRIMARY build methodology.** Specs at docs/superpowers/specs/. Plans at docs/superpowers/plans/. GSD at .claude/commands/gsd/ is DEPRECATED. Use gstack selectively: /qa, /browse, /careful, /freeze, /review ONLY. Use frontend-design skill for all React work.
 
-**IMPORTANT: Read `design-system/MASTER.md` before building any dashboard page or component.** UI UX Pro Max skill is installed at `.claude/skills/ui-ux-pro-max/` and auto-activates for UI work. All dashboard pages must follow the master design system for visual consistency. For page-specific overrides, check `design-system/pages/{page-name}.md` first.
+**IMPORTANT: `design-system/MASTER.md` is DEPRECATED — documented classes don't exist.** For dashboard work, use actual Tailwind tokens (`bg-card`, `bg-muted`, `border-border`) + KPICard + Button components from `src/components/ui/`. UI UX Pro Max skill at `.claude/skills/ui-ux-pro-max/` auto-activates for UI work.
 
 **IMPORTANT: Never hardcode API keys or niche-specific content.** All prompts are dynamically generated per project and stored in `prompt_configs` table. System prompts, expertise profiles, and topic constraints are NEVER hardcoded in workflows.
 
@@ -163,7 +163,7 @@ Headers:
 - n8n webhook calls for actions (trigger production, approve, reject, refine)
 - Nginx serves React build + reverse proxies /webhook/ to n8n
 - **UI UX Pro Max** skill provides design intelligence (67 styles, 96 palettes, 57 font pairings, 100 reasoning rules)
-- Design system persisted at `design-system/MASTER.md` — all pages reference it for consistency
+- Design system: `design-system/MASTER.md` is DEPRECATED — use Tailwind tokens + `src/components/ui/` components
 
 ## Common Commands
 ```bash
