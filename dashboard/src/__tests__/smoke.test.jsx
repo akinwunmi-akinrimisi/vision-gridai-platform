@@ -17,27 +17,42 @@ import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 
 // ── Global mocks (all external deps) ──────────────────
 
-vi.mock('../lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      neq: vi.fn().mockReturnThis(),
-      gt: vi.fn().mockReturnThis(),
-      gte: vi.fn().mockReturnThis(),
-      lt: vi.fn().mockReturnThis(),
-      in: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
+vi.mock('../lib/supabase', () => {
+  const mockResult = { data: [], error: null };
+  const builder = () => {
+    const chain = {
+      select: vi.fn(() => chain),
+      eq: vi.fn(() => chain),
+      neq: vi.fn(() => chain),
+      gt: vi.fn(() => chain),
+      gte: vi.fn(() => chain),
+      lt: vi.fn(() => chain),
+      lte: vi.fn(() => chain),
+      in: vi.fn(() => chain),
+      not: vi.fn(() => chain),
+      is: vi.fn(() => chain),
+      or: vi.fn(() => chain),
+      order: vi.fn(() => chain),
+      limit: vi.fn(() => chain),
+      range: vi.fn(() => chain),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
-      insert: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      delete: vi.fn().mockReturnThis(),
-    })),
-    channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn() })),
-    removeChannel: vi.fn(),
-  },
-}));
+      insert: vi.fn(() => chain),
+      update: vi.fn(() => chain),
+      upsert: vi.fn(() => chain),
+      delete: vi.fn(() => chain),
+      then: vi.fn((resolve) => resolve(mockResult)),
+    };
+    return chain;
+  };
+  return {
+    supabase: {
+      from: vi.fn(builder),
+      channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn() })),
+      removeChannel: vi.fn(),
+    },
+  };
+});
 
 vi.mock('../lib/api', () => ({
   webhookCall: vi.fn().mockResolvedValue({ success: true }),

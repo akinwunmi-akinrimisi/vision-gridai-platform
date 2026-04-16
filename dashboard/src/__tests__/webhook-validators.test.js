@@ -22,7 +22,7 @@ describe('webhookCall — payload construction and validation', () => {
     vi.restoreAllMocks();
   });
 
-  it('constructs correct headers: Content-Type and Authorization Bearer', async () => {
+  it('constructs correct headers: Content-Type only (auth is nginx server-side)', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ success: true }),
@@ -32,7 +32,7 @@ describe('webhookCall — payload construction and validation', () => {
 
     const [, options] = globalThis.fetch.mock.calls[0];
     expect(options.headers['Content-Type']).toBe('application/json');
-    expect(options.headers['Authorization']).toMatch(/^Bearer /);
+    expect(options.headers['Authorization']).toBeUndefined();
   });
 
   it('applies 30s timeout via AbortController by default', async () => {
@@ -219,37 +219,35 @@ describe('YouTube quota — MAX_DAILY_UPLOADS', () => {
 
 // ── extractChannelIdentifier ────────────────────────────────────────
 
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      single: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    })),
+    channel: vi.fn(() => ({
+      on: vi.fn().mockReturnThis(),
+      subscribe: vi.fn(),
+    })),
+    removeChannel: vi.fn(),
+  },
+}));
+
+vi.mock('../hooks/useRealtimeSubscription', () => ({
+  useRealtimeSubscription: vi.fn(),
+}));
+
 describe('extractChannelIdentifier', () => {
   let extractChannelIdentifier;
 
   beforeEach(async () => {
     vi.resetModules();
-
-    // Mock supabase and react-query to avoid import errors
-    vi.mock('../lib/supabase', () => ({
-      supabase: {
-        from: vi.fn(() => ({
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          order: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockReturnThis(),
-          insert: vi.fn().mockReturnThis(),
-          update: vi.fn().mockReturnThis(),
-          single: vi.fn().mockReturnThis(),
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        })),
-        channel: vi.fn(() => ({
-          on: vi.fn().mockReturnThis(),
-          subscribe: vi.fn(),
-        })),
-        removeChannel: vi.fn(),
-      },
-    }));
-
-    vi.mock('../hooks/useRealtimeSubscription', () => ({
-      useRealtimeSubscription: vi.fn(),
-    }));
-
     const mod = await import('../hooks/useIntelligenceHub.js');
     extractChannelIdentifier = mod.extractChannelIdentifier;
   });

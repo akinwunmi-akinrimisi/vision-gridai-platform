@@ -1,10 +1,8 @@
-const WEBHOOK_BASE = import.meta.env.VITE_N8N_WEBHOOK_BASE || '/webhook';
-const API_TOKEN = import.meta.env.VITE_API_TOKEN || '';
-
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
  * Call an n8n webhook endpoint.
+ * Auth is injected server-side by nginx — no token in the client bundle.
  * @param {string} endpoint - Webhook path segment (e.g., 'project/create')
  * @param {object} data - Request body payload
  * @param {object} [options]
@@ -17,12 +15,11 @@ export async function webhookCall(endpoint, data = {}, options = {}) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const url = `${WEBHOOK_BASE}/${endpoint}`;
+    const url = `/webhook/${endpoint}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_TOKEN}`,
       },
       body: JSON.stringify(data),
       signal: controller.signal,

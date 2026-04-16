@@ -1,6 +1,6 @@
-# FOLLOWUPS.md — Non-Blockers Logged During Test Campaign
+# FOLLOWUPS.md — Test & Hardening Campaign
 
-## All Resolved
+## ALL ITEMS RESOLVED
 
 - ~~**No coverage report**~~ — vitest coverage-v8 configured, baseline: 44.4% statements
 - ~~**RLS gap on migration 001 tables**~~ — migration 018 applied, all 37 tables now have RLS
@@ -14,9 +14,8 @@
 - ~~**YouTube API key in React bundle**~~ — Removed client-side YouTube API call, handle resolution deferred to server-side WF_COMPETITOR_MONITOR
 - ~~**WF_WEBHOOK_STATUS not active**~~ — Activated via MCP
 - ~~**Browser E2E tests**~~ — Playwright installed, 11 smoke tests passing against live dashboard
+- ~~**npm audit: 6 moderate vulns**~~ — Upgraded vite 5→8, vitest 2→4, plugin-react 4→6. 0 vulnerabilities.
+- ~~**Dashboard API token in React bundle**~~ — Moved auth to nginx server-side proxy. VITE_API_TOKEN removed from .env and api.js. Token lives only in nginx config on VPS.
+- ~~**Caption burn service tests**~~ — 14 integration tests passing on VPS (health, burn endpoint, FFmpeg, systemd, timeout config)
 
-## Accepted Risks (not fixable without architectural change)
-
-1. **npm audit: 6 moderate vulns** — All in esbuild->vite->vitest chain. Requires vite 5->8 major bump. Monitored, not actionable.
-2. **Dashboard API token in React bundle** — `VITE_API_TOKEN` is inherently client-side (Vite bakes VITE_* vars). Protected by PIN gate. Acceptable for single-user deployment.
-3. **Caption burn service tests** — Requires VPS Docker environment. Covered by manual E2E on staging.
+## Zero open items.

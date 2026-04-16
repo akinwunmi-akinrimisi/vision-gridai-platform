@@ -14,6 +14,8 @@ export default defineConfig({
     setupFiles: './src/__tests__/setup.js',
     globals: true,
     exclude: ['e2e/**', 'node_modules/**'],
+    isolate: true,
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'lcov'],

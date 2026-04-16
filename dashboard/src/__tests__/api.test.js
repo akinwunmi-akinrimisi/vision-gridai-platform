@@ -29,7 +29,7 @@ describe('webhookCall', () => {
     expect(options.headers['Content-Type']).toBe('application/json');
   });
 
-  it('sends Authorization Bearer header', async () => {
+  it('does NOT send Authorization header (auth is injected by nginx server-side)', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ success: true, data: {}, error: null }),
     });
@@ -37,7 +37,7 @@ describe('webhookCall', () => {
     await webhookCall('test/endpoint');
 
     const [, options] = globalThis.fetch.mock.calls[0];
-    expect(options.headers['Authorization']).toMatch(/^Bearer /);
+    expect(options.headers['Authorization']).toBeUndefined();
   });
 
   it('constructs correct URL from endpoint parameter', async () => {

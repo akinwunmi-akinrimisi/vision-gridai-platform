@@ -1235,7 +1235,7 @@ function ApiHealthSection({ data }) {
 
     // n8n check -- GET the webhook base to see if n8n responds
     try {
-      const webhookBase = import.meta.env.VITE_N8N_WEBHOOK_BASE || '/webhook';
+      const webhookBase = '/webhook';
       const resp = await fetch(`${webhookBase}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
