@@ -323,8 +323,9 @@ function usePendingTopicsCount(projectId) {
 // ── Sidebar Main Component ───────────────────────────
 
 export default function Sidebar({ onLogout, collapsed, setCollapsed }) {
-  const { id: projectId } = useParams();
   const location = useLocation();
+  const projectIdMatch = location.pathname.match(/^\/project\/([^/]+)/);
+  const projectId = projectIdMatch?.[1] || null;
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [mobileOpen, setMobileOpen] = useState(false);
 
