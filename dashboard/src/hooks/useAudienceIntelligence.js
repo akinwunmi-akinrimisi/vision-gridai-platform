@@ -147,8 +147,19 @@ export function useCreateTopicFromSuggestion(projectId) {
         throw new Error('Suggestion missing suggested_title');
       }
 
+      // Compute next topic_number (topics.topic_number is NOT NULL)
+      const { data: maxRow } = await supabase
+        .from('topics')
+        .select('topic_number')
+        .eq('project_id', projectId)
+        .order('topic_number', { ascending: false })
+        .limit(1)
+        .single();
+      const nextNumber = (maxRow?.topic_number || 0) + 1;
+
       const topicPayload = {
         project_id: projectId,
+        topic_number: nextNumber,
         seo_title: suggestion.suggested_title,
         original_title: suggestion.suggested_title,
         narrative_hook: suggestion.seed_question || null,

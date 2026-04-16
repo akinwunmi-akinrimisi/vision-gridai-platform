@@ -29,14 +29,17 @@ export function useABTests(projectId, { filter = 'all' } = {}) {
   return useQuery({
     queryKey: ['ab-tests', projectId],
     queryFn: async () => {
+      const selectCols =
+        'id, topic_id, project_id, youtube_video_id, test_type, status, ' +
+        'min_impressions_per_variant, min_days_per_variant, rotation_interval_hours, ' +
+        'confidence_threshold, current_variant_id, last_rotated_at, started_at, ' +
+        'completed_at, winning_variant_id, winner_applied, test_notes, created_at';
+
       let query = supabase
         .from('ab_tests')
         .select(
-          'id, topic_id, project_id, youtube_video_id, test_type, status, ' +
-            'min_impressions_per_variant, min_days_per_variant, rotation_interval_hours, ' +
-            'confidence_threshold, current_variant_id, last_rotated_at, started_at, ' +
-            'completed_at, winning_variant_id, winner_applied, test_notes, created_at, ' +
-            'variants:ab_test_variants(*), ' +
+          selectCols +
+            ', variants:ab_test_variants(*), ' +
             'topics(id, topic_number, seo_title, original_title, selected_title, thumbnail_url)',
         )
         .eq('project_id', projectId)
@@ -47,7 +50,34 @@ export function useABTests(projectId, { filter = 'all' } = {}) {
       else if (filter === 'completed') query = query.eq('status', 'completed');
       else if (filter === 'paused') query = query.eq('status', 'paused');
 
-      const { data, error } = await query;
+      let { data, error } = await query;
+
+      // Fallback: if the nested select fails (FK not auto-detected), fetch separately
+      if (error && error.message?.includes('could not find')) {
+        let fallbackQuery = supabase
+          .from('ab_tests')
+          .select(selectCols)
+          .eq('project_id', projectId)
+          .order('started_at', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false });
+
+        if (filter === 'running') fallbackQuery = fallbackQuery.eq('status', 'running');
+        else if (filter === 'completed') fallbackQuery = fallbackQuery.eq('status', 'completed');
+        else if (filter === 'paused') fallbackQuery = fallbackQuery.eq('status', 'paused');
+
+        const { data: tests } = await fallbackQuery;
+        const testIds = (tests || []).map((t) => t.id);
+        const { data: variants } = testIds.length
+          ? await supabase.from('ab_test_variants').select('*').in('ab_test_id', testIds)
+          : { data: [] };
+        data = (tests || []).map((t) => ({
+          ...t,
+          variants: (variants || []).filter((v) => v.ab_test_id === t.id),
+          topics: null,
+        }));
+        error = null;
+      }
+
       if (error) throw error;
 
       // Sort variants by variant_order within each test for stable display

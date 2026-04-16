@@ -302,10 +302,31 @@ export function useAddCompetitorChannel(projectId) {
           'Could not extract channel ID. Paste a full /channel/UC... URL, or a /@handle URL.',
         );
       }
-      // If we only have a handle, use it as channel_id placeholder.
-      // The monitor workflow is responsible for resolving the true UC... ID later.
-      const channelId = kind === 'channel_id' ? value : `handle:${value}`;
-      const placeholderName = kind === 'handle' ? `@${value}` : 'Pending\u2026';
+
+      let channelId = kind === 'channel_id' ? value : `handle:${value}`;
+      let channelName = kind === 'handle' ? `@${value}` : 'Pending\u2026';
+
+      // If we only have a handle, try to resolve to a real UC... channel ID
+      // via the YouTube Data API so WF_COMPETITOR_MONITOR can call channels.list?id=...
+      if (channelId.startsWith('handle:')) {
+        const handle = channelId.replace('handle:', '');
+        const ytApiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
+        if (ytApiKey) {
+          try {
+            const ytResp = await fetch(
+              `https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=@${encodeURIComponent(handle)}&key=${ytApiKey}`,
+            );
+            const ytData = await ytResp.json();
+            if (ytData.items?.[0]?.id) {
+              channelId = ytData.items[0].id;
+              channelName = ytData.items[0].snippet?.title || channelName;
+            }
+          } catch {
+            // Resolution failed — keep handle:<value>, monitor will skip it
+          }
+        }
+        // If resolution fails or no API key, keep handle:<value> as fallback
+      }
 
       const { data, error } = await supabase
         .from('competitor_channels')
@@ -313,7 +334,7 @@ export function useAddCompetitorChannel(projectId) {
           project_id: projectId,
           channel_id: channelId,
           channel_url: channel_url.trim(),
-          channel_name: placeholderName,
+          channel_name: channelName,
           channel_handle: kind === 'handle' ? `@${value}` : null,
           added_from: 'manual',
           is_active: true,

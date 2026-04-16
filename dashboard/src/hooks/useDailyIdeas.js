@@ -173,9 +173,20 @@ export function usePromoteIdeaToTopic(projectId) {
 
   return useMutation({
     mutationFn: async ({ idea }) => {
+      // Compute next topic_number (topics.topic_number is NOT NULL)
+      const { data: maxRow } = await supabase
+        .from('topics')
+        .select('topic_number')
+        .eq('project_id', projectId)
+        .order('topic_number', { ascending: false })
+        .limit(1)
+        .single();
+      const nextNumber = (maxRow?.topic_number || 0) + 1;
+
       // 1. Insert minimal topic scaffold
       const topicPayload = {
         project_id: projectId,
+        topic_number: nextNumber,
         seo_title: idea.idea_title,
         original_title: idea.idea_title,
         narrative_hook: idea.idea_angle || null,

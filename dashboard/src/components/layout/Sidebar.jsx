@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Monitor,
   ListChecks,
-  FileText,
   Activity,
   BarChart3,
   Settings,
@@ -66,7 +65,6 @@ const projectNavItems = [
   { label: 'Intelligence', icon: Brain, path: '/project/:id/intelligence' },
   { label: 'Daily Ideas', icon: Lightbulb, path: '/project/:id/ideas' },
   { label: 'AI Coach', icon: MessageCircle, path: '/project/:id/coach' },
-  { label: 'Scripts', icon: FileText, path: '/project/:id/topics' }, // scripts route doesn't exist yet
   { label: 'Production', icon: Activity, path: '/project/:id/production' },
   { label: 'Analytics', icon: BarChart3, path: '/project/:id/analytics' },
   { label: 'Calendar', icon: CalendarDays, path: '/project/:id/calendar' },

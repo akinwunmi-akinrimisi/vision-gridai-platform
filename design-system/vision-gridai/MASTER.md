@@ -1,5 +1,10 @@
 # Design System Master File
 
+> **DEPRECATED:** This design system document is stale. The live dashboard uses
+> Tailwind tokens (bg-card, bg-muted, border-border, etc.) + KPICard + Button
+> components from shadcn. Do NOT reference these class names in new code.
+> See src/components/ui/ for the actual component library.
+
 > **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
 > If that file exists, its rules **override** this Master file.
 > If not, strictly follow the rules below.
