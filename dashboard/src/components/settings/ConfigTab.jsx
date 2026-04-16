@@ -60,9 +60,13 @@ import AccountCard from '../social/AccountCard';
 // -- Model options with costs -------------------------------------------------
 
 const IMAGE_MODEL_OPTIONS = [
-  { value: 'fal-ai/bytedance/seedream/v4/text-to-image', label: 'Seedream 4.0', cost: 0.03 },
+  { value: 'fal-ai/bytedance/seedream/v4.5/text-to-image', label: 'Seedream 4.5', cost: 0.04 },
   { value: 'fal-ai/flux/schnell', label: 'FLUX Schnell', cost: 0.003 },
   { value: 'fal-ai/flux-pro/v1.1', label: 'FLUX Pro 1.1', cost: 0.05 },
+];
+
+const I2V_MODEL_OPTIONS = [
+  { value: 'fal-ai/bytedance/seedance-2.0/fast/image-to-video', label: 'Seedance 2.0 Fast', costPerSecond: 0.2419 },
 ];
 
 // -- Field definitions --------------------------------------------------------
@@ -82,6 +86,8 @@ const generalFields = [
 const modelFields = [
   { key: 'image_model', label: 'Image Model', type: 'model-select', modelOptions: IMAGE_MODEL_OPTIONS, costKey: 'image_cost' },
   { key: 'images_per_video', label: 'Images Per Video', type: 'number', min: 10, max: 200 },
+  { key: 'i2v_model', label: 'I2V Model', type: 'model-select', modelOptions: I2V_MODEL_OPTIONS, costKey: 'i2v_cost_per_second' },
+  { key: 'i2v_clip_duration_seconds', label: 'I2V Clip Duration (seconds)', type: 'number', min: 5, max: 15 },
 ];
 
 const youtubeFields = [

@@ -9,7 +9,8 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - **Dashboard:** React 18 + Tailwind CSS + Supabase JS client
 - **Scripts:** Claude Sonnet via Anthropic API direct
 - **Voiceover:** Google Cloud TTS (Chirp 3 HD)
-- **Images:** Fal.ai → Seedream 4.0 ($0.03/image, supports 16:9 + 9:16) — sole visual source for ALL scenes
+- **Images:** Fal.ai → Seedream 4.5 ($0.04/image, supports 16:9 + 9:16)
+- **I2V Clips:** Fal.ai → Seedance 2.0 Fast ($0.2419/second at 720p, 10s clips)
 - **Ken Burns Motion:** FFmpeg zoompan (6 direction templates, $0/scene)
 - **Color Grading:** FFmpeg eq + colorbalance (7 mood profiles per scene)
 - **Transitions:** FFmpeg xfade (5 transition types between scenes)
@@ -112,9 +113,9 @@ vision-gridai-platform/
 
 **IMPORTANT: 4 approval gates are mandatory.** Gate 1: Topics. Gate 2: Script. Gate 3: Video (before YouTube). Gate 4: Shorts (viral clips review before production). Pipeline PAUSES at each gate until user acts from dashboard.
 
-**IMPORTANT: Fal.ai is the image provider.** Images via Seedream 4.0 (`fal-ai/bytedance/seedream/v4/text-to-image`). Auth: `Authorization: Key {{FAL_API_KEY}}`. Async pattern: POST to `queue.fal.run` → poll for result.
+**IMPORTANT: Fal.ai is the image provider.** Images via Seedream 4.5 (`fal-ai/bytedance/seedream/v4.5/text-to-image`). Auth: `Authorization: Key {{FAL_API_KEY}}`. Async pattern: POST to `queue.fal.run` → poll for result.
 
-**IMPORTANT: ALL scenes use Fal.ai Seedream 4.0 + FFmpeg Ken Burns — single visual pipeline.** No I2V, no T2V, no Remotion, no Kinetic Typography. Every scene in both long-form and short-form production: image prompt (composition_prefix + scene_subject + style_dna) → Seedream 4.0 → FFmpeg zoompan (Ken Burns) + color grade → .mp4 clip. visual_type stays 'static_image'.
+**IMPORTANT: Hybrid visual pipeline.** ALL scenes get Fal.ai Seedream 4.5 images + FFmpeg Ken Burns. A user-selected percentage also get Seedance 2.0 Fast I2V clips (10s, 720p→1080p). Video scenes are hybrid: Ken Burns + crossfade + I2V clip + crossfade + Ken Burns. Cost Calculator (Stage 7.5) pauses pipeline for ratio selection before production.
 
 **IMPORTANT: Agency Agents (61 specialists) are installed at `~/.claude/agents/`.** They auto-activate based on context. Key agents: Frontend Developer (dashboard), Backend Architect (n8n workflows), DevOps Automator (VPS/Docker), Image Prompt Engineer (thumbnail/visual prompts), TikTok Strategist + Instagram Curator (social media posting). GSD executor agents inherit their expertise automatically.
 
@@ -194,7 +195,8 @@ cp -r build/* /opt/dashboard/  # Deploy to Nginx
 | B | Topic + avatar generation → GATE 1 | Agentic | ~$0.20 |
 | C | 3-pass script + scoring → GATE 2 | Agentic | ~$1.80 |
 | D1 | TTS audio (172 scenes) | Deterministic | ~$0.30 |
-| D2 | Images (Fal.ai Seedream 4.0 — all scenes) | Deterministic | ~$5.16 |
+| D2 | Images (Fal.ai Seedream 4.5 — all scenes) | Deterministic | ~$6.88 |
+| D2.5 | I2V clips (selected scenes, Seedance 2.0 Fast) | Deterministic | $0–$62.89 |
 | D3 | Ken Burns + Color Grade (FFmpeg) | Deterministic | Free |
 | D4 | Captions (kinetic ASS via libass) + Transitions (xfade) + Assembly | Deterministic | Free |
 | D5 | Background music (Lyria) + ducking | Deterministic | Free |
@@ -206,7 +208,7 @@ cp -r build/* /opt/dashboard/  # Deploy to Nginx
 | H | Social posting (scheduled via calendar) | Cron | Free |
 | TI | Topic Intelligence (5-source research) | On-demand | ~$0.13 |
 | Sup | Supervisor + Comment sync + Engagement | Cron | ~$14/mo |
-| **Total per video** | | | **~$8.09** |
+| **Total per video** | | | **~$13.76–$76.65 (depends on video ratio)** |
 
 ## Development Workflow (Superpowers)
 
@@ -258,7 +260,7 @@ Quality commands (gstack selective):
 - Apify actors may time out on first run due to cold starts. Set timeout to 120s minimum.
 - The CreateProjectModal dropdown only shows results from the latest complete research run.
 - Superpowers specs/plans go in `docs/superpowers/`, NOT `.planning/` (that's legacy GSD state).
-- ALL scenes now use text-to-image + FFmpeg Ken Burns. WF_I2V and WF_T2V are deprecated. WF_KEN_BURNS replaces both.
+- ALL scenes get Seedream 4.5 images + Ken Burns. User selects video ratio (0%/5%/10%/15%) at Stage 7.5. Selected scenes also get Seedance 2.0 Fast I2V clips composited as hybrid scenes.
 - 172-scene xfade chains hit FFmpeg memory limits. Assemble in 15-20 scene batches, then concat batches.
 - Style DNA must be IDENTICAL across all scenes. Store once in projects table, never regenerate mid-video.
 - Selective color scenes SKIP FFmpeg color grading — check `selective_color_element IS NOT NULL`.
@@ -277,6 +279,9 @@ Quality commands (gstack selective):
 - Assembly workflow (WF_CAPTIONS_ASSEMBLY) has 3-layer crash prevention: (1) Build Scene Clip verifies each clip's fps/sample_rate after generation and auto-re-encodes mismatches, (2) Concat Video scans ALL clips before concat and fixes any outliers, (3) Post-concat duration check verifies output is >95% of expected total and video/audio drift <5s. If any check fails, it logs a WARNING in stdout for the downstream If-node to catch.
 - Caption burn service (:9998) timeout is 3 hours. Service is host-side (not Docker) at `/opt/caption-burn/caption_burn_service.py`, managed by systemd (`caption-burn.service`). Calls `/webhook/drive-upload` (renamed from `/webhook/kinetic/drive-upload` after Remotion/Kinetic removal) for the re-upload step.
 - `generate_kinetic_ass.py` + `burn_captions.sh` build animated caption STYLE (word-by-word pop-in via ASS tags) — the word "kinetic" here describes caption motion, NOT the removed Kinetic Typography production style.
+- Seedance 2.0 Fast outputs 720p. Upscale to 1080p via FFmpeg `scale=1920:1080:flags=lanczos` before assembly.
+- Hybrid scene assembly: Ken Burns → 0.5s xfade → I2V clip (speed-adjusted if needed) → 0.5s xfade → Ken Burns. Discard Seedance audio — TTS is the audio source.
+- Cost Calculator (Stage 7.5) is a pipeline pause gate between scene segmentation and TTS. Four options: 100/0, 95/5, 90/10, 85/15.
 
 ## Skill routing
 

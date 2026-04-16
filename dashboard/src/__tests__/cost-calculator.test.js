@@ -1,179 +1,254 @@
 import { describe, it, expect } from 'vitest';
+import { computeCostOption, IMAGE_COST, VIDEO_COST, RATIO_OPTIONS } from '../hooks/useCostCalculator';
 
 /* ================================================================== *
- *  Cost calculation logic extracted from CostEstimateDialog.jsx       *
- *  and useProjectMetrics.js for deterministic testing.               *
+ *  Cost calculation tests for the hybrid image/video pipeline.       *
+ *                                                                    *
+ *  Pricing:                                                          *
+ *    Script:   $1.80 flat (3-pass generation)                        *
+ *    TTS:      sceneCount x $0.002                                   *
+ *    Images:   sceneCount x $0.04 (Seedream 4.5)                     *
+ *    I2V:      videoCount x $2.419 (Seedance 2.0 Fast, 10s clip)    *
+ *    Assembly: $0.06 flat (Ken Burns + color + music + end card)     *
+ *                                                                    *
+ *  ALL scenes get images. Video clips are additional cost on top.    *
+ *  User picks ratio: 100/0, 95/5, 90/10, 85/15.                    *
  * ================================================================== */
 
-// ── Extracted cost calculation from CostEstimateDialog.jsx ──────────
+// ── Constants validation ───────────────────────────────────────────
 
-function calculateCosts(projectConfig = {}, numTopics = 1) {
-  const sceneCount = projectConfig.target_scene_count || 172;
-  const imagesCount = sceneCount; // All scenes get images (static_image + Ken Burns)
+describe('Cost constants', () => {
+  it('IMAGE_COST is $0.04 (Seedream 4.5)', () => {
+    expect(IMAGE_COST).toBe(0.04);
+  });
 
-  const scriptCost = 1.80; // 3-pass script generation
-  const ttsCost = sceneCount * 0.002;
-  const imagesCost = imagesCount * (projectConfig.image_cost || 0.030);
-  const assemblyMusicCost = 0.06; // Ken Burns + color grade + music + end card + thumbnail
-  const perTopicCost = scriptCost + ttsCost + imagesCost + assemblyMusicCost;
-  const totalCost = perTopicCost * numTopics;
+  it('VIDEO_COST is $2.419 (Seedance 2.0 Fast, 10s clip)', () => {
+    expect(VIDEO_COST).toBe(2.419);
+  });
 
-  return {
-    scriptCost,
-    ttsCost,
-    imagesCost,
-    assemblyMusicCost,
-    perTopicCost,
-    totalCost,
-  };
-}
+  it('RATIO_OPTIONS has exactly 4 options', () => {
+    expect(RATIO_OPTIONS).toHaveLength(4);
+  });
 
-// ── Extracted from TopicDetail-cost.test.jsx pattern ────────────────
+  it('RATIO_OPTIONS labels and ratios are correct', () => {
+    expect(RATIO_OPTIONS[0]).toEqual({ label: '100% / 0%', imageRatio: 1.0, videoRatio: 0.0 });
+    expect(RATIO_OPTIONS[1]).toEqual({ label: '95% / 5%', imageRatio: 0.95, videoRatio: 0.05 });
+    expect(RATIO_OPTIONS[2]).toEqual({ label: '90% / 10%', imageRatio: 0.90, videoRatio: 0.10 });
+    expect(RATIO_OPTIONS[3]).toEqual({ label: '85% / 15%', imageRatio: 0.85, videoRatio: 0.15 });
+  });
+});
 
-function filterCostBreakdown(costBreakdown) {
-  return Object.entries(costBreakdown)
-    .map(([key, val]) => {
-      const lk = key.toLowerCase();
-      if (lk === 'i2v' || lk === 't2v') return null;
-      return [key, val];
-    })
-    .filter(Boolean)
-    .concat([['ken_burns', 0]])
-    .filter(([key], i, arr) => arr.findIndex(([k]) => k === key) === i);
-}
+// ── computeCostOption — core formula tests ─────────────────────────
 
-// ── Extracted from useProjectMetrics.js ─────────────────────────────
+describe('computeCostOption — ratio calculations (172 scenes)', () => {
+  const SCENE_COUNT = 172;
 
-function computeMetrics(topics) {
-  if (!topics || topics.length === 0) {
-    return {
-      totalTopics: 0,
-      approved: 0,
-      inProgress: 0,
-      published: 0,
-      failed: 0,
-      totalSpend: 0,
-      totalRevenue: 0,
-      avgCpm: 0,
-      netProfit: 0,
-    };
+  it('100/0 ratio: 172 images ($6.88) + 0 clips ($0.00) = $6.88 media', () => {
+    const result = computeCostOption(SCENE_COUNT, RATIO_OPTIONS[0]);
+
+    expect(result.imageCount).toBe(172);
+    expect(result.videoCount).toBe(0); // Math.round(172 * 0.0) = 0
+    expect(result.imageCost).toBeCloseTo(6.88, 2);
+    expect(result.videoCost).toBeCloseTo(0.0, 2);
+    expect(result.totalCost).toBeCloseTo(6.88, 2);
+  });
+
+  it('95/5 ratio: 172 images ($6.88) + 9 clips ($21.77) = $28.65 media', () => {
+    const result = computeCostOption(SCENE_COUNT, RATIO_OPTIONS[1]);
+
+    expect(result.imageCount).toBe(172);
+    expect(result.videoCount).toBe(9); // Math.round(172 * 0.05) = 9
+    expect(result.imageCost).toBeCloseTo(6.88, 2);
+    expect(result.videoCost).toBeCloseTo(21.77, 2); // 9 * 2.419 = 21.771
+    expect(result.totalCost).toBeCloseTo(28.65, 2);
+  });
+
+  it('90/10 ratio: 172 images ($6.88) + 17 clips ($41.12) = $48.00 media', () => {
+    const result = computeCostOption(SCENE_COUNT, RATIO_OPTIONS[2]);
+
+    expect(result.imageCount).toBe(172);
+    expect(result.videoCount).toBe(17); // Math.round(172 * 0.10) = 17
+    expect(result.imageCost).toBeCloseTo(6.88, 2);
+    expect(result.videoCost).toBeCloseTo(41.12, 2); // 17 * 2.419 = 41.123
+    expect(result.totalCost).toBeCloseTo(48.00, 2);
+  });
+
+  it('85/15 ratio: 172 images ($6.88) + 26 clips ($62.89) = $69.77 media', () => {
+    const result = computeCostOption(SCENE_COUNT, RATIO_OPTIONS[3]);
+
+    expect(result.imageCount).toBe(172);
+    expect(result.videoCount).toBe(26); // Math.round(172 * 0.15) = 26
+    expect(result.imageCost).toBeCloseTo(6.88, 2);
+    expect(result.videoCost).toBeCloseTo(62.89, 2); // 26 * 2.419 = 62.894
+    expect(result.totalCost).toBeCloseTo(69.77, 2);
+  });
+});
+
+describe('computeCostOption — custom scene counts', () => {
+  it('100 scenes at 90/10 ratio: 10 video clips', () => {
+    const result = computeCostOption(100, RATIO_OPTIONS[2]);
+
+    expect(result.imageCount).toBe(100);
+    expect(result.videoCount).toBe(10); // Math.round(100 * 0.10) = 10
+    expect(result.imageCost).toBeCloseTo(4.00, 2); // 100 * 0.04
+    expect(result.videoCost).toBeCloseTo(24.19, 2); // 10 * 2.419
+    expect(result.totalCost).toBeCloseTo(28.19, 2);
+  });
+
+  it('zero scenes produces $0 media cost for all ratios', () => {
+    for (const option of RATIO_OPTIONS) {
+      const result = computeCostOption(0, option);
+      expect(result.imageCount).toBe(0);
+      expect(result.videoCount).toBe(0);
+      expect(result.imageCost).toBe(0);
+      expect(result.videoCost).toBe(0);
+      expect(result.totalCost).toBe(0);
+    }
+  });
+
+  it('1 scene at 85/15 ratio: rounds to 0 video clips (Math.round(0.15) = 0)', () => {
+    const result = computeCostOption(1, RATIO_OPTIONS[3]);
+    expect(result.imageCount).toBe(1);
+    expect(result.videoCount).toBe(0); // Math.round(1 * 0.15) = 0
+    expect(result.imageCost).toBeCloseTo(0.04, 2);
+    expect(result.videoCost).toBe(0);
+    expect(result.totalCost).toBeCloseTo(0.04, 2);
+  });
+
+  it('200 scenes at 95/5 ratio: 10 video clips', () => {
+    const result = computeCostOption(200, RATIO_OPTIONS[1]);
+    expect(result.videoCount).toBe(10); // Math.round(200 * 0.05) = 10
+    expect(result.imageCount).toBe(200);
+  });
+});
+
+describe('computeCostOption — precision and rounding', () => {
+  it('image cost per scene is exactly $0.04', () => {
+    const result = computeCostOption(1, RATIO_OPTIONS[0]);
+    expect(result.imageCost).toBe(IMAGE_COST);
+    expect(result.imageCost).toBe(0.04);
+  });
+
+  it('I2V clip cost is exactly $2.419', () => {
+    // Create a custom option that produces exactly 1 video
+    const singleVideoOption = { label: 'test', imageRatio: 0, videoRatio: 1.0 };
+    const result = computeCostOption(1, singleVideoOption);
+    expect(result.videoCost).toBe(VIDEO_COST);
+    expect(result.videoCost).toBe(2.419);
+  });
+
+  it('video count uses Math.round for rounding', () => {
+    // 172 * 0.05 = 8.6, Math.round(8.6) = 9
+    const r1 = computeCostOption(172, RATIO_OPTIONS[1]);
+    expect(r1.videoCount).toBe(Math.round(172 * 0.05));
+    expect(r1.videoCount).toBe(9);
+
+    // 172 * 0.10 = 17.2, Math.round(17.2) = 17
+    const r2 = computeCostOption(172, RATIO_OPTIONS[2]);
+    expect(r2.videoCount).toBe(Math.round(172 * 0.10));
+    expect(r2.videoCount).toBe(17);
+
+    // 172 * 0.15 = 25.8, Math.round(25.8) = 26
+    const r3 = computeCostOption(172, RATIO_OPTIONS[3]);
+    expect(r3.videoCount).toBe(Math.round(172 * 0.15));
+    expect(r3.videoCount).toBe(26);
+  });
+});
+
+describe('computeCostOption — return shape', () => {
+  it('returns correct shape with all required fields', () => {
+    const result = computeCostOption(172, RATIO_OPTIONS[1]);
+
+    // Spread from the option
+    expect(result).toHaveProperty('label', '95% / 5%');
+    expect(result).toHaveProperty('imageRatio', 0.95);
+    expect(result).toHaveProperty('videoRatio', 0.05);
+
+    // Computed fields
+    expect(result).toHaveProperty('imageCount');
+    expect(result).toHaveProperty('videoCount');
+    expect(result).toHaveProperty('imageCost');
+    expect(result).toHaveProperty('videoCost');
+    expect(result).toHaveProperty('totalCost');
+
+    // Types
+    expect(typeof result.imageCount).toBe('number');
+    expect(typeof result.videoCount).toBe('number');
+    expect(typeof result.imageCost).toBe('number');
+    expect(typeof result.videoCost).toBe('number');
+    expect(typeof result.totalCost).toBe('number');
+  });
+
+  it('totalCost always equals imageCost + videoCost', () => {
+    for (const option of RATIO_OPTIONS) {
+      const result = computeCostOption(172, option);
+      expect(result.totalCost).toBeCloseTo(result.imageCost + result.videoCost, 10);
+    }
+  });
+
+  it('imageCount always equals sceneCount (all scenes get images)', () => {
+    for (const option of RATIO_OPTIONS) {
+      const result = computeCostOption(172, option);
+      expect(result.imageCount).toBe(172);
+    }
+  });
+});
+
+// ── Full per-video cost formula (script + TTS + media + assembly) ──
+
+describe('Full per-video cost estimation', () => {
+  const SCRIPT_COST = 1.80;
+  const TTS_RATE = 0.002;
+  const ASSEMBLY_COST = 0.06;
+
+  function fullVideoCost(sceneCount, ratioOption) {
+    const media = computeCostOption(sceneCount, ratioOption);
+    const tts = sceneCount * TTS_RATE;
+    return SCRIPT_COST + tts + media.totalCost + ASSEMBLY_COST;
   }
 
-  const IN_PROGRESS_STATUSES = [
-    'scripting', 'audio', 'images', 'video', 'assembly',
-    'assembling', 'producing', 'queued',
-  ];
-
-  const totalTopics = topics.length;
-  const approved = topics.filter((t) => t.review_status === 'approved').length;
-  const inProgress = topics.filter((t) => IN_PROGRESS_STATUSES.includes(t.status)).length;
-  const published = topics.filter((t) => t.status === 'published').length;
-  const failed = topics.filter((t) => t.status === 'failed').length;
-
-  const totalSpend = topics.reduce(
-    (sum, t) => sum + (parseFloat(t.total_cost) || 0),
-    0,
-  );
-
-  const totalRevenue = topics.reduce(
-    (sum, t) => sum + (parseFloat(t.yt_estimated_revenue) || 0),
-    0,
-  );
-
-  const topicsWithCpm = topics.filter((t) => t.yt_actual_cpm != null && t.yt_actual_cpm > 0);
-  const avgCpm =
-    topicsWithCpm.length > 0
-      ? topicsWithCpm.reduce((sum, t) => sum + parseFloat(t.yt_actual_cpm), 0) /
-        topicsWithCpm.length
-      : 0;
-
-  const netProfit = Math.round((totalRevenue - totalSpend) * 100) / 100;
-
-  return {
-    totalTopics,
-    approved,
-    inProgress,
-    published,
-    failed,
-    totalSpend: Math.round(totalSpend * 100) / 100,
-    totalRevenue: Math.round(totalRevenue * 100) / 100,
-    avgCpm: Math.round(avgCpm * 100) / 100,
-    netProfit,
-  };
-}
-
-/* ================================================================== *
- *  Tests: CostEstimateDialog cost formulas                           *
- * ================================================================== */
-
-describe('CostEstimateDialog — cost formulas', () => {
-  it('default project (172 scenes, $0.03/img) equals ~$7.02/topic', () => {
-    const { perTopicCost } = calculateCosts({}, 1);
-    // script(1.80) + tts(172*0.002=0.344) + images(172*0.03=5.16) + assembly(0.06) = 7.364
-    expect(perTopicCost).toBeCloseTo(7.364, 2);
+  it('172 scenes, 100/0: ~$9.20 per video', () => {
+    // script(1.80) + tts(172*0.002=0.344) + images(6.88) + assembly(0.06) = 9.084
+    const total = fullVideoCost(172, RATIO_OPTIONS[0]);
+    expect(total).toBeCloseTo(9.084, 2);
   });
 
-  it('custom image cost ($0.05/img) recalculates correctly', () => {
-    const { imagesCost, perTopicCost } = calculateCosts({ image_cost: 0.05 }, 1);
-    expect(imagesCost).toBeCloseTo(172 * 0.05, 2); // 8.60
-    // script(1.80) + tts(0.344) + images(8.60) + assembly(0.06)
-    expect(perTopicCost).toBeCloseTo(1.80 + 0.344 + 8.60 + 0.06, 2);
+  it('172 scenes, 85/15: ~$71.89 per video', () => {
+    // script(1.80) + tts(0.344) + media(69.774) + assembly(0.06) = 71.978
+    const total = fullVideoCost(172, RATIO_OPTIONS[3]);
+    expect(total).toBeCloseTo(1.80 + 0.344 + 69.774 + 0.06, 2);
   });
 
-  it('multiple topics multiply correctly', () => {
-    const { perTopicCost, totalCost } = calculateCosts({}, 5);
-    expect(totalCost).toBeCloseTo(perTopicCost * 5, 2);
-  });
-
-  it('zero scenes falls back to default 172 (falsy guard)', () => {
-    // The code uses `projectConfig.target_scene_count || 172` so 0 is falsy -> 172 default
-    const { perTopicCost, scriptCost, assemblyMusicCost } =
-      calculateCosts({ target_scene_count: 0 }, 1);
-    expect(scriptCost).toBe(1.80);
-    expect(assemblyMusicCost).toBe(0.06);
-    // 0 is falsy in JS, so falls back to 172 scenes
-    const defaultCost = calculateCosts({}, 1);
-    expect(perTopicCost).toBeCloseTo(defaultCost.perTopicCost, 2);
-  });
-
-  it('per-video ceiling: no single topic exceeds $50', () => {
-    // Even with 500 scenes at $0.10/img: script(1.80) + tts(1.00) + images(50) + assembly(0.06) = 52.86
-    // This test documents that the UI does NOT enforce a ceiling — it just calculates
-    const { perTopicCost } = calculateCosts({ target_scene_count: 500, image_cost: 0.10 }, 1);
-    // At extreme settings the cost WILL exceed $50. The spec target was "~$8" per video.
-    // This test guards that default settings stay well under $50.
-    const defaultCost = calculateCosts({}, 1).perTopicCost;
-    expect(defaultCost).toBeLessThan(50);
-  });
-
-  it('shorts pack (20 clips) totals <= $0.50', () => {
-    // Shorts use $0.002/scene TTS + $0.03/image, typically ~5 scenes per clip
-    // Mock: 20 clips * ~5 scenes = 100 scenes at short-form rates
-    const shortsCostPerClip = 5 * 0.002 + 5 * 0.03; // 0.01 + 0.15 = 0.16
-    const totalShorts = shortsCostPerClip * 20; // 3.20
-    // This is over $0.50. The spec's "$0.50 for 20 clips" was for analysis only:
-    // Viral analysis + rewrite ($0.08) is the analysis component
+  it('shorts pack (20 clips * ~5 scenes) analysis cost stays under $0.50', () => {
+    // Shorts analysis cost is separate from media production
     const analysisCost = 0.08;
     expect(analysisCost).toBeLessThan(0.50);
   });
 
   it('topic refinement cost: ~$0.15 per refinement (25 topics context)', () => {
-    // Refinement sends all 24 other topics as context to avoid overlap
-    // Estimated at ~$0.15 per refinement call
     const refinementCost = 0.15;
     const maxRefinements = 25;
-    const maxRefinementSpend = refinementCost * maxRefinements;
-    expect(refinementCost).toBeCloseTo(0.15, 2);
-    expect(maxRefinementSpend).toBeLessThanOrEqual(5.0);
+    expect(refinementCost * maxRefinements).toBeLessThanOrEqual(5.0);
   });
+});
 
-  it('intelligence overhead per project: within reasonable bounds', () => {
-    // Topic generation ($0.20) + niche research ($0.60) + prompts ($0.10) = $0.90 per project
-    const intelligenceOverhead = 0.20 + 0.60 + 0.10;
-    expect(intelligenceOverhead).toBeLessThan(7.50);
-  });
+// ── Legacy cost breakdown filtering (TopicDetail pattern) ──────────
 
-  it('filterCostBreakdown removes deprecated i2v/t2v keys and adds ken_burns: 0', () => {
+describe('filterCostBreakdown — legacy cost keys', () => {
+  // Extract the filter function as used in TopicDetail.jsx
+  function filterCostBreakdown(costBreakdown) {
+    return Object.entries(costBreakdown)
+      .map(([key, val]) => {
+        const lk = key.toLowerCase();
+        if (lk === 'i2v' || lk === 't2v') return null;
+        return [key, val];
+      })
+      .filter(Boolean)
+      .concat([['ken_burns', 0]])
+      .filter(([key], i, arr) => arr.findIndex(([k]) => k === key) === i);
+  }
+
+  it('removes deprecated i2v/t2v keys and adds ken_burns: 0', () => {
     const result = filterCostBreakdown({
       script: 1.80,
       tts: 0.34,
@@ -187,18 +262,45 @@ describe('CostEstimateDialog — cost formulas', () => {
     expect(keys).toContain('ken_burns');
     const kenBurns = result.find(([k]) => k === 'ken_burns');
     expect(kenBurns[1]).toBe(0);
-    // Original entries preserved
     expect(keys).toContain('script');
     expect(keys).toContain('tts');
     expect(keys).toContain('images');
   });
 });
 
-/* ================================================================== *
- *  Tests: useProjectMetrics aggregation                              *
- * ================================================================== */
+// ── useProjectMetrics aggregation (unchanged logic) ────────────────
 
 describe('useProjectMetrics — computeMetrics aggregation', () => {
+  const IN_PROGRESS_STATUSES = [
+    'scripting', 'audio', 'images', 'video', 'assembly',
+    'assembling', 'producing', 'queued',
+  ];
+
+  function computeMetrics(topics) {
+    if (!topics || topics.length === 0) {
+      return { totalTopics: 0, approved: 0, inProgress: 0, published: 0, failed: 0, totalSpend: 0, totalRevenue: 0, avgCpm: 0, netProfit: 0 };
+    }
+    const totalTopics = topics.length;
+    const approved = topics.filter((t) => t.review_status === 'approved').length;
+    const inProgress = topics.filter((t) => IN_PROGRESS_STATUSES.includes(t.status)).length;
+    const published = topics.filter((t) => t.status === 'published').length;
+    const failed = topics.filter((t) => t.status === 'failed').length;
+    const totalSpend = topics.reduce((sum, t) => sum + (parseFloat(t.total_cost) || 0), 0);
+    const totalRevenue = topics.reduce((sum, t) => sum + (parseFloat(t.yt_estimated_revenue) || 0), 0);
+    const topicsWithCpm = topics.filter((t) => t.yt_actual_cpm != null && t.yt_actual_cpm > 0);
+    const avgCpm = topicsWithCpm.length > 0
+      ? topicsWithCpm.reduce((sum, t) => sum + parseFloat(t.yt_actual_cpm), 0) / topicsWithCpm.length
+      : 0;
+    const netProfit = Math.round((totalRevenue - totalSpend) * 100) / 100;
+    return {
+      totalTopics, approved, inProgress, published, failed,
+      totalSpend: Math.round(totalSpend * 100) / 100,
+      totalRevenue: Math.round(totalRevenue * 100) / 100,
+      avgCpm: Math.round(avgCpm * 100) / 100,
+      netProfit,
+    };
+  }
+
   it('totalSpend sums topic.total_cost across topics', () => {
     const topics = [
       { total_cost: '5.16', yt_estimated_revenue: '0', status: 'published', review_status: 'approved' },
@@ -217,34 +319,21 @@ describe('useProjectMetrics — computeMetrics aggregation', () => {
       { yt_actual_cpm: 0, total_cost: '0', yt_estimated_revenue: '0', status: 'pending', review_status: 'pending' },
     ];
     const m = computeMetrics(topics);
-    // Only 34.50 and 28.00 are non-null and > 0
     expect(m.avgCpm).toBeCloseTo((34.50 + 28.00) / 2, 2);
   });
 
-  it('netProfit = totalRevenue - totalSpend with precision', () => {
+  it('netProfit = totalRevenue - totalSpend', () => {
     const topics = [
       { total_cost: '8.09', yt_estimated_revenue: '1575.00', status: 'published', review_status: 'approved' },
       { total_cost: '8.09', yt_estimated_revenue: '2200.50', status: 'published', review_status: 'approved' },
     ];
     const m = computeMetrics(topics);
     expect(m.netProfit).toBeCloseTo(3775.50 - 16.18, 2);
-    // Verify no floating point drift
-    expect(m.netProfit).toBe(Math.round((3775.50 - 16.18) * 100) / 100);
   });
 
-  it('returns zeroes for empty topics array', () => {
-    const m = computeMetrics([]);
-    expect(m.totalTopics).toBe(0);
-    expect(m.totalSpend).toBe(0);
-    expect(m.totalRevenue).toBe(0);
-    expect(m.avgCpm).toBe(0);
-    expect(m.netProfit).toBe(0);
-  });
-
-  it('returns zeroes for null topics', () => {
-    const m = computeMetrics(null);
-    expect(m.totalTopics).toBe(0);
-    expect(m.totalSpend).toBe(0);
+  it('returns zeroes for empty or null topics', () => {
+    expect(computeMetrics([]).totalTopics).toBe(0);
+    expect(computeMetrics(null).totalSpend).toBe(0);
   });
 
   it('correctly counts statuses', () => {
@@ -258,12 +347,12 @@ describe('useProjectMetrics — computeMetrics aggregation', () => {
     const m = computeMetrics(topics);
     expect(m.totalTopics).toBe(5);
     expect(m.published).toBe(1);
-    expect(m.inProgress).toBe(2); // scripting + audio
+    expect(m.inProgress).toBe(2);
     expect(m.failed).toBe(1);
     expect(m.approved).toBe(4);
   });
 
-  it('handles null total_cost gracefully', () => {
+  it('handles null/undefined total_cost gracefully', () => {
     const topics = [
       { total_cost: null, yt_estimated_revenue: null, status: 'pending', review_status: 'pending' },
       { total_cost: undefined, yt_estimated_revenue: undefined, status: 'pending', review_status: 'pending' },

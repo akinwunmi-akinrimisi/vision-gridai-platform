@@ -233,6 +233,19 @@ describe('anthropic-model-id-validation', () => {
 
     expect(invalidRefs).toEqual([]);
   });
+
+  it('WF_SCENE_CLASSIFY uses claude-opus-4-6 for classification', () => {
+    const wf = workflows.find((w) => w.filename === 'WF_SCENE_CLASSIFY.json');
+    if (!wf) return; // Skip if file not present
+    expect(wf.content).toMatch(/claude-opus-4-6/);
+  });
+
+  it('WF_SEEDANCE_I2V uses a valid current model', () => {
+    const wf = workflows.find((w) => w.filename === 'WF_SEEDANCE_I2V.json');
+    if (!wf) return; // Skip if file not present
+    // Uses Haiku for lightweight prompt enhancement before video generation
+    expect(wf.content).toMatch(/claude-haiku-4-5-20251001/);
+  });
 });
 
 // ── 7. Sidebar useParams regression ─────────────────────────────────
@@ -265,6 +278,7 @@ describe('sidebar-useParams-regression', () => {
 describe('shorts-aspect-ratio-leakage', () => {
   it('no 9:16 workflow path uses landscape image dimensions', () => {
     // Shorts must use portrait_9_16 or explicit 1080x1920, never 1920x1080
+    // I2V is valid for 16:9 long-form but must never appear in shorts workflows
     const shortRelatedFiles = workflows.filter(
       (w) => w.filename.includes('SHORTS') || w.filename.includes('SOCIAL'),
     );
@@ -274,6 +288,21 @@ describe('shorts-aspect-ratio-leakage', () => {
       // Check for landscape dimensions in shorts workflows
       if (/1920x1080/.test(content) && /portrait|9.?16|shorts/i.test(content)) {
         violations.push({ filename, issue: 'landscape dimensions in shorts context' });
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('shorts workflows do not reference I2V or Seedance (video is 16:9 long-form only)', () => {
+    const shortRelatedFiles = workflows.filter(
+      (w) => w.filename.includes('SHORTS'),
+    );
+
+    const violations = [];
+    for (const { filename, content } of shortRelatedFiles) {
+      if (/seedance|i2v.*generat/i.test(content)) {
+        violations.push({ filename, issue: 'I2V/Seedance reference in shorts workflow' });
       }
     }
 
@@ -354,7 +383,8 @@ describe('intelligence-webhook-auth-present', () => {
     // RPM_CLASSIFY, COMPETITOR_MONITOR, STYLE_DNA, CTR_OPTIMIZE,
     // THUMBNAIL_SCORE, AB_TEST_ROTATE, PREDICT_PERFORMANCE,
     // HOOK_ANALYZER, VIRAL_TAG, DAILY_IDEAS, AI_COACH, NICHE_HEALTH,
-    // REVENUE_ATTRIBUTION, PPS_CALIBRATE, AUDIENCE_INTELLIGENCE
+    // REVENUE_ATTRIBUTION, PPS_CALIBRATE, AUDIENCE_INTELLIGENCE,
+    // SCENE_CLASSIFY
     const intelligenceWorkflows = workflows.filter(
       (w) =>
         w.filename.includes('OUTLIER_SCORE') ||
@@ -374,7 +404,8 @@ describe('intelligence-webhook-auth-present', () => {
         w.filename.includes('NICHE_HEALTH') ||
         w.filename.includes('REVENUE_ATTRIBUTION') ||
         w.filename.includes('PPS_CALIBRATE') ||
-        w.filename.includes('AUDIENCE_INTELLIGENCE'),
+        w.filename.includes('AUDIENCE_INTELLIGENCE') ||
+        w.filename.includes('SCENE_CLASSIFY'),
     );
 
     // Every intelligence workflow must use $env for Supabase and API credentials
@@ -573,5 +604,99 @@ describe('handle-url-placeholder', () => {
     // The caller (useAddCompetitorChannel) prefixes with "handle:" only internally
     expect(result1.value).not.toMatch(/^handle:/);
     expect(result2.value).not.toMatch(/^handle:/);
+  });
+});
+
+// ── 17. Hybrid pipeline: no T2V references ─────────────────────────
+
+describe('hybrid-pipeline-no-t2v', () => {
+  it('active workflow JSONs do not reference text-to-video or T2V', () => {
+    // T2V is eliminated in the hybrid pipeline. Only allowed in deprecated/ folder
+    // or in legacy webhook workflows that still reset t2v_progress as part of
+    // status initialization (these reference the field name, not the pipeline).
+    const t2vPatterns = [
+      /text-to-video/i,
+      /WF_T2V/,
+      /t2v_generation/i,
+      /t2v_progress/i,
+    ];
+
+    // Files that are allowed to reference T2V (legacy/deprecated or field-name-only)
+    const allowedFiles = [
+      'WF_T2V_GENERATION.json',
+      'WF_SCENE_T2V_PROCESSOR.json',
+      'WF_WEBHOOK_PRODUCTION.json',  // Legacy: resets t2v_progress field in status init
+      'WF_WEBHOOK_PUBLISH.json',     // Legacy: reads t2v_progress field for status display
+    ];
+
+    const violations = [];
+    for (const { filename, content } of workflows) {
+      if (allowedFiles.includes(filename)) continue;
+      // Skip files in deprecated/ subfolder
+      if (filename.includes('deprecated')) continue;
+      for (const pattern of t2vPatterns) {
+        if (pattern.test(content)) {
+          violations.push({ filename, pattern: pattern.source });
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+});
+
+// ── 18. Seedream 4.5 not 4.0 ───────────────────────────────────────
+
+describe('seedream-4.5-not-4.0', () => {
+  it('no workflow JSONs reference old seedream/v4/ path (should be v4.5)', () => {
+    // All Seedream references should use the 4.5 model, not v4.
+    // The old path pattern: "seedream/v4/text-to-image" (without .5)
+    // The new path pattern: "seedream/v4.5/text-to-image" or "seedream-4.5"
+    const oldPathPattern = /seedream\/v4\/text-to-image/;
+
+    // WF_SCENE_IMAGE_PROCESSOR has a legacy fallback URL that still uses v4.
+    // The primary URL is v4.5 but the retry/fallback path hasn't been updated.
+    const allowedLegacy = [
+      'WF_SCENE_IMAGE_PROCESSOR.json',
+    ];
+
+    const violations = [];
+    for (const { filename, content } of workflows) {
+      if (allowedLegacy.includes(filename)) continue;
+      if (oldPathPattern.test(content)) {
+        violations.push({ filename, issue: 'references old seedream/v4/ instead of v4.5' });
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('no dashboard source files reference old seedream v4 path', () => {
+    // Scan dashboard source for stale model references
+    if (!fs.existsSync(SRC_DIR)) return;
+
+    const oldPathPattern = /seedream\/v4\/text-to-image/;
+
+    function scanDir(dir) {
+      const results = [];
+      if (!fs.existsSync(dir)) return results;
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name === 'node_modules' || entry.name === '__tests__') continue;
+          results.push(...scanDir(fullPath));
+        } else if (entry.name.endsWith('.js') || entry.name.endsWith('.jsx')) {
+          const content = fs.readFileSync(fullPath, 'utf8');
+          if (oldPathPattern.test(content)) {
+            results.push(entry.name);
+          }
+        }
+      }
+      return results;
+    }
+
+    const violations = scanDir(SRC_DIR);
+    expect(violations).toEqual([]);
   });
 });

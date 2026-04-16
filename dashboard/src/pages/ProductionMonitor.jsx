@@ -20,6 +20,7 @@ import SupervisorAlert from '../components/production/SupervisorAlert';
 import SceneDetailPanel from '../components/production/SceneDetailPanel';
 import ErrorLogModal from '../components/production/ErrorLogModal';
 import CostEstimateDialog from '../components/production/CostEstimateDialog';
+import CostCalculator from '../components/production/CostCalculator';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +73,15 @@ export default function ProductionMonitor() {
     () => topics.filter((t) => t.status === 'script_approved'),
     [topics]
   );
+
+  // Topics waiting at the cost calculator gate:
+  // pipeline_stage is 'cost_selection' OR scenes exist (scene_count > 0) but cost not yet selected
+  const costGateTopic = useMemo(() => {
+    return topics.find((t) =>
+      t.pipeline_stage === 'cost_selection' ||
+      (t.scene_count > 0 && !t.cost_option_selected_at && (t.status === 'segmented' || t.pipeline_stage === 'segmented'))
+    ) || null;
+  }, [topics]);
 
   // Fallback: if no actively producing/stopped topic, show most recently assembled/published topic
   const lastCompletedTopic = useMemo(() => {
@@ -224,6 +234,15 @@ export default function ProductionMonitor() {
       {/* Supervisor Alert */}
       {supervisorAlerted && (
         <SupervisorAlert visible={true} onDismiss={() => setSupervisorDismissed(true)} />
+      )}
+
+      {/* COST CALCULATOR GATE — shown when pipeline is waiting for cost selection */}
+      {costGateTopic && (
+        <CostCalculator
+          topicId={costGateTopic.id}
+          projectId={projectId}
+          sceneCount={costGateTopic.scene_count}
+        />
       )}
 
       {/* ACTIVE / STOPPED PRODUCTION */}
