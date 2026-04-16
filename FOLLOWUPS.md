@@ -1,14 +1,22 @@
 # FOLLOWUPS.md — Non-Blockers Logged During Test Campaign
 
-## Phase 1
+## Resolved (commit 087517c)
 
-1. **No FFmpeg execution tests** — ken_burns.sh, assemble_with_transitions.sh, platform_render.sh need local FFmpeg binary + tiny test fixtures. Defer to Phase 2 staging environment.
-2. **No Python script unit tests** — whisper_align.py and generate_kinetic_ass.py need Python + Whisper. Consider pytest suite in `tests/unit/python/`.
-3. **No coverage report** — Istanbul/c8 not configured. Add `--coverage` to vitest config.
-4. **Caption burn service tests** — Requires Docker + FFmpeg. Defer to Phase 2 integration.
-5. **RLS gap on migration 001 tables** — projects, niche_profiles, prompt_configs, topics, avatars, scenes, production_log lack RLS. Dashboard uses anon key. Risk: acceptable for single-user but needs fixing for multi-user.
-6. **0 CI pipelines** — No GitHub Actions, no pre-commit hooks, no gitleaks. Should add in Phase 2.
-7. **directives/ directory empty** — No SOPs written despite directory structure existing.
-8. **4 Execute Workflow chains not wired** — CF01+02 (from WF_TOPICS_GENERATE), CF05+12 (from WF_SCRIPT_APPROVE), CF13 (from WF_CAPTIONS_ASSEMBLY), CF16 (audience_context in WF_SCRIPT_GENERATE). All intelligence features work via manual webhook but don't auto-fire.
-9. **WF_I2V_GENERATION and WF_T2V_GENERATION still in workflows/** — Deprecated (Ken Burns replaced them) but JSON files remain. Consider archiving.
-10. **design-system/MASTER.md documented as deprecated** in test.md Phase 3 note — but still referenced in CLAUDE.md. Reconcile.
+- ~~**No coverage report**~~ — vitest coverage-v8 configured, baseline: 44.4% statements
+- ~~**RLS gap on migration 001 tables**~~ — migration 018 applied, all 37 tables now have RLS
+- ~~**0 CI pipelines**~~ — GitHub Actions CI added: test + npm audit + gitleaks + build
+- ~~**4 Execute Workflow chains not wired**~~ — All 6 chains now wired (2 were already done, 2 just wired)
+- ~~**WF_I2V/WF_T2V still in workflows/**~~ — Moved to workflows/deprecated/
+- ~~**design-system/MASTER.md referenced as active in CLAUDE.md**~~ — All 3 references updated to DEPRECATED
+
+## Still Open
+
+1. **No FFmpeg execution tests** — ken_burns.sh, assemble_with_transitions.sh, platform_render.sh need local FFmpeg binary + tiny test fixtures. Defer to staging.
+2. **No Python script unit tests** — whisper_align.py and generate_kinetic_ass.py need Python + Whisper. Consider pytest suite.
+3. **Caption burn service tests** — Requires Docker + FFmpeg. Defer to staging.
+4. **directives/ directory empty** — No SOPs written despite directory structure existing.
+5. **npm audit: 6 moderate vulns** — All in esbuild→vite→vitest chain. Requires major vite version bump (5→8). Not actionable without breaking changes.
+6. **YouTube API key in React bundle** — Set referrer restriction in GCP Console to `dashboard.operscale.cloud`.
+7. **Dashboard API token in React bundle** — Acceptable for single-user PIN-protected deployment. Needs server-side proxy for multi-user.
+8. **WF_WEBHOOK_STATUS not active** — Activate in n8n UI.
+9. **Browser E2E tests** — Set up Playwright for accessibility + compatibility testing.
