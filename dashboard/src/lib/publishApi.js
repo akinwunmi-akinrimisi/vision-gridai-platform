@@ -21,10 +21,6 @@ export const rejectVideo = (topicId, feedback, rollbackStage) =>
 export const publishVideo = (topicId) =>
   webhookCall('video/publish', { topic_id: topicId }, { timeoutMs: 60_000 });
 
-// Schedule for later
-export const scheduleVideo = (topicId, scheduleTime) =>
-  webhookCall('video/schedule', { topic_id: topicId, schedule_time: scheduleTime });
-
 // Batch publish multiple approved videos
 export const batchPublish = (topicIds) =>
   webhookCall('video/batch-publish', { topic_ids: topicIds }, { timeoutMs: 60_000 });

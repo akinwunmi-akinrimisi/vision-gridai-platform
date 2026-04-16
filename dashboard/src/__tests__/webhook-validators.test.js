@@ -159,27 +159,15 @@ describe('Gate payload validation', () => {
     expect(body.topic_id).toBe('uuid-topic-1');
   });
 
-  it('convenience helpers use correct endpoints', async () => {
+  it('generateTopics convenience helper uses correct endpoint', async () => {
     vi.resetModules();
     const api = await import('../lib/api.js');
 
-    // generateScript
-    await api.generateScript('topic-uuid');
-    let [url] = globalThis.fetch.mock.calls[0];
-    expect(url).toContain('script/generate');
-
-    // approveScript
-    await api.approveScript('topic-uuid');
-    [url] = globalThis.fetch.mock.calls[1];
-    expect(url).toContain('script/approve');
-
-    // rejectScript
-    await api.rejectScript('topic-uuid', 'needs more data');
-    [url] = globalThis.fetch.mock.calls[2];
-    expect(url).toContain('script/reject');
-    const rejectBody = JSON.parse(globalThis.fetch.mock.calls[2][1].body);
-    expect(rejectBody.topic_id).toBe('topic-uuid');
-    expect(rejectBody.feedback).toBe('needs more data');
+    await api.generateTopics('project-uuid');
+    const [url] = globalThis.fetch.mock.calls[0];
+    expect(url).toContain('topics/generate');
+    const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+    expect(body.project_id).toBe('project-uuid');
   });
 });
 

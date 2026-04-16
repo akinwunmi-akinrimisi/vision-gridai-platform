@@ -65,16 +65,6 @@ const IMAGE_MODEL_OPTIONS = [
   { value: 'fal-ai/flux-pro/v1.1', label: 'FLUX Pro 1.1', cost: 0.05 },
 ];
 
-const I2V_MODEL_OPTIONS = [
-  { value: 'fal-ai/wan-25-preview/image-to-video', label: 'Wan 2.5', cost: 0.05 },
-  { value: 'fal-ai/kling-video/v2.1/standard/image-to-video', label: 'Kling 2.1', cost: 0.125 },
-];
-
-const T2V_MODEL_OPTIONS = [
-  { value: 'fal-ai/wan-25-preview/text-to-video', label: 'Wan 2.5', cost: 0.05 },
-  { value: 'fal-ai/kling-video/v2.1/standard/text-to-video', label: 'Kling 2.1', cost: 0.125 },
-];
-
 // -- Field definitions --------------------------------------------------------
 
 const generalFields = [
@@ -92,10 +82,6 @@ const generalFields = [
 const modelFields = [
   { key: 'image_model', label: 'Image Model', type: 'model-select', modelOptions: IMAGE_MODEL_OPTIONS, costKey: 'image_cost' },
   { key: 'images_per_video', label: 'Images Per Video', type: 'number', min: 10, max: 200 },
-  { key: 'i2v_model', label: 'I2V Model', type: 'model-select', modelOptions: I2V_MODEL_OPTIONS, costKey: 'i2v_cost' },
-  { key: 'i2v_clips_per_video', label: 'I2V Clips Per Video', type: 'number', min: 5, max: 100 },
-  { key: 't2v_model', label: 'T2V Model', type: 'model-select', modelOptions: T2V_MODEL_OPTIONS, costKey: 't2v_cost' },
-  { key: 't2v_clips_per_video', label: 'T2V Clips Per Video', type: 'number', min: 10, max: 200 },
 ];
 
 const youtubeFields = [
