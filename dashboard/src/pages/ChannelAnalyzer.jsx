@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { formatDistanceToNow } from 'date-fns';
 import {
   Radar,
   Search,
@@ -22,6 +23,11 @@ import {
   ChevronRight,
   Sparkles,
   FolderPlus,
+  Folder,
+  FolderOpen,
+  MoreHorizontal,
+  Pencil,
+  Archive,
   X,
   Check,
   Calendar,
@@ -52,7 +58,11 @@ import {
   useConfirmDeepAnalysis,
   useRunViabilityAssessment,
   useCreateProjectFromViability,
+  useRenameGroup,
+  useArchiveGroup,
 } from '../hooks/useChannelAnalyzer';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
 import PageHeader from '../components/shared/PageHeader';
 import EmptyState from '../components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -117,10 +127,6 @@ function formatAge(dateStr) {
   if (days < 30) return `${Math.floor(days / 7)}w ago`;
   if (days < 365) return `${Math.floor(days / 30)}mo ago`;
   return `${Math.floor(days / 365)}y ago`;
-}
-
-function generateGroupId() {
-  return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1444,6 +1450,248 @@ function CreateProjectModal({ open, onOpenChange, report, viabilityReport, analy
 }
 
 // ---------------------------------------------------------------------------
+// GroupFolderSidebar — left column folder list
+// ---------------------------------------------------------------------------
+
+function GroupFolderSidebar({
+  groups,
+  activeGroupId,
+  onSelectGroup,
+  onNewGroup,
+  onRenameGroup,
+  onArchiveGroup,
+  isLoading,
+}) {
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const editRef = useRef(null);
+  const newRef = useRef(null);
+  const menuRef = useRef(null);
+
+  // Focus input on edit or create
+  useEffect(() => {
+    if (editingId && editRef.current) editRef.current.focus();
+  }, [editingId]);
+  useEffect(() => {
+    if (creatingNew && newRef.current) newRef.current.focus();
+  }, [creatingNew]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    function handleClick(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpenId(null);
+      }
+    }
+    if (menuOpenId) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuOpenId]);
+
+  const startEdit = (g) => {
+    setEditingId(g.id);
+    setEditName(g.name || '');
+    setMenuOpenId(null);
+  };
+
+  const commitEdit = () => {
+    if (editingId && editName.trim()) {
+      onRenameGroup({ id: editingId, name: editName.trim() });
+    }
+    setEditingId(null);
+    setEditName('');
+  };
+
+  const startCreate = () => {
+    setCreatingNew(true);
+    setNewName('');
+  };
+
+  const commitCreate = () => {
+    if (newName.trim()) {
+      onNewGroup(newName.trim());
+    }
+    setCreatingNew(false);
+    setNewName('');
+  };
+
+  const scoreBadgeColor = (score) => {
+    if (score == null) return null;
+    if (score >= 75) return 'bg-emerald-500/15 text-emerald-400';
+    if (score >= 50) return 'bg-yellow-500/15 text-yellow-400';
+    if (score >= 25) return 'bg-orange-500/15 text-orange-400';
+    return 'bg-red-500/15 text-red-400';
+  };
+
+  return (
+    <div className="w-[280px] shrink-0 bg-card/50 border-r border-border flex flex-col h-full">
+      {/* New research button */}
+      <div className="p-3 border-b border-border">
+        <Button
+          onClick={startCreate}
+          variant="outline"
+          size="sm"
+          className="w-full justify-start gap-2 h-9 text-xs"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          New Research
+        </Button>
+      </div>
+
+      {/* Create new group inline input */}
+      {creatingNew && (
+        <div className="px-3 py-2 border-b border-border">
+          <input
+            ref={newRef}
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitCreate();
+              if (e.key === 'Escape') { setCreatingNew(false); setNewName(''); }
+            }}
+            onBlur={commitCreate}
+            placeholder="Research name..."
+            className="w-full h-8 rounded-md border border-primary/50 bg-card px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+      )}
+
+      {/* Folder list */}
+      <div className="flex-1 overflow-y-auto py-1">
+        {isLoading ? (
+          <div className="px-3 py-6 text-center">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground mx-auto mb-2" />
+            <span className="text-[10px] text-muted-foreground">Loading groups...</span>
+          </div>
+        ) : (!groups || groups.length === 0) ? (
+          <div className="px-3 py-6 text-center">
+            <Folder className="w-5 h-5 text-muted-foreground mx-auto mb-2 opacity-50" />
+            <p className="text-[10px] text-muted-foreground">No research groups yet</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Click "New Research" to start</p>
+          </div>
+        ) : (
+          groups.map((g) => {
+            const isActive = g.id === activeGroupId;
+            const isEditing = editingId === g.id;
+            const badgeColor = scoreBadgeColor(g.viability_score);
+            const relativeDate = g.created_at
+              ? formatDistanceToNow(new Date(g.created_at), { addSuffix: false })
+              : '';
+
+            return (
+              <div
+                key={g.id}
+                className={cn(
+                  'relative mx-1.5 mb-0.5 rounded-lg transition-all cursor-pointer group/folder',
+                  isActive
+                    ? 'bg-primary/10 border-l-2 border-primary'
+                    : 'border-l-2 border-transparent hover:bg-card-hover'
+                )}
+                onClick={() => { if (!isEditing) onSelectGroup(g.id); }}
+              >
+                <div className="flex items-start gap-2.5 px-3 py-2.5">
+                  {/* Folder icon */}
+                  <div className="mt-0.5 flex-shrink-0">
+                    {isActive ? (
+                      <FolderOpen className="w-4 h-4 text-primary" />
+                    ) : (
+                      <Folder className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+
+                  {/* Name + meta */}
+                  <div className="flex-1 min-w-0">
+                    {isEditing ? (
+                      <input
+                        ref={editRef}
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitEdit();
+                          if (e.key === 'Escape') { setEditingId(null); setEditName(''); }
+                        }}
+                        onBlur={commitEdit}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full h-6 rounded border border-primary/50 bg-card px-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    ) : (
+                      <p className={cn(
+                        'text-xs font-semibold truncate',
+                        isActive ? 'text-foreground' : 'text-muted-foreground'
+                      )}>
+                        {g.name || 'Untitled Research'}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground">
+                        {g.channels_count || 0} channel{(g.channels_count || 0) !== 1 ? 's' : ''}
+                      </span>
+                      {badgeColor && (
+                        <>
+                          <span className="text-border text-[8px]">&middot;</span>
+                          <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded-full', badgeColor)}>
+                            {g.viability_score}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {relativeDate && (
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">{relativeDate}</p>
+                    )}
+                  </div>
+
+                  {/* Context menu trigger */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpenId(menuOpenId === g.id ? null : g.id);
+                    }}
+                    className="mt-0.5 p-0.5 rounded opacity-0 group-hover/folder:opacity-100 hover:bg-card-hover transition-all flex-shrink-0"
+                  >
+                    <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                {/* Dropdown menu */}
+                {menuOpenId === g.id && (
+                  <div
+                    ref={menuRef}
+                    className="absolute right-2 top-full z-50 mt-0.5 w-36 rounded-md border border-border bg-card shadow-lg py-1"
+                  >
+                    <button
+                      onClick={(e) => { e.stopPropagation(); startEdit(g); }}
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-foreground hover:bg-card-hover transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Rename
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenId(null);
+                        onArchiveGroup(g.id);
+                      }}
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-danger hover:bg-card-hover transition-colors"
+                    >
+                      <Archive className="w-3 h-3" />
+                      Archive
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 
@@ -1464,17 +1712,31 @@ export default function ChannelAnalyzer() {
   const { data: viabilityReport } = useNicheViability(activeGroupId);
 
   // Mutations
+  const queryClient = useQueryClient();
   const startAnalysis = useStartAnalysis();
   const createProject = useCreateProjectFromAnalysis();
   const createProjectFromViability = useCreateProjectFromViability();
   const removeAnalysis = useRemoveAnalysis();
   const confirmDeepAnalysis = useConfirmDeepAnalysis();
   const runViability = useRunViabilityAssessment();
+  const renameGroup = useRenameGroup();
+  const archiveGroup = useArchiveGroup();
 
   // Auto-select latest group if none is active
   useMemo(() => {
     if (!activeGroupId && groups && groups.length > 0) {
-      setActiveGroupId(groups[0].analysis_group_id);
+      setActiveGroupId(groups[0].id);
+    }
+  }, [groups, activeGroupId]);
+
+  // If the active group gets archived, switch to the next available one
+  useMemo(() => {
+    if (activeGroupId && groups && groups.length > 0) {
+      const stillExists = groups.some((g) => g.id === activeGroupId);
+      if (!stillExists) {
+        setActiveGroupId(groups[0].id);
+        setSelectedDetail(null);
+      }
     }
   }, [groups, activeGroupId]);
 
@@ -1492,26 +1754,53 @@ export default function ChannelAnalyzer() {
   const handleAnalyze = useCallback(() => {
     if (!channelUrl.trim()) return;
 
-    const groupId = activeGroupId || generateGroupId();
-    if (!activeGroupId) setActiveGroupId(groupId);
-
-    startAnalysis.mutate({
-      channel_url: channelUrl.trim(),
-      analysis_group_id: groupId,
-    });
+    startAnalysis.mutate(
+      {
+        channel_url: channelUrl.trim(),
+        analysis_group_id: activeGroupId || undefined,
+      },
+      {
+        onSuccess: (result) => {
+          if (result?.analysis_group_id && !activeGroupId) {
+            setActiveGroupId(result.analysis_group_id);
+          }
+        },
+      }
+    );
     setChannelUrl('');
   }, [channelUrl, activeGroupId, startAnalysis]);
 
-  const handleNewGroup = useCallback(() => {
-    const newId = generateGroupId();
-    setActiveGroupId(newId);
-    setSelectedDetail(null);
-  }, []);
+  const handleNewGroup = useCallback(async (name) => {
+    const { data, error } = await supabase
+      .from('analysis_groups')
+      .insert({ name, status: 'active', channels_count: 0, completed_count: 0 })
+      .select('id')
+      .single();
+    if (!error && data) {
+      setActiveGroupId(data.id);
+      setSelectedDetail(null);
+      queryClient.invalidateQueries({ queryKey: ['analysis-groups'] });
+    }
+  }, [queryClient]);
 
   const handleSelectGroup = useCallback((gid) => {
     setActiveGroupId(gid);
     setSelectedDetail(null);
   }, []);
+
+  const handleRenameGroup = useCallback(
+    ({ id, name }) => {
+      renameGroup.mutate({ id, name });
+    },
+    [renameGroup]
+  );
+
+  const handleArchiveGroup = useCallback(
+    (id) => {
+      archiveGroup.mutate({ id });
+    },
+    [archiveGroup]
+  );
 
   const handleRemove = useCallback(
     (id) => {
@@ -1566,6 +1855,9 @@ export default function ChannelAnalyzer() {
     }
   };
 
+  // Active group name for display
+  const activeGroup = groups?.find((g) => g.id === activeGroupId);
+
   return (
     <div className="animate-slide-up">
       <PageHeader
@@ -1573,190 +1865,153 @@ export default function ChannelAnalyzer() {
         subtitle="Analyze YouTube channels to discover blue-ocean opportunities and competitive gaps"
       />
 
-      {/* ── Input bar ── */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={channelUrl}
-            onChange={(e) => setChannelUrl(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Paste a YouTube channel URL (e.g. youtube.com/@MrBeast)"
-            className="w-full h-10 rounded-lg border border-border bg-card pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
-          />
-        </div>
-        <Button
-          onClick={handleAnalyze}
-          disabled={!channelUrl.trim() || startAnalysis.isPending}
-          className="bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent/90 text-white shadow-glow-primary"
-          size="default"
-        >
-          {startAnalysis.isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Radar className="w-4 h-4" />
-          )}
-          Analyze
-        </Button>
-      </div>
+      {/* ── 2-column layout: sidebar + main content ── */}
+      <div className="flex gap-0 -mx-1 border border-border rounded-xl overflow-hidden bg-card/30" style={{ minHeight: 'calc(100vh - 180px)' }}>
+        {/* Left: Folder sidebar */}
+        <GroupFolderSidebar
+          groups={groups}
+          activeGroupId={activeGroupId}
+          onSelectGroup={handleSelectGroup}
+          onNewGroup={handleNewGroup}
+          onRenameGroup={handleRenameGroup}
+          onArchiveGroup={handleArchiveGroup}
+          isLoading={groupsLoading}
+        />
 
-      {/* ── Analysis groups selector ── */}
-      {groups && groups.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Analysis Groups</span>
+        {/* Right: Main content area */}
+        <div className="flex-1 min-w-0 p-5 overflow-y-auto">
+          {/* ── Input bar ── */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={channelUrl}
+                onChange={(e) => setChannelUrl(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={activeGroup ? `Add channel to "${activeGroup.name}"...` : 'Paste a YouTube channel URL (e.g. youtube.com/@MrBeast)'}
+                className="w-full h-10 rounded-lg border border-border bg-card pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
+              />
+            </div>
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-[10px]"
-              onClick={handleNewGroup}
+              onClick={handleAnalyze}
+              disabled={!channelUrl.trim() || startAnalysis.isPending}
+              className="bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent/90 text-white shadow-glow-primary"
+              size="default"
             >
-              <Plus className="w-3 h-3" />
-              New Group
+              {startAnalysis.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Radar className="w-4 h-4" />
+              )}
+              Analyze
             </Button>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {groups.map((g) => {
-              const isActive = g.analysis_group_id === activeGroupId;
-              return (
-                <button
-                  key={g.analysis_group_id}
-                  onClick={() => handleSelectGroup(g.analysis_group_id)}
-                  className={cn(
-                    'flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all cursor-pointer',
-                    isActive
-                      ? 'bg-primary/10 border-primary/30 text-primary'
-                      : 'bg-card border-border text-muted-foreground hover:border-border-hover'
-                  )}
-                >
-                  {/* Channel avatars stacked */}
-                  <div className="flex -space-x-1.5">
-                    {g.channels.slice(0, 4).map((ch, i) => (
-                      ch.avatar ? (
-                        <img key={i} src={ch.avatar} alt="" className="w-5 h-5 rounded-full border border-background object-cover" />
-                      ) : (
-                        <div key={i} className="w-5 h-5 rounded-full border border-background bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground">
-                          {ch.name?.[0] || '?'}
-                        </div>
-                      )
-                    ))}
-                  </div>
-                  <span className="font-medium">{g.count} channel{g.count !== 1 ? 's' : ''}</span>
-                  <span className="text-border text-[8px]">&bull;</span>
-                  <span>{formatAge(g.latest_at)}</span>
-                  {g.has_pending && (
-                    <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
-      {/* ── Detail panel (when a channel is selected) ── */}
-      {selectedDetail && (
-        <div className="mb-6">
-          <ChannelDetailPanel
-            analysis={selectedDetail}
-            onClose={() => setSelectedDetail(null)}
-          />
-        </div>
-      )}
-
-      {/* ── Combined Intelligence ── */}
-      {!selectedDetail && showCombinedIntel && (
-        <div className="mb-6">
-          <CombinedIntelligence
-            report={comparisonReport}
-            analyses={analyses}
-            onCreateProject={() => setShowCreateModal(true)}
-          />
-        </div>
-      )}
-
-      {/* ── Discovered Competitors ── */}
-      {!selectedDetail && showDiscoveredChannels && (
-        <div className="mb-6">
-          <DiscoveredCompetitors
-            channels={discoveredChannels}
-            onConfirmAnalysis={handleConfirmDeepAnalysis}
-            isAnalyzing={confirmDeepAnalysis.isPending}
-          />
-        </div>
-      )}
-
-      {/* ── Run Viability Assessment button (when enough data, no report yet) ── */}
-      {!selectedDetail && canRunViability && (
-        <div className="mb-6 flex items-center gap-3">
-          <Button
-            onClick={handleRunViability}
-            disabled={runViability.isPending}
-            className="bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent/90 text-white shadow-glow-primary"
-            size="sm"
-          >
-            {runViability.isPending ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Target className="w-3.5 h-3.5" />
-            )}
-            Run Niche Viability Assessment
-          </Button>
-          <span className="text-[10px] text-muted-foreground">
-            Analyze market opportunity across {completedCount} channels
-          </span>
-        </div>
-      )}
-
-      {/* ── Niche Viability ── */}
-      {!selectedDetail && showViability && (
-        <div className="mb-6">
-          <NicheViabilitySection
-            report={viabilityReport}
-            onCreateProject={() => setShowCreateModal(true)}
-            onRunViability={handleRunViability}
-            isRunning={runViability.isPending}
-          />
-        </div>
-      )}
-
-      {/* ── Channel cards grid ── */}
-      {!selectedDetail && (
-        <>
-          {analysesLoading && activeGroupId ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-card border border-border rounded-xl h-[200px] animate-pulse" />
-              ))}
+          {/* ── Detail panel (when a channel is selected) ── */}
+          {selectedDetail && (
+            <div className="mb-6">
+              <ChannelDetailPanel
+                analysis={selectedDetail}
+                onClose={() => setSelectedDetail(null)}
+              />
             </div>
-          ) : analyses && analyses.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {analyses.map((a) => (
-                <ChannelCard
-                  key={a.id}
-                  analysis={a}
-                  onViewDetails={setSelectedDetail}
-                  onRemove={handleRemove}
-                  isRemoving={removeAnalysis.isPending}
+          )}
+
+          {/* ── Combined Intelligence ── */}
+          {!selectedDetail && showCombinedIntel && (
+            <div className="mb-6">
+              <CombinedIntelligence
+                report={comparisonReport}
+                analyses={analyses}
+                onCreateProject={() => setShowCreateModal(true)}
+              />
+            </div>
+          )}
+
+          {/* ── Discovered Competitors ── */}
+          {!selectedDetail && showDiscoveredChannels && (
+            <div className="mb-6">
+              <DiscoveredCompetitors
+                channels={discoveredChannels}
+                onConfirmAnalysis={handleConfirmDeepAnalysis}
+                isAnalyzing={confirmDeepAnalysis.isPending}
+              />
+            </div>
+          )}
+
+          {/* ── Run Viability Assessment button (when enough data, no report yet) ── */}
+          {!selectedDetail && canRunViability && (
+            <div className="mb-6 flex items-center gap-3">
+              <Button
+                onClick={handleRunViability}
+                disabled={runViability.isPending}
+                className="bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent/90 text-white shadow-glow-primary"
+                size="sm"
+              >
+                {runViability.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Target className="w-3.5 h-3.5" />
+                )}
+                Run Niche Viability Assessment
+              </Button>
+              <span className="text-[10px] text-muted-foreground">
+                Analyze market opportunity across {completedCount} channels
+              </span>
+            </div>
+          )}
+
+          {/* ── Niche Viability ── */}
+          {!selectedDetail && showViability && (
+            <div className="mb-6">
+              <NicheViabilitySection
+                report={viabilityReport}
+                onCreateProject={() => setShowCreateModal(true)}
+                onRunViability={handleRunViability}
+                isRunning={runViability.isPending}
+              />
+            </div>
+          )}
+
+          {/* ── Channel cards grid ── */}
+          {!selectedDetail && (
+            <>
+              {analysesLoading && activeGroupId ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-card border border-border rounded-xl h-[200px] animate-pulse" />
+                  ))}
+                </div>
+              ) : analyses && analyses.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {analyses.map((a) => (
+                    <ChannelCard
+                      key={a.id}
+                      analysis={a}
+                      onViewDetails={setSelectedDetail}
+                      onRemove={handleRemove}
+                      isRemoving={removeAnalysis.isPending}
+                    />
+                  ))}
+                </div>
+              ) : activeGroupId && !groupsLoading ? (
+                <EmptyState
+                  icon={Radar}
+                  title="No channels analyzed yet"
+                  description="Paste a YouTube channel URL above and click Analyze to start discovering competitive opportunities."
                 />
-              ))}
-            </div>
-          ) : activeGroupId && !groupsLoading ? (
-            <EmptyState
-              icon={Radar}
-              title="No channels analyzed yet"
-              description="Paste a YouTube channel URL above and click Analyze to start discovering competitive opportunities."
-            />
-          ) : !groupsLoading ? (
-            <EmptyState
-              icon={Radar}
-              title="Channel Analyzer"
-              description="Analyze competing YouTube channels to find blue-ocean gaps and build your competitive advantage. Paste a channel URL above to get started."
-            />
-          ) : null}
-        </>
-      )}
+              ) : !groupsLoading ? (
+                <EmptyState
+                  icon={Radar}
+                  title="Channel Analyzer"
+                  description="Analyze competing YouTube channels to find blue-ocean gaps and build your competitive advantage. Paste a channel URL above to get started."
+                />
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
 
       {/* ── Create Project Modal ── */}
       <CreateProjectModal

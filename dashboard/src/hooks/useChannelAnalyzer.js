@@ -5,54 +5,26 @@ import { webhookCall } from '../lib/api';
 import { toast } from 'sonner';
 
 /* ============================================================== */
-/*  QUERIES — analysis groups (derived from channel_analyses)      */
+/*  QUERIES — analysis groups (from analysis_groups table)         */
 /* ============================================================== */
 
 /**
- * Fetch all distinct analysis groups with the count of analyses per group
- * and the latest analyzed_at timestamp. Sorted most-recent first.
+ * Fetch all active analysis groups from the analysis_groups table.
+ * Sorted most-recent first.
  */
 export function useAnalysisGroups() {
-  useRealtimeSubscription('channel_analyses', null, [['channel-analysis-groups']]);
+  useRealtimeSubscription('analysis_groups', null, [['analysis-groups']]);
 
   return useQuery({
-    queryKey: ['channel-analysis-groups'],
+    queryKey: ['analysis-groups'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('channel_analyses')
-        .select('id, analysis_group_id, channel_name, channel_avatar_url, status, analyzed_at, verdict, verdict_score')
-        .order('analyzed_at', { ascending: false });
+        .from('analysis_groups')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
       if (error) throw error;
-
-      // Group by analysis_group_id
-      const groups = {};
-      for (const row of data || []) {
-        const gid = row.analysis_group_id;
-        if (!gid) continue;
-        if (!groups[gid]) {
-          groups[gid] = {
-            analysis_group_id: gid,
-            count: 0,
-            channels: [],
-            latest_at: row.analyzed_at,
-            has_pending: false,
-          };
-        }
-        groups[gid].count += 1;
-        groups[gid].channels.push({
-          name: row.channel_name,
-          avatar: row.channel_avatar_url,
-          status: row.status,
-          verdict: row.verdict,
-        });
-        if (row.status === 'pending' || row.status === 'analyzing') {
-          groups[gid].has_pending = true;
-        }
-      }
-
-      return Object.values(groups).sort(
-        (a, b) => new Date(b.latest_at) - new Date(a.latest_at)
-      );
+      return data || [];
     },
   });
 }
@@ -126,27 +98,56 @@ export function useComparisonReport(groupId) {
 
 /**
  * POST to /webhook/channel-analyze with { channel_url, analysis_group_id }.
+ * If no groupId is provided, creates a new analysis_groups row first.
+ * If an existing groupId is provided, increments its channels_count.
  */
 export function useStartAnalysis() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ channel_url, analysis_group_id }) => {
+    mutationFn: async ({ channel_url, analysis_group_id, group_name }) => {
+      let groupId = analysis_group_id;
+
+      if (!groupId) {
+        // Create a new analysis_groups row
+        const name = group_name || (channel_url.replace(/https?:\/\/(www\.)?youtube\.com\/@?/i, '').split('/')[0] + ' Research');
+        const { data: newGroup, error: insertErr } = await supabase
+          .from('analysis_groups')
+          .insert({ name, status: 'active', channels_count: 1, completed_count: 0 })
+          .select('id')
+          .single();
+        if (insertErr) throw insertErr;
+        groupId = newGroup.id;
+      } else {
+        // Increment channels_count on the existing group
+        const { data: existing, error: fetchErr } = await supabase
+          .from('analysis_groups')
+          .select('channels_count')
+          .eq('id', groupId)
+          .single();
+        if (!fetchErr && existing) {
+          await supabase
+            .from('analysis_groups')
+            .update({ channels_count: (existing.channels_count || 0) + 1, updated_at: new Date().toISOString() })
+            .eq('id', groupId);
+        }
+      }
+
       const result = await webhookCall('channel-analyze', {
         channel_url,
-        analysis_group_id,
+        analysis_group_id: groupId,
       });
       if (result.success === false) throw new Error(result.error || 'Webhook failed');
-      return result;
+      return { ...result, analysis_group_id: groupId };
     },
     onSuccess: () => {
       toast.success('Channel analysis started — this may take 30-60 seconds...');
-      queryClient.invalidateQueries({ queryKey: ['channel-analysis-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['analysis-groups'] });
       // Poll for updates
       const poll = (attempt) => {
         if (attempt > 20) return;
         setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['channel-analysis-groups'] });
+          queryClient.invalidateQueries({ queryKey: ['analysis-groups'] });
           queryClient.invalidateQueries({ queryKey: ['channel-analyses'] });
           queryClient.invalidateQueries({ queryKey: ['channel-comparison-report'] });
           poll(attempt + 1);
@@ -156,6 +157,64 @@ export function useStartAnalysis() {
     },
     onError: (err) => {
       toast.error(`Analysis failed: ${err.message}`);
+    },
+  });
+}
+
+/* ============================================================== */
+/*  MUTATIONS — rename an analysis group                           */
+/* ============================================================== */
+
+/**
+ * PATCH analysis_groups SET name.
+ */
+export function useRenameGroup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, name }) => {
+      const { error } = await supabase
+        .from('analysis_groups')
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      return { id, name };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['analysis-groups'] });
+    },
+    onError: (err) => {
+      toast.error(`Rename failed: ${err.message}`);
+    },
+  });
+}
+
+/* ============================================================== */
+/*  MUTATIONS — archive an analysis group                          */
+/* ============================================================== */
+
+/**
+ * PATCH analysis_groups SET status='archived'.
+ */
+export function useArchiveGroup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id }) => {
+      const { error } = await supabase
+        .from('analysis_groups')
+        .update({ status: 'archived', updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      return { id };
+    },
+    onSuccess: (_, { id }) => {
+      toast.success('Group archived');
+      queryClient.invalidateQueries({ queryKey: ['analysis-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['channel-analyses'] });
+    },
+    onError: (err) => {
+      toast.error(`Archive failed: ${err.message}`);
     },
   });
 }
@@ -212,7 +271,7 @@ export function useRemoveAnalysis() {
     },
     onSuccess: () => {
       toast.success('Analysis removed');
-      queryClient.invalidateQueries({ queryKey: ['channel-analysis-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['analysis-groups'] });
       queryClient.invalidateQueries({ queryKey: ['channel-analyses'] });
       queryClient.invalidateQueries({ queryKey: ['channel-comparison-report'] });
     },
@@ -331,7 +390,7 @@ export function useConfirmDeepAnalysis() {
     onSuccess: (_, { channels }) => {
       toast.success(`Deep analysis started for ${channels.length} channel${channels.length !== 1 ? 's' : ''}...`);
       queryClient.invalidateQueries({ queryKey: ['discovered-channels'] });
-      queryClient.invalidateQueries({ queryKey: ['channel-analysis-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['analysis-groups'] });
       queryClient.invalidateQueries({ queryKey: ['channel-analyses'] });
       // Poll for completion
       const poll = (attempt) => {
