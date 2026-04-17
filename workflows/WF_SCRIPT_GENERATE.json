@@ -249,11 +249,11 @@
         },
         "sendBody": true,
         "specifyBody": "string",
-        "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: 'You are a scene segmentation and visual direction expert for YouTube documentaries. Always return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.visual_prompt }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: 'You are a scene segmentation and visual direction expert for YouTube documentaries. Always return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.metadata_prompt }] }) }}",
         "options": {
           "timeout": 900000
         },
-        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 32000, system: 'You are a visual direction expert for YouTube documentaries. Generate ONLY image prompts and metadata. Return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.metadata_prompt }] }) }}"
+        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: 'You are a scene segmentation and visual direction expert for YouTube documentaries. Always return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.metadata_prompt }] }) }}"
       },
       "credentials": {
         "httpHeaderAuth": {
@@ -489,7 +489,8 @@
       "parameters": {
         "jsCode": "const errData = $input.first().json;\nconst topic_id = errData.topic_id || $('Validate Request').first().json?.topic_id;\nconst project_id = errData.project_id || $('Validate Request').first().json?.project_id;\nconst error_message = errData.error_message || errData.message || 'Unknown error in script generation';\nreturn [{ json: { topic_id, project_id, error_message } }];",
         "mode": "runOnceForAllItems"
-      }
+      },
+      "disabled": true
     },
     {
       "id": "wf-sg-patch-failed",
@@ -528,7 +529,8 @@
           "id": "QsqqFXtnLakNfVKR",
           "name": "Supabase Service Role"
         }
-      }
+      },
+      "disabled": true
     },
     {
       "id": "wf-sg-log-failed",
@@ -571,7 +573,8 @@
           "id": "QsqqFXtnLakNfVKR",
           "name": "Supabase Service Role"
         }
-      }
+      },
+      "disabled": true
     },
     {
       "id": "prep-avatar",
@@ -584,7 +587,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst topicRaw = $('Read Topic').first().json;\nconst projRaw = $('Read Project').first().json;\nconst topic = Array.isArray(topicRaw) ? topicRaw[0] : topicRaw;\nconst project = Array.isArray(projRaw) ? projRaw[0] : projRaw;\nconst hdr = {'apikey': SRK, 'Authorization': 'Bearer ' + SRK};\n\n// Fetch avatar\nconst avResp = await fetch(SB + '/rest/v1/avatars?topic_id=eq.' + topic.id + '&select=*&limit=1', {headers: hdr});\nconst avatars = await avResp.json();\nconst avatar = avatars?.[0] || {};\n\n// === FETCH RESEARCH DATA ===\nlet researchBrief = '';\ntry {\n  // 1. Niche profile (blue ocean, audience pain points, competitor gaps)\n  const npResp = await fetch(SB + '/rest/v1/niche_profiles?project_id=eq.' + project.id + '&select=blue_ocean_opportunities,audience_pain_points,competitor_analysis&limit=1', {headers: hdr});\n  const np = (await npResp.json())?.[0];\n\n  // 2. YouTube video analyses (10x strategies, comment insights)\n  const yaResp = await fetch(SB + '/rest/v1/yt_video_analyses?project_id=eq.' + project.id + '&select=ten_x_strategy,blue_ocean_analysis,comment_insights,verdict&limit=10', {headers: hdr});\n  const analyses = await yaResp.json();\n\n  // 3. Research categories (top audience demands)\n  const rcResp = await fetch(SB + '/rest/v1/research_categories?project_id=eq.' + project.id + '&select=category_name,video_title_suggestion,ranking_score&order=ranking_score.desc&limit=10', {headers: hdr});\n  const categories = await rcResp.json();\n\n  // Compile research brief\n  const sections = [];\n\n  if (np) {\n    if (np.blue_ocean_opportunities) {\n      const bo = typeof np.blue_ocean_opportunities === 'string' ? np.blue_ocean_opportunities : JSON.stringify(np.blue_ocean_opportunities);\n      sections.push('BLUE OCEAN OPPORTUNITIES:\\n' + bo.substring(0, 1500));\n    }\n    if (np.audience_pain_points) {\n      const ap = typeof np.audience_pain_points === 'string' ? np.audience_pain_points : JSON.stringify(np.audience_pain_points);\n      sections.push('AUDIENCE PAIN POINTS (from Reddit/Quora/forums):\\n' + ap.substring(0, 1500));\n    }\n    if (np.competitor_analysis) {\n      const ca = typeof np.competitor_analysis === 'string' ? np.competitor_analysis : JSON.stringify(np.competitor_analysis);\n      sections.push('COMPETITOR GAPS:\\n' + ca.substring(0, 1000));\n    }\n  }\n\n  if (analyses && analyses.length > 0) {\n    const strategies = analyses.filter(a => a.ten_x_strategy).map(a => {\n      const s = a.ten_x_strategy;\n      return '- ' + (s.recommended_angle || s.description || JSON.stringify(s).substring(0, 200));\n    }).join('\\n');\n    if (strategies) sections.push('10x STRATEGIES FROM COMPETITOR ANALYSIS:\\n' + strategies.substring(0, 1500));\n\n    const comments = analyses.filter(a => a.comment_insights).map(a => {\n      const ci = a.comment_insights;\n      const demands = ci.audience_demands || ci.top_demands || ci.key_themes || [];\n      return Array.isArray(demands) ? demands.join(', ') : String(demands).substring(0, 300);\n    }).filter(c => c).join('; ');\n    if (comments) sections.push('AUDIENCE DEMANDS (from YouTube comments):\\n' + comments.substring(0, 1000));\n\n    const boAnalysis = analyses.filter(a => a.blue_ocean_analysis).map(a => {\n      const b = a.blue_ocean_analysis;\n      return (b.gaps_and_opportunities || b.untapped || JSON.stringify(b)).substring(0, 300);\n    }).join('; ');\n    if (boAnalysis) sections.push('BLUE OCEAN GAPS FROM VIDEO ANALYSIS:\\n' + boAnalysis.substring(0, 1000));\n  }\n\n  if (categories && categories.length > 0) {\n    const cats = categories.slice(0, 5).map(c => '- ' + (c.category_name || '') + ': ' + (c.video_title_suggestion || '')).join('\\n');\n    sections.push('TOP RESEARCH CATEGORIES:\\n' + cats);\n  }\n\n  // CF16: Audience Memory injection into Pass 1\n  try {\n    const aiResp = await fetch(SB + '/rest/v1/audience_insights?project_id=eq.' + project.id + '&select=audience_context_block&order=week_of.desc&limit=1', {headers: hdr});\n    const aiRows = await aiResp.json();\n    if (aiRows && aiRows[0] && aiRows[0].audience_context_block) {\n      sections.push('AUDIENCE CONTEXT (from weekly comment analysis):\n' + aiRows[0].audience_context_block);\n    }\n  } catch (e2) {}\n\n  if (sections.length > 0) {\n    researchBrief = '=== RESEARCH BRIEF (use this data to inform the script) ===\\n\\n' + sections.join('\\n\\n') + '\\n\\n=== END RESEARCH BRIEF ===';\n    console.log('Research brief compiled: ' + sections.length + ' sections, ' + researchBrief.length + ' chars');\n  } else {\n    console.log('No research data found for project ' + project.id);\n  }\n} catch (e) {\n  console.warn('Research fetch failed (non-fatal): ' + e.message);\n}\n\n\n// === BUILD INTELLIGENCE BLOCK FROM PROJECT DATA ===\nconst ctx = project.channel_analysis_context || {};\nconst scriptTargets = project.script_depth_targets;\nconst topicsToAvoid = project.topics_to_avoid || [];\nconst recAngle = project.recommended_angle || '';\n\nlet intelligence_block = '';\nif (Object.keys(ctx).length > 0 || topicsToAvoid.length > 0 || recAngle) {\n  intelligence_block += '\\n\\n=== COMPETITIVE INTELLIGENCE FOR SCRIPTING ===\\n';\n  if (recAngle) {\n    intelligence_block += '\\nCHANNEL POSITIONING: ' + recAngle + '\\nWrite from this angle.\\n';\n  }\n  if (scriptTargets) {\n    intelligence_block += '\\nSCRIPT DEPTH TARGETS: ' + JSON.stringify(scriptTargets) + '\\nOur 3-pass system should EXCEED these.\\n';\n  }\n  if (ctx.comment_pain_points && ctx.comment_pain_points.length > 0) {\n    intelligence_block += '\\nAUDIENCE PAIN POINTS TO ADDRESS:\\n';\n    ctx.comment_pain_points.forEach(p => { intelligence_block += '- ' + p + '\\n'; });\n  }\n  if (ctx.comment_content_gaps && ctx.comment_content_gaps.length > 0) {\n    intelligence_block += '\\nCONTENT GAPS TO FILL:\\n';\n    ctx.comment_content_gaps.forEach(g => { intelligence_block += '- ' + g + '\\n'; });\n  }\n  if (ctx.comment_top_questions && ctx.comment_top_questions.length > 0) {\n    intelligence_block += '\\nTOP VIEWER QUESTIONS TO ANSWER:\\n';\n    ctx.comment_top_questions.forEach(q => { intelligence_block += '- ' + q + '\\n'; });\n  }\n  if (topicsToAvoid.length > 0) {\n    intelligence_block += '\\nANGLES TO AVOID (saturated):\\n';\n    topicsToAvoid.forEach(t => { intelligence_block += '- ' + t + '\\n'; });\n  }\n  if (ctx.differentiation_strategy) {\n    intelligence_block += '\\nDIFFERENTIATION: ' + (typeof ctx.differentiation_strategy === 'string' ? ctx.differentiation_strategy : JSON.stringify(ctx.differentiation_strategy)) + '\\n';\n  }\n}\n\n// Additional intelligence (always inject)\nconst scriptRef = project.script_reference_data;\nif (scriptRef) {\n  intelligence_block += \nCOMPETITOR SCRIPTING STYLES:\n + JSON.stringify(scriptRef) + \n;\n}\nconst revProj = project.revenue_projections;\nif (revProj) {\n  intelligence_block += \nREVENUE CONTEXT:  + JSON.stringify(revProj) + \n;\n}\nconst viabScore = project.niche_viability_score;\nconst viabVerdict = project.niche_viability_verdict;\nif (viabScore || viabVerdict) {\n  intelligence_block += \nNICHE VIABILITY:  + (viabScore || N/A) + /100 -  + (viabVerdict || N/A) + \n;\n}\nconst titleDna = project.title_dna_patterns;\nif (titleDna) {\n  intelligence_block += \nTITLE DNA PATTERNS:  + JSON.stringify(titleDna) + \n;\n}\nconst thumbDna = project.thumbnail_dna_patterns;\nif (thumbDna) {\n  intelligence_block += \nTHUMBNAIL VISUAL DNA:  + JSON.stringify(thumbDna) + \n;\n}\nif (ctx.blue_ocean_gaps && ctx.blue_ocean_gaps.length > 0) {\n  intelligence_block += \nBLUE-OCEAN GAPS TO EXPLOIT:\n;\n  ctx.blue_ocean_gaps.forEach(function(g) {\n    var label = typeof g === string ? g : (g.topic || g.opportunity || JSON.stringify(g));\n    intelligence_block += -  + label + \n;\n  });\n}\nif (ctx.content_pillars && ctx.content_pillars.length > 0) {\n  intelligence_block += \nCONTENT PILLARS:  + ctx.content_pillars.join(, ) + \n;\n}\nif (ctx.moat_indicators) {\n  intelligence_block += \nMOAT OPPORTUNITIES:  + JSON.stringify(ctx.moat_indicators) + \n;\n}\nif (ctx.comment_requested_topics && ctx.comment_requested_topics.length > 0) {\n  intelligence_block += \nTOPICS VIEWERS REQUESTED:\n;\n  ctx.comment_requested_topics.forEach(function(t) { intelligence_block += -  + t + \n; });\n}\n// === END INTELLIGENCE BLOCK ===\n\nreturn [{json: {topic, project, avatar, pass_number: 1, research_brief: researchBrief, intelligence_block: intelligence_block}}];"
+        "jsCode": "const SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst topicRaw = $('Read Topic').first().json;\nconst projRaw = $('Read Project').first().json;\nconst topic = Array.isArray(topicRaw) ? topicRaw[0] : topicRaw;\nconst project = Array.isArray(projRaw) ? projRaw[0] : projRaw;\nconst hdr = {'apikey': SRK, 'Authorization': 'Bearer ' + SRK};\n\nvar avResp = await fetch(SB + '/rest/v1/avatars?topic_id=eq.' + topic.id + '&select=*&limit=1', {headers: hdr});\nvar avatars = await avResp.json();\nvar avatar = (avatars && avatars[0]) || {};\n\nvar researchBrief = '';\ntry {\n  var npResp = await fetch(SB + '/rest/v1/niche_profiles?project_id=eq.' + project.id + '&select=blue_ocean_opportunities,audience_pain_points,competitor_analysis&limit=1', {headers: hdr});\n  var np = (await npResp.json())[0] || null;\n  var yaResp = await fetch(SB + '/rest/v1/yt_video_analyses?project_id=eq.' + project.id + '&select=ten_x_strategy,blue_ocean_analysis,comment_insights,verdict&limit=10', {headers: hdr});\n  var analyses = await yaResp.json();\n  var rcResp = await fetch(SB + '/rest/v1/research_categories?project_id=eq.' + project.id + '&select=category_name,video_title_suggestion,ranking_score&order=ranking_score.desc&limit=10', {headers: hdr});\n  var categories = await rcResp.json();\n  var sections = [];\n  if (np) {\n    if (np.blue_ocean_opportunities) { sections.push('BLUE OCEAN OPPORTUNITIES:\\n' + (typeof np.blue_ocean_opportunities === 'string' ? np.blue_ocean_opportunities : JSON.stringify(np.blue_ocean_opportunities)).substring(0,1500)); }\n    if (np.audience_pain_points) { sections.push('AUDIENCE PAIN POINTS:\\n' + (typeof np.audience_pain_points === 'string' ? np.audience_pain_points : JSON.stringify(np.audience_pain_points)).substring(0,1500)); }\n    if (np.competitor_analysis) { sections.push('COMPETITOR GAPS:\\n' + (typeof np.competitor_analysis === 'string' ? np.competitor_analysis : JSON.stringify(np.competitor_analysis)).substring(0,1000)); }\n  }\n  if (analyses && analyses.length > 0) {\n    var strategies = analyses.filter(function(a){return a.ten_x_strategy;}).map(function(a){var s=a.ten_x_strategy; return '- '+(s.recommended_angle||s.description||JSON.stringify(s).substring(0,200));}).join('\\n');\n    if (strategies) sections.push('10x STRATEGIES:\\n' + strategies.substring(0,1500));\n    var comments = analyses.filter(function(a){return a.comment_insights;}).map(function(a){var ci=a.comment_insights; var d=ci.audience_demands||ci.top_demands||ci.key_themes||[]; return Array.isArray(d)?d.join(', '):String(d).substring(0,300);}).filter(function(c){return c;}).join('; ');\n    if (comments) sections.push('AUDIENCE DEMANDS:\\n' + comments.substring(0,1000));\n    var boA = analyses.filter(function(a){return a.blue_ocean_analysis;}).map(function(a){var b=a.blue_ocean_analysis; return (b.gaps_and_opportunities||b.untapped||JSON.stringify(b)).substring(0,300);}).join('; ');\n    if (boA) sections.push('BLUE OCEAN GAPS FROM VIDEO ANALYSIS:\\n' + boA.substring(0,1000));\n  }\n  if (categories && categories.length > 0) {\n    var cats = categories.slice(0,5).map(function(c){return '- '+(c.category_name||'')+': '+(c.video_title_suggestion||'');}).join('\\n');\n    sections.push('TOP RESEARCH CATEGORIES:\\n' + cats);\n  }\n  try {\n    var aiResp = await fetch(SB + '/rest/v1/audience_insights?project_id=eq.' + project.id + '&select=audience_context_block&order=week_of.desc&limit=1', {headers: hdr});\n    var aiRows = await aiResp.json();\n    if (aiRows && aiRows[0] && aiRows[0].audience_context_block) { sections.push('AUDIENCE CONTEXT:\\n' + aiRows[0].audience_context_block); }\n  } catch (e2) {}\n  if (sections.length > 0) {\n    researchBrief = '=== RESEARCH BRIEF ===\\n\\n' + sections.join('\\n\\n') + '\\n\\n=== END RESEARCH BRIEF ===';\n  }\n} catch (e) {}\n\nvar ctx = project.channel_analysis_context || {};\nvar scriptTargets = project.script_depth_targets;\nvar topicsToAvoid = project.topics_to_avoid || [];\nvar recAngle = project.recommended_angle || '';\n\nvar intelligence_block = '';\nif (Object.keys(ctx).length > 0 || topicsToAvoid.length > 0 || recAngle) {\n  intelligence_block += '\\n\\n=== COMPETITIVE INTELLIGENCE FOR SCRIPTING ===\\n';\n  if (recAngle) { intelligence_block += '\\nCHANNEL POSITIONING: ' + recAngle + '\\nWrite from this angle.\\n'; }\n  if (scriptTargets) { intelligence_block += '\\nSCRIPT DEPTH TARGETS: ' + JSON.stringify(scriptTargets) + '\\nOur 3-pass system should EXCEED these.\\n'; }\n  if (ctx.comment_pain_points && ctx.comment_pain_points.length > 0) { intelligence_block += '\\nAUDIENCE PAIN POINTS TO ADDRESS:\\n'; ctx.comment_pain_points.forEach(function(p) { intelligence_block += '- ' + p + '\\n'; }); }\n  if (ctx.comment_content_gaps && ctx.comment_content_gaps.length > 0) { intelligence_block += '\\nCONTENT GAPS TO FILL:\\n'; ctx.comment_content_gaps.forEach(function(g) { intelligence_block += '- ' + g + '\\n'; }); }\n  if (ctx.comment_top_questions && ctx.comment_top_questions.length > 0) { intelligence_block += '\\nTOP VIEWER QUESTIONS TO ANSWER:\\n'; ctx.comment_top_questions.forEach(function(q) { intelligence_block += '- ' + q + '\\n'; }); }\n  if (topicsToAvoid.length > 0) { intelligence_block += '\\nANGLES TO AVOID (saturated):\\n'; topicsToAvoid.forEach(function(t) { intelligence_block += '- ' + t + '\\n'; }); }\n  if (ctx.differentiation_strategy) { intelligence_block += '\\nDIFFERENTIATION: ' + (typeof ctx.differentiation_strategy === 'string' ? ctx.differentiation_strategy : JSON.stringify(ctx.differentiation_strategy)) + '\\n'; }\n}\n\nvar scriptRef = project.script_reference_data;\nif (scriptRef) { intelligence_block += '\\nCOMPETITOR SCRIPTING STYLES:\\n' + JSON.stringify(scriptRef) + '\\n'; }\nvar revProj = project.revenue_projections;\nif (revProj) { intelligence_block += '\\nREVENUE CONTEXT: ' + JSON.stringify(revProj) + '\\n'; }\nvar viabScore = project.niche_viability_score;\nvar viabVerdict = project.niche_viability_verdict;\nif (viabScore || viabVerdict) { intelligence_block += '\\nVIABILITY: ' + (viabScore || 'N/A') + '/100 - ' + (viabVerdict || 'N/A') + '\\n'; }\nvar titleDna = project.title_dna_patterns;\nif (titleDna) { intelligence_block += '\\nTITLE DNA: ' + JSON.stringify(titleDna) + '\\n'; }\nvar thumbDna = project.thumbnail_dna_patterns;\nif (thumbDna) { intelligence_block += '\\nTHUMBNAIL DNA: ' + JSON.stringify(thumbDna) + '\\n'; }\nif (ctx.blue_ocean_gaps && ctx.blue_ocean_gaps.length > 0) { intelligence_block += '\\nBLUE-OCEAN GAPS:\\n'; ctx.blue_ocean_gaps.forEach(function(g) { var l = typeof g === 'string' ? g : (g.topic || g.opportunity || JSON.stringify(g)); intelligence_block += '- ' + l + '\\n'; }); }\nif (ctx.content_pillars && ctx.content_pillars.length > 0) { intelligence_block += '\\nPILLARS: ' + ctx.content_pillars.join(', ') + '\\n'; }\nif (ctx.moat_indicators) { intelligence_block += '\\nMOAT: ' + JSON.stringify(ctx.moat_indicators) + '\\n'; }\nif (ctx.comment_requested_topics && ctx.comment_requested_topics.length > 0) { intelligence_block += '\\nVIEWER REQUESTS:\\n'; ctx.comment_requested_topics.forEach(function(t) { intelligence_block += '- ' + t + '\\n'; }); }\n\nreturn [{json: {topic: topic, project: project, avatar: avatar, pass_number: 1, research_brief: researchBrief, intelligence_block: intelligence_block}}];"
       }
     },
     {
@@ -602,8 +605,7 @@
           "value": "CRC9USwaGgk7x6xN",
           "mode": "id"
         }
-      },
-      "onError": "continueErrorOutput"
+      }
     },
     {
       "id": "handle-p1",
@@ -634,8 +636,7 @@
           "value": "CRC9USwaGgk7x6xN",
           "mode": "id"
         }
-      },
-      "onError": "continueErrorOutput"
+      }
     },
     {
       "id": "extract-meta",
@@ -666,8 +667,7 @@
           "value": "CRC9USwaGgk7x6xN",
           "mode": "id"
         }
-      },
-      "onError": "continueErrorOutput"
+      }
     },
     {
       "id": "assemble",
@@ -789,13 +789,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Collect Error",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -818,13 +811,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Collect Error",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -844,13 +830,6 @@
         [
           {
             "node": "Assemble Script",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Collect Error",
             "type": "main",
             "index": 0
           }
