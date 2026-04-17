@@ -63,6 +63,7 @@ import {
 } from '../hooks/useChannelAnalyzer';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { webhookCall } from '../lib/api';
 import PageHeader from '../components/shared/PageHeader';
 import EmptyState from '../components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -1704,6 +1705,7 @@ export default function ChannelAnalyzer() {
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [forceNewGroup, setForceNewGroup] = useState(false);
+  const [discoveringCompetitors, setDiscoveringCompetitors] = useState(false);
 
   // Queries
   const { data: groups, isLoading: groupsLoading } = useAnalysisGroups();
@@ -1821,6 +1823,21 @@ export default function ChannelAnalyzer() {
     },
     [activeGroupId, confirmDeepAnalysis]
   );
+
+  const handleDiscoverCompetitors = useCallback(async () => {
+    if (!activeGroupId || !analyses?.length) return;
+    const firstCompleted = analyses.find((a) => a.status === 'completed');
+    if (!firstCompleted) return;
+    setDiscoveringCompetitors(true);
+    try {
+      await webhookCall('discover-competitors', {
+        analysis_group_id: activeGroupId,
+        source_channel_analysis_id: firstCompleted.id,
+      });
+    } finally {
+      setTimeout(() => setDiscoveringCompetitors(false), 5000);
+    }
+  }, [activeGroupId, analyses]);
 
   const handleRunViability = useCallback(() => {
     if (!activeGroupId) return;
@@ -1945,6 +1962,30 @@ export default function ChannelAnalyzer() {
                 analyses={analyses}
                 onCreateProject={() => setShowCreateModal(true)}
               />
+            </div>
+          )}
+
+          {/* ── Discover Competitors button (when analyses exist but no discovery yet) ── */}
+          {!selectedDetail && completedCount >= 1 && !showDiscoveredChannels && !discoveringCompetitors && (
+            <div className="mb-6 flex items-center gap-3">
+              <Button
+                onClick={handleDiscoverCompetitors}
+                disabled={discoveringCompetitors}
+                variant="outline"
+                size="sm"
+              >
+                <Search className="w-3.5 h-3.5" />
+                Discover Competitors
+              </Button>
+              <span className="text-[10px] text-muted-foreground">
+                Find top 10 competing channels in this niche
+              </span>
+            </div>
+          )}
+          {!selectedDetail && discoveringCompetitors && (
+            <div className="mb-6 flex items-center gap-3 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Discovering competitors...
             </div>
           )}
 
