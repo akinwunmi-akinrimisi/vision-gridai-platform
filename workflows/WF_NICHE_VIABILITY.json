@@ -1,0 +1,178 @@
+{
+  "name": "WF_NICHE_VIABILITY",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "trigger-nv-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "path": "niche-viability",
+        "httpMethod": "POST",
+        "authentication": "none",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "niche-viability"
+    },
+    {
+      "id": "code-nv-validate",
+      "name": "Validate & Auth",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_NICHE_VIABILITY — Validate payload, auth check, fetch all analyses + discovered channels.\n\nconst raw = $input.first().json;\nconst payload = raw.body || raw;\nconst headers = raw.headers || {};\n\n// Auth check\nconst expectedToken = $env.DASHBOARD_API_TOKEN;\nconst authHeader = headers.authorization || headers.Authorization || '';\nif (!authHeader || authHeader !== `Bearer ${expectedToken}`) {\n  return [{ json: { success: false, error: 'Unauthorized', http_status: 401 } }];\n}\n\nconst analysisGroupId = (payload.analysis_group_id || '').trim();\nif (!analysisGroupId) {\n  return [{ json: { success: false, error: 'analysis_group_id is required', http_status: 400 } }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\ntry {\n  // Fetch all completed channel analyses for this group\n  const analysesRes = await fetch(\n    `${supabaseUrl}/rest/v1/channel_analyses?analysis_group_id=eq.${analysisGroupId}&status=eq.completed&select=*&order=analyzed_at.asc`,\n    { method: 'GET', headers: sbHeaders }\n  );\n  if (!analysesRes.ok) {\n    return [{ json: { success: false, error: `Failed to fetch analyses: HTTP ${analysesRes.status}`, http_status: 500 } }];\n  }\n  const analyses = await analysesRes.json();\n  if (!Array.isArray(analyses) || analyses.length === 0) {\n    return [{ json: { success: false, error: 'No completed channel analyses found for this group', http_status: 404 } }];\n  }\n\n  // Fetch all discovered channels for this group\n  const discRes = await fetch(\n    `${supabaseUrl}/rest/v1/discovered_channels?analysis_group_id=eq.${analysisGroupId}&select=*&order=discovery_rank.asc`,\n    { method: 'GET', headers: sbHeaders }\n  );\n  const discovered = discRes.ok ? await discRes.json() : [];\n\n  return [{ json: {\n    success: true,\n    analysis_group_id: analysisGroupId,\n    analyses: analyses,\n    discovered_channels: Array.isArray(discovered) ? discovered : [],\n    channels_analyzed: analyses.length,\n    http_status: 202\n  } }];\n} catch (e) {\n  return [{ json: { success: false, error: `Exception: ${e.message}`, http_status: 500 } }];\n}"
+      }
+    },
+    {
+      "id": "respond-nv",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [660, 160],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.http_status || 200 }}"
+        }
+      }
+    },
+    {
+      "id": "code-nv-gate",
+      "name": "Check Success Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Gate: only continue if validation succeeded.\nconst data = $input.first().json;\nif (!data.success) {\n  return [];\n}\nreturn [{ json: data }];"
+      }
+    },
+    {
+      "id": "code-nv-aggregate",
+      "name": "Aggregate Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aggregate data across ALL analyzed channels for viability assessment.\n\nconst data = $input.first().json;\nconst analyses = data.analyses || [];\nconst discovered = data.discovered_channels || [];\n\n// Combined topic frequency map\nconst topicFreq = {};\nfor (const a of analyses) {\n  for (const t of (a.primary_topics || [])) {\n    const key = t.toLowerCase().trim();\n    topicFreq[key] = (topicFreq[key] || 0) + 1;\n  }\n}\nconst topicLandscape = Object.entries(topicFreq)\n  .sort((a, b) => b[1] - a[1])\n  .map(([topic, count]) => ({ topic, channel_count: count }));\n\n// All top videos across channels — identify niche-wide outliers\nconst allTopVideos = [];\nfor (const a of analyses) {\n  const vids = a.top_videos || [];\n  for (const v of vids.slice(0, 5)) {\n    allTopVideos.push({\n      channel: a.channel_name,\n      title: v.title,\n      views: v.views || 0,\n      likes: v.likes || 0,\n      outlier_score: v.outlier_score || 0,\n      duration_seconds: v.duration_seconds || 0\n    });\n  }\n}\nallTopVideos.sort((a, b) => b.views - a.views);\nconst nicheOutliers = allTopVideos.slice(0, 20);\n\n// Title patterns: dominant formulas\nconst allTitleFormulas = [];\nconst allEmotionalTriggers = [];\nlet totalTitleLen = 0;\nlet titleCount = 0;\nfor (const a of analyses) {\n  const tp = a.title_patterns || {};\n  if (tp.common_formulas) allTitleFormulas.push(...tp.common_formulas);\n  if (tp.emotional_triggers) allEmotionalTriggers.push(...tp.emotional_triggers);\n  if (tp.avg_title_length) { totalTitleLen += tp.avg_title_length; titleCount++; }\n}\n\n// Thumbnail patterns: visual DNA\nconst thumbnailStyles = [];\nfor (const a of analyses) {\n  const th = a.thumbnail_patterns || {};\n  if (th.inferred_style) thumbnailStyles.push({ channel: a.channel_name, style: th.inferred_style, text_usage: th.text_usage, face_likely: th.face_likely });\n}\n\n// Scripting depth: average word count, vocab level\nconst scriptingLevels = [];\nfor (const a of analyses) {\n  const sd = a.scripting_depth || {};\n  scriptingLevels.push({\n    channel: a.channel_name,\n    research_level: sd.estimated_research_level || 'unknown',\n    narrative_structure: sd.narrative_structure || '',\n    production_quality: sd.production_quality || 'unknown'\n  });\n}\n\n// Strengths, weaknesses, blue ocean opportunities (combined)\nconst allStrengths = [];\nconst allWeaknesses = [];\nconst allBlueOcean = [];\nfor (const a of analyses) {\n  if (a.strengths) allStrengths.push(...a.strengths.map(s => ({ channel: a.channel_name, strength: s })));\n  if (a.weaknesses) allWeaknesses.push(...a.weaknesses.map(w => ({ channel: a.channel_name, weakness: w })));\n  if (a.blue_ocean_opportunities) allBlueOcean.push(...a.blue_ocean_opportunities.map(b => ({ channel: a.channel_name, ...b })));\n}\n\n// Aggregate numbers\nconst totalSubscribers = analyses.reduce((s, a) => s + (a.subscriber_count || 0), 0);\nconst totalMonthlyViews = analyses.reduce((s, a) => s + (a.estimated_monthly_views || 0), 0);\nconst uploadFreqs = analyses.map(a => a.upload_frequency_days).filter(v => v != null && v > 0);\nconst avgUploadFreq = uploadFreqs.length\n  ? Math.round((uploadFreqs.reduce((a, b) => a + b, 0) / uploadFreqs.length) * 10) / 10\n  : null;\n\n// Content saturation map (combined)\nconst saturationMap = [];\nfor (const a of analyses) {\n  for (const s of (a.content_saturation_map || [])) {\n    saturationMap.push({ ...s, source_channel: a.channel_name });\n  }\n}\n\n// Posting schedule patterns\nconst postingSchedules = analyses.map(a => ({ channel: a.channel_name, schedule: a.posting_schedule })).filter(p => p.schedule);\n\nconst aggregated = {\n  topic_landscape: topicLandscape,\n  niche_outliers: nicheOutliers,\n  title_formulas: [...new Set(allTitleFormulas)].slice(0, 15),\n  emotional_triggers: [...new Set(allEmotionalTriggers)].slice(0, 10),\n  avg_title_length: titleCount > 0 ? Math.round(totalTitleLen / titleCount) : null,\n  thumbnail_styles: thumbnailStyles,\n  scripting_levels: scriptingLevels,\n  all_strengths: allStrengths,\n  all_weaknesses: allWeaknesses,\n  all_blue_ocean: allBlueOcean,\n  content_saturation_map: saturationMap,\n  posting_schedules: postingSchedules,\n  total_subscribers: totalSubscribers,\n  total_monthly_views: totalMonthlyViews,\n  avg_upload_frequency_days: avgUploadFreq,\n  channels_analyzed: analyses.length,\n  channel_summaries: analyses.map(a => ({\n    name: a.channel_name,\n    subscribers: a.subscriber_count,\n    monthly_views: a.estimated_monthly_views,\n    growth: a.growth_trajectory,\n    verdict: a.verdict,\n    verdict_score: a.verdict_score,\n    avg_views: a.avg_views_per_video,\n    avg_duration_sec: a.avg_video_duration_seconds\n  }))\n};\n\nreturn [{ json: {\n  ...data,\n  aggregated: aggregated,\n  failed: false\n} }];"
+      }
+    },
+    {
+      "id": "code-nv-claude",
+      "name": "Claude Viability Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Send aggregated data to Claude Opus 4.6 for comprehensive niche viability assessment.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst analysisGroupId = data.analysis_group_id;\nconst agg = data.aggregated;\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nconst systemPrompt = `You are a YouTube niche viability analyst. You assess whether a niche is worth entering based on monetization potential, audience demand, competition gaps, and entry difficulty. You score each factor 0-100 and provide a weighted total. You also identify defensible moat opportunities. Be specific, data-driven, and brutally honest. No generic advice.`;\n\n// Build the user prompt with aggregated data\nconst channelBlock = (agg.channel_summaries || []).map((c, i) =>\n  `${i + 1}. ${c.name} — ${(c.subscribers || 0).toLocaleString()} subs, ${(c.monthly_views || 0).toLocaleString()} monthly views, avg ${(c.avg_views || 0).toLocaleString()} views/video, growth: ${c.growth}, verdict: ${c.verdict} (${c.verdict_score}/100), avg duration: ${Math.round((c.avg_duration_sec || 0) / 60)}min`\n).join('\\n');\n\nconst topicBlock = (agg.topic_landscape || []).slice(0, 20).map(t =>\n  `- \"${t.topic}\" (covered by ${t.channel_count} channels)`\n).join('\\n');\n\nconst outlierBlock = (agg.niche_outliers || []).slice(0, 10).map((v, i) =>\n  `${i + 1}. [${v.channel}] \"${v.title}\" — ${(v.views || 0).toLocaleString()} views, outlier: ${v.outlier_score}x`\n).join('\\n');\n\nconst strengthsBlock = (agg.all_strengths || []).slice(0, 15).map(s => `- [${s.channel}] ${s.strength}`).join('\\n');\nconst weaknessesBlock = (agg.all_weaknesses || []).slice(0, 15).map(w => `- [${w.channel}] ${w.weakness}`).join('\\n');\nconst blueOceanBlock = (agg.all_blue_ocean || []).slice(0, 15).map(b => `- [${b.channel}] ${b.opportunity} (difficulty: ${b.difficulty})`).join('\\n');\n\nconst satBlock = (agg.content_saturation_map || []).slice(0, 20).map(s =>\n  `- \"${s.topic}\" — ${s.saturation} (${s.video_count_seen || '?'} videos seen, from ${s.source_channel})`\n).join('\\n');\n\nconst titleFormulas = (agg.title_formulas || []).map(f => `- ${f}`).join('\\n');\nconst scriptBlock = (agg.scripting_levels || []).map(s =>\n  `- ${s.channel}: research=${s.research_level}, quality=${s.production_quality}`\n).join('\\n');\n\nconst userPrompt = `Analyze this YouTube niche for viability. ${agg.channels_analyzed} channels were analyzed.\n\nCHANNEL SUMMARIES:\n${channelBlock}\n\nAGGREGATE STATS:\n- Total subscribers across niche: ${(agg.total_subscribers || 0).toLocaleString()}\n- Total estimated monthly views: ${(agg.total_monthly_views || 0).toLocaleString()}\n- Average upload frequency: every ${agg.avg_upload_frequency_days || '?'} days\n\nTOPIC LANDSCAPE (by coverage frequency):\n${topicBlock}\n\nNICHE-WIDE OUTLIER VIDEOS (highest views):\n${outlierBlock}\n\nTITLE PATTERNS:\nCommon formulas: ${titleFormulas || 'none identified'}\nEmotional triggers: ${(agg.emotional_triggers || []).join(', ') || 'none identified'}\nAvg title length: ${agg.avg_title_length || '?'} chars\n\nSCRIPTING/PRODUCTION DEPTH:\n${scriptBlock}\n\nSTRENGTHS ACROSS CHANNELS:\n${strengthsBlock}\n\nWEAKNESSES ACROSS CHANNELS:\n${weaknessesBlock}\n\nBLUE OCEAN OPPORTUNITIES IDENTIFIED:\n${blueOceanBlock}\n\nCONTENT SATURATION MAP:\n${satBlock}\n\nReturn ONLY valid JSON with these exact fields:\n{\n  \"monetization_score\": <0-100>,\n  \"monetization_reasoning\": \"why this score\",\n  \"estimated_rpm_range\": { \"low\": 5.0, \"mid\": 12.0, \"high\": 25.0 },\n  \"ad_category\": \"Finance/Tech/Education/etc\",\n  \"sponsorship_potential\": \"high|medium|low|none\",\n  \"audience_demand_score\": <0-100>,\n  \"audience_demand_reasoning\": \"why this score\",\n  \"competition_gap_score\": <0-100>,\n  \"competition_gap_reasoning\": \"why this score\",\n  \"entry_difficulty_score\": <0-100>,\n  \"entry_difficulty_reasoning\": \"why this score (100 = very easy to enter, 0 = impossible)\",\n  \"viability_score\": <0-100>,\n  \"viability_verdict\": \"strong_opportunity|moderate_opportunity|weak_opportunity|avoid\",\n  \"viability_reasoning\": \"2-3 sentences\",\n  \"blue_ocean_opportunities\": [\n    { \"topic\": \"...\", \"reasoning\": \"...\", \"demand\": \"high|medium|low\", \"saturation\": \"none|low|moderate|high\", \"suggested_angle\": \"...\", \"moat_defensibility\": \"high|medium|low\" }\n  ],\n  \"saturated_topics\": [\"topic1\", \"topic2\"],\n  \"recommended_angle\": \"the strategic positioning\",\n  \"recommended_content_pillars\": [\"pillar1\", \"pillar2\", \"pillar3\", \"pillar4\", \"pillar5\"],\n  \"differentiation_strategy\": \"how to stand out\",\n  \"moat_indicators\": [\n    { \"indicator\": \"...\", \"defensibility\": \"high|medium|low\", \"reasoning\": \"...\" }\n  ],\n  \"revenue_projections\": {\n    \"at_10k_subs\": { \"monthly_usd\": 500, \"reasoning\": \"...\" },\n    \"at_50k_subs\": { \"monthly_usd\": 3000, \"reasoning\": \"...\" },\n    \"at_100k_subs\": { \"monthly_usd\": 8000, \"reasoning\": \"...\" }\n  },\n  \"script_depth_targets\": {\n    \"target_word_count\": 18000,\n    \"vocabulary_level\": \"intermediate|advanced|expert\",\n    \"explanation_depth\": \"surface|moderate|deep|expert\",\n    \"reasoning\": \"...\"\n  },\n  \"topics_to_avoid\": [\"topic1\", \"topic2\"],\n  \"recommended_topics\": [\n    { \"topic\": \"...\", \"angle\": \"...\", \"demand\": \"high|medium|low\", \"suggested_title_formula\": \"...\" }\n  ],\n  \"audience_demographics\": \"description of likely audience\",\n  \"audience_size_estimate\": \"small|medium|large|very_large\"\n}`;\n\n// Call Claude with retry\nconst claudeStart = Date.now();\nlet claudeResult = null;\nlet lastErr = null;\n\nfor (let attempt = 1; attempt <= 4; attempt++) {\n  try {\n    const res = await fetch('https://api.anthropic.com/v1/messages', {\n      method: 'POST',\n      headers: {\n        'x-api-key': anthropicKey,\n        'anthropic-version': '2023-06-01',\n        'content-type': 'application/json'\n      },\n      body: JSON.stringify({\n        model: 'claude-opus-4-6',\n        max_tokens: 8192,\n        system: systemPrompt,\n        messages: [{ role: 'user', content: userPrompt }]\n      })\n    });\n    if (res.ok) {\n      const body = await res.json();\n      claudeResult = {\n        text: body.content?.[0]?.text || '',\n        input_tokens: body.usage?.input_tokens || 0,\n        output_tokens: body.usage?.output_tokens || 0,\n        attempts: attempt\n      };\n      break;\n    }\n    const errBody = await res.text();\n    if (res.status === 429) await sleep(30000);\n    lastErr = `HTTP ${res.status}: ${errBody.slice(0, 300)}`;\n    if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n  } catch (e) { lastErr = e.message; }\n  if (attempt < 4) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n}\n\nconst claudeDuration = Date.now() - claudeStart;\n\nif (!claudeResult) {\n  // Log failure\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        project_id: null, topic_id: null, stage: 'niche_viability',\n        scene_number: null, action: 'claude_viability_analysis', status: 'error',\n        duration_ms: claudeDuration, cost_usd: 0, retry_count: 3\n      })\n    });\n  } catch (_) {}\n  return [{ json: { ...data, failed: true, error: `Claude analysis failed: ${lastErr}` } }];\n}\n\n// Parse Claude response\nlet parsed = null;\ntry {\n  const clean = claudeResult.text.replace(/```json|```/g, '').trim();\n  parsed = JSON.parse(clean);\n} catch {\n  const m = claudeResult.text.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { parsed = JSON.parse(m[0]); } catch {} }\n}\n\nif (!parsed) {\n  return [{ json: { ...data, failed: true, error: 'Claude response could not be parsed as JSON' } }];\n}\n\n// Cost: Opus 4.6 $15/M input, $75/M output\nconst costUsd = Math.round(((claudeResult.input_tokens * 15 + claudeResult.output_tokens * 75) / 1_000_000) * 10000) / 10000;\n\n// Log success\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: null, topic_id: null, stage: 'niche_viability',\n      scene_number: null, action: 'claude_viability_analysis', status: 'success',\n      duration_ms: claudeDuration, cost_usd: costUsd, retry_count: (claudeResult.attempts || 1) - 1\n    })\n  });\n} catch (_) {}\n\nreturn [{ json: {\n  ...data,\n  claude_viability: parsed,\n  analysis_cost_usd: costUsd,\n  analysis_duration_ms: claudeDuration,\n  input_tokens: claudeResult.input_tokens,\n  output_tokens: claudeResult.output_tokens,\n  failed: false\n} }];"
+      }
+    },
+    {
+      "id": "code-nv-score",
+      "name": "Compute Final Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1380, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Authoritative recomputation of viability_score from 4 sub-scores.\n// Do NOT trust Claude's self-reported viability_score.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst cv = data.claude_viability;\n\n// Clamp each sub-score to [0, 100]\nfunction clamp(val) {\n  const n = typeof val === 'number' ? val : parseInt(val, 10);\n  if (isNaN(n)) return 50;\n  return Math.max(0, Math.min(100, Math.round(n)));\n}\n\nconst monetization = clamp(cv.monetization_score);\nconst demand = clamp(cv.audience_demand_score);\nconst gap = clamp(cv.competition_gap_score);\nconst difficulty = clamp(cv.entry_difficulty_score);\n\n// Weighted: monetization 30%, demand 25%, gap 25%, difficulty 20%\nconst viabilityScore = Math.round(\n  monetization * 0.30 +\n  demand * 0.25 +\n  gap * 0.25 +\n  difficulty * 0.20\n);\nconst clampedScore = Math.max(0, Math.min(100, viabilityScore));\n\n// Map to verdict\nlet verdict;\nif (clampedScore >= 75) verdict = 'strong_opportunity';\nelse if (clampedScore >= 50) verdict = 'moderate_opportunity';\nelse if (clampedScore >= 25) verdict = 'weak_opportunity';\nelse verdict = 'avoid';\n\n// Extract RPM estimates\nconst rpmRange = cv.estimated_rpm_range || {};\n\nreturn [{ json: {\n  ...data,\n  final_scores: {\n    monetization_score: monetization,\n    audience_demand_score: demand,\n    competition_gap_score: gap,\n    entry_difficulty_score: difficulty,\n    viability_score: clampedScore,\n    viability_verdict: verdict\n  },\n  rpm_estimates: {\n    low: rpmRange.low || null,\n    mid: rpmRange.mid || null,\n    high: rpmRange.high || null\n  },\n  failed: false\n} }];"
+      }
+    },
+    {
+      "id": "code-nv-write",
+      "name": "Write Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1620, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Write niche viability report to Supabase.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst cv = data.claude_viability;\nconst fs = data.final_scores;\nconst agg = data.aggregated;\nconst rpm = data.rpm_estimates;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// Extract title_dna_patterns from aggregated data\nconst titleDna = {\n  common_formulas: agg.title_formulas || [],\n  emotional_triggers: agg.emotional_triggers || [],\n  avg_title_length: agg.avg_title_length\n};\n\n// Extract thumbnail_dna_patterns from aggregated data\nconst thumbnailDna = agg.thumbnail_styles || [];\n\n// Posting frequency benchmark\nconst postingBenchmark = agg.avg_upload_frequency_days\n  ? `Every ${agg.avg_upload_frequency_days} days (niche average)`\n  : null;\n\nconst report = {\n  analysis_group_id: data.analysis_group_id,\n  project_id: null,\n  channels_analyzed: data.channels_analyzed,\n  total_subscribers: agg.total_subscribers || 0,\n  total_monthly_views: agg.total_monthly_views || 0,\n\n  viability_score: fs.viability_score,\n  viability_verdict: fs.viability_verdict,\n  viability_reasoning: cv.viability_reasoning || null,\n\n  monetization_score: fs.monetization_score,\n  monetization_breakdown: {\n    reasoning: cv.monetization_reasoning || null,\n    ad_category: cv.ad_category || null,\n    sponsorship_potential: cv.sponsorship_potential || null\n  },\n  audience_demand_score: fs.audience_demand_score,\n  audience_demand_breakdown: {\n    reasoning: cv.audience_demand_reasoning || null\n  },\n  competition_gap_score: fs.competition_gap_score,\n  competition_gap_breakdown: {\n    reasoning: cv.competition_gap_reasoning || null\n  },\n  entry_difficulty_score: fs.entry_difficulty_score,\n  entry_difficulty_breakdown: {\n    reasoning: cv.entry_difficulty_reasoning || null\n  },\n\n  estimated_rpm_low: rpm.low,\n  estimated_rpm_mid: rpm.mid,\n  estimated_rpm_high: rpm.high,\n  ad_category: cv.ad_category || null,\n  sponsorship_potential: cv.sponsorship_potential || null,\n\n  blue_ocean_opportunities: cv.blue_ocean_opportunities || [],\n  saturated_topics: cv.saturated_topics || [],\n  recommended_angle: cv.recommended_angle || null,\n  recommended_content_pillars: cv.recommended_content_pillars || [],\n  differentiation_strategy: cv.differentiation_strategy || null,\n\n  moat_indicators: cv.moat_indicators || null,\n  defensibility_assessment: (cv.moat_indicators || []).length > 0\n    ? cv.moat_indicators.filter(m => m.defensibility === 'high').length >= 2 ? 'strong' : 'moderate'\n    : null,\n\n  revenue_projections: cv.revenue_projections || null,\n\n  audience_size_estimate: cv.audience_size_estimate || null,\n  engagement_benchmarks: {\n    channel_summaries: agg.channel_summaries || []\n  },\n  audience_demographics: cv.audience_demographics || null,\n\n  script_depth_targets: cv.script_depth_targets || null,\n  title_dna_patterns: titleDna,\n  thumbnail_dna_patterns: thumbnailDna,\n  posting_frequency_benchmark: postingBenchmark,\n\n  topics_to_avoid: cv.topics_to_avoid || [],\n  recommended_topics: cv.recommended_topics || [],\n\n  analysis_cost_usd: data.analysis_cost_usd || 0\n};\n\ntry {\n  const res = await fetch(`${supabaseUrl}/rest/v1/niche_viability_reports`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n    body: JSON.stringify(report)\n  });\n  if (!res.ok) {\n    const errText = await res.text();\n    return [{ json: { ...data, failed: true, error: `Write report failed: HTTP ${res.status}: ${errText.slice(0, 300)}` } }];\n  }\n  const rows = await res.json();\n  const reportRow = Array.isArray(rows) && rows[0] ? rows[0] : null;\n\n  return [{ json: {\n    ...data,\n    report_id: reportRow?.id || null,\n    failed: false\n  } }];\n} catch (e) {\n  return [{ json: { ...data, failed: true, error: `Exception writing report: ${e.message}` } }];\n}"
+      }
+    },
+    {
+      "id": "code-nv-update",
+      "name": "Update Channel Analyses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1860, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Update all channel_analyses in the group with viability report reference.\n// Also update the analysis group status (via a tag on each analysis row).\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst analysisGroupId = data.analysis_group_id;\nconst reportId = data.report_id;\nconst fs = data.final_scores;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// PATCH all completed analyses in this group — no viability_report_id column exists\n// on channel_analyses, so we skip that. Instead we just note the group is done.\n// The dashboard reads niche_viability_reports by analysis_group_id.\n\n// If projects table has analysis_group_id column, check if a project links to this group\ntry {\n  const projRes = await fetch(\n    `${supabaseUrl}/rest/v1/projects?analysis_group_id=eq.${analysisGroupId}&select=id`,\n    { method: 'GET', headers: sbHeaders }\n  );\n  if (projRes.ok) {\n    const projects = await projRes.json();\n    if (Array.isArray(projects)) {\n      for (const proj of projects) {\n        // Update project with viability data for downstream injection\n        await fetch(`${supabaseUrl}/rest/v1/projects?id=eq.${proj.id}`, {\n          method: 'PATCH',\n          headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n          body: JSON.stringify({\n            niche_viability_score: fs.viability_score,\n            niche_viability_verdict: fs.viability_verdict\n          })\n        });\n      }\n    }\n  }\n} catch (_) {}\n\n// Also update the niche_viability_reports.project_id if we found a project\ntry {\n  const projRes2 = await fetch(\n    `${supabaseUrl}/rest/v1/projects?analysis_group_id=eq.${analysisGroupId}&select=id&limit=1`,\n    { method: 'GET', headers: sbHeaders }\n  );\n  if (projRes2.ok) {\n    const projs = await projRes2.json();\n    if (Array.isArray(projs) && projs.length > 0 && reportId) {\n      await fetch(`${supabaseUrl}/rest/v1/niche_viability_reports?id=eq.${reportId}`, {\n        method: 'PATCH',\n        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({ project_id: projs[0].id })\n      });\n    }\n  }\n} catch (_) {}\n\nreturn [{ json: {\n  ...data,\n  updates_applied: true,\n  failed: false\n} }];"
+      }
+    },
+    {
+      "id": "code-nv-log",
+      "name": "Log Completed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2100, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Log niche viability completion to production_logs.\n\nconst data = $input.first().json;\nconst fs = data.final_scores || {};\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: null,\n      topic_id: null,\n      stage: 'niche_viability',\n      scene_number: null,\n      action: 'viability_completed',\n      status: 'success',\n      duration_ms: data.analysis_duration_ms || 0,\n      cost_usd: data.analysis_cost_usd || 0,\n      retry_count: 0,\n      details: JSON.stringify({\n        analysis_group_id: data.analysis_group_id,\n        report_id: data.report_id,\n        channels_analyzed: data.channels_analyzed,\n        viability_score: fs.viability_score,\n        viability_verdict: fs.viability_verdict,\n        monetization_score: fs.monetization_score,\n        demand_score: fs.audience_demand_score,\n        gap_score: fs.competition_gap_score,\n        difficulty_score: fs.entry_difficulty_score\n      })\n    })\n  });\n} catch (_) {}\n\nreturn [{ json: {\n  success: true,\n  analysis_group_id: data.analysis_group_id,\n  report_id: data.report_id,\n  viability_score: fs.viability_score,\n  viability_verdict: fs.viability_verdict,\n  channels_analyzed: data.channels_analyzed,\n  cost_usd: data.analysis_cost_usd\n} }];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[
+        { "node": "Validate & Auth", "type": "main", "index": 0 }
+      ]]
+    },
+    "Validate & Auth": {
+      "main": [[
+        { "node": "Respond To Webhook", "type": "main", "index": 0 },
+        { "node": "Check Success Gate", "type": "main", "index": 0 }
+      ]]
+    },
+    "Check Success Gate": {
+      "main": [[
+        { "node": "Aggregate Data", "type": "main", "index": 0 }
+      ]]
+    },
+    "Aggregate Data": {
+      "main": [[
+        { "node": "Claude Viability Analysis", "type": "main", "index": 0 }
+      ]]
+    },
+    "Claude Viability Analysis": {
+      "main": [[
+        { "node": "Compute Final Score", "type": "main", "index": 0 }
+      ]]
+    },
+    "Compute Final Score": {
+      "main": [[
+        { "node": "Write Report", "type": "main", "index": 0 }
+      ]]
+    },
+    "Write Report": {
+      "main": [[
+        { "node": "Update Channel Analyses", "type": "main", "index": 0 }
+      ]]
+    },
+    "Update Channel Analyses": {
+      "main": [[
+        { "node": "Log Completed", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 600,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "tags": []
+}

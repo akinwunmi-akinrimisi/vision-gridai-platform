@@ -32,7 +32,13 @@ import {
   Palette,
   Lightbulb,
   Shield,
+  ShieldAlert,
+  ShieldOff,
   AlertTriangle,
+  DollarSign,
+  Zap,
+  Ban,
+  CircleDot,
 } from 'lucide-react';
 import {
   useAnalysisGroups,
@@ -41,6 +47,11 @@ import {
   useStartAnalysis,
   useCreateProjectFromAnalysis,
   useRemoveAnalysis,
+  useDiscoveredChannels,
+  useNicheViability,
+  useConfirmDeepAnalysis,
+  useRunViabilityAssessment,
+  useCreateProjectFromViability,
 } from '../hooks/useChannelAnalyzer';
 import PageHeader from '../components/shared/PageHeader';
 import EmptyState from '../components/shared/EmptyState';
@@ -693,13 +704,569 @@ function CombinedIntelligence({ report, analyses, onCreateProject }) {
 }
 
 // ---------------------------------------------------------------------------
-// CreateProjectModal
+// DiscoveredCompetitors — grid of discovered channels with depth toggles
 // ---------------------------------------------------------------------------
 
-function CreateProjectModal({ open, onOpenChange, report, analyses, onConfirm, isPending }) {
+const DEPTH_OPTIONS = [
+  { value: 'quick', label: 'Quick', desc: 'Basic stats only' },
+  { value: 'medium', label: 'Medium', desc: 'Stats + top videos' },
+  { value: 'deep', label: 'Deep', desc: 'Full analysis' },
+];
+
+function DiscoveredCompetitors({ channels, onConfirmAnalysis, isAnalyzing }) {
+  const [selected, setSelected] = useState(new Set());
+  const [depths, setDepths] = useState({});
+
+  if (!channels || channels.length === 0) return null;
+
+  const completedCount = channels.filter(c => c.analysis_status === 'completed').length;
+  const analyzingCount = channels.filter(c => c.analysis_status === 'analyzing').length;
+  const discoveredCount = channels.filter(c => c.analysis_status === 'discovered').length;
+
+  const toggleSelect = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const discoveredIds = channels
+      .filter(c => c.analysis_status === 'discovered')
+      .map(c => c.id);
+    setSelected(new Set(discoveredIds));
+  };
+
+  const setDepth = (id, depth) => {
+    setDepths((prev) => ({ ...prev, [id]: depth }));
+  };
+
+  const handleConfirm = () => {
+    const toAnalyze = channels
+      .filter(c => selected.has(c.id) && c.analysis_status === 'discovered')
+      .map(c => ({
+        id: c.id,
+        channel_url: c.channel_url,
+        analysis_depth: depths[c.id] || 'medium',
+      }));
+    if (toAnalyze.length > 0) {
+      onConfirmAnalysis(toAnalyze);
+      setSelected(new Set());
+    }
+  };
+
+  return (
+    <div className="bg-card/80 backdrop-blur border border-border rounded-xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold flex items-center gap-2">
+          <Users className="w-4 h-4 text-primary" />
+          Discovered Competitors ({channels.length})
+        </h2>
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          {completedCount > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-success" />
+              {completedCount} analyzed
+            </span>
+          )}
+          {analyzingCount > 0 && (
+            <span className="flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin text-primary" />
+              {analyzingCount} in progress
+            </span>
+          )}
+          {discoveredCount > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+              {discoveredCount} pending
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+        {channels.map((ch) => {
+          const isDiscovered = ch.analysis_status === 'discovered';
+          const isChecked = selected.has(ch.id);
+          const currentDepth = depths[ch.id] || 'medium';
+          const statusColor =
+            ch.analysis_status === 'completed' ? 'border-success/40' :
+            ch.analysis_status === 'analyzing' ? 'border-primary/40' :
+            ch.analysis_status === 'failed' ? 'border-danger/40' :
+            'border-border';
+
+          return (
+            <div
+              key={ch.id}
+              className={cn(
+                'bg-card border rounded-lg p-3 transition-all',
+                statusColor,
+                isChecked && isDiscovered && 'ring-1 ring-primary/50 bg-primary/5',
+              )}
+            >
+              <div className="flex items-start gap-2 mb-2">
+                {isDiscovered && (
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleSelect(ch.id)}
+                    className="mt-0.5 rounded border-border text-primary focus:ring-primary"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold truncate">{ch.channel_name}</p>
+                  {ch.channel_handle && (
+                    <p className="text-[10px] text-muted-foreground truncate">{ch.channel_handle}</p>
+                  )}
+                </div>
+                {ch.relevance_score != null && (
+                  <span className={cn(
+                    'text-[9px] font-bold px-1.5 py-0.5 rounded-full',
+                    ch.relevance_score >= 80 ? 'bg-success/10 text-success' :
+                    ch.relevance_score >= 60 ? 'bg-warning/10 text-warning' :
+                    'bg-muted text-muted-foreground'
+                  )}>
+                    {ch.relevance_score}%
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground mb-2">
+                <span>{formatNumber(ch.subscriber_count)} subs</span>
+                <span className="text-border">&bull;</span>
+                <span>{formatNumber(ch.avg_views_per_video)} avg</span>
+              </div>
+
+              {/* Status indicator */}
+              {ch.analysis_status === 'analyzing' && (
+                <div className="flex items-center gap-1.5 text-[10px] text-primary">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Analyzing...</span>
+                </div>
+              )}
+              {ch.analysis_status === 'completed' && (
+                <div className="flex items-center gap-1.5 text-[10px] text-success">
+                  <Check className="w-3 h-3" />
+                  <span>Complete</span>
+                </div>
+              )}
+              {ch.analysis_status === 'failed' && (
+                <div className="flex items-center gap-1.5 text-[10px] text-danger">
+                  <AlertTriangle className="w-3 h-3" />
+                  <span>Failed</span>
+                </div>
+              )}
+              {ch.analysis_status === 'skipped' && (
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <Minus className="w-3 h-3" />
+                  <span>Skipped</span>
+                </div>
+              )}
+
+              {/* Depth toggle — only for discovered channels that are selected */}
+              {isDiscovered && isChecked && (
+                <div className="mt-2 flex gap-1">
+                  {DEPTH_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setDepth(ch.id, opt.value)}
+                      title={opt.desc}
+                      className={cn(
+                        'flex-1 text-[9px] py-1 rounded transition-colors',
+                        currentDepth === opt.value
+                          ? 'bg-primary text-white'
+                          : 'bg-card-hover text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Action bar */}
+      {discoveredCount > 0 && (
+        <div className="flex items-center gap-3 pt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2.5 text-[10px]"
+            onClick={selectAll}
+          >
+            Select All Pending
+          </Button>
+          <Button
+            size="sm"
+            disabled={selected.size === 0 || isAnalyzing}
+            onClick={handleConfirm}
+            className="bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent/90 text-white shadow-glow-primary"
+          >
+            {isAnalyzing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Radar className="w-3.5 h-3.5" />
+            )}
+            Analyze Selected ({selected.size})
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NicheViabilitySection — viability score, factor breakdown, revenue, gaps
+// ---------------------------------------------------------------------------
+
+const VIABILITY_COLOR = (score) => {
+  if (score >= 75) return { text: 'text-emerald-400', bg: 'bg-emerald-400', ring: 'ring-emerald-400/30', gradient: 'from-emerald-500 to-emerald-600' };
+  if (score >= 50) return { text: 'text-yellow-400', bg: 'bg-yellow-400', ring: 'ring-yellow-400/30', gradient: 'from-yellow-500 to-yellow-600' };
+  if (score >= 25) return { text: 'text-orange-400', bg: 'bg-orange-400', ring: 'ring-orange-400/30', gradient: 'from-orange-500 to-orange-600' };
+  return { text: 'text-red-400', bg: 'bg-red-400', ring: 'ring-red-400/30', gradient: 'from-red-500 to-red-600' };
+};
+
+const MOAT_ICONS = {
+  high: Shield,
+  medium: ShieldAlert,
+  low: ShieldOff,
+};
+
+function FactorBar({ label, score, weight, icon: Icon, breakdown }) {
+  const pct = Math.min(100, Math.max(0, score || 0));
+  const color =
+    pct >= 75 ? 'bg-emerald-400' :
+    pct >= 50 ? 'bg-yellow-400' :
+    pct >= 25 ? 'bg-orange-400' : 'bg-red-400';
+
+  return (
+    <div className="bg-card border border-border/50 rounded-lg p-3">
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <Icon className="w-3.5 h-3.5 text-primary" />
+          <span className="text-[10px] font-semibold">{label}</span>
+          <span className="text-[9px] text-muted-foreground">({weight}%)</span>
+        </div>
+        <span className="text-xs font-bold tabular-nums">{score ?? '--'}/100</span>
+      </div>
+      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className={cn('h-full rounded-full transition-all duration-500', color)} style={{ width: `${pct}%` }} />
+      </div>
+      {breakdown && typeof breakdown === 'object' && (
+        <div className="mt-2 space-y-1">
+          {Object.entries(breakdown).map(([k, v]) => (
+            <div key={k} className="flex items-center justify-between text-[10px]">
+              <span className="text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</span>
+              <span className="text-foreground">{typeof v === 'number' ? v : String(v)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NicheViabilitySection({ report, onCreateProject, onRunViability, isRunning }) {
+  if (!report) return null;
+
+  const scoreColor = VIABILITY_COLOR(report.viability_score);
+  const blueOcean = report.blue_ocean_opportunities || [];
+  const saturatedTopics = report.saturated_topics || [];
+  const topicsToAvoid = report.topics_to_avoid || [];
+  const recommendedPillars = report.recommended_content_pillars || [];
+  const revenueProjections = report.revenue_projections || {};
+  const recommendedTopics = report.recommended_topics || [];
+
+  const verdictLabel =
+    report.viability_verdict === 'strong_opportunity' ? 'Strong Opportunity' :
+    report.viability_verdict === 'moderate_opportunity' ? 'Moderate Opportunity' :
+    report.viability_verdict === 'weak_opportunity' ? 'Weak Opportunity' : 'Avoid';
+
+  return (
+    <div className="bg-card/80 backdrop-blur border border-border rounded-xl p-5 space-y-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold flex items-center gap-2">
+          <Target className="w-4 h-4 text-primary" />
+          Niche Viability Assessment
+        </h2>
+      </div>
+
+      {/* Viability Score + Verdict */}
+      <div className="flex flex-col sm:flex-row items-start gap-5">
+        {/* Big score ring */}
+        <div className="flex-shrink-0 flex flex-col items-center">
+          <div className={cn('relative w-28 h-28 rounded-full flex items-center justify-center ring-4', scoreColor.ring)}>
+            <svg className="absolute inset-0 w-28 h-28 -rotate-90" viewBox="0 0 112 112">
+              <circle cx="56" cy="56" r="48" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
+              <circle
+                cx="56" cy="56" r="48" fill="none" strokeWidth="6"
+                strokeDasharray={`${(report.viability_score / 100) * 301.6} 301.6`}
+                strokeLinecap="round"
+                className={scoreColor.text}
+              />
+            </svg>
+            <div className="text-center z-10">
+              <span className={cn('text-3xl font-black tabular-nums', scoreColor.text)}>{report.viability_score}</span>
+              <span className="text-[10px] text-muted-foreground block">/100</span>
+            </div>
+          </div>
+          <span className={cn('text-xs font-bold mt-2', scoreColor.text)}>{verdictLabel}</span>
+        </div>
+
+        {/* Verdict reasoning */}
+        <div className="flex-1 space-y-3">
+          {report.viability_reasoning && (
+            <p className="text-xs text-muted-foreground leading-relaxed">{report.viability_reasoning}</p>
+          )}
+          {report.differentiation_strategy && (
+            <div className="bg-card border border-border/50 rounded-lg p-3">
+              <h3 className="text-[10px] font-semibold text-primary mb-1">Differentiation Strategy</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{report.differentiation_strategy}</p>
+            </div>
+          )}
+          {report.recommended_angle && (
+            <div className="bg-card border border-border/50 rounded-lg p-3">
+              <h3 className="text-[10px] font-semibold text-primary mb-1">Recommended Angle</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{report.recommended_angle}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 4 Factor Breakdown */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <FactorBar
+          label="Monetization Potential"
+          score={report.monetization_score}
+          weight={30}
+          icon={DollarSign}
+          breakdown={report.monetization_breakdown}
+        />
+        <FactorBar
+          label="Audience Demand"
+          score={report.audience_demand_score}
+          weight={25}
+          icon={TrendingUp}
+          breakdown={report.audience_demand_breakdown}
+        />
+        <FactorBar
+          label="Competition Gap"
+          score={report.competition_gap_score}
+          weight={25}
+          icon={Target}
+          breakdown={report.competition_gap_breakdown}
+        />
+        <FactorBar
+          label="Entry Difficulty"
+          score={report.entry_difficulty_score}
+          weight={20}
+          icon={Zap}
+          breakdown={report.entry_difficulty_breakdown}
+        />
+      </div>
+
+      {/* Revenue Projections */}
+      {revenueProjections && Object.keys(revenueProjections).length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+            <DollarSign className="w-3.5 h-3.5 text-primary" />
+            Revenue Projections (Monthly)
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            {['10k', '50k', '100k'].map((tier) => {
+              const key = `at_${tier}_subs`;
+              const val = revenueProjections[key] || revenueProjections[tier];
+              return (
+                <div key={tier} className="bg-card border border-border/50 rounded-lg p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground">{tier.toUpperCase()} subs</p>
+                  <p className="text-lg font-bold text-emerald-400 tabular-nums">
+                    {val != null ? `$${typeof val === 'number' ? val.toLocaleString() : val}` : '--'}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          {(report.estimated_rpm_mid != null || report.ad_category) && (
+            <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground">
+              {report.estimated_rpm_mid != null && (
+                <span>Est. RPM: ${Number(report.estimated_rpm_low || 0).toFixed(0)}-${Number(report.estimated_rpm_high || 0).toFixed(0)}</span>
+              )}
+              {report.ad_category && <span>Ad Category: {report.ad_category}</span>}
+              {report.sponsorship_potential && <span>Sponsorship: {report.sponsorship_potential}</span>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Blue-Ocean Opportunities */}
+      {blueOcean.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            Blue-Ocean Opportunities
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {blueOcean.map((opp, i) => {
+              const topic = typeof opp === 'string' ? opp : opp.topic || opp.title || opp.opportunity;
+              const demand = typeof opp === 'object' ? opp.demand || opp.demand_level : null;
+              const saturation = typeof opp === 'object' ? opp.saturation || opp.saturation_level : null;
+              const moatLevel = typeof opp === 'object' ? (opp.moat_defensibility || opp.defensibility || '').toLowerCase() : '';
+              const angle = typeof opp === 'object' ? opp.suggested_angle || opp.angle : null;
+              const MoatIcon = MOAT_ICONS[moatLevel] || ShieldOff;
+
+              return (
+                <div key={i} className="bg-card border border-border/50 rounded-lg p-3">
+                  <p className="text-xs font-semibold mb-1.5">{topic}</p>
+                  <div className="flex flex-wrap gap-1.5 mb-1.5">
+                    {demand && (
+                      <Badge variant="secondary" className="text-[9px]">
+                        <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
+                        {demand}
+                      </Badge>
+                    )}
+                    {saturation && (
+                      <Badge variant="secondary" className="text-[9px]">
+                        <BarChart3 className="w-2.5 h-2.5 mr-0.5" />
+                        {saturation}
+                      </Badge>
+                    )}
+                    {moatLevel && (
+                      <Badge variant="secondary" className="text-[9px]">
+                        <MoatIcon className="w-2.5 h-2.5 mr-0.5" />
+                        {moatLevel}
+                      </Badge>
+                    )}
+                  </div>
+                  {angle && (
+                    <p className="text-[10px] text-muted-foreground">{angle}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Topics to AVOID */}
+      {(topicsToAvoid.length > 0 || saturatedTopics.length > 0) && (
+        <div>
+          <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5 text-danger">
+            <Ban className="w-3.5 h-3.5" />
+            Topics to Avoid (Saturated)
+          </h3>
+          <div className="flex flex-wrap gap-1.5">
+            {topicsToAvoid.map((t, i) => (
+              <span key={`avoid-${i}`} className="text-[10px] px-2 py-1 rounded-full border border-danger/30 bg-danger/5 text-danger">
+                {t}
+              </span>
+            ))}
+            {saturatedTopics.map((t, i) => {
+              const label = typeof t === 'string' ? t : t.topic || t.title;
+              return (
+                <span key={`sat-${i}`} className="text-[10px] px-2 py-1 rounded-full border border-danger/30 bg-danger/5 text-danger">
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recommended Content Pillars */}
+      {recommendedPillars.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold mb-2">Recommended Content Pillars</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {recommendedPillars.map((p, i) => (
+              <Badge key={i} variant="secondary" className="text-[10px]">{p}</Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Moat Assessment */}
+      {report.defensibility_assessment && (
+        <div className="bg-card border border-border/50 rounded-lg p-3">
+          <h3 className="text-[10px] font-semibold mb-1 flex items-center gap-1.5">
+            <Shield className="w-3 h-3 text-primary" />
+            Moat Assessment
+          </h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">{report.defensibility_assessment}</p>
+        </div>
+      )}
+
+      {/* Script / Title / Thumbnail DNA targets — compact summary */}
+      {(report.script_depth_targets || report.title_dna_patterns || report.thumbnail_dna_patterns) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {report.script_depth_targets && (
+            <div className="bg-card border border-border/50 rounded-lg p-3">
+              <h3 className="text-[10px] font-semibold mb-1 flex items-center gap-1.5">
+                <BookOpen className="w-3 h-3 text-primary" />
+                Script Targets
+              </h3>
+              <RenderJson data={report.script_depth_targets} />
+            </div>
+          )}
+          {report.title_dna_patterns && (
+            <div className="bg-card border border-border/50 rounded-lg p-3">
+              <h3 className="text-[10px] font-semibold mb-1 flex items-center gap-1.5">
+                <Palette className="w-3 h-3 text-primary" />
+                Title DNA
+              </h3>
+              <RenderJson data={report.title_dna_patterns} />
+            </div>
+          )}
+          {report.thumbnail_dna_patterns && (
+            <div className="bg-card border border-border/50 rounded-lg p-3">
+              <h3 className="text-[10px] font-semibold mb-1 flex items-center gap-1.5">
+                <Film className="w-3 h-3 text-primary" />
+                Thumbnail DNA
+              </h3>
+              <RenderJson data={report.thumbnail_dna_patterns} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Create Project CTA with viability badge */}
+      <div className="flex items-center gap-3 pt-1">
+        <Button
+          onClick={onCreateProject}
+          className="bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent/90 text-white shadow-glow-primary"
+          size="sm"
+        >
+          <FolderPlus className="w-3.5 h-3.5" />
+          Create Project from This Research
+          <span className={cn(
+            'ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full',
+            report.viability_score >= 75 ? 'bg-emerald-500/20 text-emerald-300' :
+            report.viability_score >= 50 ? 'bg-yellow-500/20 text-yellow-300' :
+            report.viability_score >= 25 ? 'bg-orange-500/20 text-orange-300' :
+            'bg-red-500/20 text-red-300'
+          )}>
+            {report.viability_score}/100
+          </span>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CreateProjectModal (enhanced with viability data)
+// ---------------------------------------------------------------------------
+
+function CreateProjectModal({ open, onOpenChange, report, viabilityReport, analyses, onConfirm, isPending }) {
   const [nicheName, setNicheName] = useState('');
   const [nicheDescription, setNicheDescription] = useState('');
   const [selectedChannels, setSelectedChannels] = useState(new Set());
+  const [includeViability, setIncludeViability] = useState(true);
+  const [injectTopicsToAvoid, setInjectTopicsToAvoid] = useState(true);
 
   // Pre-fill when opening
   useMemo(() => {
@@ -708,7 +1275,15 @@ function CreateProjectModal({ open, onOpenChange, report, analyses, onConfirm, i
       setNicheDescription(report.recommended_niche_description || '');
       setSelectedChannels(new Set((analyses || []).filter(a => a.status === 'completed').map(a => a.id)));
     }
-  }, [open, report, analyses]);
+    if (open && viabilityReport) {
+      // Override with viability angle if available
+      if (viabilityReport.recommended_angle && !nicheName) {
+        setNicheDescription(viabilityReport.recommended_angle);
+      }
+      setIncludeViability(true);
+      setInjectTopicsToAvoid(true);
+    }
+  }, [open, report, viabilityReport, analyses]);
 
   const completedAnalyses = (analyses || []).filter(a => a.status === 'completed');
 
@@ -722,10 +1297,24 @@ function CreateProjectModal({ open, onOpenChange, report, analyses, onConfirm, i
   };
 
   const handleConfirm = () => {
-    onConfirm({
+    const payload = {
       niche_name: nicheName,
       niche_description: nicheDescription,
-    });
+      include_viability: includeViability && !!viabilityReport,
+      inject_topics_to_avoid: injectTopicsToAvoid && !!viabilityReport,
+    };
+    if (includeViability && viabilityReport) {
+      payload.viability_data = {
+        topics_to_avoid: viabilityReport.topics_to_avoid,
+        recommended_topics: viabilityReport.recommended_topics,
+        recommended_angle: viabilityReport.recommended_angle,
+        revenue_projections: viabilityReport.revenue_projections,
+        script_depth_targets: viabilityReport.script_depth_targets,
+        title_dna_patterns: viabilityReport.title_dna_patterns,
+        thumbnail_dna_patterns: viabilityReport.thumbnail_dna_patterns,
+      };
+    }
+    onConfirm(payload);
   };
 
   return (
@@ -788,6 +1377,51 @@ function CreateProjectModal({ open, onOpenChange, report, analyses, onConfirm, i
               </div>
             </div>
           )}
+
+          {/* Viability toggles — only shown when viability data exists */}
+          {viabilityReport && (
+            <div className="border-t border-border pt-3 space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold">Viability Intelligence</span>
+                <span className={cn(
+                  'text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-auto',
+                  viabilityReport.viability_score >= 75 ? 'bg-emerald-500/10 text-emerald-400' :
+                  viabilityReport.viability_score >= 50 ? 'bg-yellow-500/10 text-yellow-400' :
+                  viabilityReport.viability_score >= 25 ? 'bg-orange-500/10 text-orange-400' :
+                  'bg-red-500/10 text-red-400'
+                )}>
+                  Score: {viabilityReport.viability_score}/100
+                </span>
+              </div>
+              <label className="flex items-center gap-2.5 px-3 py-2 rounded-md border border-border/50 cursor-pointer hover:border-border-hover transition-colors">
+                <input
+                  type="checkbox"
+                  checked={includeViability}
+                  onChange={(e) => setIncludeViability(e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-primary"
+                />
+                <div>
+                  <span className="text-xs font-medium">Include viability research</span>
+                  <p className="text-[10px] text-muted-foreground">Inject revenue projections, content pillars, and script targets</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-2.5 px-3 py-2 rounded-md border border-border/50 cursor-pointer hover:border-border-hover transition-colors">
+                <input
+                  type="checkbox"
+                  checked={injectTopicsToAvoid}
+                  onChange={(e) => setInjectTopicsToAvoid(e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-primary"
+                />
+                <div>
+                  <span className="text-xs font-medium">Inject topics to avoid</span>
+                  <p className="text-[10px] text-muted-foreground">
+                    {(viabilityReport.topics_to_avoid || []).length} saturated topics will be excluded from topic generation
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -826,11 +1460,16 @@ export default function ChannelAnalyzer() {
   const { data: groups, isLoading: groupsLoading } = useAnalysisGroups();
   const { data: analyses, isLoading: analysesLoading } = useChannelAnalyses(activeGroupId);
   const { data: comparisonReport } = useComparisonReport(activeGroupId);
+  const { data: discoveredChannels } = useDiscoveredChannels(activeGroupId);
+  const { data: viabilityReport } = useNicheViability(activeGroupId);
 
   // Mutations
   const startAnalysis = useStartAnalysis();
   const createProject = useCreateProjectFromAnalysis();
+  const createProjectFromViability = useCreateProjectFromViability();
   const removeAnalysis = useRemoveAnalysis();
+  const confirmDeepAnalysis = useConfirmDeepAnalysis();
+  const runViability = useRunViabilityAssessment();
 
   // Auto-select latest group if none is active
   useMemo(() => {
@@ -845,6 +1484,9 @@ export default function ChannelAnalyzer() {
     [analyses]
   );
   const showCombinedIntel = completedCount >= 2 && comparisonReport;
+  const showDiscoveredChannels = discoveredChannels && discoveredChannels.length > 0;
+  const showViability = !!viabilityReport;
+  const canRunViability = completedCount >= 2 && !viabilityReport && !runViability.isPending;
 
   // Handlers
   const handleAnalyze = useCallback(() => {
@@ -879,13 +1521,30 @@ export default function ChannelAnalyzer() {
     [removeAnalysis, selectedDetail]
   );
 
+  const handleConfirmDeepAnalysis = useCallback(
+    (channelsToAnalyze) => {
+      confirmDeepAnalysis.mutate({
+        channels: channelsToAnalyze,
+        analysisGroupId: activeGroupId,
+      });
+    },
+    [activeGroupId, confirmDeepAnalysis]
+  );
+
+  const handleRunViability = useCallback(() => {
+    if (!activeGroupId) return;
+    runViability.mutate({ analysis_group_id: activeGroupId });
+  }, [activeGroupId, runViability]);
+
   const handleCreateProject = useCallback(
-    ({ niche_name, niche_description }) => {
-      createProject.mutate(
+    ({ niche_name, niche_description, include_viability, inject_topics_to_avoid, viability_data }) => {
+      const mutation = viability_data ? createProjectFromViability : createProject;
+      mutation.mutate(
         {
           analysis_group_id: activeGroupId,
           niche_name,
           niche_description,
+          ...(viability_data ? { include_viability, inject_topics_to_avoid, viability_data } : {}),
         },
         {
           onSuccess: (result) => {
@@ -897,7 +1556,7 @@ export default function ChannelAnalyzer() {
         }
       );
     },
-    [activeGroupId, createProject, navigate]
+    [activeGroupId, createProject, createProjectFromViability, navigate]
   );
 
   const handleKeyDown = (e) => {
@@ -1017,6 +1676,51 @@ export default function ChannelAnalyzer() {
         </div>
       )}
 
+      {/* ── Discovered Competitors ── */}
+      {!selectedDetail && showDiscoveredChannels && (
+        <div className="mb-6">
+          <DiscoveredCompetitors
+            channels={discoveredChannels}
+            onConfirmAnalysis={handleConfirmDeepAnalysis}
+            isAnalyzing={confirmDeepAnalysis.isPending}
+          />
+        </div>
+      )}
+
+      {/* ── Run Viability Assessment button (when enough data, no report yet) ── */}
+      {!selectedDetail && canRunViability && (
+        <div className="mb-6 flex items-center gap-3">
+          <Button
+            onClick={handleRunViability}
+            disabled={runViability.isPending}
+            className="bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent/90 text-white shadow-glow-primary"
+            size="sm"
+          >
+            {runViability.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Target className="w-3.5 h-3.5" />
+            )}
+            Run Niche Viability Assessment
+          </Button>
+          <span className="text-[10px] text-muted-foreground">
+            Analyze market opportunity across {completedCount} channels
+          </span>
+        </div>
+      )}
+
+      {/* ── Niche Viability ── */}
+      {!selectedDetail && showViability && (
+        <div className="mb-6">
+          <NicheViabilitySection
+            report={viabilityReport}
+            onCreateProject={() => setShowCreateModal(true)}
+            onRunViability={handleRunViability}
+            isRunning={runViability.isPending}
+          />
+        </div>
+      )}
+
       {/* ── Channel cards grid ── */}
       {!selectedDetail && (
         <>
@@ -1059,9 +1763,10 @@ export default function ChannelAnalyzer() {
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
         report={comparisonReport}
+        viabilityReport={viabilityReport}
         analyses={analyses}
         onConfirm={handleCreateProject}
-        isPending={createProject.isPending}
+        isPending={createProject.isPending || createProjectFromViability.isPending}
       />
     </div>
   );

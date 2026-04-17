@@ -1,0 +1,162 @@
+{
+  "name": "WF_DISCOVER_COMPETITORS",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "trigger-dc-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "path": "discover-competitors",
+        "httpMethod": "POST",
+        "authentication": "none",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "discover-competitors"
+    },
+    {
+      "id": "code-dc-validate",
+      "name": "Validate & Auth",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_DISCOVER_COMPETITORS — Validate payload, auth check, fetch source channel.\n\nconst raw = $input.first().json;\nconst payload = raw.body || raw;\nconst headers = raw.headers || {};\n\n// Auth check\nconst expectedToken = $env.DASHBOARD_API_TOKEN;\nconst authHeader = headers.authorization || headers.Authorization || '';\nif (!authHeader || authHeader !== `Bearer ${expectedToken}`) {\n  return [{ json: { success: false, error: 'Unauthorized', http_status: 401 } }];\n}\n\nconst analysisGroupId = (payload.analysis_group_id || '').trim();\nconst sourceChannelAnalysisId = (payload.source_channel_analysis_id || '').trim();\n\nif (!analysisGroupId || !sourceChannelAnalysisId) {\n  return [{ json: { success: false, error: 'analysis_group_id and source_channel_analysis_id are required', http_status: 400 } }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// Fetch source channel analysis\ntry {\n  const srcRes = await fetch(\n    `${supabaseUrl}/rest/v1/channel_analyses?id=eq.${sourceChannelAnalysisId}&select=id,youtube_channel_id,channel_name,primary_topics,top_videos,status,analysis_group_id`,\n    { method: 'GET', headers: sbHeaders }\n  );\n  if (!srcRes.ok) {\n    return [{ json: { success: false, error: `Supabase fetch failed: HTTP ${srcRes.status}`, http_status: 500 } }];\n  }\n  const rows = await srcRes.json();\n  const src = Array.isArray(rows) && rows[0] ? rows[0] : null;\n\n  if (!src) {\n    return [{ json: { success: false, error: 'Source channel analysis not found', http_status: 404 } }];\n  }\n  if (src.status !== 'completed') {\n    return [{ json: { success: false, error: `Source analysis not completed (status: ${src.status})`, http_status: 409 } }];\n  }\n\n  return [{ json: {\n    success: true,\n    analysis_group_id: analysisGroupId,\n    source_channel_analysis_id: sourceChannelAnalysisId,\n    source_channel_id: src.youtube_channel_id,\n    source_channel_name: src.channel_name,\n    primary_topics: src.primary_topics || [],\n    top_videos: src.top_videos || [],\n    http_status: 202\n  } }];\n} catch (e) {\n  return [{ json: { success: false, error: `Exception: ${e.message}`, http_status: 500 } }];\n}"
+      }
+    },
+    {
+      "id": "respond-dc",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [660, 160],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.http_status || 200 }}"
+        }
+      }
+    },
+    {
+      "id": "code-dc-gate",
+      "name": "Check Success Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Gate: only continue if validation succeeded.\nconst data = $input.first().json;\nif (!data.success) {\n  return []; // empty = stop execution on this branch\n}\nreturn [{ json: data }];"
+      }
+    },
+    {
+      "id": "code-dc-queries",
+      "name": "Build Search Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build 5 YouTube search queries from source channel's topics and top video tags.\n\nconst data = $input.first().json;\nconst primaryTopics = data.primary_topics || [];\nconst topVideos = data.top_videos || [];\nconst sourceChannelName = data.source_channel_name || '';\nconst sourceChannelId = data.source_channel_id || '';\n\nconst queries = [];\n\n// Query 1: main topic + \"youtube channel\"\nif (primaryTopics.length > 0) {\n  queries.push(primaryTopics[0] + ' youtube channel');\n}\n\n// Query 2-3: secondary topics (pick the 2nd and 3rd if available)\nif (primaryTopics.length > 1) {\n  queries.push(primaryTopics[1]);\n}\nif (primaryTopics.length > 2) {\n  queries.push(primaryTopics[2]);\n}\n\n// Query 4: tags from top 3 videos combined (use top video titles as proxy)\nif (topVideos.length > 0) {\n  const titleWords = topVideos.slice(0, 3)\n    .map(v => (v.title || '').replace(/[^a-zA-Z0-9\\s]/g, '').trim())\n    .join(' ');\n  // Extract most significant words (longer than 4 chars, deduplicate)\n  const words = titleWords.split(/\\s+/)\n    .filter(w => w.length > 4)\n    .map(w => w.toLowerCase());\n  const unique = [...new Set(words)].slice(0, 5);\n  if (unique.length > 0) {\n    queries.push(unique.join(' '));\n  }\n}\n\n// Query 5: channel name + \"similar channels\"\nif (sourceChannelName) {\n  queries.push(sourceChannelName + ' similar channels');\n}\n\n// Ensure at least 1 query\nif (queries.length === 0 && primaryTopics.length > 0) {\n  queries.push(primaryTopics.join(' '));\n}\nif (queries.length === 0) {\n  queries.push(sourceChannelName || 'youtube channel');\n}\n\n// Limit to 5 queries max\nconst finalQueries = queries.slice(0, 5);\n\nreturn [{ json: {\n  ...data,\n  search_queries: finalQueries,\n  exclude_channel_id: sourceChannelId\n} }];"
+      }
+    },
+    {
+      "id": "code-dc-youtube",
+      "name": "YouTube Discovery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Search YouTube for competing channels, deduplicate, fetch stats, filter & rank top 10.\n\nconst data = $input.first().json;\nconst queries = data.search_queries || [];\nconst excludeChannelId = data.exclude_channel_id || '';\nconst ytKey = $env.YOUTUBE_API_KEY;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      if (res.ok) return { ok: true, json: await res.json(), status: res.status, attempts: attempt };\n      const body = await res.text();\n      if (res.status === 403 && /quotaExceeded|dailyLimitExceeded/i.test(body)) {\n        return { ok: false, quota: true, status: res.status, error: body, attempts: attempt };\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, status: 0, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\n// Step 1: Search for channels across all queries\nconst discoveredMap = new Map(); // channelId -> { snippet, queryIndex, discoveryMethod }\n\nfor (let qi = 0; qi < queries.length; qi++) {\n  const query = queries[qi];\n  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(query)}&maxResults=10&order=relevance&key=${ytKey}`;\n  const searchRes = await fetchWithRetry(searchUrl, { method: 'GET' }, `yt_search_q${qi}`);\n\n  if (searchRes.quota) {\n    // Log quota error but continue with what we have\n    break;\n  }\n  if (searchRes.ok) {\n    const items = searchRes.json?.items || [];\n    for (const item of items) {\n      const chId = item.snippet?.channelId || item.id?.channelId;\n      if (!chId || chId === excludeChannelId) continue;\n      if (!discoveredMap.has(chId)) {\n        const method = qi === 0 ? 'keyword_search' : qi <= 2 ? 'keyword_search' : qi === 3 ? 'tag_match' : 'related_channels';\n        discoveredMap.set(chId, {\n          channel_id: chId,\n          channel_name: item.snippet?.title || 'Unknown',\n          channel_handle: item.snippet?.customUrl || null,\n          description: (item.snippet?.description || '').slice(0, 500),\n          discovery_method: method,\n          query_index: qi\n        });\n      }\n    }\n  }\n  // Rate limit: 200ms between API calls\n  await sleep(200);\n}\n\n// Step 2: Fetch detailed stats for top 20 unique channels (batched)\nconst channelIds = [...discoveredMap.keys()].slice(0, 20);\nconst enrichedChannels = [];\n\nif (channelIds.length > 0) {\n  // YouTube channels API supports up to 50 IDs per call\n  const statsUrl = `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${channelIds.join(',')}&key=${ytKey}`;\n  const statsRes = await fetchWithRetry(statsUrl, { method: 'GET' }, 'yt_channel_stats');\n\n  if (statsRes.ok) {\n    const items = statsRes.json?.items || [];\n    for (const ch of items) {\n      const stats = ch.statistics || {};\n      const snippet = ch.snippet || {};\n      const subCount = parseInt(stats.subscriberCount || '0', 10);\n      const viewCount = parseInt(stats.viewCount || '0', 10);\n      const vidCount = parseInt(stats.videoCount || '0', 10);\n\n      // Filter: subscriber_count > 10000, video_count > 20\n      if (subCount < 10000 || vidCount < 20) continue;\n\n      const disc = discoveredMap.get(ch.id);\n      const avgViews = vidCount > 0 ? Math.round(viewCount / vidCount) : 0;\n\n      enrichedChannels.push({\n        youtube_channel_id: ch.id,\n        channel_name: snippet.title || disc?.channel_name || 'Unknown',\n        channel_url: snippet.customUrl\n          ? `https://www.youtube.com/${snippet.customUrl}`\n          : `https://www.youtube.com/channel/${ch.id}`,\n        channel_handle: snippet.customUrl || disc?.channel_handle || null,\n        subscriber_count: subCount,\n        total_view_count: viewCount,\n        video_count: vidCount,\n        avg_views_per_video: avgViews,\n        discovery_method: disc?.discovery_method || 'keyword_search',\n        // Relevance: weighted mix of subscribers (40%) + avg views (40%) + video count (20%)\n        _sub_score: subCount,\n        _view_score: avgViews,\n        _vid_score: vidCount\n      });\n    }\n  }\n}\n\n// Step 3: Sort by relevance and take top 10\nif (enrichedChannels.length > 0) {\n  // Normalize each factor to 0-100 relative to the set\n  const maxSub = Math.max(...enrichedChannels.map(c => c._sub_score), 1);\n  const maxView = Math.max(...enrichedChannels.map(c => c._view_score), 1);\n  const maxVid = Math.max(...enrichedChannels.map(c => c._vid_score), 1);\n\n  for (const ch of enrichedChannels) {\n    ch.relevance_score = Math.round(\n      (ch._sub_score / maxSub) * 40 +\n      (ch._view_score / maxView) * 40 +\n      (ch._vid_score / maxVid) * 20\n    );\n    // Clamp to [0, 100]\n    ch.relevance_score = Math.max(0, Math.min(100, ch.relevance_score));\n    delete ch._sub_score;\n    delete ch._view_score;\n    delete ch._vid_score;\n  }\n\n  enrichedChannels.sort((a, b) => b.relevance_score - a.relevance_score);\n}\n\nconst top10 = enrichedChannels.slice(0, 10);\n\n// Assign discovery_rank\ntop10.forEach((ch, i) => {\n  ch.discovery_rank = i + 1;\n});\n\nreturn [{ json: {\n  ...data,\n  discovered_channels: top10,\n  total_candidates_found: discoveredMap.size,\n  total_after_filter: enrichedChannels.length,\n  failed: false\n} }];"
+      }
+    },
+    {
+      "id": "code-dc-write",
+      "name": "Write Discovered Channels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1380, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Insert discovered channels into Supabase with ON CONFLICT idempotency.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst channels = data.discovered_channels || [];\nconst analysisGroupId = data.analysis_group_id;\nconst sourceAnalysisId = data.source_channel_analysis_id;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nlet insertedCount = 0;\nlet errorCount = 0;\n\nfor (const ch of channels) {\n  const row = {\n    analysis_group_id: analysisGroupId,\n    source_channel_analysis_id: sourceAnalysisId,\n    youtube_channel_id: ch.youtube_channel_id,\n    channel_name: ch.channel_name,\n    channel_url: ch.channel_url,\n    channel_handle: ch.channel_handle,\n    subscriber_count: ch.subscriber_count,\n    total_view_count: ch.total_view_count,\n    video_count: ch.video_count,\n    avg_views_per_video: ch.avg_views_per_video,\n    discovery_method: ch.discovery_method,\n    discovery_rank: ch.discovery_rank,\n    relevance_score: ch.relevance_score,\n    analysis_depth: 'quick',\n    analysis_status: 'discovered'\n  };\n\n  try {\n    // Use Prefer: resolution=merge-duplicates for ON CONFLICT DO NOTHING behavior\n    const res = await fetch(`${supabaseUrl}/rest/v1/discovered_channels`, {\n      method: 'POST',\n      headers: {\n        ...sbHeaders,\n        'Prefer': 'return=minimal,resolution=ignore-duplicates'\n      },\n      body: JSON.stringify(row)\n    });\n    if (res.ok || res.status === 201 || res.status === 200) {\n      insertedCount++;\n    } else {\n      const errText = await res.text();\n      // 409 = conflict (already exists) — that's fine, count as success\n      if (res.status === 409) {\n        insertedCount++;\n      } else {\n        errorCount++;\n      }\n    }\n  } catch (e) {\n    errorCount++;\n  }\n}\n\nreturn [{ json: {\n  ...data,\n  inserted_count: insertedCount,\n  error_count: errorCount,\n  failed: false\n} }];"
+      }
+    },
+    {
+      "id": "code-dc-summary",
+      "name": "Quick Stats Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1620, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Calculate aggregate stats for discovered channels.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst channels = data.discovered_channels || [];\n\nconst totalSubscribers = channels.reduce((s, c) => s + (c.subscriber_count || 0), 0);\nconst totalViews = channels.reduce((s, c) => s + (c.total_view_count || 0), 0);\nconst avgViewsArr = channels.map(c => c.avg_views_per_video || 0).filter(v => v > 0);\nconst avgViewsPerVideo = avgViewsArr.length\n  ? Math.round(avgViewsArr.reduce((a, b) => a + b, 0) / avgViewsArr.length)\n  : 0;\n\n// Niche size estimate based on total subscribers across top competitors\nlet nicheSizeEstimate = 'small';\nif (totalSubscribers >= 10_000_000) nicheSizeEstimate = 'very_large';\nelse if (totalSubscribers >= 3_000_000) nicheSizeEstimate = 'large';\nelse if (totalSubscribers >= 500_000) nicheSizeEstimate = 'medium';\n\nconst summary = {\n  total_subscribers: totalSubscribers,\n  total_views: totalViews,\n  avg_views_per_video: avgViewsPerVideo,\n  niche_size_estimate: nicheSizeEstimate,\n  channels_discovered: channels.length,\n  top_channel: channels.length > 0 ? channels[0].channel_name : null,\n  top_channel_subs: channels.length > 0 ? channels[0].subscriber_count : 0\n};\n\nreturn [{ json: {\n  ...data,\n  discovery_summary: summary,\n  failed: false\n} }];"
+      }
+    },
+    {
+      "id": "code-dc-log",
+      "name": "Log Completed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1860, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Log discovery completion to production_logs.\n\nconst data = $input.first().json;\nconst summary = data.discovery_summary || {};\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: null,\n      topic_id: null,\n      stage: 'discover_competitors',\n      scene_number: null,\n      action: 'discovery_completed',\n      status: 'success',\n      duration_ms: 0,\n      cost_usd: 0,\n      retry_count: 0,\n      details: JSON.stringify({\n        analysis_group_id: data.analysis_group_id,\n        source_channel: data.source_channel_name,\n        channels_discovered: summary.channels_discovered || 0,\n        total_subscribers: summary.total_subscribers || 0,\n        niche_size_estimate: summary.niche_size_estimate || 'unknown',\n        total_candidates_found: data.total_candidates_found || 0,\n        total_after_filter: data.total_after_filter || 0\n      })\n    })\n  });\n} catch (_) {}\n\nreturn [{ json: {\n  success: true,\n  analysis_group_id: data.analysis_group_id,\n  channels_discovered: summary.channels_discovered || 0,\n  niche_size_estimate: summary.niche_size_estimate || 'unknown',\n  discovery_summary: summary\n} }];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[
+        { "node": "Validate & Auth", "type": "main", "index": 0 }
+      ]]
+    },
+    "Validate & Auth": {
+      "main": [[
+        { "node": "Respond To Webhook", "type": "main", "index": 0 },
+        { "node": "Check Success Gate", "type": "main", "index": 0 }
+      ]]
+    },
+    "Check Success Gate": {
+      "main": [[
+        { "node": "Build Search Queries", "type": "main", "index": 0 }
+      ]]
+    },
+    "Build Search Queries": {
+      "main": [[
+        { "node": "YouTube Discovery", "type": "main", "index": 0 }
+      ]]
+    },
+    "YouTube Discovery": {
+      "main": [[
+        { "node": "Write Discovered Channels", "type": "main", "index": 0 }
+      ]]
+    },
+    "Write Discovered Channels": {
+      "main": [[
+        { "node": "Quick Stats Summary", "type": "main", "index": 0 }
+      ]]
+    },
+    "Quick Stats Summary": {
+      "main": [[
+        { "node": "Log Completed", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 600,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "tags": []
+}
