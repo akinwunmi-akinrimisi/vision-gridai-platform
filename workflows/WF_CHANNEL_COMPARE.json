@@ -1,0 +1,130 @@
+{
+  "name": "WF_CHANNEL_COMPARE",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "trigger-cc-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "path": "channel-compare",
+        "httpMethod": "POST",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "channel-compare"
+    },
+    {
+      "id": "code-cc-validate",
+      "name": "Validate & Auth",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_CHANNEL_COMPARE — Validate payload, auth check.\n\nconst raw = $input.first().json;\nconst payload = raw.body || raw;\n\nconst analysisGroupId = (payload.analysis_group_id || '').trim();\n\nif (!analysisGroupId) {\n  return [{ json: { success: false, error: 'analysis_group_id is required', http_status: 400 } }];\n}\n\nreturn [{ json: {\n  success: true,\n  analysis_group_id: analysisGroupId,\n  http_status: 202\n} }];"
+      }
+    },
+    {
+      "id": "respond-cc",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [640, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: $json.success, message: $json.success ? 'Comparison started' : $json.error } }}",
+        "options": {
+          "responseCode": "={{ $json.http_status || 200 }}"
+        }
+      }
+    },
+    {
+      "id": "code-cc-fetch",
+      "name": "Fetch Completed Analyses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Fetch all completed analyses for this group. Exit if fewer than 2.\n\nconst data = $input.first().json;\nif (!data.success) return [];\n\nconst groupId = data.analysis_group_id;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\ntry {\n  const url = `${supabaseUrl}/rest/v1/channel_analyses?analysis_group_id=eq.${groupId}&status=eq.completed&select=*`;\n  const res = await fetch(url, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) {\n    const errText = await res.text();\n    return [{ json: { ...data, failed: true, error: `Fetch analyses failed: HTTP ${res.status}: ${errText.slice(0, 200)}` } }];\n  }\n  const analyses = await res.json();\n  if (!Array.isArray(analyses) || analyses.length < 2) {\n    // Log and exit — not enough analyses to compare\n    try {\n      await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n        method: 'POST',\n        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          project_id: null, topic_id: null, stage: 'channel_compare',\n          scene_number: null, action: 'skipped_insufficient_analyses',\n          status: 'skipped', duration_ms: 0, cost_usd: 0, retry_count: 0\n        })\n      });\n    } catch (_) {}\n    return [];\n  }\n  return [{ json: { ...data, analyses, analysis_count: analyses.length, failed: false } }];\n} catch (e) {\n  return [{ json: { ...data, failed: true, error: `Exception: ${e.message}` } }];\n}"
+      }
+    },
+    {
+      "id": "code-cc-claude",
+      "name": "Claude Comparison",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Send all completed analyses to Claude Opus 4.6 for competitive landscape comparison.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst analyses = data.analyses || [];\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\n// Build channel summaries for Claude\nconst channelBlocks = analyses.map((a, i) => {\n  const topVideos = (a.top_videos || []).slice(0, 10).map((v, vi) =>\n    `  ${vi + 1}. \"${v.title}\" — ${(v.views || 0).toLocaleString()} views, outlier: ${v.outlier_score || 0}x`\n  ).join('\\n');\n\n  const blueOcean = (a.blue_ocean_opportunities || []).map(o =>\n    `  - ${o.opportunity} (${o.difficulty || 'unknown'} difficulty): ${o.rationale || ''}`\n  ).join('\\n');\n\n  const saturation = (a.content_saturation_map || []).map(s =>\n    `  - ${s.topic}: ${s.saturation} (${s.video_count_seen || 0} videos seen)`\n  ).join('\\n');\n\n  return `=== CHANNEL ${i + 1}: ${a.channel_name} ===\nURL: ${a.channel_url || 'N/A'}\nSubscribers: ${(a.subscriber_count || 0).toLocaleString()}\nTotal Views: ${(a.total_view_count || 0).toLocaleString()}\nVideos: ${a.video_count || 0}\nAvg Views/Video: ${(a.avg_views_per_video || 0).toLocaleString()}\nMedian Views/Video: ${(a.median_views_per_video || 0).toLocaleString()}\nUpload Frequency: every ${a.upload_frequency_days || '?'} days\nGrowth: ${a.growth_trajectory || 'unknown'}\nContent Style: ${a.content_style || 'unknown'}\nTarget Audience: ${a.target_audience_description || 'unknown'}\nPrimary Topics: ${(a.primary_topics || []).join(', ')}\nStrengths: ${(a.strengths || []).join(', ')}\nWeaknesses: ${(a.weaknesses || []).join(', ')}\nVerdict: ${a.verdict || 'unknown'} (score: ${a.verdict_score || 0}/100)\nVerdict Reasoning: ${a.verdict_reasoning || ''}\n\nTop Videos:\n${topVideos || '  (none)'}\n\nBlue Ocean Opportunities:\n${blueOcean || '  (none)'}\n\nContent Saturation Map:\n${saturation || '  (none)'}\n`;\n}).join('\\n\\n');\n\nconst systemPrompt = `You are an elite competitive landscape analyst specializing in YouTube niche strategy. You compare multiple channels to find the gaps, overlaps, and opportunities that no single channel analysis can reveal. You synthesize data across channels into actionable strategic insights. Be precise, data-driven, and specific. No generic advice.`;\n\nconst userPrompt = `Compare these ${analyses.length} YouTube channels as competitors in the same niche landscape.\n\n${channelBlocks}\n\nSynthesize a competitive landscape analysis. Return ONLY valid JSON with these exact fields:\n{\n  \"combined_topic_landscape\": [\n    {\"topic\": \"topic name\", \"covered_by\": [\"channel1\", \"channel2\"], \"coverage_depth\": \"deep/moderate/surface\", \"audience_demand\": \"high/medium/low\"}\n  ],\n  \"combined_blue_ocean_gaps\": [\n    {\"gap\": \"description of underserved area\", \"evidence\": \"why we know it's underserved\", \"potential_impact\": \"high/medium/low\", \"difficulty\": \"easy/medium/hard\"}\n  ],\n  \"differentiation_strategy\": {\n    \"positioning\": \"how a new channel should position against these competitors\",\n    \"unique_angle\": \"the specific angle that none of these channels cover well\",\n    \"content_format_recommendation\": \"recommended format (long-form doc, short explainer, etc)\",\n    \"production_quality_bar\": \"minimum quality needed to compete\"\n  },\n  \"recommended_niche_description\": \"A 2-3 sentence niche description optimized for a new channel entering this space, incorporating the blue ocean gaps\",\n  \"recommended_content_pillars\": [\n    {\"pillar\": \"pillar name\", \"rationale\": \"why this pillar\", \"estimated_demand\": \"high/medium/low\"},\n    {\"pillar\": \"pillar name\", \"rationale\": \"why this pillar\", \"estimated_demand\": \"high/medium/low\"},\n    {\"pillar\": \"pillar name\", \"rationale\": \"why this pillar\", \"estimated_demand\": \"high/medium/low\"},\n    {\"pillar\": \"pillar name\", \"rationale\": \"why this pillar\", \"estimated_demand\": \"high/medium/low\"},\n    {\"pillar\": \"pillar name\", \"rationale\": \"why this pillar\", \"estimated_demand\": \"high/medium/low\"}\n  ],\n  \"overall_verdict\": \"strong_opportunity|moderate_opportunity|weak_opportunity|avoid\",\n  \"overall_verdict_score\": 75,\n  \"overall_verdict_reasoning\": \"2-4 sentences explaining the niche verdict based on competitive landscape\"\n}`;\n\nconst claudeStart = Date.now();\nlet claudeResult = null;\nlet lastErr = null;\n\nfor (let attempt = 1; attempt <= 4; attempt++) {\n  try {\n    const res = await fetch('https://api.anthropic.com/v1/messages', {\n      method: 'POST',\n      headers: {\n        'x-api-key': anthropicKey,\n        'anthropic-version': '2023-06-01',\n        'content-type': 'application/json'\n      },\n      body: JSON.stringify({\n        model: 'claude-opus-4-6',\n        max_tokens: 4096,\n        system: systemPrompt,\n        messages: [{ role: 'user', content: userPrompt }]\n      })\n    });\n    if (res.ok) {\n      const body = await res.json();\n      claudeResult = {\n        text: body.content?.[0]?.text || '',\n        input_tokens: body.usage?.input_tokens || 0,\n        output_tokens: body.usage?.output_tokens || 0,\n        attempts: attempt\n      };\n      break;\n    }\n    const errBody = await res.text();\n    if (res.status === 429) await sleep(30000);\n    lastErr = `HTTP ${res.status}: ${errBody.slice(0, 300)}`;\n    if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n  } catch (e) { lastErr = e.message; }\n  if (attempt < 4) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n}\n\nconst claudeDuration = Date.now() - claudeStart;\n\nif (!claudeResult) {\n  // Log failure\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        project_id: null, topic_id: null, stage: 'channel_compare',\n        scene_number: null, action: 'claude_comparison', status: 'error',\n        duration_ms: claudeDuration, cost_usd: 0, retry_count: 3\n      })\n    });\n  } catch (_) {}\n  return [{ json: { ...data, failed: true, error: `Claude comparison failed: ${lastErr}` } }];\n}\n\n// Parse Claude response\nlet parsed = null;\ntry {\n  const clean = claudeResult.text.replace(/```json|```/g, '').trim();\n  parsed = JSON.parse(clean);\n} catch {\n  const m = claudeResult.text.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { parsed = JSON.parse(m[0]); } catch {} }\n}\n\nif (!parsed) {\n  return [{ json: { ...data, failed: true, error: 'Claude comparison response could not be parsed as JSON' } }];\n}\n\n// Cost: Opus 4.6 $15/M input, $75/M output\nconst costUsd = Math.round(((claudeResult.input_tokens * 15 + claudeResult.output_tokens * 75) / 1_000_000) * 10000) / 10000;\n\nreturn [{ json: {\n  ...data,\n  comparison: parsed,\n  comparison_cost_usd: costUsd,\n  comparison_duration_seconds: Math.round(claudeDuration / 1000),\n  input_tokens: claudeResult.input_tokens,\n  output_tokens: claudeResult.output_tokens,\n  failed: false\n} }];"
+      }
+    },
+    {
+      "id": "code-cc-write",
+      "name": "Write Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// INSERT comparison report into channel_comparison_reports.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst groupId = data.analysis_group_id;\nconst analyses = data.analyses || [];\nconst comp = data.comparison || {};\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// Validate verdict\nconst validVerdicts = ['strong_opportunity', 'moderate_opportunity', 'weak_opportunity', 'avoid'];\nconst verdict = validVerdicts.includes(comp.overall_verdict) ? comp.overall_verdict : 'moderate_opportunity';\nconst verdictScore = typeof comp.overall_verdict_score === 'number'\n  ? Math.max(0, Math.min(100, Math.round(comp.overall_verdict_score)))\n  : 50;\n\nconst row = {\n  analysis_group_id: groupId,\n  channel_analysis_ids: analyses.map(a => a.id),\n  combined_topic_landscape: comp.combined_topic_landscape || [],\n  combined_blue_ocean_gaps: comp.combined_blue_ocean_gaps || [],\n  differentiation_strategy: comp.differentiation_strategy || {},\n  recommended_niche_description: (comp.recommended_niche_description || '').slice(0, 5000),\n  recommended_content_pillars: comp.recommended_content_pillars || [],\n  overall_verdict: verdict,\n  overall_verdict_score: verdictScore,\n  overall_verdict_reasoning: (comp.overall_verdict_reasoning || '').slice(0, 5000),\n  analysis_cost_usd: data.comparison_cost_usd || 0\n};\n\ntry {\n  const res = await fetch(`${supabaseUrl}/rest/v1/channel_comparison_reports`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n    body: JSON.stringify(row)\n  });\n  if (!res.ok) {\n    const errText = await res.text();\n    return [{ json: { ...data, failed: true, error: `Insert report failed: HTTP ${res.status}: ${errText.slice(0, 200)}` } }];\n  }\n  const inserted = await res.json();\n  const reportId = Array.isArray(inserted) && inserted[0] ? inserted[0].id : null;\n  return [{ json: { ...data, report_id: reportId, failed: false } }];\n} catch (e) {\n  return [{ json: { ...data, failed: true, error: `Exception: ${e.message}` } }];\n}"
+      }
+    },
+    {
+      "id": "code-cc-log",
+      "name": "Log Completed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Log completion of channel comparison.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: null,\n      topic_id: null,\n      stage: 'channel_compare',\n      scene_number: null,\n      action: 'completed',\n      status: 'success',\n      duration_ms: (data.comparison_duration_seconds || 0) * 1000,\n      cost_usd: data.comparison_cost_usd || 0,\n      retry_count: 0\n    })\n  });\n} catch (_) {}\n\nreturn [{ json: {\n  success: true,\n  report_id: data.report_id,\n  analysis_group_id: data.analysis_group_id,\n  analysis_count: data.analysis_count,\n  cost_usd: data.comparison_cost_usd || 0\n} }];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[
+        { "node": "Validate & Auth", "type": "main", "index": 0 }
+      ]]
+    },
+    "Validate & Auth": {
+      "main": [[
+        { "node": "Respond To Webhook", "type": "main", "index": 0 },
+        { "node": "Fetch Completed Analyses", "type": "main", "index": 0 }
+      ]]
+    },
+    "Fetch Completed Analyses": {
+      "main": [[
+        { "node": "Claude Comparison", "type": "main", "index": 0 }
+      ]]
+    },
+    "Claude Comparison": {
+      "main": [[
+        { "node": "Write Report", "type": "main", "index": 0 }
+      ]]
+    },
+    "Write Report": {
+      "main": [[
+        { "node": "Log Completed", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 600,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "tags": []
+}

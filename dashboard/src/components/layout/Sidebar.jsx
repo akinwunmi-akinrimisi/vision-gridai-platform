@@ -24,6 +24,7 @@ import {
   Hash,
   Brain,
   Lightbulb,
+  Radar,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -52,6 +53,7 @@ import { cn } from '@/lib/utils';
 
 const platformNavItems = [
   { label: 'Niche Research', icon: Microscope, path: '/youtube-discovery' },
+  { label: 'Channel Analyzer', icon: Radar, path: '/channel-analyzer' },
   { label: 'Projects', icon: LayoutDashboard, path: '/' },
   { label: 'Shorts Creator', icon: Clapperboard, path: '/shorts' },
   { label: 'Social Publisher', icon: Share2, path: '/social' },

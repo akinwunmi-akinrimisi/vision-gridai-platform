@@ -26,6 +26,7 @@ const Keywords = lazy(() => import('./pages/Keywords'));
 const IntelligenceHub = lazy(() => import('./pages/IntelligenceHub'));
 const DailyIdeas = lazy(() => import('./pages/DailyIdeas'));
 const AICoach = lazy(() => import('./pages/AICoach'));
+const ChannelAnalyzer = lazy(() => import('./pages/ChannelAnalyzer'));
 
 const PageFallback = (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -65,6 +66,7 @@ export default function App() {
             <Route path="/youtube-discovery/analysis/:analysisId" element={<VideoAnalysis />} />
             <Route path="/shorts" element={<ShortsCreator />} />
             <Route path="/social" element={<SocialPublisher />} />
+            <Route path="/channel-analyzer" element={<ChannelAnalyzer />} />
             <Route path="/project/:id/settings" element={<Settings />} />
           </Routes>
         </Suspense>
