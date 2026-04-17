@@ -1703,6 +1703,7 @@ export default function ChannelAnalyzer() {
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [forceNewGroup, setForceNewGroup] = useState(false);
 
   // Queries
   const { data: groups, isLoading: groupsLoading } = useAnalysisGroups();
@@ -1757,18 +1758,19 @@ export default function ChannelAnalyzer() {
     startAnalysis.mutate(
       {
         channel_url: channelUrl.trim(),
-        analysis_group_id: activeGroupId || undefined,
+        analysis_group_id: forceNewGroup ? undefined : (activeGroupId || undefined),
       },
       {
         onSuccess: (result) => {
-          if (result?.analysis_group_id && !activeGroupId) {
+          if (result?.analysis_group_id && (forceNewGroup || !activeGroupId)) {
             setActiveGroupId(result.analysis_group_id);
           }
+          setForceNewGroup(false);
         },
       }
     );
     setChannelUrl('');
-  }, [channelUrl, activeGroupId, startAnalysis]);
+  }, [channelUrl, activeGroupId, forceNewGroup, startAnalysis]);
 
   const handleNewGroup = useCallback(async (name) => {
     const { data, error } = await supabase
@@ -1881,31 +1883,48 @@ export default function ChannelAnalyzer() {
         {/* Right: Main content area */}
         <div className="flex-1 min-w-0 p-5 overflow-y-auto">
           {/* ── Input bar ── */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={channelUrl}
-                onChange={(e) => setChannelUrl(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={activeGroup ? `Add channel to "${activeGroup.name}"...` : 'Paste a YouTube channel URL (e.g. youtube.com/@MrBeast)'}
-                className="w-full h-10 rounded-lg border border-border bg-card pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
-              />
+          <div className="mb-6 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={channelUrl}
+                  onChange={(e) => setChannelUrl(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={forceNewGroup
+                    ? 'Paste URL — will create a new research folder'
+                    : activeGroup
+                      ? `Add channel to "${activeGroup.name}"...`
+                      : 'Paste a YouTube channel URL (e.g. youtube.com/@MrBeast)'}
+                  className="w-full h-10 rounded-lg border border-border bg-card pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
+                />
+              </div>
+              <Button
+                onClick={handleAnalyze}
+                disabled={!channelUrl.trim() || startAnalysis.isPending}
+                className="bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent/90 text-white shadow-glow-primary"
+                size="default"
+              >
+                {startAnalysis.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Radar className="w-4 h-4" />
+                )}
+                Analyze
+              </Button>
             </div>
-            <Button
-              onClick={handleAnalyze}
-              disabled={!channelUrl.trim() || startAnalysis.isPending}
-              className="bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent/90 text-white shadow-glow-primary"
-              size="default"
-            >
-              {startAnalysis.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Radar className="w-4 h-4" />
-              )}
-              Analyze
-            </Button>
+            {activeGroupId && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={forceNewGroup}
+                  onChange={(e) => setForceNewGroup(e.target.checked)}
+                  className="rounded border-border"
+                />
+                Start new research folder instead of adding to &quot;{activeGroup?.name}&quot;
+              </label>
+            )}
           </div>
 
           {/* ── Detail panel (when a channel is selected) ── */}
