@@ -1839,6 +1839,25 @@ export default function ChannelAnalyzer() {
     }
   }, [activeGroupId, analyses]);
 
+  const handleRediscoverCompetitors = useCallback(async () => {
+    if (!activeGroupId || !analyses?.length) return;
+    const firstCompleted = analyses.find((a) => a.status === 'completed');
+    if (!firstCompleted) return;
+    setDiscoveringCompetitors(true);
+    try {
+      await supabase
+        .from('discovered_channels')
+        .delete()
+        .eq('analysis_group_id', activeGroupId);
+      await webhookCall('discover-competitors', {
+        analysis_group_id: activeGroupId,
+        source_channel_analysis_id: firstCompleted.id,
+      });
+    } finally {
+      setTimeout(() => setDiscoveringCompetitors(false), 8000);
+    }
+  }, [activeGroupId, analyses]);
+
   const handleRunViability = useCallback(() => {
     if (!activeGroupId) return;
     runViability.mutate({ analysis_group_id: activeGroupId });
@@ -1997,6 +2016,24 @@ export default function ChannelAnalyzer() {
                 onConfirmAnalysis={handleConfirmDeepAnalysis}
                 isAnalyzing={confirmDeepAnalysis.isPending}
               />
+              <div className="mt-3 flex items-center gap-3">
+                <Button
+                  onClick={handleRediscoverCompetitors}
+                  disabled={discoveringCompetitors}
+                  variant="ghost"
+                  size="sm"
+                >
+                  {discoveringCompetitors ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Search className="w-3.5 h-3.5" />
+                  )}
+                  Re-discover Competitors
+                </Button>
+                <span className="text-[10px] text-muted-foreground">
+                  Clears current results and searches again (filters by source channel size)
+                </span>
+              </div>
             </div>
           )}
 
