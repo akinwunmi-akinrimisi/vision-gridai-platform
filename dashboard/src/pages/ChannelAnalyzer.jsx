@@ -1749,7 +1749,7 @@ export default function ChannelAnalyzer() {
   const showCombinedIntel = completedCount >= 2 && comparisonReport;
   const showDiscoveredChannels = discoveredChannels && discoveredChannels.length > 0;
   const showViability = !!viabilityReport;
-  const canRunViability = completedCount >= 2 && !viabilityReport && !runViability.isPending;
+  const canRunViability = completedCount >= 1 && !viabilityReport && !runViability.isPending;
 
   // Handlers
   const handleAnalyze = useCallback(() => {
