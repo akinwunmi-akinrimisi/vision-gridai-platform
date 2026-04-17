@@ -357,6 +357,7 @@ function ChannelDetailPanel({ analysis, onClose }) {
             { value: 'title-thumbnail', label: 'Title & Thumbnail DNA', icon: Palette },
             { value: 'blue-ocean', label: 'Blue-Ocean Gaps', icon: Target },
             { value: 'scripting', label: 'Scripting Depth', icon: Lightbulb },
+            { value: 'comments', label: 'Audience Comments', icon: Users },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -575,6 +576,85 @@ function ChannelDetailPanel({ analysis, onClose }) {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground text-center py-6">No scripting depth data available.</p>
+          )}
+        </TabsContent>
+
+        {/* Audience Comments tab */}
+        <TabsContent value="comments" className="p-5 space-y-4">
+          {analysis.comment_insights ? (
+            <>
+              {analysis.comment_insights.content_gaps?.length > 0 && (
+                <div className="bg-card border border-border/50 rounded-lg p-4">
+                  <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-emerald-400" />
+                    Content Gaps (what viewers want but don&apos;t get)
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {analysis.comment_insights.content_gaps.map((g, i) => (
+                      <Badge key={i} variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-400">{g}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {analysis.comment_insights.pain_points?.length > 0 && (
+                <div className="bg-card border border-border/50 rounded-lg p-4">
+                  <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+                    Audience Pain Points
+                  </h3>
+                  <ul className="space-y-1">
+                    {analysis.comment_insights.pain_points.map((p, i) => (
+                      <li key={i} className="text-xs text-muted-foreground">&bull; {p}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {analysis.comment_insights.requested_topics?.length > 0 && (
+                <div className="bg-card border border-border/50 rounded-lg p-4">
+                  <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                    <Lightbulb className="w-3.5 h-3.5 text-yellow-400" />
+                    Topics Viewers Are Requesting
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {analysis.comment_insights.requested_topics.map((t, i) => (
+                      <Badge key={i} variant="secondary" className="text-[10px] bg-yellow-500/10 text-yellow-400">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {analysis.comment_insights.top_questions?.length > 0 && (
+                <div className="bg-card border border-border/50 rounded-lg p-4">
+                  <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-blue-400" />
+                    Top Audience Questions
+                  </h3>
+                  <ul className="space-y-1">
+                    {analysis.comment_insights.top_questions.map((q, i) => (
+                      <li key={i} className="text-xs text-muted-foreground">&bull; {q}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {analysis.comment_insights.competitor_mentions?.length > 0 && (
+                <div className="bg-card border border-border/50 rounded-lg p-4">
+                  <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-purple-400" />
+                    Competitor Channels Mentioned by Viewers
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {analysis.comment_insights.competitor_mentions.map((c, i) => (
+                      <Badge key={i} variant="outline" className="text-[10px]">{c}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-4 text-[10px] text-muted-foreground">
+                <span>Sentiment: <span className="font-medium text-foreground">{analysis.comment_insights.audience_sentiment || 'N/A'}</span></span>
+                <span>Sophistication: <span className="font-medium text-foreground">{analysis.comment_insights.audience_sophistication || 'N/A'}</span></span>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-6">No comment insights available. Re-analyze this channel to fetch comments.</p>
           )}
         </TabsContent>
       </Tabs>
