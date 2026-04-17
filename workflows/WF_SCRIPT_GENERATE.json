@@ -1,1 +1,982 @@
-{"updatedAt":"2026-04-02T19:51:02.003Z","createdAt":"2026-03-09T23:08:14.190Z","id":"DzugaN9GtVpTznvs","name":"WF_SCRIPT_GENERATE — 3-Pass Script Generation","description":null,"active":true,"isArchived":false,"nodes":[{"id":"wf-sg-webhook","name":"Webhook Trigger","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[208,400],"parameters":{"httpMethod":"POST","path":"script/generate","authentication":"headerAuth","responseMode":"responseNode","options":{"allowedOrigins":"*"}},"credentials":{"httpHeaderAuth":{"id":"KtMyWD7uJJBZYLjt","name":"Authorization"}},"webhookId":"wf-script-generate-prod"},{"id":"wf-sg-validate","name":"Validate Request","type":"n8n-nodes-base.code","typeVersion":2,"position":[432,400],"parameters":{"jsCode":"const input = $input.first().json;\nconst body = input.body || input;\nconst topic_id = body.topic_id;\nconst project_id = body.project_id;\n\n// Auth check\nconst authHeader = input.headers?.authorization || '';\nconst expected = 'Bearer ' + $env.DASHBOARD_API_TOKEN;\nif (authHeader !== expected) {\n  throw new Error('Unauthorized');\n}\n\nif (!topic_id) throw new Error('topic_id is required');\n\nreturn [{ json: { topic_id, project_id } }];","mode":"runOnceForAllItems"}},{"id":"wf-sg-respond","name":"Respond to Webhook","type":"n8n-nodes-base.respondToWebhook","typeVersion":1,"position":[880,208],"parameters":{"respondWith":"json","responseBody":"={{ JSON.stringify({ success: true, message: 'Script generation started', topic_id: $json.topic_id }) }}","options":{"responseCode":200}}},{"id":"wf-sg-read-topic","name":"Read Topic","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[880,400],"parameters":{"url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $json.topic_id }}&select=*,avatars(*)","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"}]},"options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-read-project","name":"Read Project","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1328,400],"parameters":{"url":"={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Read Topic').first().json.project_id }}&select=*","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"}]},"options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-patch-scripting","name":"PATCH Status Scripting","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1776,400],"parameters":{"method":"PATCH","url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ status: \"scripting\", updated_at: new Date().toISOString() }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-log-started","name":"Log Started","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[2000,400],"parameters":{"method":"POST","url":"={{$env.SUPABASE_URL}}/rest/v1/production_log","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Content-Type","value":"application/json"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ project_id: $(\"Validate Request\").first().json.project_id, topic_id: $(\"Validate Request\").first().json.topic_id, stage: \"script_generation\", action: \"started\", details: {} }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-build-visual-prompt","name":"Build Visual Prompt","type":"n8n-nodes-base.code","typeVersion":2,"position":[8272,592],"parameters":{"jsCode":"const assembled = $('Assemble Script').first().json;\nconst combined_text = assembled.combined_text;\nconst topic = assembled.topic;\nconst project = assembled.project;\n\nconst prompt = `You are a scene segmentation expert for 2-hour YouTube documentaries.\n\nBelow is a complete documentary script in 3 passes (~18,000 words total). Your task:\n\n1. Read the ENTIRE script carefully\n2. Split it into approximately 170 individual scenes\n3. Each scene should contain 80-130 words of narration (what the voiceover will say)\n4. For each scene, write a specific image prompt (15-30 words describing the visual)\n5. ALL scenes are visual_type \"static_image\" (every scene becomes a still image with Ken Burns motion)\n6. Assign an emotional_beat (e.g., \"hook\", \"tension\", \"revelation\", \"data\", \"story\", \"resolution\")\n7. Identify which chapter each scene belongs to\n\nNARRATION RULES:\n- narration_text must contain ONLY spoken words for the voiceover\n- Remove ALL markdown formatting (# headers, ** bold, etc.)\n- Remove ALL stage directions ([VISUAL CUE], [PAUSE], [BEAT], etc.)\n- Remove ALL non-spoken text (timestamps, section labels, formatting)\n- Each scene narration should flow naturally when read aloud by TTS\n\nIMAGE PROMPT RULES:\n- Describe a specific, concrete visual that matches the narration\n- Include composition hints (wide shot, close-up, overhead, etc.)\n- Describe lighting and mood (warm, cold, dramatic, etc.)\n- No text in images, no watermarks\n\nReturn ONLY a valid JSON array. No markdown code fences, no explanation, no text before or after the array. Format:\n[{\"scene_number\": 1, \"scene_id\": \"scene_001\", \"narration_text\": \"...\", \"image_prompt\": \"...\", \"visual_type\": \"static_image\", \"emotional_beat\": \"hook\", \"chapter\": \"Cold Open\"}]\n\n--- FULL DOCUMENTARY SCRIPT ---\n${combined_text}\n--- END SCRIPT ---`;\n\nreturn [{ json: {\n  visual_prompt: prompt,\n  combined_text,\n  topic_id: topic.id,\n  project_id: project.id,\n  combined_score: assembled.combined_score,\n  force_passed: assembled.force_passed,\n  attempt: assembled.attempt\n} }];","mode":"runOnceForAllItems"}},{"id":"wf-sg-claude-visual","name":"Claude: Visual Assignment","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[8496,592],"parameters":{"method":"POST","url":"https://api.anthropic.com/v1/messages","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"anthropic-version","value":"2023-06-01"},{"name":"content-type","value":"application/json"},{"name":"anthropic-beta","value":"output-128k-2025-02-19"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: 'You are a scene segmentation and visual direction expert for YouTube documentaries. Always return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.visual_prompt }] }) }}","options":{"timeout":600000}},"credentials":{"httpHeaderAuth":{"id":"vlfOXwvIUlRYnr41","name":"Anthropic API Key"}},"onError":"continueRegularOutput"},{"id":"wf-sg-build-scenes","name":"Build Scenes Array","type":"n8n-nodes-base.code","typeVersion":2,"position":[8720,592],"parameters":{"jsCode":"const visualResponse = $input.first().json;\nconst buildData = $('Build Visual Prompt').first().json;\nconst topic_id = buildData.topic_id;\nconst project_id = buildData.project_id;\n\nif (visualResponse.error) {\n  throw new Error(`Visual Assignment failed: ${visualResponse.error.message || JSON.stringify(visualResponse.error)}`);\n}\n\nlet scenes = [];\ntry {\n  const text = (visualResponse.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  const cleaned = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n  const s = cleaned.indexOf('[');\n  const e = cleaned.lastIndexOf(']');\n  if (s >= 0 && e > s) {\n    scenes = JSON.parse(cleaned.substring(s, e + 1));\n  }\n} catch(err) {\n  if (err.message.startsWith('Visual Assignment failed')) throw err;\n  try {\n    const text = (visualResponse.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n    const objects = text.match(/\\{[^{}]*\"scene_number\"[^{}]*\\}/g) || [];\n    scenes = objects.map(o => JSON.parse(o));\n  } catch(e2) {\n    scenes = [{ scene_number: 1, scene_id: 'scene_001', narration_text: buildData.combined_text.substring(0, 500), image_prompt: 'Documentary establishing shot', visual_type: 'static_image', emotional_beat: 'hook', chapter: 'Main' }];\n  }\n}\n\nif (scenes.length === 0) {\n  throw new Error('Scene segmentation produced 0 scenes');\n}\n\nconst scenes_array = scenes.map((scene, i) => ({\n  topic_id,\n  project_id,\n  scene_number: scene.scene_number || (i + 1),\n  scene_id: scene.scene_id || `scene_${String(i + 1).padStart(3, '0')}`,\n  narration_text: (scene.narration_text || '').replace(/^#+\\s*/gm, '').replace(/\\[.*?\\]/g, '').replace(/\\*\\*/g, '').trim(),\n  image_prompt: scene.image_prompt || 'Documentary scene',\n  visual_type: 'static_image',\n  emotional_beat: scene.emotional_beat || '',\n  chapter: scene.chapter || '',\n  audio_status: 'pending',\n  image_status: 'pending',\n  clip_status: 'pending',\n  skipped: false\n}));\n\nconst word_count = scenes_array.reduce((sum, s) => sum + (s.narration_text ? s.narration_text.split(' ').length : 0), 0);\nconst scene_count = scenes_array.length;\n\nconst script_json = JSON.stringify(scenes_array);\nconst script_metadata = JSON.stringify({\n  video_metadata: {\n    title: $('Assemble Script').first().json.topic.seo_title || $('Assemble Script').first().json.topic.original_title,\n    description: `A detailed documentary about ${$('Assemble Script').first().json.topic.narrative_hook || ''}`,\n    tags: ['documentary', $('Assemble Script').first().json.project.niche || ''],\n    thumbnail_prompt: scenes_array[0]?.image_prompt || ''\n  },\n  generation_stats: { word_count, scene_count, quality_score: buildData.combined_score, force_passed: buildData.force_passed, attempt: buildData.attempt }\n});\n\nreturn [{ json: { scenes_array, script_json, script_metadata, word_count, scene_count, topic_id, project_id, combined_score: buildData.combined_score, force_passed: buildData.force_passed, attempt: buildData.attempt } }];","mode":"runOnceForAllItems"}},{"id":"wf-sg-patch-script","name":"PATCH Script JSON","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[8944,592],"parameters":{"method":"PATCH","url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ script_json: $json.script_json, script_metadata: $json.script_metadata, word_count: $json.word_count, scene_count: $json.scene_count, updated_at: new Date().toISOString() }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-delete-scenes","name":"Delete Prior Scenes","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[9168,592],"parameters":{"method":"DELETE","url":"={{$env.SUPABASE_URL}}/rest/v1/scenes?topic_id=eq.{{ $('Build Scenes Array').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-insert-scenes","name":"Bulk Insert Scenes","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[9392,592],"parameters":{"method":"POST","url":"={{$env.SUPABASE_URL}}/rest/v1/scenes","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Content-Type","value":"application/json"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ $('Build Scenes Array').first().json.script_json }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-patch-review","name":"PATCH Status Review","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[9616,592],"parameters":{"method":"PATCH","url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Build Scenes Array').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ status: 'review', script_review_status: 'pending', updated_at: new Date().toISOString() }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-log-completed","name":"Log Completed","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[9840,592],"parameters":{"method":"POST","url":"={{$env.SUPABASE_URL}}/rest/v1/production_log","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Content-Type","value":"application/json"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ project_id: $('Build Scenes Array').first().json.project_id, topic_id: $('Build Scenes Array').first().json.topic_id, stage: 'script_generation', action: 'completed', details: { word_count: $('Build Scenes Array').first().json.word_count, scene_count: $('Build Scenes Array').first().json.scene_count, quality_score: $('Build Scenes Array').first().json.combined_score, force_passed: $('Build Scenes Array').first().json.force_passed, attempt: $('Build Scenes Array').first().json.attempt } }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-collect-error","name":"Collect Error","type":"n8n-nodes-base.code","typeVersion":2,"position":[6704,304],"parameters":{"jsCode":"const errData = $input.first().json;\nconst topic_id = errData.topic_id || $('Validate Request').first().json?.topic_id;\nconst project_id = errData.project_id || $('Validate Request').first().json?.project_id;\nconst error_message = errData.error_message || errData.message || 'Unknown error in script generation';\nreturn [{ json: { topic_id, project_id, error_message } }];","mode":"runOnceForAllItems"}},{"id":"wf-sg-patch-failed","name":"PATCH Status Failed","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[6928,304],"parameters":{"method":"PATCH","url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ status: 'failed', error_log: $json.error_message, updated_at: new Date().toISOString() }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-log-failed","name":"Log Failed","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[7152,304],"parameters":{"method":"POST","url":"={{$env.SUPABASE_URL}}/rest/v1/production_log","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Content-Type","value":"application/json"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ project_id: $('Collect Error').first().json.project_id, topic_id: $('Collect Error').first().json.topic_id, stage: 'script_generation', action: 'failed', details: { error: $('Collect Error').first().json.error_message } }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"prep-avatar","name":"Prep & Read Avatar","type":"n8n-nodes-base.code","typeVersion":2,"position":[2224,400],"parameters":{"mode":"runOnceForAllItems","jsCode":"const SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst topicRaw = $('Read Topic').first().json;\nconst projRaw = $('Read Project').first().json;\nconst topic = Array.isArray(topicRaw) ? topicRaw[0] : topicRaw;\nconst project = Array.isArray(projRaw) ? projRaw[0] : projRaw;\nconst avResp = await fetch(SB + '/rest/v1/avatars?topic_id=eq.' + topic.id + '&select=*&limit=1', {\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK}\n});\nconst avatars = await avResp.json();\nconst avatar = avatars?.[0] || {};\nreturn [{json: {topic, project, avatar, pass_number: 1}}];"}},{"id":"call-p1","name":"Call Pass 1","type":"n8n-nodes-base.executeWorkflow","typeVersion":1.1,"position":[2500,400],"parameters":{"workflowId":{"__rl":true,"value":"CRC9USwaGgk7x6xN","mode":"id"}},"onError":"continueErrorOutput"},{"id":"handle-p1","name":"Handle Pass 1 + Prep Pass 2","type":"n8n-nodes-base.code","typeVersion":2,"position":[2776,400],"parameters":{"mode":"runOnceForAllItems","jsCode":"const pass1 = $input.first().json;\nconst prep = $('Prep & Read Avatar').first().json;\nconst {topic, project, avatar} = prep;\nconst SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nconst passScores = {pass_1: {attempts: pass1.attempt, final_score: pass1.composite_score, verdict: pass1.verdict, scores: pass1.scores}};\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topic.id, {\n  method: 'PATCH',\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},\n  body: JSON.stringify({script_pass_scores: passScores})\n});\n\nreturn [{json: {topic, project, avatar, pass_number: 2, pass1_output: pass1.pass_text, pass1_scores: passScores}}];"}},{"id":"call-p2","name":"Call Pass 2","type":"n8n-nodes-base.executeWorkflow","typeVersion":1.1,"position":[3052,400],"parameters":{"workflowId":{"__rl":true,"value":"CRC9USwaGgk7x6xN","mode":"id"}},"onError":"continueErrorOutput"},{"id":"extract-meta","name":"Extract Metadata + Prep Pass 3","type":"n8n-nodes-base.code","typeVersion":2,"position":[3328,400],"parameters":{"mode":"runOnceForAllItems","jsCode":"const pass2 = $input.first().json;\nconst handleP1 = $('Handle Pass 1 + Prep Pass 2').first().json;\nconst {topic, project, avatar, pass1_output, pass1_scores} = handleP1;\nconst SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY, AK = $env.ANTHROPIC_API_KEY;\n\nconst passScores = {...pass1_scores, pass_2: {attempts: pass2.attempt, final_score: pass2.composite_score, verdict: pass2.verdict, scores: pass2.scores}};\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topic.id, {\n  method: 'PATCH',\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},\n  body: JSON.stringify({script_pass_scores: passScores})\n});\n\nconst pResp = await fetch(SB + '/rest/v1/system_prompts?prompt_type=eq.script_metadata_extractor&is_active=eq.true&select=prompt_text', {\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK}\n});\nconst extractPromptRaw = ((await pResp.json())?.[0]?.prompt_text) || '';\nconst extractPrompt = extractPromptRaw || 'Read the following script pass and extract:\\n1. A 200-word summary of the content covered, argument structure, and emotional arc\\n2. The primary case study character name and a 1-sentence description of where they are in their arc\\n3. A list of ALL metaphors and analogies used\\n4. A list of ALL reassurance phrases used\\n5. A list of any other distinctive phrases that should not be repeated\\n\\nRESPOND IN JSON:\\n{\"summary\": \"\", \"character_name\": \"\", \"character_status\": \"\", \"metaphors_used\": [], \"reassurance_phrases_used\": [], \"notable_phrases\": []}';\n\nasync function extract(text) {\n  const prompt = extractPrompt + '\\n\\nSCRIPT:\\n---\\n' + text.substring(0, 60000) + '\\n---';\n  const r = await fetch('https://api.anthropic.com/v1/messages', {\n    method: 'POST',\n    headers: {'Content-Type': 'application/json', 'x-api-key': AK, 'anthropic-version': '2023-06-01'},\n    body: JSON.stringify({model: 'claude-sonnet-4-20250514', max_tokens: 4096, messages: [{role: 'user', content: prompt}]})\n  });\n  const d = await r.json();\n  const txt = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  try {\n    const c = txt.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n    return JSON.parse(c.substring(c.indexOf('{'), c.lastIndexOf('}') + 1));\n  } catch (e) {\n    return {summary: txt.substring(0, 400), character_name: '', character_status: '', metaphors_used: [], reassurance_phrases_used: [], notable_phrases: []};\n  }\n}\n\nconst [p1Meta, p2Meta] = await Promise.all([extract(pass1_output), extract(pass2.pass_text)]);\n\nreturn [{json: {\n  topic, project, avatar, pass_number: 3,\n  pass1_summary: p1Meta.summary || '',\n  pass2_summary: p2Meta.summary || '',\n  character_name: p1Meta.character_name || '',\n  character_status: p2Meta.character_status || p1Meta.character_status || '',\n  metaphors_used: [...(p1Meta.metaphors_used || []), ...(p2Meta.metaphors_used || [])],\n  reassurance_phrases: [...(p1Meta.reassurance_phrases_used || []), ...(p2Meta.reassurance_phrases_used || [])],\n  notable_phrases: [...(p1Meta.notable_phrases || []), ...(p2Meta.notable_phrases || [])],\n  pass1_text: pass1_output, pass2_text: pass2.pass_text, passScores\n}}];"}},{"id":"call-p3","name":"Call Pass 3","type":"n8n-nodes-base.executeWorkflow","typeVersion":1.1,"position":[3604,400],"parameters":{"workflowId":{"__rl":true,"value":"CRC9USwaGgk7x6xN","mode":"id"}},"onError":"continueErrorOutput"},{"id":"assemble","name":"Assemble Script","type":"n8n-nodes-base.code","typeVersion":2,"position":[3880,400],"parameters":{"mode":"runOnceForAllItems","jsCode":"const pass3 = $input.first().json;\nconst metaPrep = $('Extract Metadata + Prep Pass 3').first().json;\nconst {topic, project, pass1_text, pass2_text, passScores} = metaPrep;\nconst SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nconst combined_text = pass1_text + '\\n\\n' + pass2_text + '\\n\\n' + pass3.pass_text;\nconst word_count = combined_text.split(/\\s+/).length;\n\nconst allScores = {...passScores, pass_3: {attempts: pass3.attempt, final_score: pass3.composite_score, verdict: pass3.verdict, scores: pass3.scores}};\nconst avgScore = ((allScores.pass_1?.final_score || 0) + (allScores.pass_2?.final_score || 0) + (allScores.pass_3?.final_score || 0)) / 3;\n\nconst scriptMeta = {\n  video_title: topic.seo_title || topic.original_title,\n  niche_category: project.niche,\n  total_word_count: word_count,\n  estimated_duration_minutes: Math.round(word_count / 200),\n  pass_scores: allScores,\n  total_api_calls: ((allScores.pass_1?.attempts || 1) + (allScores.pass_2?.attempts || 1) + (allScores.pass_3?.attempts || 1)) * 2 + 2,\n  manual_review_flag: [allScores.pass_1, allScores.pass_2, allScores.pass_3].some(p => p?.verdict === 'FORCE_PASS' && (p?.final_score || 0) < 5),\n  metaphors_used: metaPrep.metaphors_used || [],\n  case_study_character: metaPrep.character_name || ''\n};\n\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topic.id, {\n  method: 'PATCH',\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},\n  body: JSON.stringify({\n    script_json: {combined_text, pass_1: pass1_text, pass_2: pass2_text, pass_3: pass3.pass_text},\n    script_quality_score: Math.round(avgScore * 10) / 10,\n    script_evaluation: scriptMeta,\n    script_pass_scores: allScores,\n    script_metadata_extended: scriptMeta,\n    word_count,\n    scene_count: null\n  })\n});\n\nreturn [{json: {combined_text, topic, project, word_count, script_metadata: scriptMeta}}];"}}],"connections":{"Webhook Trigger":{"main":[[{"node":"Validate Request","type":"main","index":0}]]},"Validate Request":{"main":[[{"node":"Respond to Webhook","type":"main","index":0},{"node":"Read Topic","type":"main","index":0}]]},"Read Topic":{"main":[[{"node":"Read Project","type":"main","index":0}]]},"Read Project":{"main":[[{"node":"PATCH Status Scripting","type":"main","index":0}]]},"PATCH Status Scripting":{"main":[[{"node":"Log Started","type":"main","index":0}]]},"Log Started":{"main":[[{"node":"Prep & Read Avatar","type":"main","index":0}]]},"Prep & Read Avatar":{"main":[[{"node":"Call Pass 1","type":"main","index":0}]]},"Call Pass 1":{"main":[[{"node":"Handle Pass 1 + Prep Pass 2","type":"main","index":0}],[{"node":"Collect Error","type":"main","index":0}]]},"Handle Pass 1 + Prep Pass 2":{"main":[[{"node":"Call Pass 2","type":"main","index":0}]]},"Call Pass 2":{"main":[[{"node":"Extract Metadata + Prep Pass 3","type":"main","index":0}],[{"node":"Collect Error","type":"main","index":0}]]},"Extract Metadata + Prep Pass 3":{"main":[[{"node":"Call Pass 3","type":"main","index":0}]]},"Call Pass 3":{"main":[[{"node":"Assemble Script","type":"main","index":0}],[{"node":"Collect Error","type":"main","index":0}]]},"Assemble Script":{"main":[[{"node":"Build Visual Prompt","type":"main","index":0}]]},"Build Visual Prompt":{"main":[[{"node":"Claude: Visual Assignment","type":"main","index":0}]]},"Claude: Visual Assignment":{"main":[[{"node":"Build Scenes Array","type":"main","index":0}]]},"Build Scenes Array":{"main":[[{"node":"PATCH Script JSON","type":"main","index":0}]]},"PATCH Script JSON":{"main":[[{"node":"Delete Prior Scenes","type":"main","index":0}]]},"Delete Prior Scenes":{"main":[[{"node":"Bulk Insert Scenes","type":"main","index":0}]]},"Bulk Insert Scenes":{"main":[[{"node":"PATCH Status Review","type":"main","index":0}]]},"PATCH Status Review":{"main":[[{"node":"Log Completed","type":"main","index":0}]]},"Collect Error":{"main":[[{"node":"PATCH Status Failed","type":"main","index":0}]]},"PATCH Status Failed":{"main":[[{"node":"Log Failed","type":"main","index":0}]]}},"settings":{"executionOrder":"v1","callerPolicy":"workflowsFromSameOwner","availableInMCP":false,"timeSavedMode":"fixed","binaryMode":"separate"},"staticData":null,"meta":{"templateCredsSetupCompleted":true},"pinData":{},"versionId":"0531bcf7-96f9-4ee8-95a5-e87d7f34f49f","activeVersionId":"0531bcf7-96f9-4ee8-95a5-e87d7f34f49f","versionCounter":224,"triggerCount":1,"shared":[{"updatedAt":"2026-03-09T23:08:14.194Z","createdAt":"2026-03-09T23:08:14.194Z","role":"workflow:owner","workflowId":"DzugaN9GtVpTznvs","projectId":"ccWn1Q4giuKzXIbJ","project":{"updatedAt":"2026-01-26T11:09:31.107Z","createdAt":"2026-01-26T03:51:33.410Z","id":"ccWn1Q4giuKzXIbJ","name":"Akinwunmi Akinrimisi <akinolacrypto@gmail.com>","type":"personal","icon":null,"description":null,"creatorId":"ab010feb-355c-4130-b354-4e929908258e"}}],"tags":[],"activeVersion":{"updatedAt":"2026-04-02T19:51:02.007Z","createdAt":"2026-04-02T19:51:02.007Z","versionId":"0531bcf7-96f9-4ee8-95a5-e87d7f34f49f","workflowId":"DzugaN9GtVpTznvs","nodes":[{"id":"wf-sg-webhook","name":"Webhook Trigger","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[208,400],"parameters":{"httpMethod":"POST","path":"script/generate","authentication":"headerAuth","responseMode":"responseNode","options":{"allowedOrigins":"*"}},"credentials":{"httpHeaderAuth":{"id":"KtMyWD7uJJBZYLjt","name":"Authorization"}},"webhookId":"wf-script-generate-prod"},{"id":"wf-sg-validate","name":"Validate Request","type":"n8n-nodes-base.code","typeVersion":2,"position":[432,400],"parameters":{"jsCode":"const input = $input.first().json;\nconst body = input.body || input;\nconst topic_id = body.topic_id;\nconst project_id = body.project_id;\n\n// Auth check\nconst authHeader = input.headers?.authorization || '';\nconst expected = 'Bearer ' + $env.DASHBOARD_API_TOKEN;\nif (authHeader !== expected) {\n  throw new Error('Unauthorized');\n}\n\nif (!topic_id) throw new Error('topic_id is required');\n\nreturn [{ json: { topic_id, project_id } }];","mode":"runOnceForAllItems"}},{"id":"wf-sg-respond","name":"Respond to Webhook","type":"n8n-nodes-base.respondToWebhook","typeVersion":1,"position":[880,208],"parameters":{"respondWith":"json","responseBody":"={{ JSON.stringify({ success: true, message: 'Script generation started', topic_id: $json.topic_id }) }}","options":{"responseCode":200}}},{"id":"wf-sg-read-topic","name":"Read Topic","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[880,400],"parameters":{"url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $json.topic_id }}&select=*,avatars(*)","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"}]},"options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-read-project","name":"Read Project","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1328,400],"parameters":{"url":"={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Read Topic').first().json.project_id }}&select=*","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"}]},"options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-patch-scripting","name":"PATCH Status Scripting","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1776,400],"parameters":{"method":"PATCH","url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ status: \"scripting\", updated_at: new Date().toISOString() }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-log-started","name":"Log Started","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[2000,400],"parameters":{"method":"POST","url":"={{$env.SUPABASE_URL}}/rest/v1/production_log","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Content-Type","value":"application/json"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ project_id: $(\"Validate Request\").first().json.project_id, topic_id: $(\"Validate Request\").first().json.topic_id, stage: \"script_generation\", action: \"started\", details: {} }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-build-visual-prompt","name":"Build Visual Prompt","type":"n8n-nodes-base.code","typeVersion":2,"position":[8272,592],"parameters":{"jsCode":"const assembled = $('Assemble Script').first().json;\nconst combined_text = assembled.combined_text;\nconst topic = assembled.topic;\nconst project = assembled.project;\n\nconst prompt = `You are a scene segmentation expert for 2-hour YouTube documentaries.\n\nBelow is a complete documentary script in 3 passes (~18,000 words total). Your task:\n\n1. Read the ENTIRE script carefully\n2. Split it into approximately 170 individual scenes\n3. Each scene should contain 80-130 words of narration (what the voiceover will say)\n4. For each scene, write a specific image prompt (15-30 words describing the visual)\n5. ALL scenes are visual_type \"static_image\" (every scene becomes a still image with Ken Burns motion)\n6. Assign an emotional_beat (e.g., \"hook\", \"tension\", \"revelation\", \"data\", \"story\", \"resolution\")\n7. Identify which chapter each scene belongs to\n\nNARRATION RULES:\n- narration_text must contain ONLY spoken words for the voiceover\n- Remove ALL markdown formatting (# headers, ** bold, etc.)\n- Remove ALL stage directions ([VISUAL CUE], [PAUSE], [BEAT], etc.)\n- Remove ALL non-spoken text (timestamps, section labels, formatting)\n- Each scene narration should flow naturally when read aloud by TTS\n\nIMAGE PROMPT RULES:\n- Describe a specific, concrete visual that matches the narration\n- Include composition hints (wide shot, close-up, overhead, etc.)\n- Describe lighting and mood (warm, cold, dramatic, etc.)\n- No text in images, no watermarks\n\nReturn ONLY a valid JSON array. No markdown code fences, no explanation, no text before or after the array. Format:\n[{\"scene_number\": 1, \"scene_id\": \"scene_001\", \"narration_text\": \"...\", \"image_prompt\": \"...\", \"visual_type\": \"static_image\", \"emotional_beat\": \"hook\", \"chapter\": \"Cold Open\"}]\n\n--- FULL DOCUMENTARY SCRIPT ---\n${combined_text}\n--- END SCRIPT ---`;\n\nreturn [{ json: {\n  visual_prompt: prompt,\n  combined_text,\n  topic_id: topic.id,\n  project_id: project.id,\n  combined_score: assembled.combined_score,\n  force_passed: assembled.force_passed,\n  attempt: assembled.attempt\n} }];","mode":"runOnceForAllItems"}},{"id":"wf-sg-claude-visual","name":"Claude: Visual Assignment","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[8496,592],"parameters":{"method":"POST","url":"https://api.anthropic.com/v1/messages","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"anthropic-version","value":"2023-06-01"},{"name":"content-type","value":"application/json"},{"name":"anthropic-beta","value":"output-128k-2025-02-19"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: 'You are a scene segmentation and visual direction expert for YouTube documentaries. Always return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.visual_prompt }] }) }}","options":{"timeout":600000}},"credentials":{"httpHeaderAuth":{"id":"vlfOXwvIUlRYnr41","name":"Anthropic API Key"}},"onError":"continueRegularOutput"},{"id":"wf-sg-build-scenes","name":"Build Scenes Array","type":"n8n-nodes-base.code","typeVersion":2,"position":[8720,592],"parameters":{"jsCode":"const visualResponse = $input.first().json;\nconst buildData = $('Build Visual Prompt').first().json;\nconst topic_id = buildData.topic_id;\nconst project_id = buildData.project_id;\n\nif (visualResponse.error) {\n  throw new Error(`Visual Assignment failed: ${visualResponse.error.message || JSON.stringify(visualResponse.error)}`);\n}\n\nlet scenes = [];\ntry {\n  const text = (visualResponse.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  const cleaned = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n  const s = cleaned.indexOf('[');\n  const e = cleaned.lastIndexOf(']');\n  if (s >= 0 && e > s) {\n    scenes = JSON.parse(cleaned.substring(s, e + 1));\n  }\n} catch(err) {\n  if (err.message.startsWith('Visual Assignment failed')) throw err;\n  try {\n    const text = (visualResponse.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n    const objects = text.match(/\\{[^{}]*\"scene_number\"[^{}]*\\}/g) || [];\n    scenes = objects.map(o => JSON.parse(o));\n  } catch(e2) {\n    scenes = [{ scene_number: 1, scene_id: 'scene_001', narration_text: buildData.combined_text.substring(0, 500), image_prompt: 'Documentary establishing shot', visual_type: 'static_image', emotional_beat: 'hook', chapter: 'Main' }];\n  }\n}\n\nif (scenes.length === 0) {\n  throw new Error('Scene segmentation produced 0 scenes');\n}\n\nconst scenes_array = scenes.map((scene, i) => ({\n  topic_id,\n  project_id,\n  scene_number: scene.scene_number || (i + 1),\n  scene_id: scene.scene_id || `scene_${String(i + 1).padStart(3, '0')}`,\n  narration_text: (scene.narration_text || '').replace(/^#+\\s*/gm, '').replace(/\\[.*?\\]/g, '').replace(/\\*\\*/g, '').trim(),\n  image_prompt: scene.image_prompt || 'Documentary scene',\n  visual_type: 'static_image',\n  emotional_beat: scene.emotional_beat || '',\n  chapter: scene.chapter || '',\n  audio_status: 'pending',\n  image_status: 'pending',\n  clip_status: 'pending',\n  skipped: false\n}));\n\nconst word_count = scenes_array.reduce((sum, s) => sum + (s.narration_text ? s.narration_text.split(' ').length : 0), 0);\nconst scene_count = scenes_array.length;\n\nconst script_json = JSON.stringify(scenes_array);\nconst script_metadata = JSON.stringify({\n  video_metadata: {\n    title: $('Assemble Script').first().json.topic.seo_title || $('Assemble Script').first().json.topic.original_title,\n    description: `A detailed documentary about ${$('Assemble Script').first().json.topic.narrative_hook || ''}`,\n    tags: ['documentary', $('Assemble Script').first().json.project.niche || ''],\n    thumbnail_prompt: scenes_array[0]?.image_prompt || ''\n  },\n  generation_stats: { word_count, scene_count, quality_score: buildData.combined_score, force_passed: buildData.force_passed, attempt: buildData.attempt }\n});\n\nreturn [{ json: { scenes_array, script_json, script_metadata, word_count, scene_count, topic_id, project_id, combined_score: buildData.combined_score, force_passed: buildData.force_passed, attempt: buildData.attempt } }];","mode":"runOnceForAllItems"}},{"id":"wf-sg-patch-script","name":"PATCH Script JSON","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[8944,592],"parameters":{"method":"PATCH","url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ script_json: $json.script_json, script_metadata: $json.script_metadata, word_count: $json.word_count, scene_count: $json.scene_count, updated_at: new Date().toISOString() }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-delete-scenes","name":"Delete Prior Scenes","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[9168,592],"parameters":{"method":"DELETE","url":"={{$env.SUPABASE_URL}}/rest/v1/scenes?topic_id=eq.{{ $('Build Scenes Array').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-insert-scenes","name":"Bulk Insert Scenes","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[9392,592],"parameters":{"method":"POST","url":"={{$env.SUPABASE_URL}}/rest/v1/scenes","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Content-Type","value":"application/json"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ $('Build Scenes Array').first().json.script_json }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-patch-review","name":"PATCH Status Review","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[9616,592],"parameters":{"method":"PATCH","url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Build Scenes Array').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ status: 'review', script_review_status: 'pending', updated_at: new Date().toISOString() }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-log-completed","name":"Log Completed","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[9840,592],"parameters":{"method":"POST","url":"={{$env.SUPABASE_URL}}/rest/v1/production_log","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Content-Type","value":"application/json"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ project_id: $('Build Scenes Array').first().json.project_id, topic_id: $('Build Scenes Array').first().json.topic_id, stage: 'script_generation', action: 'completed', details: { word_count: $('Build Scenes Array').first().json.word_count, scene_count: $('Build Scenes Array').first().json.scene_count, quality_score: $('Build Scenes Array').first().json.combined_score, force_passed: $('Build Scenes Array').first().json.force_passed, attempt: $('Build Scenes Array').first().json.attempt } }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-collect-error","name":"Collect Error","type":"n8n-nodes-base.code","typeVersion":2,"position":[6704,304],"parameters":{"jsCode":"const errData = $input.first().json;\nconst topic_id = errData.topic_id || $('Validate Request').first().json?.topic_id;\nconst project_id = errData.project_id || $('Validate Request').first().json?.project_id;\nconst error_message = errData.error_message || errData.message || 'Unknown error in script generation';\nreturn [{ json: { topic_id, project_id, error_message } }];","mode":"runOnceForAllItems"}},{"id":"wf-sg-patch-failed","name":"PATCH Status Failed","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[6928,304],"parameters":{"method":"PATCH","url":"={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ status: 'failed', error_log: $json.error_message, updated_at: new Date().toISOString() }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"wf-sg-log-failed","name":"Log Failed","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[7152,304],"parameters":{"method":"POST","url":"={{$env.SUPABASE_URL}}/rest/v1/production_log","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"={{$env.SUPABASE_ANON_KEY}}"},{"name":"Content-Type","value":"application/json"},{"name":"Prefer","value":"return=minimal"}]},"sendBody":true,"specifyBody":"json","jsonBody":"={{ JSON.stringify({ project_id: $('Collect Error').first().json.project_id, topic_id: $('Collect Error').first().json.topic_id, stage: 'script_generation', action: 'failed', details: { error: $('Collect Error').first().json.error_message } }) }}","options":{}},"credentials":{"httpHeaderAuth":{"id":"QsqqFXtnLakNfVKR","name":"Supabase Service Role"}}},{"id":"prep-avatar","name":"Prep & Read Avatar","type":"n8n-nodes-base.code","typeVersion":2,"position":[2224,400],"parameters":{"mode":"runOnceForAllItems","jsCode":"const SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst topicRaw = $('Read Topic').first().json;\nconst projRaw = $('Read Project').first().json;\nconst topic = Array.isArray(topicRaw) ? topicRaw[0] : topicRaw;\nconst project = Array.isArray(projRaw) ? projRaw[0] : projRaw;\nconst avResp = await fetch(SB + '/rest/v1/avatars?topic_id=eq.' + topic.id + '&select=*&limit=1', {\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK}\n});\nconst avatars = await avResp.json();\nconst avatar = avatars?.[0] || {};\nreturn [{json: {topic, project, avatar, pass_number: 1}}];"}},{"id":"call-p1","name":"Call Pass 1","type":"n8n-nodes-base.executeWorkflow","typeVersion":1.1,"position":[2500,400],"parameters":{"workflowId":{"__rl":true,"value":"CRC9USwaGgk7x6xN","mode":"id"}},"onError":"continueErrorOutput"},{"id":"handle-p1","name":"Handle Pass 1 + Prep Pass 2","type":"n8n-nodes-base.code","typeVersion":2,"position":[2776,400],"parameters":{"mode":"runOnceForAllItems","jsCode":"const pass1 = $input.first().json;\nconst prep = $('Prep & Read Avatar').first().json;\nconst {topic, project, avatar} = prep;\nconst SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nconst passScores = {pass_1: {attempts: pass1.attempt, final_score: pass1.composite_score, verdict: pass1.verdict, scores: pass1.scores}};\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topic.id, {\n  method: 'PATCH',\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},\n  body: JSON.stringify({script_pass_scores: passScores})\n});\n\nreturn [{json: {topic, project, avatar, pass_number: 2, pass1_output: pass1.pass_text, pass1_scores: passScores}}];"}},{"id":"call-p2","name":"Call Pass 2","type":"n8n-nodes-base.executeWorkflow","typeVersion":1.1,"position":[3052,400],"parameters":{"workflowId":{"__rl":true,"value":"CRC9USwaGgk7x6xN","mode":"id"}},"onError":"continueErrorOutput"},{"id":"extract-meta","name":"Extract Metadata + Prep Pass 3","type":"n8n-nodes-base.code","typeVersion":2,"position":[3328,400],"parameters":{"mode":"runOnceForAllItems","jsCode":"const pass2 = $input.first().json;\nconst handleP1 = $('Handle Pass 1 + Prep Pass 2').first().json;\nconst {topic, project, avatar, pass1_output, pass1_scores} = handleP1;\nconst SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY, AK = $env.ANTHROPIC_API_KEY;\n\nconst passScores = {...pass1_scores, pass_2: {attempts: pass2.attempt, final_score: pass2.composite_score, verdict: pass2.verdict, scores: pass2.scores}};\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topic.id, {\n  method: 'PATCH',\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},\n  body: JSON.stringify({script_pass_scores: passScores})\n});\n\nconst pResp = await fetch(SB + '/rest/v1/system_prompts?prompt_type=eq.script_metadata_extractor&is_active=eq.true&select=prompt_text', {\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK}\n});\nconst extractPromptRaw = ((await pResp.json())?.[0]?.prompt_text) || '';\nconst extractPrompt = extractPromptRaw || 'Read the following script pass and extract:\\n1. A 200-word summary of the content covered, argument structure, and emotional arc\\n2. The primary case study character name and a 1-sentence description of where they are in their arc\\n3. A list of ALL metaphors and analogies used\\n4. A list of ALL reassurance phrases used\\n5. A list of any other distinctive phrases that should not be repeated\\n\\nRESPOND IN JSON:\\n{\"summary\": \"\", \"character_name\": \"\", \"character_status\": \"\", \"metaphors_used\": [], \"reassurance_phrases_used\": [], \"notable_phrases\": []}';\n\nasync function extract(text) {\n  const prompt = extractPrompt + '\\n\\nSCRIPT:\\n---\\n' + text.substring(0, 60000) + '\\n---';\n  const r = await fetch('https://api.anthropic.com/v1/messages', {\n    method: 'POST',\n    headers: {'Content-Type': 'application/json', 'x-api-key': AK, 'anthropic-version': '2023-06-01'},\n    body: JSON.stringify({model: 'claude-sonnet-4-20250514', max_tokens: 4096, messages: [{role: 'user', content: prompt}]})\n  });\n  const d = await r.json();\n  const txt = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  try {\n    const c = txt.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n    return JSON.parse(c.substring(c.indexOf('{'), c.lastIndexOf('}') + 1));\n  } catch (e) {\n    return {summary: txt.substring(0, 400), character_name: '', character_status: '', metaphors_used: [], reassurance_phrases_used: [], notable_phrases: []};\n  }\n}\n\nconst [p1Meta, p2Meta] = await Promise.all([extract(pass1_output), extract(pass2.pass_text)]);\n\nreturn [{json: {\n  topic, project, avatar, pass_number: 3,\n  pass1_summary: p1Meta.summary || '',\n  pass2_summary: p2Meta.summary || '',\n  character_name: p1Meta.character_name || '',\n  character_status: p2Meta.character_status || p1Meta.character_status || '',\n  metaphors_used: [...(p1Meta.metaphors_used || []), ...(p2Meta.metaphors_used || [])],\n  reassurance_phrases: [...(p1Meta.reassurance_phrases_used || []), ...(p2Meta.reassurance_phrases_used || [])],\n  notable_phrases: [...(p1Meta.notable_phrases || []), ...(p2Meta.notable_phrases || [])],\n  pass1_text: pass1_output, pass2_text: pass2.pass_text, passScores\n}}];"}},{"id":"call-p3","name":"Call Pass 3","type":"n8n-nodes-base.executeWorkflow","typeVersion":1.1,"position":[3604,400],"parameters":{"workflowId":{"__rl":true,"value":"CRC9USwaGgk7x6xN","mode":"id"}},"onError":"continueErrorOutput"},{"id":"assemble","name":"Assemble Script","type":"n8n-nodes-base.code","typeVersion":2,"position":[3880,400],"parameters":{"mode":"runOnceForAllItems","jsCode":"const pass3 = $input.first().json;\nconst metaPrep = $('Extract Metadata + Prep Pass 3').first().json;\nconst {topic, project, pass1_text, pass2_text, passScores} = metaPrep;\nconst SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nconst combined_text = pass1_text + '\\n\\n' + pass2_text + '\\n\\n' + pass3.pass_text;\nconst word_count = combined_text.split(/\\s+/).length;\n\nconst allScores = {...passScores, pass_3: {attempts: pass3.attempt, final_score: pass3.composite_score, verdict: pass3.verdict, scores: pass3.scores}};\nconst avgScore = ((allScores.pass_1?.final_score || 0) + (allScores.pass_2?.final_score || 0) + (allScores.pass_3?.final_score || 0)) / 3;\n\nconst scriptMeta = {\n  video_title: topic.seo_title || topic.original_title,\n  niche_category: project.niche,\n  total_word_count: word_count,\n  estimated_duration_minutes: Math.round(word_count / 200),\n  pass_scores: allScores,\n  total_api_calls: ((allScores.pass_1?.attempts || 1) + (allScores.pass_2?.attempts || 1) + (allScores.pass_3?.attempts || 1)) * 2 + 2,\n  manual_review_flag: [allScores.pass_1, allScores.pass_2, allScores.pass_3].some(p => p?.verdict === 'FORCE_PASS' && (p?.final_score || 0) < 5),\n  metaphors_used: metaPrep.metaphors_used || [],\n  case_study_character: metaPrep.character_name || ''\n};\n\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topic.id, {\n  method: 'PATCH',\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},\n  body: JSON.stringify({\n    script_json: {combined_text, pass_1: pass1_text, pass_2: pass2_text, pass_3: pass3.pass_text},\n    script_quality_score: Math.round(avgScore * 10) / 10,\n    script_evaluation: scriptMeta,\n    script_pass_scores: allScores,\n    script_metadata_extended: scriptMeta,\n    word_count,\n    scene_count: null\n  })\n});\n\nreturn [{json: {combined_text, topic, project, word_count, script_metadata: scriptMeta}}];"}}],"connections":{"Webhook Trigger":{"main":[[{"node":"Validate Request","type":"main","index":0}]]},"Validate Request":{"main":[[{"node":"Respond to Webhook","type":"main","index":0},{"node":"Read Topic","type":"main","index":0}]]},"Read Topic":{"main":[[{"node":"Read Project","type":"main","index":0}]]},"Read Project":{"main":[[{"node":"PATCH Status Scripting","type":"main","index":0}]]},"PATCH Status Scripting":{"main":[[{"node":"Log Started","type":"main","index":0}]]},"Log Started":{"main":[[{"node":"Prep & Read Avatar","type":"main","index":0}]]},"Prep & Read Avatar":{"main":[[{"node":"Call Pass 1","type":"main","index":0}]]},"Call Pass 1":{"main":[[{"node":"Handle Pass 1 + Prep Pass 2","type":"main","index":0}],[{"node":"Collect Error","type":"main","index":0}]]},"Handle Pass 1 + Prep Pass 2":{"main":[[{"node":"Call Pass 2","type":"main","index":0}]]},"Call Pass 2":{"main":[[{"node":"Extract Metadata + Prep Pass 3","type":"main","index":0}],[{"node":"Collect Error","type":"main","index":0}]]},"Extract Metadata + Prep Pass 3":{"main":[[{"node":"Call Pass 3","type":"main","index":0}]]},"Call Pass 3":{"main":[[{"node":"Assemble Script","type":"main","index":0}],[{"node":"Collect Error","type":"main","index":0}]]},"Assemble Script":{"main":[[{"node":"Build Visual Prompt","type":"main","index":0}]]},"Build Visual Prompt":{"main":[[{"node":"Claude: Visual Assignment","type":"main","index":0}]]},"Claude: Visual Assignment":{"main":[[{"node":"Build Scenes Array","type":"main","index":0}]]},"Build Scenes Array":{"main":[[{"node":"PATCH Script JSON","type":"main","index":0}]]},"PATCH Script JSON":{"main":[[{"node":"Delete Prior Scenes","type":"main","index":0}]]},"Delete Prior Scenes":{"main":[[{"node":"Bulk Insert Scenes","type":"main","index":0}]]},"Bulk Insert Scenes":{"main":[[{"node":"PATCH Status Review","type":"main","index":0}]]},"PATCH Status Review":{"main":[[{"node":"Log Completed","type":"main","index":0}]]},"Collect Error":{"main":[[{"node":"PATCH Status Failed","type":"main","index":0}]]},"PATCH Status Failed":{"main":[[{"node":"Log Failed","type":"main","index":0}]]}},"authors":"Akinwunmi Akinrimisi","name":null,"description":null,"autosaved":false,"workflowPublishHistory":[{"createdAt":"2026-04-02T19:51:02.117Z","id":2638,"workflowId":"DzugaN9GtVpTznvs","versionId":"0531bcf7-96f9-4ee8-95a5-e87d7f34f49f","event":"activated","userId":"ab010feb-355c-4130-b354-4e929908258e"},{"createdAt":"2026-04-02T19:51:02.087Z","id":2637,"workflowId":"DzugaN9GtVpTznvs","versionId":"0531bcf7-96f9-4ee8-95a5-e87d7f34f49f","event":"deactivated","userId":"ab010feb-355c-4130-b354-4e929908258e"}]}}
+{
+  "name": "WF_SCRIPT_GENERATE \u2014 3-Pass Script Generation",
+  "nodes": [
+    {
+      "id": "wf-sg-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        208,
+        400
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "script/generate",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      },
+      "webhookId": "wf-script-generate-prod"
+    },
+    {
+      "id": "wf-sg-validate",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        400
+      ],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst topic_id = body.topic_id;\nconst project_id = body.project_id;\n\n// Auth check\nconst authHeader = input.headers?.authorization || '';\nconst expected = 'Bearer ' + $env.DASHBOARD_API_TOKEN;\nif (authHeader !== expected) {\n  throw new Error('Unauthorized');\n}\n\nif (!topic_id) throw new Error('topic_id is required');\n\nreturn [{ json: { topic_id, project_id } }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "wf-sg-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        880,
+        208
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Script generation started', topic_id: $json.topic_id }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "wf-sg-read-topic",
+      "name": "Read Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        400
+      ],
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $json.topic_id }}&select=*,avatars(*)",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-read-project",
+      "name": "Read Project",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1328,
+        400
+      ],
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Read Topic').first().json.project_id }}&select=*",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-patch-scripting",
+      "name": "PATCH Status Scripting",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1776,
+        400
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: \"scripting\", updated_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-log-started",
+      "name": "Log Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        400
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $(\"Validate Request\").first().json.project_id, topic_id: $(\"Validate Request\").first().json.topic_id, stage: \"script_generation\", action: \"started\", details: {} }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-build-visual-prompt",
+      "name": "Build Visual Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8272,
+        592
+      ],
+      "parameters": {
+        "jsCode": "const assembled = $('Assemble Script').first().json;\nconst combined_text = assembled.combined_text;\nconst topic = assembled.topic;\nconst project = assembled.project;\n\n// === MECHANICAL SPLIT: Split text at sentence boundaries into ~110-word chunks ===\n// Claude NEVER sees narration text. 100% preservation guaranteed.\n\nfunction splitIntoSentences(text) {\n  const cleaned = text.replace(/^#+\\s*/gm, '').replace(/\\[.*?\\]/g, '').replace(/\\*\\*/g, '').trim();\n  const raw = cleaned.split(/(?<=[.!?])\\s+(?=[A-Z\"\\u201C])|\\n\\n+/);\n  return raw.map(s => s.trim()).filter(s => s.length > 0);\n}\n\nfunction groupIntoChunks(sentences, targetWords) {\n  const chunks = [];\n  let current = [];\n  let currentWords = 0;\n  for (const sentence of sentences) {\n    const words = sentence.split(/\\s+/).length;\n    if (currentWords > 0 && currentWords + words > targetWords + 20) {\n      chunks.push(current.join(' '));\n      current = [sentence];\n      currentWords = words;\n    } else {\n      current.push(sentence);\n      currentWords += words;\n    }\n  }\n  if (current.length > 0) chunks.push(current.join(' '));\n  return chunks;\n}\n\nconst sentences = splitIntoSentences(combined_text);\nconst chunks = groupIntoChunks(sentences, 110);\n\nconst originalWords = combined_text.replace(/^#+\\s*/gm, '').replace(/\\[.*?\\]/g, '').replace(/\\*\\*/g, '').trim().split(/\\s+/).length;\nconst chunkWords = chunks.reduce((sum, c) => sum + c.split(/\\s+/).length, 0);\n\nconsole.log('Mechanical split: ' + chunks.length + ' chunks, ' + chunkWords + ' words (original: ' + originalWords + ')');\n\n// Build metadata-only prompt for Claude \u2014 send FULL narration for context\nconst chunkList = chunks.map((c, i) => 'CHUNK ' + (i+1) + ': ' + c).join('\\n\\n');\n\nconst metadataPrompt = 'Below are ' + chunks.length + ' text chunks from a documentary script about \"' + (topic.seo_title || topic.original_title) + '\".\\n\\nFor EACH chunk, generate ONLY:\\n1. image_prompt: 40-80 words, cinematic. Structure: [SUBJECT] + [ENVIRONMENT] + [LIGHTING] + [COMPOSITION] + [MOOD] + [DETAILS]. Be hyper-specific. People as silhouettes/hands/figures from behind. Include lighting direction. No text/words/signs in images.\\n2. emotional_beat: one of hook, tension, revelation, data, story, resolution, transition\\n3. chapter: a short chapter name grouping related scenes\\n\\nReturn ONLY a JSON array: [{\"scene_number\": 1, \"image_prompt\": \"...\", \"emotional_beat\": \"...\", \"chapter\": \"...\"}]\\n\\nDo NOT return or modify any narration text. I only need image_prompt, emotional_beat, and chapter for each chunk number.\\n\\n' + chunkList;\n\nreturn [{ json: {\n  chunks,\n  chunk_count: chunks.length,\n  original_words: originalWords,\n  chunk_words: chunkWords,\n  metadata_prompt: metadataPrompt,\n  topic_id: topic.id,\n  project_id: project.id,\n  combined_score: assembled.combined_score,\n  force_passed: assembled.force_passed,\n  attempt: assembled.attempt\n} }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "wf-sg-claude-visual",
+      "name": "Claude: Visual Assignment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8496,
+        592
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            },
+            {
+              "name": "anthropic-beta",
+              "value": "output-128k-2025-02-19"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: 'You are a scene segmentation and visual direction expert for YouTube documentaries. Always return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.visual_prompt }] }) }}",
+        "options": {
+          "timeout": 900000
+        },
+        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 32000, system: 'You are a visual direction expert for YouTube documentaries. Generate ONLY image prompts and metadata. Return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.metadata_prompt }] }) }}"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vlfOXwvIUlRYnr41",
+          "name": "Anthropic API Key"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "wf-sg-build-scenes",
+      "name": "Build Scenes Array",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8720,
+        592
+      ],
+      "parameters": {
+        "jsCode": "const visualResponse = $input.first().json;\nconst buildData = $('Build Visual Prompt').first().json;\nconst topic_id = buildData.topic_id;\nconst project_id = buildData.project_id;\nconst chunks = buildData.chunks;\nconst originalWords = buildData.original_words;\n\nif (visualResponse.error) {\n  throw new Error('Visual Assignment failed: ' + (visualResponse.error.message || JSON.stringify(visualResponse.error)));\n}\n\n// Parse Claude's metadata-only response\nlet metadata = [];\ntry {\n  const text = (visualResponse.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  const cleaned = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n  const s = cleaned.indexOf('[');\n  const e = cleaned.lastIndexOf(']');\n  if (s >= 0 && e > s) metadata = JSON.parse(cleaned.substring(s, e + 1));\n} catch(err) {\n  console.warn('Metadata parse failed, using defaults');\n}\n\n// Merge: mechanical narration chunks (100% preserved) + Claude metadata\nconst scenes_array = chunks.map((narration, i) => {\n  const meta = metadata.find(m => m.scene_number === i + 1) || metadata[i] || {};\n  return {\n    topic_id,\n    project_id,\n    scene_number: i + 1,\n    scene_id: 'scene_' + String(i + 1).padStart(3, '0'),\n    narration_text: narration,\n    image_prompt: meta.image_prompt || 'Documentary scene, cinematic lighting, moody atmosphere',\n    visual_type: 'static_image',\n    emotional_beat: meta.emotional_beat || 'story',\n    chapter: meta.chapter || '',\n    audio_status: 'pending',\n    image_status: 'pending',\n    clip_status: 'pending',\n    skipped: false\n  };\n});\n\nconst word_count = scenes_array.reduce((sum, s) => sum + s.narration_text.split(/\\s+/).length, 0);\nconst scene_count = scenes_array.length;\n\n// Verify 100% preservation\nconst preservationRatio = word_count / originalWords;\nconsole.log('Word count: ' + word_count + ' / ' + originalWords + ' = ' + (preservationRatio * 100).toFixed(1) + '% preserved');\nif (preservationRatio < 0.95) {\n  throw new Error('PRESERVATION FAILED: ' + word_count + ' / ' + originalWords + ' words (' + (preservationRatio * 100).toFixed(1) + '%). Mechanical split should be ~100%.');\n}\n\nconst script_json = JSON.stringify(scenes_array);\nconst script_metadata = JSON.stringify({\n  video_metadata: {\n    title: $('Assemble Script').first().json.topic.seo_title || $('Assemble Script').first().json.topic.original_title,\n    description: 'A detailed documentary about ' + ($('Assemble Script').first().json.topic.narrative_hook || ''),\n    tags: ['documentary', $('Assemble Script').first().json.project.niche || ''],\n    thumbnail_prompt: scenes_array[0]?.image_prompt || ''\n  },\n  generation_stats: { word_count, scene_count, quality_score: buildData.combined_score, force_passed: buildData.force_passed, attempt: buildData.attempt, original_words: originalWords, preservation_ratio: preservationRatio, method: 'mechanical_split_v1' }\n});\n\nreturn [{ json: { scenes_array, script_json, script_metadata, word_count, scene_count, topic_id, project_id, combined_score: buildData.combined_score, force_passed: buildData.force_passed, attempt: buildData.attempt } }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "wf-sg-patch-script",
+      "name": "PATCH Script JSON",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8944,
+        592
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ script_json: $json.script_json, script_metadata: $json.script_metadata, word_count: $json.word_count, scene_count: $json.scene_count, updated_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-delete-scenes",
+      "name": "Delete Prior Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9168,
+        592
+      ],
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/scenes?topic_id=eq.{{ $('Build Scenes Array').first().json.topic_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-insert-scenes",
+      "name": "Bulk Insert Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9392,
+        592
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Build Scenes Array').first().json.script_json }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-patch-review",
+      "name": "PATCH Status Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9616,
+        592
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Build Scenes Array').first().json.topic_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'review', script_review_status: 'pending', updated_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-log-completed",
+      "name": "Log Completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9840,
+        592
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $('Build Scenes Array').first().json.project_id, topic_id: $('Build Scenes Array').first().json.topic_id, stage: 'script_generation', action: 'completed', details: { word_count: $('Build Scenes Array').first().json.word_count, scene_count: $('Build Scenes Array').first().json.scene_count, quality_score: $('Build Scenes Array').first().json.combined_score, force_passed: $('Build Scenes Array').first().json.force_passed, attempt: $('Build Scenes Array').first().json.attempt } }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-collect-error",
+      "name": "Collect Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6704,
+        304
+      ],
+      "parameters": {
+        "jsCode": "const errData = $input.first().json;\nconst topic_id = errData.topic_id || $('Validate Request').first().json?.topic_id;\nconst project_id = errData.project_id || $('Validate Request').first().json?.project_id;\nconst error_message = errData.error_message || errData.message || 'Unknown error in script generation';\nreturn [{ json: { topic_id, project_id, error_message } }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "wf-sg-patch-failed",
+      "name": "PATCH Status Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6928,
+        304
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Validate Request').first().json.topic_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'failed', error_log: $json.error_message, updated_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "wf-sg-log-failed",
+      "name": "Log Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7152,
+        304
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $('Collect Error').first().json.project_id, topic_id: $('Collect Error').first().json.topic_id, stage: 'script_generation', action: 'failed', details: { error: $('Collect Error').first().json.error_message } }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QsqqFXtnLakNfVKR",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "id": "prep-avatar",
+      "name": "Prep & Read Avatar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst topicRaw = $('Read Topic').first().json;\nconst projRaw = $('Read Project').first().json;\nconst topic = Array.isArray(topicRaw) ? topicRaw[0] : topicRaw;\nconst project = Array.isArray(projRaw) ? projRaw[0] : projRaw;\nconst hdr = {'apikey': SRK, 'Authorization': 'Bearer ' + SRK};\n\n// Fetch avatar\nconst avResp = await fetch(SB + '/rest/v1/avatars?topic_id=eq.' + topic.id + '&select=*&limit=1', {headers: hdr});\nconst avatars = await avResp.json();\nconst avatar = avatars?.[0] || {};\n\n// === FETCH RESEARCH DATA ===\nlet researchBrief = '';\ntry {\n  // 1. Niche profile (blue ocean, audience pain points, competitor gaps)\n  const npResp = await fetch(SB + '/rest/v1/niche_profiles?project_id=eq.' + project.id + '&select=blue_ocean_opportunities,audience_pain_points,competitor_analysis&limit=1', {headers: hdr});\n  const np = (await npResp.json())?.[0];\n\n  // 2. YouTube video analyses (10x strategies, comment insights)\n  const yaResp = await fetch(SB + '/rest/v1/yt_video_analyses?project_id=eq.' + project.id + '&select=ten_x_strategy,blue_ocean_analysis,comment_insights,verdict&limit=10', {headers: hdr});\n  const analyses = await yaResp.json();\n\n  // 3. Research categories (top audience demands)\n  const rcResp = await fetch(SB + '/rest/v1/research_categories?project_id=eq.' + project.id + '&select=category_name,video_title_suggestion,ranking_score&order=ranking_score.desc&limit=10', {headers: hdr});\n  const categories = await rcResp.json();\n\n  // Compile research brief\n  const sections = [];\n\n  if (np) {\n    if (np.blue_ocean_opportunities) {\n      const bo = typeof np.blue_ocean_opportunities === 'string' ? np.blue_ocean_opportunities : JSON.stringify(np.blue_ocean_opportunities);\n      sections.push('BLUE OCEAN OPPORTUNITIES:\\n' + bo.substring(0, 1500));\n    }\n    if (np.audience_pain_points) {\n      const ap = typeof np.audience_pain_points === 'string' ? np.audience_pain_points : JSON.stringify(np.audience_pain_points);\n      sections.push('AUDIENCE PAIN POINTS (from Reddit/Quora/forums):\\n' + ap.substring(0, 1500));\n    }\n    if (np.competitor_analysis) {\n      const ca = typeof np.competitor_analysis === 'string' ? np.competitor_analysis : JSON.stringify(np.competitor_analysis);\n      sections.push('COMPETITOR GAPS:\\n' + ca.substring(0, 1000));\n    }\n  }\n\n  if (analyses && analyses.length > 0) {\n    const strategies = analyses.filter(a => a.ten_x_strategy).map(a => {\n      const s = a.ten_x_strategy;\n      return '- ' + (s.recommended_angle || s.description || JSON.stringify(s).substring(0, 200));\n    }).join('\\n');\n    if (strategies) sections.push('10x STRATEGIES FROM COMPETITOR ANALYSIS:\\n' + strategies.substring(0, 1500));\n\n    const comments = analyses.filter(a => a.comment_insights).map(a => {\n      const ci = a.comment_insights;\n      const demands = ci.audience_demands || ci.top_demands || ci.key_themes || [];\n      return Array.isArray(demands) ? demands.join(', ') : String(demands).substring(0, 300);\n    }).filter(c => c).join('; ');\n    if (comments) sections.push('AUDIENCE DEMANDS (from YouTube comments):\\n' + comments.substring(0, 1000));\n\n    const boAnalysis = analyses.filter(a => a.blue_ocean_analysis).map(a => {\n      const b = a.blue_ocean_analysis;\n      return (b.gaps_and_opportunities || b.untapped || JSON.stringify(b)).substring(0, 300);\n    }).join('; ');\n    if (boAnalysis) sections.push('BLUE OCEAN GAPS FROM VIDEO ANALYSIS:\\n' + boAnalysis.substring(0, 1000));\n  }\n\n  if (categories && categories.length > 0) {\n    const cats = categories.slice(0, 5).map(c => '- ' + (c.category_name || '') + ': ' + (c.video_title_suggestion || '')).join('\\n');\n    sections.push('TOP RESEARCH CATEGORIES:\\n' + cats);\n  }\n\n  // CF16: Audience Memory injection into Pass 1\n  try {\n    const aiResp = await fetch(SB + '/rest/v1/audience_insights?project_id=eq.' + project.id + '&select=audience_context_block&order=week_of.desc&limit=1', {headers: hdr});\n    const aiRows = await aiResp.json();\n    if (aiRows && aiRows[0] && aiRows[0].audience_context_block) {\n      sections.push('AUDIENCE CONTEXT (from weekly comment analysis):\n' + aiRows[0].audience_context_block);\n    }\n  } catch (e2) {}\n\n  if (sections.length > 0) {\n    researchBrief = '=== RESEARCH BRIEF (use this data to inform the script) ===\\n\\n' + sections.join('\\n\\n') + '\\n\\n=== END RESEARCH BRIEF ===';\n    console.log('Research brief compiled: ' + sections.length + ' sections, ' + researchBrief.length + ' chars');\n  } else {\n    console.log('No research data found for project ' + project.id);\n  }\n} catch (e) {\n  console.warn('Research fetch failed (non-fatal): ' + e.message);\n}\n\n\n// === BUILD INTELLIGENCE BLOCK FROM PROJECT DATA ===\nconst ctx = project.channel_analysis_context || {};\nconst scriptTargets = project.script_depth_targets;\nconst topicsToAvoid = project.topics_to_avoid || [];\nconst recAngle = project.recommended_angle || '';\n\nlet intelligence_block = '';\nif (Object.keys(ctx).length > 0 || topicsToAvoid.length > 0 || recAngle) {\n  intelligence_block += '\\n\\n=== COMPETITIVE INTELLIGENCE FOR SCRIPTING ===\\n';\n  if (recAngle) {\n    intelligence_block += '\\nCHANNEL POSITIONING: ' + recAngle + '\\nWrite from this angle.\\n';\n  }\n  if (scriptTargets) {\n    intelligence_block += '\\nSCRIPT DEPTH TARGETS: ' + JSON.stringify(scriptTargets) + '\\nOur 3-pass system should EXCEED these.\\n';\n  }\n  if (ctx.comment_pain_points && ctx.comment_pain_points.length > 0) {\n    intelligence_block += '\\nAUDIENCE PAIN POINTS TO ADDRESS:\\n';\n    ctx.comment_pain_points.forEach(p => { intelligence_block += '- ' + p + '\\n'; });\n  }\n  if (ctx.comment_content_gaps && ctx.comment_content_gaps.length > 0) {\n    intelligence_block += '\\nCONTENT GAPS TO FILL:\\n';\n    ctx.comment_content_gaps.forEach(g => { intelligence_block += '- ' + g + '\\n'; });\n  }\n  if (ctx.comment_top_questions && ctx.comment_top_questions.length > 0) {\n    intelligence_block += '\\nTOP VIEWER QUESTIONS TO ANSWER:\\n';\n    ctx.comment_top_questions.forEach(q => { intelligence_block += '- ' + q + '\\n'; });\n  }\n  if (topicsToAvoid.length > 0) {\n    intelligence_block += '\\nANGLES TO AVOID (saturated):\\n';\n    topicsToAvoid.forEach(t => { intelligence_block += '- ' + t + '\\n'; });\n  }\n  if (ctx.differentiation_strategy) {\n    intelligence_block += '\\nDIFFERENTIATION: ' + (typeof ctx.differentiation_strategy === 'string' ? ctx.differentiation_strategy : JSON.stringify(ctx.differentiation_strategy)) + '\\n';\n  }\n}\n\n// Additional intelligence (always inject)\nconst scriptRef = project.script_reference_data;\nif (scriptRef) {\n  intelligence_block += \nCOMPETITOR SCRIPTING STYLES:\n + JSON.stringify(scriptRef) + \n;\n}\nconst revProj = project.revenue_projections;\nif (revProj) {\n  intelligence_block += \nREVENUE CONTEXT:  + JSON.stringify(revProj) + \n;\n}\nconst viabScore = project.niche_viability_score;\nconst viabVerdict = project.niche_viability_verdict;\nif (viabScore || viabVerdict) {\n  intelligence_block += \nNICHE VIABILITY:  + (viabScore || N/A) + /100 -  + (viabVerdict || N/A) + \n;\n}\nconst titleDna = project.title_dna_patterns;\nif (titleDna) {\n  intelligence_block += \nTITLE DNA PATTERNS:  + JSON.stringify(titleDna) + \n;\n}\nconst thumbDna = project.thumbnail_dna_patterns;\nif (thumbDna) {\n  intelligence_block += \nTHUMBNAIL VISUAL DNA:  + JSON.stringify(thumbDna) + \n;\n}\nif (ctx.blue_ocean_gaps && ctx.blue_ocean_gaps.length > 0) {\n  intelligence_block += \nBLUE-OCEAN GAPS TO EXPLOIT:\n;\n  ctx.blue_ocean_gaps.forEach(function(g) {\n    var label = typeof g === string ? g : (g.topic || g.opportunity || JSON.stringify(g));\n    intelligence_block += -  + label + \n;\n  });\n}\nif (ctx.content_pillars && ctx.content_pillars.length > 0) {\n  intelligence_block += \nCONTENT PILLARS:  + ctx.content_pillars.join(, ) + \n;\n}\nif (ctx.moat_indicators) {\n  intelligence_block += \nMOAT OPPORTUNITIES:  + JSON.stringify(ctx.moat_indicators) + \n;\n}\nif (ctx.comment_requested_topics && ctx.comment_requested_topics.length > 0) {\n  intelligence_block += \nTOPICS VIEWERS REQUESTED:\n;\n  ctx.comment_requested_topics.forEach(function(t) { intelligence_block += -  + t + \n; });\n}\n// === END INTELLIGENCE BLOCK ===\n\nreturn [{json: {topic, project, avatar, pass_number: 1, research_brief: researchBrief, intelligence_block: intelligence_block}}];"
+      }
+    },
+    {
+      "id": "call-p1",
+      "name": "Call Pass 1",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        2620,
+        400
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CRC9USwaGgk7x6xN",
+          "mode": "id"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "handle-p1",
+      "name": "Handle Pass 1 + Prep Pass 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2776,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const pass1 = $input.first().json;\nconst prep = $('Prep & Read Avatar').first().json;\nconst {topic, project, avatar, research_brief} = prep;\nconst SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nconst passScores = {pass_1: {attempts: pass1.attempt, final_score: pass1.composite_score, verdict: pass1.verdict, scores: pass1.scores}};\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topic.id, {\n  method: 'PATCH',\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},\n  body: JSON.stringify({script_pass_scores: passScores})\n});\n\nreturn [{json: {topic, project, avatar, pass_number: 2, pass1_output: pass1.pass_text, pass1_scores: passScores, research_brief: research_brief || ''}}];"
+      }
+    },
+    {
+      "id": "call-p2",
+      "name": "Call Pass 2",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        3052,
+        400
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CRC9USwaGgk7x6xN",
+          "mode": "id"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "extract-meta",
+      "name": "Extract Metadata + Prep Pass 3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3328,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const pass2 = $input.first().json;\nconst handleP1 = $('Handle Pass 1 + Prep Pass 2').first().json;\nconst {topic, project, avatar, pass1_output, pass1_scores, research_brief} = handleP1;\nconst SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY, AK = $env.ANTHROPIC_API_KEY;\n\nconst passScores = {...pass1_scores, pass_2: {attempts: pass2.attempt, final_score: pass2.composite_score, verdict: pass2.verdict, scores: pass2.scores}};\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topic.id, {\n  method: 'PATCH',\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},\n  body: JSON.stringify({script_pass_scores: passScores})\n});\n\nconst pResp = await fetch(SB + '/rest/v1/system_prompts?prompt_type=eq.script_metadata_extractor&is_active=eq.true&select=prompt_text', {\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK}\n});\nconst extractPromptRaw = ((await pResp.json())?.[0]?.prompt_text) || '';\nconst extractPrompt = extractPromptRaw || 'Read the following script pass and extract:\\n1. A 200-word summary of the content covered, argument structure, and emotional arc\\n2. The primary case study character name and a 1-sentence description of where they are in their arc\\n3. A list of ALL metaphors and analogies used\\n4. A list of ALL reassurance phrases used\\n5. A list of any other distinctive phrases that should not be repeated\\n\\nRESPOND IN JSON:\\n{\"summary\": \"\", \"character_name\": \"\", \"character_status\": \"\", \"metaphors_used\": [], \"reassurance_phrases_used\": [], \"notable_phrases\": []}';\n\nasync function extract(text) {\n  const prompt = extractPrompt + '\\n\\nSCRIPT:\\n---\\n' + text.substring(0, 60000) + '\\n---';\n  const r = await fetch('https://api.anthropic.com/v1/messages', {\n    method: 'POST',\n    headers: {'Content-Type': 'application/json', 'x-api-key': AK, 'anthropic-version': '2023-06-01'},\n    body: JSON.stringify({model: 'claude-sonnet-4-20250514', max_tokens: 4096, messages: [{role: 'user', content: prompt}]})\n  });\n  const d = await r.json();\n  const txt = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  try {\n    const c = txt.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n    return JSON.parse(c.substring(c.indexOf('{'), c.lastIndexOf('}') + 1));\n  } catch (e) {\n    return {summary: txt.substring(0, 400), character_name: '', character_status: '', metaphors_used: [], reassurance_phrases_used: [], notable_phrases: []};\n  }\n}\n\nconst [p1Meta, p2Meta] = await Promise.all([extract(pass1_output), extract(pass2.pass_text)]);\n\nreturn [{json: {\n  topic, project, avatar, pass_number: 3,\n  pass1_summary: p1Meta.summary || '',\n  pass2_summary: p2Meta.summary || '',\n  character_name: p1Meta.character_name || '',\n  character_status: p2Meta.character_status || p1Meta.character_status || '',\n  metaphors_used: [...(p1Meta.metaphors_used || []), ...(p2Meta.metaphors_used || [])],\n  reassurance_phrases: [...(p1Meta.reassurance_phrases_used || []), ...(p2Meta.reassurance_phrases_used || [])],\n  notable_phrases: [...(p1Meta.notable_phrases || []), ...(p2Meta.notable_phrases || [])],\n  pass1_text: pass1_output, pass2_text: pass2.pass_text, passScores,\n  research_brief: research_brief || ''\n}}];"
+      }
+    },
+    {
+      "id": "call-p3",
+      "name": "Call Pass 3",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        3604,
+        400
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CRC9USwaGgk7x6xN",
+          "mode": "id"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "assemble",
+      "name": "Assemble Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3880,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const pass3 = $input.first().json;\nconst metaPrep = $('Extract Metadata + Prep Pass 3').first().json;\nconst {topic, project, pass1_text, pass2_text, passScores} = metaPrep;\nconst SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nconst combined_text = pass1_text + '\\n\\n' + pass2_text + '\\n\\n' + pass3.pass_text;\nconst word_count = combined_text.split(/\\s+/).length;\n\nconst allScores = {...passScores, pass_3: {attempts: pass3.attempt, final_score: pass3.composite_score, verdict: pass3.verdict, scores: pass3.scores}};\nconst avgScore = ((allScores.pass_1?.final_score || 0) + (allScores.pass_2?.final_score || 0) + (allScores.pass_3?.final_score || 0)) / 3;\n\nconst scriptMeta = {\n  video_title: topic.seo_title || topic.original_title,\n  niche_category: project.niche,\n  total_word_count: word_count,\n  estimated_duration_minutes: Math.round(word_count / 200),\n  pass_scores: allScores,\n  total_api_calls: ((allScores.pass_1?.attempts || 1) + (allScores.pass_2?.attempts || 1) + (allScores.pass_3?.attempts || 1)) * 2 + 2,\n  manual_review_flag: [allScores.pass_1, allScores.pass_2, allScores.pass_3].some(p => p?.verdict === 'FORCE_PASS' && (p?.final_score || 0) < 5),\n  metaphors_used: metaPrep.metaphors_used || [],\n  case_study_character: metaPrep.character_name || ''\n};\n\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topic.id, {\n  method: 'PATCH',\n  headers: {'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},\n  body: JSON.stringify({\n    script_json: {combined_text, pass_1: pass1_text, pass_2: pass2_text, pass_3: pass3.pass_text},\n    script_quality_score: Math.round(avgScore * 10) / 10,\n    script_evaluation: scriptMeta,\n    script_pass_scores: allScores,\n    script_metadata_extended: scriptMeta,\n    word_count,\n    scene_count: null\n  })\n});\n\nreturn [{json: {combined_text, topic, project, word_count, script_metadata: scriptMeta}}];"
+      }
+    },
+    {
+      "id": "chain-audience-ctx",
+      "name": "Fetch Audience Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2360,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\nconst project_id = items[0].json.project_id || items[0].json.project?.id;\nconst SUPABASE_URL = $env.SUPABASE_URL || 'https://supabase.operscale.cloud';\nconst SUPABASE_KEY = $env.SUPABASE_SERVICE_ROLE_KEY;\nlet audience_context = '';\ntry {\n  const resp = await fetch(\n    `${SUPABASE_URL}/rest/v1/audience_insights?project_id=eq.${project_id}&order=week_of.desc&limit=1&select=audience_context_block`,\n    { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }\n  );\n  const rows = await resp.json();\n  if (rows?.[0]?.audience_context_block) {\n    audience_context = rows[0].audience_context_block;\n  }\n} catch (e) {}\nreturn items.map(item => ({ json: { ...item.json, audience_context } }));"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Topic": {
+      "main": [
+        [
+          {
+            "node": "Read Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Project": {
+      "main": [
+        [
+          {
+            "node": "PATCH Status Scripting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PATCH Status Scripting": {
+      "main": [
+        [
+          {
+            "node": "Log Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Started": {
+      "main": [
+        [
+          {
+            "node": "Prep & Read Avatar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep & Read Avatar": {
+      "main": [
+        [
+          {
+            "node": "Fetch Audience Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Pass 1": {
+      "main": [
+        [
+          {
+            "node": "Handle Pass 1 + Prep Pass 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Pass 1 + Prep Pass 2": {
+      "main": [
+        [
+          {
+            "node": "Call Pass 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Pass 2": {
+      "main": [
+        [
+          {
+            "node": "Extract Metadata + Prep Pass 3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Metadata + Prep Pass 3": {
+      "main": [
+        [
+          {
+            "node": "Call Pass 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Pass 3": {
+      "main": [
+        [
+          {
+            "node": "Assemble Script",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble Script": {
+      "main": [
+        [
+          {
+            "node": "Build Visual Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Visual Prompt": {
+      "main": [
+        [
+          {
+            "node": "Claude: Visual Assignment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Visual Assignment": {
+      "main": [
+        [
+          {
+            "node": "Build Scenes Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Scenes Array": {
+      "main": [
+        [
+          {
+            "node": "PATCH Script JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PATCH Script JSON": {
+      "main": [
+        [
+          {
+            "node": "Delete Prior Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Prior Scenes": {
+      "main": [
+        [
+          {
+            "node": "Bulk Insert Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bulk Insert Scenes": {
+      "main": [
+        [
+          {
+            "node": "PATCH Status Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PATCH Status Review": {
+      "main": [
+        [
+          {
+            "node": "Log Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Error": {
+      "main": [
+        [
+          {
+            "node": "PATCH Status Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PATCH Status Failed": {
+      "main": [
+        [
+          {
+            "node": "Log Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Audience Context": {
+      "main": [
+        [
+          {
+            "node": "Call Pass 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

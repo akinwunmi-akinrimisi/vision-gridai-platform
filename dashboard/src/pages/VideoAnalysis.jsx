@@ -53,7 +53,7 @@ function BulletList({ items }) {
       {items.map((item, i) => (
         <li key={i} className="text-xs text-muted-foreground flex gap-2">
           <span className="text-primary mt-0.5">-</span>
-          <span>{item}</span>
+          <span>{typeof item === 'string' ? item : item.question || item.topic || item.pain_point || item.gap || item.name || JSON.stringify(item)}</span>
         </li>
       ))}
     </ul>

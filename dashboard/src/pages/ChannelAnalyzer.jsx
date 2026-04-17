@@ -591,7 +591,7 @@ function ChannelDetailPanel({ analysis, onClose }) {
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
                     {analysis.comment_insights.content_gaps.map((g, i) => (
-                      <Badge key={i} variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-400">{g}</Badge>
+                      <Badge key={i} variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-400">{typeof g === 'string' ? g : g.gap}</Badge>
                     ))}
                   </div>
                 </div>
@@ -604,7 +604,7 @@ function ChannelDetailPanel({ analysis, onClose }) {
                   </h3>
                   <ul className="space-y-1">
                     {analysis.comment_insights.pain_points.map((p, i) => (
-                      <li key={i} className="text-xs text-muted-foreground">&bull; {p}</li>
+                      <li key={i} className="text-xs text-muted-foreground">&bull; {typeof p === 'string' ? p : p.pain_point}</li>
                     ))}
                   </ul>
                 </div>
@@ -617,7 +617,7 @@ function ChannelDetailPanel({ analysis, onClose }) {
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
                     {analysis.comment_insights.requested_topics.map((t, i) => (
-                      <Badge key={i} variant="secondary" className="text-[10px] bg-yellow-500/10 text-yellow-400">{t}</Badge>
+                      <Badge key={i} variant="secondary" className="text-[10px] bg-yellow-500/10 text-yellow-400">{typeof t === 'string' ? t : t.topic}</Badge>
                     ))}
                   </div>
                 </div>
@@ -630,7 +630,7 @@ function ChannelDetailPanel({ analysis, onClose }) {
                   </h3>
                   <ul className="space-y-1">
                     {analysis.comment_insights.top_questions.map((q, i) => (
-                      <li key={i} className="text-xs text-muted-foreground">&bull; {q}</li>
+                      <li key={i} className="text-xs text-muted-foreground">&bull; {typeof q === 'string' ? q : q.question}</li>
                     ))}
                   </ul>
                 </div>
@@ -643,7 +643,7 @@ function ChannelDetailPanel({ analysis, onClose }) {
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
                     {analysis.comment_insights.competitor_mentions.map((c, i) => (
-                      <Badge key={i} variant="outline" className="text-[10px]">{c}</Badge>
+                      <Badge key={i} variant="outline" className="text-[10px]">{typeof c === 'string' ? c : c.name}</Badge>
                     ))}
                   </div>
                 </div>
