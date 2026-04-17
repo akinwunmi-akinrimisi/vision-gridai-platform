@@ -1167,13 +1167,19 @@ function NicheViabilitySection({ report, onCreateProject, onRunViability, isRunn
           <div className="grid grid-cols-3 gap-3">
             {['10k', '50k', '100k'].map((tier) => {
               const key = `at_${tier}_subs`;
-              const val = revenueProjections[key] || revenueProjections[tier];
+              const raw = revenueProjections[key] || revenueProjections[tier];
+              const amount = typeof raw === 'object' && raw !== null ? raw.monthly_usd : raw;
+              const reasoning = typeof raw === 'object' && raw !== null ? raw.reasoning : null;
               return (
-                <div key={tier} className="bg-card border border-border/50 rounded-lg p-3 text-center">
+                <div key={tier} className="bg-card border border-border/50 rounded-lg p-3 text-center group relative">
                   <p className="text-[10px] text-muted-foreground">{tier.toUpperCase()} subs</p>
                   <p className="text-lg font-bold text-emerald-400 tabular-nums">
-                    {val != null ? `$${typeof val === 'number' ? val.toLocaleString() : val}` : '--'}
+                    {amount != null ? `$${Number(amount).toLocaleString()}` : '--'}
                   </p>
+                  <p className="text-[10px] text-muted-foreground">/month</p>
+                  {reasoning && (
+                    <p className="mt-1.5 text-[9px] text-muted-foreground/70 leading-relaxed line-clamp-3">{reasoning}</p>
+                  )}
                 </div>
               );
             })}
