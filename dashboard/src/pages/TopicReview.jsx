@@ -7,6 +7,7 @@ import { webhookCall } from '../lib/api';
 import PageHeader from '../components/shared/PageHeader';
 import TopicCard from '../components/topics/TopicCard';
 import TopicSummaryBar from '../components/topics/TopicSummaryBar';
+import TopicRegisterGate from '../components/topics/TopicRegisterGate';
 import TopicBulkBar from '../components/topics/TopicBulkBar';
 import RefinePanel from '../components/topics/RefinePanel';
 import IntelligenceScorePanel from '../components/topics/IntelligenceScorePanel';
@@ -306,6 +307,9 @@ export default function TopicReview() {
 
       {/* Summary bar */}
       <TopicSummaryBar {...counts} />
+
+      {/* Gate 1: Register confirmation — appears only when pending topics have register_recommendations */}
+      <TopicRegisterGate topics={topics} projectId={projectId} />
 
       {/* Intelligence score panel */}
       <IntelligenceScorePanel
