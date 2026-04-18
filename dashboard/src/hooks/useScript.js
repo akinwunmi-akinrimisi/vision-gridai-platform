@@ -33,32 +33,26 @@ export function useScript(topicId) {
 
       if (error) throw error;
 
-      // Compute live scene progress from actual scene rows
-      const { data: sceneCounts } = await supabase
-        .rpc('get_scene_progress', { p_topic_id: topicId })
-        .single();
+      // Compute live scene progress from actual scene rows.
+      // (ISSUE-004 2026-04-18: previously tried an RPC that doesn't exist — dead code removed.)
+      const { data: scenes } = await supabase
+        .from('scenes')
+        .select('audio_status, image_status, clip_status')
+        .eq('topic_id', topicId);
 
-      // Fallback: query scene counts directly if RPC doesn't exist
-      if (!sceneCounts) {
-        const { data: scenes } = await supabase
-          .from('scenes')
-          .select('audio_status, image_status, clip_status')
-          .eq('topic_id', topicId);
+      if (scenes && scenes.length > 0) {
+        const total = scenes.length;
+        const audioUploaded = scenes.filter(s => s.audio_status === 'uploaded' || s.audio_status === 'generated').length;
+        const imagesUploaded = scenes.filter(s => s.image_status === 'uploaded').length;
+        const imagesFailed = scenes.filter(s => s.image_status === 'failed').length;
+        const clipsUploaded = scenes.filter(s => s.clip_status === 'uploaded' || s.clip_status === 'complete').length;
 
-        if (scenes && scenes.length > 0) {
-          const total = scenes.length;
-          const audioUploaded = scenes.filter(s => s.audio_status === 'uploaded' || s.audio_status === 'generated').length;
-          const imagesUploaded = scenes.filter(s => s.image_status === 'uploaded').length;
-          const imagesFailed = scenes.filter(s => s.image_status === 'failed').length;
-          const clipsUploaded = scenes.filter(s => s.clip_status === 'uploaded' || s.clip_status === 'complete').length;
-
-          topic._sceneProgress = {
-            total,
-            audio: { done: audioUploaded, total, pct: Math.round((audioUploaded / total) * 100) },
-            images: { done: imagesUploaded, failed: imagesFailed, total, pct: Math.round((imagesUploaded / total) * 100) },
-            clips: { done: clipsUploaded, total, pct: Math.round((clipsUploaded / total) * 100) },
-          };
-        }
+        topic._sceneProgress = {
+          total,
+          audio: { done: audioUploaded, total, pct: Math.round((audioUploaded / total) * 100) },
+          images: { done: imagesUploaded, failed: imagesFailed, total, pct: Math.round((imagesUploaded / total) * 100) },
+          clips: { done: clipsUploaded, total, pct: Math.round((clipsUploaded / total) * 100) },
+        };
       }
 
       return topic;
