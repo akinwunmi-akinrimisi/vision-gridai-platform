@@ -21,6 +21,7 @@ import SceneDetailPanel from '../components/production/SceneDetailPanel';
 import ErrorLogModal from '../components/production/ErrorLogModal';
 import CostEstimateDialog from '../components/production/CostEstimateDialog';
 import CostCalculator from '../components/production/CostCalculator';
+import RegisterSelector from '../components/production/RegisterSelector';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,6 +81,13 @@ export default function ProductionMonitor() {
     return topics.find((t) =>
       t.pipeline_stage === 'cost_selection' ||
       (t.scene_count > 0 && !t.cost_option_selected_at && (t.status === 'segmented' || t.pipeline_stage === 'segmented'))
+    ) || null;
+  }, [topics]);
+
+  // Topics waiting at the register selector gate: mode picked, register not yet picked.
+  const registerGateTopic = useMemo(() => {
+    return topics.find((t) =>
+      t.pipeline_stage === 'register_selection' && !t.register_selected_at
     ) || null;
   }, [topics]);
 
@@ -242,6 +250,14 @@ export default function ProductionMonitor() {
           topicId={costGateTopic.id}
           projectId={projectId}
           sceneCount={costGateTopic.scene_count}
+        />
+      )}
+
+      {/* REGISTER SELECTOR GATE — shown after mode picked, before scene classification */}
+      {registerGateTopic && (
+        <RegisterSelector
+          topicId={registerGateTopic.id}
+          projectId={projectId}
         />
       )}
 

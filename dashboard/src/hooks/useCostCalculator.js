@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { webhookCall } from '../lib/api';
 import { toast } from 'sonner';
 
 /**
@@ -15,10 +14,10 @@ const VIDEO_COST = 2.419;
  * All scenes get images. Video cost is additional for video scenes.
  */
 const RATIO_OPTIONS = [
-  { label: '100% / 0%', imageRatio: 1.0, videoRatio: 0.0 },
-  { label: '95% / 5%', imageRatio: 0.95, videoRatio: 0.05 },
-  { label: '90% / 10%', imageRatio: 0.90, videoRatio: 0.10 },
-  { label: '85% / 15%', imageRatio: 0.85, videoRatio: 0.15 },
+  { label: '100% / 0%', imageRatio: 1.0, videoRatio: 0.0, ratioKey: '100_0', mode: 'PURE_STATIC' },
+  { label: '95% / 5%', imageRatio: 0.95, videoRatio: 0.05, ratioKey: '95_5', mode: 'LIGHT_MOTION' },
+  { label: '90% / 10%', imageRatio: 0.90, videoRatio: 0.10, ratioKey: '90_10', mode: 'BALANCED' },
+  { label: '85% / 15%', imageRatio: 0.85, videoRatio: 0.15, ratioKey: '85_15', mode: 'KINETIC' },
 ];
 
 /**
@@ -81,15 +80,18 @@ export function useCostCalculator(topicId, projectId) {
       if (!option) throw new Error('Invalid option selected');
 
       // 1. PATCH topics with cost selection fields
+      // NOTE: pipeline_stage='register_selection' hands off to RegisterSelector next.
+      // Scene classification no longer fires here — it runs after register pick.
       const { error: patchError } = await supabase
         .from('topics')
         .update({
-          video_ratio: option.videoRatio,
+          video_ratio: option.ratioKey,
+          production_mode: option.mode,
           estimated_image_cost: option.imageCost,
           estimated_video_cost: option.videoCost,
           estimated_total_media_cost: option.totalCost,
           cost_option_selected_at: new Date().toISOString(),
-          pipeline_stage: 'cost_selected',
+          pipeline_stage: 'register_selection',
         })
         .eq('id', topicId);
 
@@ -102,11 +104,13 @@ export function useCostCalculator(topicId, projectId) {
           topic_id: topicId,
           project_id: projectId,
           scene_count: sceneCount,
-          selected_ratio: option.videoRatio,
+          selected_ratio: option.ratioKey,
           options_snapshot: options.map((o) => ({
             label: o.label,
             imageRatio: o.imageRatio,
             videoRatio: o.videoRatio,
+            ratioKey: o.ratioKey,
+            mode: o.mode,
             imageCount: o.imageCount,
             videoCount: o.videoCount,
             imageCost: o.imageCost,
@@ -120,22 +124,11 @@ export function useCostCalculator(topicId, projectId) {
         console.warn('Cost snapshot insert failed:', insertError.message);
       }
 
-      // 3. Call webhook to trigger scene classification and resume pipeline
-      const result = await webhookCall('scene-classify', {
-        topic_id: topicId,
-        video_ratio: option.videoRatio,
-        scene_count: sceneCount,
-      }, { timeoutMs: 60_000 });
-
-      return result;
+      return { success: true, mode: option.mode };
     },
 
     onSuccess: (result) => {
-      if (result?.success === false) {
-        toast.error(result.error || 'Failed to start scene classification');
-        return;
-      }
-      toast.success('Cost option confirmed — scene classification started');
+      toast.success(`Mode ${result.mode} selected — pick a production register next`);
     },
 
     onError: (err) => {
