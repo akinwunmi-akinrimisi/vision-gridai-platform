@@ -1,0 +1,31 @@
+# Prompt snapshot
+# Format per row: table | prompt_type | version | project_id | sha256(prompt_text)
+# Plus: sha256 of each Grand Master .md source file
+# Any change here = drift that requires explicit 'update' acceptance.
+
+## system_prompts (active, script-related)
+system_prompts | script_evaluator | v1 | (null) | 63ffb6cd4518bf4f2eebbcb9999694eb90cc895a900a3407fb2244ffba9ebc8c
+system_prompts | script_pass1 | v1 | (null) | c89f38376bfc8144eeb2d7b46752f0c1ce9b21baf616eff7c87be92b0a95ef9b
+system_prompts | script_pass2 | v1 | (null) | c22ccfb3f76187433140850b2ac6eae02a07e09a55d80d70d33175ef6011c44c
+system_prompts | script_pass3 | v1 | (null) | 43fffcb9f3c2cc6905a22eaf991d90ea76ffae2ed955ffceb6b07db243fc44e2
+system_prompts | script_retry_template | v1 | (null) | b1b6a4749797b525f3294efab3ed84e869cf79110090d0cda118b072287f5c02
+system_prompts | script_system_prompt | v1 | (null) | 6e405dbd1a4f647ef529aace7ab167390a222d8d671130bd0555a93cbc7e8409
+
+## prompt_configs (active, all prompt_types and projects)
+prompt_configs | evaluator | v2 | 75eb2712-ef3e-47b7-b8db-5be3740233ff | 159323a6555e3a955a9f67a181569f74105d34b9dece2ae4efdf927365a491ca
+prompt_configs | scene_segmenter | v1 | 75eb2712-ef3e-47b7-b8db-5be3740233ff | 683ab5ed94a84b4b033d7439879a3c4df990a881c7856419bf880822f59858f2
+prompt_configs | scene_segmenter | v1 | 7e714a11-c1f5-4d80-8a14-99b549052612 | 43b67a8fd2c81375f13cdfecbf400a1d704c71748eeac73724a4bfe6240ea1ba
+prompt_configs | scene_segmenter | v1 | 7e8a4e5e-685c-473b-a1bd-653b61f22814 | da964706ba05adff49280f47f66dbdb90bd9161c7925256ffee6c0f030d49671
+prompt_configs | scene_segmenter | v1 | e1caa170-75ca-4a24-943d-3963d5b31ad2 | 26c6618e814704add557f3415bc236459a30373eba90e5a4929e5182213aa938
+prompt_configs | script_pass1 | v2 | 75eb2712-ef3e-47b7-b8db-5be3740233ff | 7e6c7d263cc7f77348bd0a0c5db68b3cc2343840227f426d115786a7864a3e83
+prompt_configs | script_pass2 | v2 | 75eb2712-ef3e-47b7-b8db-5be3740233ff | 5b509459f6a4567582e267da6d3a66933af840c1d19262d3a5d309085b92b0fb
+prompt_configs | script_pass3 | v2 | 75eb2712-ef3e-47b7-b8db-5be3740233ff | ceeaf3e977ce86635707f6a30e6b480a1652a910baad23a0285da7a62b86eff7
+prompt_configs | topic_generator | v1 | 75eb2712-ef3e-47b7-b8db-5be3740233ff | 52a1c8861660aa669c5391ccec41cd24db9ab27340563ee4b464d0a8af826a9c
+prompt_configs | visual_director | v1 | 75eb2712-ef3e-47b7-b8db-5be3740233ff | 21f7f14064cbcff684b930aa385df78d4da80683d925101c3737ea221234ae69
+prompt_configs | visual_director | v1 | 7e714a11-c1f5-4d80-8a14-99b549052612 | bc328b5f6fa27771cb9a436859efa262d41223356239226a64c8887c1b6c4661
+prompt_configs | visual_director | v1 | 7e8a4e5e-685c-473b-a1bd-653b61f22814 | e6d0451b2056c639e674696501e260f3e01f05d7648d543b56348f14ebab16b7
+prompt_configs | visual_director | v1 | e1caa170-75ca-4a24-943d-3963d5b31ad2 | 9b803c77ce8e02362d08b974d2f89080d6e3154f3b9a7c76cbe23a3244e62949
+
+## Grand Master source files (SHA256 of raw file content, LF-normalised)
+Grand_Master_Prompt_Topic_Generator_v3.md | 475f0fec5434fd4981e25b0173508eb8cb25b0d0f47941b12d06558349130289
+Grand_Master_Prompt_Script_Generator_v1.md | a7f7f42aec44e9289e39aaca74d4d1e9f08eadd30cacb4ef0773d142a98813fd

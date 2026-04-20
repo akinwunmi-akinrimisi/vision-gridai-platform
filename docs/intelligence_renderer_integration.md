@@ -1,24 +1,42 @@
 # Intelligence Renderer — Workflow Integration Guide
 
-Migration `028_intelligence_renderer.sql` is live. This document explains how
-to migrate the 3 remaining downstream workflows to consume the centralised RPC
-`render_project_intelligence(project_id, stage)`.
+Migrations `028_intelligence_renderer.sql` + `029_intelligence_renderer_v2.sql`
+are live. This document is the authoritative reference for the
+`render_project_intelligence(project_id, stage)` RPC and the safeguards that
+prevent intelligence from ever dropping between the data layer and Claude.
 
 ## Why this exists
 
-Prior to migration 028, every downstream workflow (`WF_TOPICS_GENERATE`,
-`WF_SCRIPT_GENERATE` → `WF_SCRIPT_PASS`, `WF_VIDEO_METADATA`) hand-assembled an
+Prior to migration 028, every downstream workflow hand-assembled an
 "intelligence block" from cached project columns. Each assembly was imperative
-("pick fields A, B, C by name"), so any new intelligence column added upstream
-(viability score, DNA patterns, etc.) was silently dropped until someone
-manually updated every consumer. We fixed this class of bug four times
-(`0cb601a`, `7ef85e9`, `b6eae76`, `7d10bae`) and it kept returning.
+(pick fields A, B, C by name), so any new intelligence column added upstream
+was silently dropped until someone manually audited every consumer. We fixed
+this class of bug four times (`0cb601a`, `7ef85e9`, `b6eae76`, `7d10bae`) and
+it kept returning.
 
 Shape C solution: one PL/pgSQL function renders all intelligence into
-stage-appropriate markdown. A coverage check in migration 028 fails the
-deployment if any new column on `projects`, `channel_analyses`, or
-`niche_viability_reports` isn't either referenced in the renderer or
-explicitly whitelisted as operational-only.
+stage-appropriate markdown. A coverage check fails any migration deploy
+that adds a new column on one of the source tables without updating the
+renderer — or explicitly whitelisting the column as operational-only.
+
+## v2 coverage (9 source tables)
+
+Migration 028 covered 3 tables. Migration 029 extended the renderer and the
+coverage check to cover **all 9 intelligence-bearing tables** in the project
+schema, and added a SQL-side template-variable verifier. Residual drift risks
+are closed.
+
+| Source table | How it's reached | What the renderer emits |
+|---|---|---|
+| `projects` | by `id` | niche, niche_description, channel_style, expertise profile, blue-ocean strategy, pain-point sources, red-ocean topics, known competitor channels |
+| `niche_viability_reports` | by `analysis_group_id`, latest row | viability score + all 4 sub-scores + per-sub-score reasoning, ad_category, sponsorship_potential + reasoning, RPM estimates, revenue projections @ 10k/50k/100k subs, audience_size + reasoning, audience_demographics, engagement_benchmarks, posting cadence, recommended_angle, differentiation_strategy, content_pillars, moat_indicators, blue_ocean_opportunities, saturated_topics, topics_to_avoid, recommended_topics (with angle/title_formula/demand_evidence), script_depth_targets, title_dna_patterns, thumbnail_dna_patterns, defensibility_assessment |
+| `channel_analyses` | by `analysis_group_id`, all completed rows | per-channel: verdict + reasoning, target_audience, content_style, scripting_depth, strengths, weaknesses, comment_insights (content_gaps, pain_points, requested_topics, top_questions, viral_comment_themes, competitor_mentions, audience_sentiment), title_patterns (formulas, power_words, emotional_triggers, opening_words, stats), thumbnail_patterns, top_videos, content_saturation_map, blue_ocean_opportunities, primary_topics, posting_schedule, growth_trajectory |
+| `niche_profiles` (NEW) | by `project_id`, latest row | blue_ocean_opportunities (positioning_statement, unoccupied_angles, value_curve_gaps), competitor_analysis (channels, top_videos, gaps), audience_pain_points (reddit, quora, forums), keyword_research (high_volume, low_competition, trending), search_queries_used |
+| `yt_video_analyses` (NEW) | by `niche_category = projects.niche` text match, top 10 by views, status=complete | per-video: overall_score, one_line_summary, strengths, weaknesses, content_quality (depth_score, missing_topics, unique_insights, accuracy_concerns), ten_x_strategy (recommended_angle, suggested_title, opening_hook_suggestion, target_duration, key_differentiators), comment_insights (topic_opportunities with suggested_video_title, requests, complaints, top_questions, sentiment_summary) |
+| `research_runs` (NEW) | by `project_id`, latest complete | niche_input, time_range, platforms scanned, derived_keywords, total_results, total_categories |
+| `research_categories` (NEW) | by latest `run_id` | all rows ordered by rank: label, summary, total_engagement, result_count, AI-suggested video title per cluster |
+| `research_results` (NEW) | by latest `run_id`, top 25 by engagement | per-item: source, engagement_score, upvotes, comments, shares, raw_text, ai_video_title, metadata (subreddit, author) |
+| `audience_insights` (NEW) | by `project_id`, latest `week_of`, script stage only | audience_context_block (preferred pre-packaged), else audience_persona_summary + dominant_persona_traits + vocabulary_level + assumed_prior_knowledge + recurring_questions + content_complaints + topic_suggestions + frequent_objections + weekly counts |
 
 ## The contract
 
@@ -29,22 +47,15 @@ Headers:
   Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY
   Content-Type: application/json
 Body: {"p_project_id":"<uuid>","p_stage":"topics|script|metadata|all"}
-Response: JSON-encoded string (markdown). Length ~25-45KB for a fully-loaded project.
+Response: JSON-encoded string (markdown). Size scales with project data —
+         empty projects ~1KB, fully-loaded projects ~40-80KB.
 ```
-
-Tested sizes for a loaded project (`4bdfbbe3-2a9c-4532-95e9-41a743e8c253`):
-- `topics`: ~43KB
-- `script`: ~40KB
-- `metadata`: ~27KB
 
 ## Drop-in fetch snippet for n8n Code nodes
 
-Every integration needs this exact block. Paste it near the top of the target
-node (after `projectId` is resolved, before the Claude prompt is assembled):
+Already integrated in every relevant Code node. Reference for future consumers:
 
 ```javascript
-// CENTRAL INTELLIGENCE RENDERER (migration 028)
-// Replaces all hand-assembled intelligence concatenation. Stage-specific.
 let renderedIntelligence = '';
 try {
   const intelRes = await fetch(`${$env.SUPABASE_URL}/rest/v1/rpc/render_project_intelligence`, {
@@ -56,85 +67,114 @@ try {
     },
     body: JSON.stringify({ p_project_id: projectId, p_stage: 'topics' /* or script|metadata */ })
   });
-  if (intelRes.ok) {
-    renderedIntelligence = await intelRes.json(); // PostgREST returns text-returning RPC as JSON string
-  }
-} catch (e) {
-  // Fall through with empty string — workflow still runs, just with less context
-  renderedIntelligence = '';
-}
-```
+  if (intelRes.ok) renderedIntelligence = await intelRes.json();
+} catch (_) {}
 
-Then prepend to the Claude `user` content:
-
-```javascript
+// Prepend to the Claude user prompt:
 const userPrompt = renderedIntelligence + '\n\n---\n\n' + existingUserPrompt;
 ```
 
-## Workflow-specific integration
+## Current consumers
 
-### 1. WF_TOPICS_GENERATE (id `J5NTvfweZRiKJ9fG`) — node `Build Prompt`
+| Consumer | Node | Stage | What else it passes |
+|---|---|---|---|
+| `WF_TOPICS_GENERATE` (`J5NTvfweZRiKJ9fG`) | `Build Prompt` | `topics` | masterPrompt (Grand Master Topic Generator v3), analysisPayload (§2 JSON contract), existingTitles |
+| `WF_SCRIPT_PASS` (`CRC9USwaGgk7x6xN`) | `Generate With Retry` | `script` | System prompt + Pass 1/2/3 templates (Grand Master Script Generator v1) with 12 topic-row variables filled via `v` dict, word-count requirement prefix |
+| `WF_VIDEO_METADATA` (`k0F6KAtkn74PEIDl`) | `Generate Metadata` | `metadata` | base SEO-builder prompt filled with title/hook/segments/playlists |
+| `WF_SCRIPT_GENERATE.Prep & Read Avatar` (`DzugaN9GtVpTznvs`) | — | — | Pass-through only. After migration 029 it no longer assembles `research_brief` (RPC covers all 4 tables it queried). Passes `research_brief: ''` for backward compat. |
 
-- Stage: `'topics'`
-- The node already resolves `projectId` from `data.project_id` or similar —
-  reuse that.
-- **Safe migration:** prepend `renderedIntelligence` to the Claude prompt. The
-  existing hand-written intelligence concat block can remain (harmless
-  duplication); ideally delete it in a follow-up commit to prevent drift.
-- **Aggressive migration:** delete everything between the "SCRIPT REFERENCE"
-  heading and the end of the intelligence section. Let the RPC be the sole
-  source.
+## Three safeguards that keep intelligence from dropping
 
-### 2. WF_SCRIPT_PASS (id `CRC9USwaGgk7x6xN`) — node that calls Claude
+1. **Coverage check** (`_intelligence_coverage_check()`) runs at the end of
+   migration 029. It scans every column on all 9 source tables and fails the
+   migration deploy if any column isn't either referenced in the renderer or
+   on the explicit operational whitelist. Adding a new intelligence column =
+   must update the renderer. **Guaranteed.**
 
-- Stage: `'script'`
-- **Critical:** this fixes the Pass 2/Pass 3 passthrough bug identified in
-  the audit. Each pass fetches fresh intelligence from the renderer,
-  eliminating the need to thread `intelligence_block` through n8n node
-  outputs (which Pass 2/Pass 3 prep nodes silently dropped).
-- After integration, delete the `intelligence_block` input dependency entirely
-  from `WF_SCRIPT_PASS` and the corresponding assembly in
-  `WF_SCRIPT_GENERATE.Prep & Read Avatar`.
+2. **Template variable verifier** (`_verify_script_template_vars()`) scans
+   `system_prompts.prompt_text` for every `{placeholder}` token and returns
+   which ones are in the caller-supplied known-vars set. Run after any
+   prompt edit to catch new placeholders the workflow variable-fill dict
+   hasn't been updated to cover. Example invocation:
 
-### 3. WF_VIDEO_METADATA (id `k0F6KAtkn74PEIDl`) — node `Generate Metadata`
+   ```sql
+   SELECT * FROM _verify_script_template_vars(ARRAY[
+     'subtopic', 'niche_category', 'target_audience_segment', 'audience_avatar',
+     'psychographics', 'key_emotional_drivers', 'viewer_search_intent',
+     'core_domain_framework', 'primary_problem_trigger', 'content_angle_blue_ocean',
+     'video_style_structure', 'practical_takeaways',
+     'PASS_1_OUTPUT', 'PASS_1_SUMMARY', 'PASS_2_SUMMARY', 'CHARACTER_NAME',
+     'PASS_NUMBER', 'WORD_TARGET_FOR_THIS_PASS', 'ATTEMPT_NUMBER', 'PASS_OUTPUT',
+     'COMPOSITE_SCORE', 'FAILURES_LIST', 'RETRY_GUIDANCE_FROM_EVALUATOR',
+     'WORD_COUNT_ESTIMATE', 'ORIGINAL_PASS_PROMPT',
+     'LIST_OF_METAPHORS_USED_IN_PASSES_1_AND_2',
+     'LIST_OF_NOTABLE_PHRASES_FROM_PASSES_1_AND_2'
+   ]);
+   ```
 
-- Stage: `'metadata'`
-- Today: selects 7 project columns, injects 4 into prompt — ~5% of available
-  intelligence.
-- After: prepend RPC output. Claude now sees title DNA, thumbnail DNA,
-  recommended_angle, audience questions, revenue context, etc.
+   Any `is_known = false` row = a placeholder that needs either a fill
+   handler in `WF_SCRIPT_PASS.Generate With Retry` or a pattern-based
+   regex replace already present in that node. Note: the verifier uses an
+   exact-match regex `\{([A-Za-z_][A-Za-z0-9_\-]*)\}` — placeholders with
+   spaces or dashes inside (e.g., `{1-sentence description}`) are not
+   surfaced; those are handled by the workflow's own regex fill patterns.
 
-## Coverage test
+3. **Prompt checksum verifier** (`tools/verify_prompt_sync.py`) detects drift
+   between local Grand Master `.md` design docs and the DB rows in
+   `system_prompts` + `prompt_configs` that Claude actually executes. Any
+   change to either side — DB edit or file edit — is flagged until an
+   operator explicitly runs `update` and commits the new snapshot.
 
-Every deploy of `028_intelligence_renderer.sql` runs
-`_intelligence_coverage_check()`. If someone adds a new column to any of the
-3 source tables without referencing it in the renderer (or whitelisting as
-operational-only), the migration FAILS. This is the regression guarantee.
+   ```bash
+   # Verify (CI-friendly; exits non-zero on drift)
+   python tools/verify_prompt_sync.py
+
+   # Accept changes (after intentional edit)
+   python tools/verify_prompt_sync.py update
+   git add tools/prompt_snapshot.expected.txt
+   git commit -m "chore(prompts): sync prompt snapshot"
+   ```
 
 ## Verification procedure
 
-After integrating each workflow:
+After any prompt-adjacent change:
 
-1. Trigger a test execution against a known-good project:
-   - `4bdfbbe3-2a9c-4532-95e9-41a743e8c253` (NotSoDistantFuture, 7 channels)
-   - `50ca5270-5d66-4931-b1d6-93356385cda0` (Credit Card Strategist)
-2. Inspect execution trace for the node you edited.
-3. Confirm the `userPrompt` passed to Claude contains the markdown header
-   `# CHANNEL INTELLIGENCE (stage=<stage>)` from the renderer.
-4. Confirm Claude's output references fields that only the RPC could have
-   injected (e.g., `audience_size_reasoning`, `sponsorship_reasoning`,
-   `viability_reasoning`, per-channel `verdict_reasoning`, competitor
-   comment mentions).
+1. Run `tools/verify_prompt_sync.py` — fails on drift.
+2. Apply migration (if schema changes) — coverage check fails on drift.
+3. Trigger a test execution against a known-good project:
+   - `4bdfbbe3-2a9c-4532-95e9-41a743e8c253` (NotSoDistantFuture, 1 channel analysis + 1 viability report)
+   - `75eb2712-ef3e-47b7-b8db-5be3740233ff` (US Credit Cards, 1 niche_profile + 12 research_runs)
+4. Inspect execution trace for the Claude-calling node.
+5. Confirm the `userPrompt` contains `# CHANNEL INTELLIGENCE (stage=<stage>)`
+   and the relevant ## section headers for data that exists on that project.
+6. Confirm Claude's output references fields only the RPC could have injected
+   (e.g., `ten_x_strategy.recommended_angle`, per-channel `verdict_reasoning`,
+   niche profile `positioning_statement`, research cluster suggested titles).
 
 ## What NOT to change
 
-- `WF_CREATE_PROJECT_FROM_ANALYSIS` (id `jU9VEw5SaKEHjvUn`) — its job is to
-  seed the `projects` row when a project is created from an analysis group.
-  The renderer reads directly from the source tables
-  (`channel_analyses` + `niche_viability_reports`), so the bridge already
-  feeds it. Don't touch.
+- `WF_CREATE_PROJECT_FROM_ANALYSIS` (`jU9VEw5SaKEHjvUn`) — bridge workflow.
+  The renderer reads the source tables directly (channel_analyses +
+  niche_viability_reports), so the bridge just needs to seed the `projects`
+  row with `analysis_group_id`. Don't couple intelligence to the cached
+  project columns.
 
-- The cached aggregate columns on `projects` (`channel_analysis_context`,
-  `script_reference_data`, `niche_viability_score`, `niche_viability_verdict`)
-  — intentionally whitelisted out of the renderer to avoid
-  stale-cache bugs. Keep them for dashboard use only.
+- Cached aggregate columns on `projects` (`channel_analysis_context`,
+  `script_reference_data`, `niche_viability_score`, `niche_viability_verdict`,
+  `topics_to_avoid`, `recommended_topics`, `title_dna_patterns`,
+  `thumbnail_dna_patterns`, `revenue_projections`, `recommended_angle`,
+  `script_depth_targets`) — intentionally whitelisted OUT of the renderer to
+  avoid stale-cache bugs. Dashboard reads them for speed; Claude reads source
+  tables for correctness.
+
+## When to add a new intelligence source
+
+1. Add the column/table at DB level.
+2. Update `render_project_intelligence()` in a new migration (030+) — render
+   the new field in the appropriate stage sections.
+3. Update `_intelligence_coverage_check()`'s table list + whitelist.
+4. Run the migration. If coverage check fails, the migration won't apply —
+   fix the renderer before anything else.
+5. Run `tools/verify_prompt_sync.py` to snapshot any prompt-template edits.
+6. No workflow changes required — consumers will pick up the new content
+   automatically on next invocation because they all call the same RPC.
