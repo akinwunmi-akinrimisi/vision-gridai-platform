@@ -1,0 +1,4 @@
+# Allowlist for tools/lint_n8n_workflows.py
+# Format per line: RULE|workflow_id|node_name
+# Blank lines and lines starting with # are ignored.
+# Only add entries after confirming the finding is intentional and documented.
