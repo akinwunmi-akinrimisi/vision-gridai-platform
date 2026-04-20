@@ -45,6 +45,7 @@ import {
   Zap,
   Ban,
   CircleDot,
+  RefreshCw,
 } from 'lucide-react';
 import {
   useAnalysisGroups,
@@ -66,6 +67,7 @@ import { supabase } from '../lib/supabase';
 import { webhookCall } from '../lib/api';
 import PageHeader from '../components/shared/PageHeader';
 import EmptyState from '../components/shared/EmptyState';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -1058,7 +1060,144 @@ function FactorBar({ label, score, weight, icon: Icon, breakdown }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// ViabilityProgressBar — shown while viability_phase is active
+// ---------------------------------------------------------------------------
+
+const VIABILITY_PHASES = [
+  { key: 'validating',     label: 'Fetching data' },
+  { key: 'aggregating',    label: 'Aggregating' },
+  { key: 'analyzing',      label: 'Analyzing with Claude' },
+  { key: 'writing_report', label: 'Writing report' },
+];
+
+function ViabilityProgressBar({ phase, startedAt, onCancel }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!startedAt) return;
+    const start = new Date(startedAt).getTime();
+    const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - start) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+
+  const currentIdx = VIABILITY_PHASES.findIndex((p) => p.key === phase);
+
+  const mm = Math.floor(elapsed / 60);
+  const ss = elapsed % 60;
+  const elapsedLabel = `${mm}:${String(ss).padStart(2, '0')}`;
+
+  const remainingLabel =
+    elapsed < 30  ? '~3 minutes remaining' :
+    elapsed < 120 ? '~2 minutes remaining' :
+                    'almost done';
+
+  return (
+    <div className="bg-card/80 backdrop-blur border border-border rounded-xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold flex items-center gap-2">
+          <Target className="w-4 h-4 text-primary" />
+          Running Niche Viability Assessment
+        </h2>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums">
+          <Clock className="w-3 h-3" />
+          <span>{elapsedLabel}</span>
+          <span className="text-muted-foreground/60">·</span>
+          <span>{remainingLabel}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2">
+        {VIABILITY_PHASES.map((p, i) => {
+          const isDone = currentIdx > i;
+          const isActive = currentIdx === i;
+          const isPulsing = isActive && p.key === 'analyzing';
+          return (
+            <div key={p.key} className="space-y-1.5">
+              <div
+                className={cn(
+                  'h-1.5 rounded-full transition-all duration-500',
+                  isDone ? 'bg-emerald-500' :
+                  isActive ? cn('bg-primary', isPulsing && 'animate-pulse') :
+                  'bg-muted',
+                )}
+              />
+              <div className="flex items-center gap-1 text-[10px]">
+                {isDone ? (
+                  <Check className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
+                ) : isActive ? (
+                  <Loader2 className={cn('w-2.5 h-2.5 text-primary flex-shrink-0', isPulsing ? 'animate-spin' : 'animate-spin')} />
+                ) : (
+                  <CircleDot className="w-2.5 h-2.5 text-muted-foreground/50 flex-shrink-0" />
+                )}
+                <span
+                  className={cn(
+                    'font-medium truncate',
+                    isDone ? 'text-emerald-500' :
+                    isActive ? 'text-primary' :
+                    'text-muted-foreground',
+                  )}
+                >
+                  {p.label}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {phase === 'analyzing' && (
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Claude Opus is reading every channel in this group and building your
+          viability report. This is the longest phase (~2-3 minutes). Keep this
+          tab open — progress streams automatically.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ViabilityFailedBanner — shown when viability_phase === 'failed'
+// ---------------------------------------------------------------------------
+
+function ViabilityFailedBanner({ error, onRetry, isRetrying }) {
+  return (
+    <div className="bg-destructive/10 border border-destructive/40 rounded-xl p-5 space-y-3">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+        <div className="flex-1 space-y-1">
+          <h2 className="text-sm font-bold text-destructive">Viability assessment failed</h2>
+          <p className="text-xs text-destructive/90 leading-relaxed break-words">
+            {error || 'The viability worker returned an error. Please try again.'}
+          </p>
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <Button
+          onClick={onRetry}
+          disabled={isRetrying}
+          variant="outline"
+          size="sm"
+          className="border-destructive/60 text-destructive hover:bg-destructive/20"
+        >
+          {isRetrying ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3.5 h-3.5" />
+          )}
+          Retry
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function NicheViabilitySection({ report, onCreateProject, onRunViability, isRunning }) {
+  const [rerunOpen, setRerunOpen] = useState(false);
+
   if (!report) return null;
 
   const scoreColor = VIABILITY_COLOR(report.viability_score);
@@ -1074,6 +1213,11 @@ function NicheViabilitySection({ report, onCreateProject, onRunViability, isRunn
     report.viability_verdict === 'moderate_opportunity' ? 'Moderate Opportunity' :
     report.viability_verdict === 'weak_opportunity' ? 'Weak Opportunity' : 'Avoid';
 
+  const handleConfirmRerun = () => {
+    setRerunOpen(false);
+    onRunViability?.();
+  };
+
   return (
     <div className="bg-card/80 backdrop-blur border border-border rounded-xl p-5 space-y-5">
       <div className="flex items-center justify-between">
@@ -1081,7 +1225,39 @@ function NicheViabilitySection({ report, onCreateProject, onRunViability, isRunn
           <Target className="w-4 h-4 text-primary" />
           Niche Viability Assessment
         </h2>
+        {onRunViability && (
+          <button
+            onClick={() => setRerunOpen(true)}
+            disabled={isRunning}
+            className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-md border border-border/60 bg-card hover:bg-muted hover:text-foreground text-muted-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Rerun viability assessment — overwrites existing report"
+          >
+            {isRunning ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Rerunning...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-3.5 h-3.5" />
+                Rerun
+              </>
+            )}
+          </button>
+        )}
       </div>
+
+      <ConfirmDialog
+        isOpen={rerunOpen}
+        onClose={() => setRerunOpen(false)}
+        onConfirm={handleConfirmRerun}
+        title="Rerun Niche Viability Assessment"
+        message="This will overwrite the existing viability report with fresh analysis. The current scores, blue-ocean opportunities, revenue projections, and topics-to-avoid will be replaced. Continue?"
+        confirmText="Rerun Assessment"
+        confirmVariant="danger"
+        loading={isRunning}
+      />
+
 
       {/* Viability Score + Verdict */}
       <div className="flex flex-col sm:flex-row items-start gap-5">
@@ -1149,11 +1325,11 @@ function NicheViabilitySection({ report, onCreateProject, onRunViability, isRunn
           breakdown={report.competition_gap_breakdown}
         />
         <FactorBar
-          label="Entry Difficulty"
-          score={report.entry_difficulty_score}
+          label="Entry Ease"
+          score={report.entry_ease_score}
           weight={20}
           icon={Zap}
-          breakdown={report.entry_difficulty_breakdown}
+          breakdown={report.entry_ease_breakdown}
         />
       </div>
 
@@ -2123,8 +2299,31 @@ export default function ChannelAnalyzer() {
             </div>
           )}
 
-          {/* ── Run Viability Assessment button (when enough data, no report yet) ── */}
-          {!selectedDetail && canRunViability && (
+          {/* ── Viability phase state (derived from activeGroup columns) ── */}
+          {(() => { return null; })()}
+          {/* helper: viability progress bar while a run is in-flight */}
+          {!selectedDetail && activeGroup && ['validating','aggregating','analyzing','writing_report'].includes(activeGroup.viability_phase) && (
+            <div className="mb-6">
+              <ViabilityProgressBar
+                phase={activeGroup.viability_phase}
+                startedAt={activeGroup.viability_started_at}
+              />
+            </div>
+          )}
+
+          {/* helper: failure banner */}
+          {!selectedDetail && activeGroup?.viability_phase === 'failed' && (
+            <div className="mb-6">
+              <ViabilityFailedBanner
+                error={activeGroup.viability_error}
+                onRetry={handleRunViability}
+                isRetrying={runViability.isPending}
+              />
+            </div>
+          )}
+
+          {/* ── Run Viability Assessment button (when enough data, no report, no run in flight) ── */}
+          {!selectedDetail && canRunViability && !activeGroup?.viability_phase && (
             <div className="mb-6 flex items-center gap-3">
               <Button
                 onClick={handleRunViability}
@@ -2145,8 +2344,8 @@ export default function ChannelAnalyzer() {
             </div>
           )}
 
-          {/* ── Niche Viability ── */}
-          {!selectedDetail && showViability && (
+          {/* ── Niche Viability (only when phase is done or null — i.e. report is authoritative) ── */}
+          {!selectedDetail && showViability && (activeGroup?.viability_phase === 'done' || !activeGroup?.viability_phase) && (
             <div className="mb-6">
               <NicheViabilitySection
                 report={viabilityReport}

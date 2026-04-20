@@ -109,29 +109,20 @@ export function useStartAnalysis() {
       let groupId = analysis_group_id;
 
       if (!groupId) {
-        // Create a new analysis_groups row
+        // Create a new analysis_groups row. channels_count/completed_count
+        // are maintained by DB triggers (migration 026), so we leave them at 0 —
+        // the trigger will bump them when WF_CHANNEL_ANALYZE inserts the row.
         const name = group_name || (channel_url.replace(/https?:\/\/(www\.)?youtube\.com\/@?/i, '').split('/')[0] + ' Research');
         const { data: newGroup, error: insertErr } = await supabase
           .from('analysis_groups')
-          .insert({ name, status: 'active', channels_count: 1, completed_count: 0 })
+          .insert({ name, status: 'active' })
           .select('id')
           .single();
         if (insertErr) throw insertErr;
         groupId = newGroup.id;
-      } else {
-        // Increment channels_count on the existing group
-        const { data: existing, error: fetchErr } = await supabase
-          .from('analysis_groups')
-          .select('channels_count')
-          .eq('id', groupId)
-          .single();
-        if (!fetchErr && existing) {
-          await supabase
-            .from('analysis_groups')
-            .update({ channels_count: (existing.channels_count || 0) + 1, updated_at: new Date().toISOString() })
-            .eq('id', groupId);
-        }
       }
+      // For existing groups: no-op. DB trigger handles channels_count on the
+      // channel_analyses INSERT fired by WF_CHANNEL_ANALYZE.
 
       const result = await webhookCall('channel-analyze', {
         channel_url,
@@ -417,6 +408,12 @@ export function useConfirmDeepAnalysis() {
 
 /**
  * POST to /webhook/niche-viability with { analysis_group_id }.
+ *
+ * Polling strategy: Rather than blindly polling 20x, we watch
+ * analysis_groups.viability_phase and stop the moment it reaches
+ * 'done' or 'failed'. On failed we surface the viability_error via toast.
+ * Upper bound is ~5 minutes (60 x 5s) as a safety net — Claude Opus
+ * viability normally returns in ~3 minutes.
  */
 export function useRunViabilityAssessment() {
   const queryClient = useQueryClient();
@@ -427,20 +424,51 @@ export function useRunViabilityAssessment() {
         analysis_group_id,
       }, { timeoutMs: 120_000 });
       if (result.success === false) throw new Error(result.error || 'Viability assessment failed');
-      return result;
+      return { ...result, analysis_group_id };
     },
-    onSuccess: () => {
-      toast.success('Niche viability assessment started...');
+    onSuccess: (data) => {
+      const groupId = data?.analysis_group_id;
+      toast.success('Niche viability assessment started — this takes ~3 minutes...');
+      queryClient.invalidateQueries({ queryKey: ['analysis-groups'] });
       queryClient.invalidateQueries({ queryKey: ['niche-viability'] });
-      // Poll for report
-      const poll = (attempt) => {
-        if (attempt > 20) return;
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['niche-viability'] });
-          poll(attempt + 1);
-        }, 5000);
+
+      // Phase-aware poll: stop as soon as viability_phase is done or failed.
+      let cancelled = false;
+      const poll = async (attempt) => {
+        if (cancelled || attempt > 60) return; // ~5min safety cap
+        try {
+          if (groupId) {
+            const { data: row } = await supabase
+              .from('analysis_groups')
+              .select('viability_phase, viability_error')
+              .eq('id', groupId)
+              .maybeSingle();
+
+            // Keep caches hot so the UI re-renders
+            queryClient.invalidateQueries({ queryKey: ['analysis-groups'] });
+            queryClient.invalidateQueries({ queryKey: ['niche-viability'] });
+
+            if (row?.viability_phase === 'done') {
+              toast.success('Niche viability assessment complete');
+              return;
+            }
+            if (row?.viability_phase === 'failed') {
+              toast.error(`Viability assessment failed: ${row.viability_error || 'unknown error'}`);
+              return;
+            }
+          } else {
+            queryClient.invalidateQueries({ queryKey: ['niche-viability'] });
+          }
+        } catch (e) {
+          // Swallow per-poll errors — Realtime will still bring us updates.
+        }
+        setTimeout(() => poll(attempt + 1), 5000);
       };
       poll(0);
+
+      // No explicit cancel hook wired — if the user navigates away,
+      // the setTimeout chain dies naturally when `cancelled` stays false
+      // (it's a short loop and invalidations are cheap).
     },
     onError: (err) => {
       toast.error(`Viability assessment failed: ${err.message}`);

@@ -1,8 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router';
-import { CheckCircle2, Rocket, RefreshCw, LayoutGrid, LayoutList, Layers, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Rocket, RefreshCw, LayoutGrid, LayoutList, Layers, AlertCircle, Loader2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTopics, useApproveTopics, useRejectTopics, useRefineTopic, useEditTopic, useEditAvatar } from '../hooks/useTopics';
+import { useProject } from '../hooks/useNicheProfile';
+import { useCancelTopicGeneration } from '../hooks/useCancelTopicGeneration';
 import { webhookCall } from '../lib/api';
 import PageHeader from '../components/shared/PageHeader';
 import TopicCard from '../components/topics/TopicCard';
@@ -80,12 +82,17 @@ function TopicSkeleton() {
 export default function TopicReview() {
   const { id: projectId } = useParams();
   const { data: topics = [], isLoading } = useTopics(projectId);
+  const { data: project } = useProject(projectId);
 
   const approveMutation = useApproveTopics(projectId);
   const rejectMutation = useRejectTopics(projectId);
   const refineMutation = useRefineTopic(projectId);
   const editMutation = useEditTopic(projectId);
   const editAvatarMutation = useEditAvatar(projectId);
+  const cancelGenerationMutation = useCancelTopicGeneration(projectId);
+
+  const isGenerating = project?.status === 'generating_topics';
+  const [cancelGenOpen, setCancelGenOpen] = useState(false);
 
   // View mode persisted in localStorage
   const [viewMode, setViewMode] = useState(() => {
@@ -379,8 +386,37 @@ export default function TopicReview() {
         </div>
       )}
 
+      {/* Generation in progress — Cancel gate */}
+      {isGenerating && topics.length === 0 && (
+        <div className="bg-card border border-border rounded-xl p-10 text-center">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-lg font-semibold mb-2">Generating topics...</p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Claude is generating 25 topics + avatars for this niche. This usually takes 2-4 minutes.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => setCancelGenOpen(true)}
+            disabled={cancelGenerationMutation.isPending}
+            className="text-danger border-danger/30 hover:bg-danger/10 hover:text-danger"
+          >
+            {cancelGenerationMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Cancelling...
+              </>
+            ) : (
+              <>
+                <XCircle className="w-4 h-4" />
+                Cancel Generation
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
       {/* Loading skeleton */}
-      {isLoading && (
+      {!isGenerating && isLoading && (
         <div className="space-y-3">
           {Array.from({ length: 8 }).map((_, i) => (
             <TopicSkeleton key={i} />
@@ -389,7 +425,7 @@ export default function TopicReview() {
       )}
 
       {/* Empty state */}
-      {!isLoading && topics.length === 0 && (
+      {!isGenerating && !isLoading && topics.length === 0 && (
         <div className="bg-card border border-border rounded-xl p-12 text-center">
           <AlertCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm font-semibold mb-1">No topics yet</p>
@@ -589,6 +625,22 @@ export default function TopicReview() {
           />
         )}
       </ConfirmDialog>
+
+      {/* Cancel generation dialog */}
+      <ConfirmDialog
+        isOpen={cancelGenOpen}
+        onClose={() => setCancelGenOpen(false)}
+        onConfirm={() => {
+          cancelGenerationMutation.mutate(undefined, {
+            onSuccess: () => setCancelGenOpen(false),
+          });
+        }}
+        title="Cancel Topic Generation"
+        message="This will stop the in-flight generation, delete any topics and avatars that have been inserted, and reset the project back to 'ready for topics'. The Claude API call in progress cannot be refunded."
+        confirmText="Cancel Generation"
+        confirmVariant="danger"
+        loading={cancelGenerationMutation.isPending}
+      />
     </div>
   );
 }

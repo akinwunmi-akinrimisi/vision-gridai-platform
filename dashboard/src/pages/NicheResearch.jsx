@@ -6,8 +6,10 @@ import {
   Loader2,
   Globe,
   AlertCircle,
+  XCircle,
 } from 'lucide-react';
 import { useProject, useNicheProfile } from '../hooks/useNicheProfile';
+import { useCancelTopicGeneration } from '../hooks/useCancelTopicGeneration';
 import { generateTopics, webhookCall } from '../lib/api';
 import PageHeader from '../components/shared/PageHeader';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -38,12 +40,16 @@ export default function NicheResearch() {
   const [reresearching, setReresearching] = useState(false);
   const [topicsExistCount, setTopicsExistCount] = useState(null);
   const [generateMoreOpen, setGenerateMoreOpen] = useState(false);
+  const [cancelGenOpen, setCancelGenOpen] = useState(false);
+
+  const cancelGenerationMutation = useCancelTopicGeneration(projectId);
 
   const isLoading = projectLoading || profileLoading;
   const error = projectError || profileError;
 
   // Check if research is still in progress
   const isResearching = project?.status?.startsWith('researching');
+  const isGeneratingTopics = project?.status === 'generating_topics';
 
   // --- Loading skeleton ---
   if (isLoading) {
@@ -110,6 +116,64 @@ export default function NicheResearch() {
             ))}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // --- Topic generation in progress ---
+  if (isGeneratingTopics) {
+    return (
+      <div className="animate-slide-up">
+        <PageHeader
+          title={project?.name || 'Niche Research'}
+          subtitle={`Generating topics for: ${project?.niche}`}
+        />
+        <div className="bg-card border border-border rounded-xl p-10 text-center">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-lg font-semibold mb-2">Generating topics...</p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Claude is generating 25 topics + avatars. This usually takes 2-4 minutes.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={() => navigate(`/project/${projectId}/topics`)} size="sm">
+              View Topics Page
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCancelGenOpen(true)}
+              disabled={cancelGenerationMutation.isPending}
+              className="text-danger border-danger/30 hover:bg-danger/10 hover:text-danger"
+            >
+              {cancelGenerationMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cancelling...
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-4 h-4" />
+                  Cancel Generation
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <ConfirmDialog
+          isOpen={cancelGenOpen}
+          onClose={() => setCancelGenOpen(false)}
+          onConfirm={() => {
+            cancelGenerationMutation.mutate(undefined, {
+              onSuccess: () => setCancelGenOpen(false),
+            });
+          }}
+          title="Cancel Topic Generation"
+          message="This will stop the in-flight generation, delete any topics and avatars that have been inserted, and reset the project back to 'ready for topics'. The Claude API call in progress cannot be refunded."
+          confirmText="Cancel Generation"
+          confirmVariant="danger"
+          loading={cancelGenerationMutation.isPending}
+        />
       </div>
     );
   }
