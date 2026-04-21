@@ -1,59 +1,17 @@
-import { useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
-
 /**
- * Subscribe to Supabase Realtime postgres_changes on a table.
- * Automatically invalidates TanStack Query caches when events arrive.
+ * Realtime subscription — NO-OP STUB (2026-04-21 audit B4.5).
  *
- * @param {string} table - Table name (e.g., 'projects', 'topics', 'scenes')
- * @param {string|null} filter - PostgREST filter string (e.g., 'project_id=eq.abc') or null for all rows
- * @param {Array<Array<string>>} queryKeys - TanStack Query keys to invalidate on change
- * @returns {{ status: string }} - Current channel subscription status
+ * After the RLS lockdown in migration 030 the anon role can no longer
+ * subscribe to Supabase Realtime (every `postgres_changes` event is
+ * filtered by RLS). Opening a WebSocket would just produce zombie
+ * connections that never emit. All hooks that depended on this for
+ * cache invalidation are now on react-query polling via dashboardRead().
+ *
+ * Re-enable via an authenticated Realtime proxy in Batch 4.6 (tracked
+ * in docs/SECURITY_REMEDIATION_2026_04_21_STATUS.md).
+ *
+ * Callers are unchanged — the signature and return value are preserved.
  */
-export function useRealtimeSubscription(table, filter, queryKeys) {
-  const queryClient = useQueryClient();
-  const channelRef = useRef(null);
-  const statusRef = useRef('CLOSED');
-
-  useEffect(() => {
-    if (!table) return;
-
-    const channelName = `${table}-${filter || 'all'}-${Date.now()}`;
-
-    const channelConfig = {
-      event: '*',
-      schema: 'public',
-      table,
-    };
-
-    if (filter) {
-      channelConfig.filter = filter;
-    }
-
-    const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', channelConfig, () => {
-        // Invalidate all provided query keys
-        if (queryKeys) {
-          queryKeys.forEach((key) => {
-            queryClient.invalidateQueries({ queryKey: key });
-          });
-        }
-      })
-      .subscribe((status) => {
-        statusRef.current = status;
-      });
-
-    channelRef.current = channel;
-
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    };
-  }, [table, filter]); // queryKeys intentionally excluded - caller should pass stable reference
-
-  return { status: statusRef.current };
+export function useRealtimeSubscription(_table, _filter, _queryKeys) {
+  return { status: 'DISABLED_BY_AUDIT_2026_04_21' };
 }
