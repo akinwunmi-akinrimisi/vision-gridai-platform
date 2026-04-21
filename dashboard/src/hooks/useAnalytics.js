@@ -1,72 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { supabase } from '../lib/supabase';
-import { useRealtimeSubscription } from './useRealtimeSubscription';
+import { dashboardRead } from '../lib/api';
 
 /**
- * Fetch published topics with YouTube analytics data for a project.
- * Filters by time range based on published_at date.
+ * Fetch published topics with YouTube analytics for a project via the
+ * authenticated `analytics_summary` webhook (service_role server-side).
+ * Polls every 60s — analytics cron writes at most hourly, so no value in
+ * tighter refresh.
  *
  * @param {string} projectId - Project UUID
  * @param {string} timeRange - One of '7d', '30d', '90d', 'all'
- * @returns {{ data: Array, isLoading: boolean, error: Error|null, totalViews: number, totalWatchHours: number, avgCtr: number, totalRevenue: number, totalLikes: number, totalComments: number, totalSubscribers: number, avgDuration: string, topPerformer: object|null }}
  */
 export function useAnalytics(projectId, timeRange = '30d') {
-  // Live updates when analytics cron writes yt_* fields
-  useRealtimeSubscription(
-    projectId ? 'topics' : null,
-    projectId ? `project_id=eq.${projectId}` : null,
-    [['analytics', projectId, timeRange]]
-  );
-
-  const query = useQuery({
-    queryKey: ['analytics', projectId, timeRange],
-    queryFn: async () => {
-      let q = supabase
-        .from('topics')
-        .select('*')
-        .eq('project_id', projectId)
-        .eq('status', 'published')
-        .order('published_at', { ascending: false });
-
-      // Apply time range filter
-      if (timeRange !== 'all') {
-        const days = timeRange === '7d' ? 7 : timeRange === '90d' ? 90 : 30;
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - days);
-        q = q.gte('published_at', cutoff.toISOString());
-      }
-
-      const { data, error } = await q;
-      if (error) throw error;
-      return data || [];
-    },
+  const summaryQuery = useQuery({
+    queryKey: ['analytics-summary', projectId, timeRange],
+    queryFn: () => dashboardRead('analytics_summary', { project_id: projectId, time_range: timeRange }),
     enabled: !!projectId,
+    refetchInterval: 60_000,
   });
 
-  // Fetch previous period data for trend computation
-  const prevQuery = useQuery({
-    queryKey: ['analytics-prev', projectId, timeRange],
-    queryFn: async () => {
-      if (timeRange === 'all') return [];
-      const days = timeRange === '7d' ? 7 : timeRange === '90d' ? 90 : 30;
-      const cutoffEnd = new Date();
-      cutoffEnd.setDate(cutoffEnd.getDate() - days);
-      const cutoffStart = new Date(cutoffEnd);
-      cutoffStart.setDate(cutoffStart.getDate() - days);
+  const current = summaryQuery.data?.current || [];
+  const prev = summaryQuery.data?.previous || [];
 
-      const { data, error } = await supabase
-        .from('topics')
-        .select('yt_views, yt_watch_hours, yt_ctr, yt_estimated_revenue')
-        .eq('project_id', projectId)
-        .eq('status', 'published')
-        .gte('published_at', cutoffStart.toISOString())
-        .lt('published_at', cutoffEnd.toISOString());
-      if (error) return [];
-      return data || [];
-    },
-    enabled: !!projectId && timeRange !== 'all',
-  });
+  const query = { data: current, isLoading: summaryQuery.isLoading, error: summaryQuery.error };
+  const prevQuery = { data: prev };
 
   const computed = useMemo(() => {
     const topics = query.data || [];

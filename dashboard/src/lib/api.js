@@ -48,3 +48,21 @@ export async function webhookCall(endpoint, data = {}, options = {}) {
 }
 
 export const generateTopics = (projectId) => webhookCall('topics/generate', { project_id: projectId });
+
+/**
+ * Authenticated read from the `WF_DASHBOARD_READ` workflow.
+ * Backs every dashboard query after RLS lockdown (migration 030): the anon
+ * Supabase key is now denied, so reads go through this one webhook. n8n
+ * uses service_role server-side; the client never holds a DB key.
+ *
+ * @param {('projects_list'|'topics_for_project'|'topic_detail'|'analytics_summary'|'scene_progress')} query
+ * @param {object} [params]
+ * @returns {Promise<any>} The webhook's `data` payload, or throws on failure.
+ */
+export async function dashboardRead(query, params = {}) {
+  const resp = await webhookCall('dashboard/read', { query, params });
+  if (!resp || resp.success === false) {
+    throw new Error(resp?.error || 'dashboard read failed');
+  }
+  return resp.data;
+}

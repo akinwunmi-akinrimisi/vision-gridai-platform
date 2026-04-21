@@ -1,33 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
-import { useRealtimeSubscription } from './useRealtimeSubscription';
-import { webhookCall } from '../lib/api';
+import { dashboardRead, webhookCall } from '../lib/api';
 
 /**
  * Fetch all topics with avatars for a project, ordered by topic_number.
- * Subscribes to Supabase Realtime for live updates.
+ * Polls every 15s in locked-down mode (Supabase Realtime disabled for anon).
  * @param {string} projectId - Project UUID
  */
 export function useTopics(projectId) {
-  useRealtimeSubscription(
-    projectId ? 'topics' : null,
-    projectId ? `project_id=eq.${projectId}` : null,
-    [['topics', projectId]]
-  );
-
   return useQuery({
     queryKey: ['topics', projectId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('topics')
-        .select('*, avatars(*)')
-        .eq('project_id', projectId)
-        .order('topic_number', { ascending: true });
-
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: () => dashboardRead('topics_for_project', { project_id: projectId }),
     enabled: !!projectId,
+    refetchInterval: 15_000,
   });
 }
 

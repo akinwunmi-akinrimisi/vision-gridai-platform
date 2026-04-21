@@ -1,57 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
-import { useRealtimeSubscription } from './useRealtimeSubscription';
-import { webhookCall } from '../lib/api';
+import { dashboardRead, webhookCall } from '../lib/api';
 
 /**
- * Fetch all projects ordered by created_at desc.
- * Also fetches a summary of topics per project for accurate status display.
- * Subscribes to Supabase Realtime for live updates.
+ * Fetch all projects with topic summaries via the authenticated dashboard-read
+ * webhook (migration 030 locked down Supabase anon). Polls every 20s for
+ * near-real-time updates since Realtime is disabled in locked-down mode.
  */
 export function useProjects() {
-  useRealtimeSubscription('projects', null, [['projects']]);
-  useRealtimeSubscription('topics', null, [['projects']]);
-
   return useQuery({
     queryKey: ['projects'],
-    queryFn: async () => {
-      // Fetch projects (Sprint S7: niche_health_* + RPM columns are on the row;
-      // `select('*')` already returns them, but we invalidate the cache on
-      // niche_health_history inserts below via useNicheHealthHistoryBatch.)
-      const { data: projects, error: projectsError } = await supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (projectsError) throw projectsError;
-      if (!projects || projects.length === 0) return [];
-
-      // Fetch all topics with minimal fields for status computation
-      const projectIds = projects.map((p) => p.id);
-      const { data: topics, error: topicsError } = await supabase
-        .from('topics')
-        .select('id, project_id, topic_number, status, review_status, script_review_status, video_review_status, seo_title, audio_progress, images_progress, i2v_progress, t2v_progress, assembly_status, total_cost, yt_estimated_revenue, updated_at')
-        .in('project_id', projectIds);
-
-      if (topicsError) {
-        // Fall back to projects-only if topics fail
-        return projects.map((p) => ({ ...p, topics_summary: [] }));
-      }
-
-      // Group topics by project
-      const topicsByProject = {};
-      for (const t of (topics || [])) {
-        if (!topicsByProject[t.project_id]) topicsByProject[t.project_id] = [];
-        topicsByProject[t.project_id].push(t);
-      }
-
-      // Enrich projects with topics summary
-      return projects.map((p) => ({
-        ...p,
-        topics_summary: topicsByProject[p.id] || [],
-      }));
-    },
+    queryFn: () => dashboardRead('projects_list'),
+    refetchInterval: 20_000,
   });
 }
 

@@ -1,35 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
-import { useRealtimeSubscription } from './useRealtimeSubscription';
+import { dashboardRead } from '../lib/api';
 
 /**
  * Fetch scenes for a topic and compute stage-by-stage production progress.
- * Subscribes to Supabase Realtime for live updates.
+ * Polls every 15s post-migration 030 (Supabase Realtime disabled for anon).
  *
  * @param {string|null} topicId - Topic UUID
  * @param {object} [topicData] - Optional topic row (reserved for future use)
  * @returns {{ scenes: Array, stageProgress: object, failedScenes: Array, isLoading: boolean, error: any }}
  */
 export function useProductionProgress(topicId, topicData) {
-  useRealtimeSubscription(
-    topicId ? 'scenes' : null,
-    topicId ? `topic_id=eq.${topicId}` : null,
-    [['scenes', topicId], ['production-progress', topicId]]
-  );
-
   const query = useQuery({
     queryKey: ['scenes', topicId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('scenes')
-        .select('*')
-        .eq('topic_id', topicId)
-        .order('scene_number', { ascending: true });
-
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: () => dashboardRead('scene_progress', { topic_id: topicId }),
     enabled: !!topicId,
+    refetchInterval: 15_000,
   });
 
   const scenes = query.data || [];
