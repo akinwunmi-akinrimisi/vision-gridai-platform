@@ -14,7 +14,7 @@ export function useProductionProgress(topicId, topicData) {
     queryKey: ['scenes', topicId],
     queryFn: () => dashboardRead('scene_progress', { topic_id: topicId }),
     enabled: !!topicId,
-    refetchInterval: 15_000,
+    refetchInterval: 3_000,
   });
 
   const scenes = query.data || [];

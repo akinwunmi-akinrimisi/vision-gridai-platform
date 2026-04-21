@@ -46,6 +46,6 @@ export function useScript(topicId) {
       return topic;
     },
     enabled: !!topicId,
-    refetchInterval: 15_000,
+    refetchInterval: 5_000,
   });
 }

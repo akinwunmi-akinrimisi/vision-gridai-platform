@@ -11,7 +11,7 @@ export function useProjects() {
   return useQuery({
     queryKey: ['projects'],
     queryFn: () => dashboardRead('projects_list'),
-    refetchInterval: 20_000,
+    refetchInterval: 10_000,
   });
 }
 

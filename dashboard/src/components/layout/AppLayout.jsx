@@ -2,7 +2,6 @@ import { useState } from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import CommandPalette from './CommandPalette';
-import LimitedModeBanner from './LimitedModeBanner';
 
 export default function AppLayout({ children, onLogout }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -20,7 +19,6 @@ export default function AppLayout({ children, onLogout }) {
           sidebarCollapsed={sidebarCollapsed}
           setSidebarCollapsed={setSidebarCollapsed}
         />
-        <LimitedModeBanner />
         <main className="flex-1 overflow-y-auto scrollbar-thin">
           <div className="p-7 pt-20 max-w-[1440px] mx-auto">{children}</div>
         </main>

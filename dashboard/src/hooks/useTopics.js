@@ -11,7 +11,7 @@ export function useTopics(projectId) {
     queryKey: ['topics', projectId],
     queryFn: () => dashboardRead('topics_for_project', { project_id: projectId }),
     enabled: !!projectId,
-    refetchInterval: 15_000,
+    refetchInterval: 5_000,
   });
 }
 
