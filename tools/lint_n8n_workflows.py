@@ -121,9 +121,24 @@ def load_from_sqlite_dump(tmp_dir: pathlib.Path) -> list[tuple[str, str, list, d
         raise RuntimeError(f"SSH key not found at {ssh_key}")
 
     # Copy fresh sqlite dump to /tmp on VPS, then export workflow rows as JSONL.
+    # `workflow_entity.nodes` lags when a new version is pushed via the REST
+    # API — it's a denormalised cache. The authoritative nodes for an active
+    # workflow live at `workflow_history.nodes` where
+    # `workflow_history.versionId = workflow_published_version.publishedVersionId`.
+    # LEFT JOIN + COALESCE means older n8n versions (no workflow_history row)
+    # still return their `workflow_entity.nodes` as a fallback.
+    # Always remove the temp dump when we're done to avoid filling / on disk.
     remote_cmd = (
         f"docker cp {container}:/home/node/.n8n/database.sqlite /tmp/n8n_lint.sqlite && "
-        f"sqlite3 /tmp/n8n_lint.sqlite -json \"SELECT id, name, nodes, connections FROM workflow_entity WHERE active=1\""
+        f"sqlite3 /tmp/n8n_lint.sqlite -json "
+        f"\"SELECT we.id AS id, we.name AS name, "
+        f"COALESCE(wh.nodes, we.nodes) AS nodes, "
+        f"COALESCE(wh.connections, we.connections) AS connections "
+        f"FROM workflow_entity we "
+        f"LEFT JOIN workflow_published_version wpv ON wpv.workflowId = we.id "
+        f"LEFT JOIN workflow_history wh ON wh.versionId = wpv.publishedVersionId "
+        f"WHERE we.active=1\" && "
+        f"rm -f /tmp/n8n_lint.sqlite"
     )
     result = subprocess.run(
         ["ssh", "-i", ssh_key, "-o", "StrictHostKeyChecking=no", ssh_host, remote_cmd],

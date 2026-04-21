@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { supabase } from '../lib/supabase';
 import { dashboardRead, webhookCall } from '../lib/api';
 
 /**
@@ -96,39 +95,23 @@ export const DELETABLE_STATUSES = new Set([
 ]);
 
 /**
- * Delete a project and all related data via direct Supabase calls.
- * Cascade order: production_log → scenes → avatars → topics → prompt_configs → niche_profiles → project.
- * Only works on early-stage or failed projects (no topics with production data).
+ * Delete a project and all related data via the authenticated
+ * WF_DASHBOARD_READ `delete_project` query. The server-side handler cascades
+ * production_log -> scenes -> avatars -> topics -> prompt_configs ->
+ * niche_profiles -> projects using service_role and enforces the same
+ * DELETABLE_STATUSES allowlist. Direct supabase.from().delete() was removed
+ * in the 2026-04-21 security remediation (anon role no longer has write
+ * privileges after migration 030).
  */
 export function useDeleteProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (projectId) => {
-      // Delete in cascade order (children first)
-      const tables = [
-        'production_log',
-        'scenes',
-        'avatars',
-        'topics',
-        'prompt_configs',
-        'niche_profiles',
-      ];
-
-      for (const table of tables) {
-        const { error } = await supabase
-          .from(table)
-          .delete()
-          .eq('project_id', projectId);
-        if (error) throw new Error(`Failed to delete ${table}: ${error.message}`);
+      const data = await dashboardRead('delete_project', { project_id: projectId });
+      if (!data || data.deleted !== projectId) {
+        throw new Error('Delete did not confirm the project id was removed');
       }
-
-      // Finally delete the project itself
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', projectId);
-      if (error) throw new Error(`Failed to delete project: ${error.message}`);
 
       return projectId;
     },
