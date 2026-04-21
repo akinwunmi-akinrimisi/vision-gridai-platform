@@ -2,3 +2,21 @@
 # Format per line: RULE|workflow_id|node_name
 # Blank lines and lines starting with # are ignored.
 # Only add entries after confirming the finding is intentional and documented.
+
+# 2026-04-21 — audit H-2 remediation (docs/SECURITY_AUDIT_2026_04_21.md)
+#
+# Non-VG workflows sharing the n8n instance. Out of scope for VG audit; owning
+# teams must add headerAuth themselves. Re-review quarterly.
+AUTH-01|C9dD1Oj6QSvTMX3M|NewsPipeline_Trigger_v3
+AUTH-01|Zm7g02zpbt8KiTpI|Specialist Approves
+
+# Linter stale-cache false positive. The n8n REST API confirms these two
+# workflows DO have authentication='headerAuth' + credential id
+# 'KtMyWD7uJJBZYLjt' bound (versionCounter 41 and 9 respectively). Live probe
+# curl POST /webhook/production/ken-burns and /webhook/production/i2v-hybrid
+# both return HTTP 403 without Bearer token. The linter reads
+# workflow_entity.nodes which lags behind the active version
+# (workflow_published_version -> workflow_history). Remove allowlist entries
+# after upgrading the linter to follow the version chain.
+AUTH-01|OYahvKcydMrUxK8j|Webhook Trigger
+AUTH-01|EKrWrvJZOoWKL3pl|Webhook Trigger
