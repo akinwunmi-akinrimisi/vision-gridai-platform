@@ -3,11 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'missing-key-check-env';
 
-// Realtime disabled 2026-04-21 (audit migration 030 locked anon RLS;
-// a Realtime subscription with the anon key now returns no events and
-// just spams "WebSocket not available" in the console). All hooks poll
-// via dashboardRead() instead. See useRealtimeSubscription.js.
+// Auth session persistence disabled 2026-04-21 — dashboard does not use
+// Supabase Auth; autoRefreshToken caused noisy refresh loops in the
+// console post-migration 030. Realtime is intentionally left enabled so
+// the client doesn't throw at init on pages that still import it for
+// code-split reasons; any actual supabase.channel() call fails closed
+// (RLS blocks anon) and hooks that previously relied on it now poll
+// via dashboardRead(). See useRealtimeSubscription.js for the no-op stub.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: { params: { apikey: '' } },
-  auth: { persistSession: false, autoRefreshToken: false },
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 });
