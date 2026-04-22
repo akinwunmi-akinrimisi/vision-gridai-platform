@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/sheet';
 import useMediaQuery from '@/hooks/useMediaQuery';
 import { useQuotaStatus } from '@/hooks/useQuotaStatus';
+import { useProjects } from '@/hooks/useProjects';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -212,45 +213,23 @@ function ProjectSelector({ currentProjectId, collapsed }) {
 
 // ── Total Spend ──────────────────────────────────────
 
+/**
+ * Rolled-up total spend across every project. Derived from the already
+ * cached `projects_list` query (each project carries its topics_summary
+ * with total_cost). Post-2026-04-21 RLS lockdown — no direct supabase
+ * calls, no Realtime channel.
+ */
 function TotalSpend({ collapsed }) {
-  const [totalSpend, setTotalSpend] = useState(0);
-
-  useEffect(() => {
-    supabase
-      .from('topics')
-      .select('total_cost')
-      .then(({ data }) => {
-        const sum = (data || []).reduce(
-          (s, t) => s + (parseFloat(t.total_cost) || 0),
-          0
-        );
-        setTotalSpend(sum);
-      });
-
-    const channel = supabase
-      .channel('sidebar-spend')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'topics' },
-        () => {
-          supabase
-            .from('topics')
-            .select('total_cost')
-            .then(({ data }) => {
-              const sum = (data || []).reduce(
-                (s, t) => s + (parseFloat(t.total_cost) || 0),
-                0
-              );
-              setTotalSpend(sum);
-            });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  const { data: projects = [] } = useProjects();
+  const totalSpend = useMemo(() => {
+    let sum = 0;
+    for (const p of projects) {
+      for (const t of (p.topics_summary || [])) {
+        sum += parseFloat(t.total_cost) || 0;
+      }
+    }
+    return sum;
+  }, [projects]);
 
   if (totalSpend <= 0) return null;
 
@@ -275,49 +254,16 @@ function TotalSpend({ collapsed }) {
 // ── Pending Topics Badge ─────────────────────────────
 
 function usePendingTopicsCount(projectId) {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!projectId) return;
-
-    supabase
-      .from('topics')
-      .select('*', { count: 'exact', head: true })
-      .eq('project_id', projectId)
-      .eq('review_status', 'pending')
-      .then(({ count: c }) => {
-        setCount(c || 0);
-      });
-
-    const channel = supabase
-      .channel(`sidebar-pending-${projectId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'topics',
-          filter: `project_id=eq.${projectId}`,
-        },
-        () => {
-          supabase
-            .from('topics')
-            .select('*', { count: 'exact', head: true })
-            .eq('project_id', projectId)
-            .eq('review_status', 'pending')
-            .then(({ count: c }) => {
-              setCount(c || 0);
-            });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [projectId]);
-
-  return count;
+  // Derived from the cached projects_list: each project carries its
+  // topics_summary with review_status. No Realtime channel, no anon
+  // Supabase call (migration 030 locks those down).
+  const { data: projects = [] } = useProjects();
+  return useMemo(() => {
+    if (!projectId) return 0;
+    const p = projects.find((x) => x.id === projectId);
+    if (!p) return 0;
+    return (p.topics_summary || []).filter((t) => t.review_status === 'pending').length;
+  }, [projects, projectId]);
 }
 
 // ── Sidebar Main Component ───────────────────────────
