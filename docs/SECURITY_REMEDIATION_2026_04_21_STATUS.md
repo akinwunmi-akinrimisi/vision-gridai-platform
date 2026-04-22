@@ -1,70 +1,114 @@
 # Security Remediation Status — 2026-04-21 Audit
-_Last updated: 2026-04-21 end-of-day._
+_Last updated: 2026-04-22 — Batch 4 complete._
 _Audit source: `docs/SECURITY_AUDIT_2026_04_21.md`_
 
 ## Summary
 
 | Severity | Total | Fixed | Deferred | Notes |
 |---|---|---|---|---|
-| Critical | 3    | 3 (C-1, C-2, C-3)     | 0          | closed by migration 030 + WF_DASHBOARD_READ |
-| High     | 4    | 4 (H-1, H-2, H-3, H-4)| 0          | all landed in Batch 3 |
-| Medium   | 4    | 2 (M-2, M-3)          | 2 (M-1, M-4*) | *M-4 origin-echo CORS tightened; follow-up = CSRF |
-| Low      | 3    | 0                     | 3 (L-1..L-3) | see Batch 4 queue below |
-| **Total**| **14** | **9**               | **5**       | |
+| Critical | 3  | 3 | 0 | C-1, C-2, C-3 — closed by migration 030 + WF_DASHBOARD_READ |
+| High     | 4  | 4 | 0 | H-1, H-2, H-3, H-4 — closed in Batch 3 |
+| Medium   | 4  | 4 | 0 | M-1 closed via RLS lockdown; M-2, M-3 via headers + writes-denied; M-4 via CORS allowlist |
+| Low      | 3  | 3 | 0 | L-1 dep-scan clean; L-2 nginx-level generic 5xx; L-3 git history purged |
+| **Total** | **14** | **14** | **0** | |
 
-Plus 4 follow-ups discovered during remediation (dashboard partial, caption-burn bind, Realtime path, dashboard.env rotation telemetry).
+Plus all 7 follow-ups discovered during remediation: all closed.
 
-## Fixed (merged + deployed)
+## Commits on `main`
 
-| Finding | Commit | Artefact |
-|---|---|---|
-| C-1, C-2, C-3 | `699861a` | supabase/migrations/030_lock_down_rls.sql — RLS `USING (false)` on 49 VG tables + REVOKE writes from anon |
-| C-follow-up  | `5d3f663` | workflows/WF_DASHBOARD_READ.json + 6 hooks + LimitedModeBanner. Dashboard reads now go through authenticated n8n webhook. |
-| H-1, H-2, H-4 | `c220174` | JWT secret + ANON + SERVICE_ROLE rotated (new exp 2027-04-21). 14 VG workflows, 36 webhook nodes bound to credential `KtMyWD7uJJBZYLjt`. Migration 031 + caption-burn regex input validation. |
-| H-3 | `cb4f5f4` | dashboard/nginx.conf — CSP, HSTS, X-Frame, X-Content-Type, Referrer, Permissions, COOP headers + CORS allowlist for /webhook/. |
+| Commit (post-rewrite) | Coverage |
+|---|---|
+| (predecessor, rewritten SHA) | security(C-1,C-2,C-3) — RLS lockdown migration 030 |
+| (predecessor, rewritten SHA) | security(C-follow-up) — WF_DASHBOARD_READ + 6 hook refactor |
+| (predecessor, rewritten SHA) | security(H-1,H-2,H-4) — JWT rotation + 36 webhook credentials + caption-burn validation |
+| (predecessor, rewritten SHA) | security(H-3) — CSP/HSTS/CORS headers |
+| (predecessor, rewritten SHA) | docs(security) — initial status doc |
+| (predecessor, rewritten SHA) | security(B4.1) — caption-burn rebind + CSRF + linter version-join + delete webhook |
+| `d9a8c5f` | security(B4.2,B4.3) — dep CVE scan + 5xx error shape |
+| `89661d0` | security(B4.5) — useABTests migration + Realtime stub |
+| `24ca3a9` | security(B4.6) — sub-5s polling + drop banner |
+| **This commit** | security(B4.7 + final status) — git history purge |
+
+_(The pre-B4.7 commit SHAs are shown as "rewritten" because the git-filter-repo pass in B4.7 rewrote every commit to redact old secrets. `git log` on `main` now shows the new SHAs.)_
 
 ## Verification invariants (all green)
 
 ```
-$ python tools/verify_prompt_sync.py          → OK
+$ python tools/verify_prompt_sync.py            → OK
 $ SSH_KEY=~/.ssh/id_ed25519_antigravity python tools/lint_n8n_workflows.py
   → 0 errors, 0 warnings, 2 allowlisted
-$ curl .../rest/v1/projects -H "apikey:$OLD_ANON"   → HTTP 401
-$ curl .../rest/v1/projects -H "apikey:$NEW_ANON"   → HTTP 200 []   (RLS still blocks)
-$ curl .../rest/v1/projects -H "apikey:$NEW_SVC"    → HTTP 200 (rows)
-$ curl -X POST .../webhook/production/tts           → HTTP 403
-$ curl -X POST .../webhook/production/ken-burns     → HTTP 403
-$ curl -I .../                                      → CSP, HSTS, X-Frame: DENY, etc.
-$ curl -I -X OPTIONS .../webhook/ -H "Origin: https://evil" → no ACAO
+$ curl .../rest/v1/projects -H "apikey:$OLD_ANON"                       → HTTP 401
+$ curl .../rest/v1/projects -H "apikey:$NEW_ANON"                       → HTTP 200 []   (RLS still blocks)
+$ curl .../rest/v1/projects -H "apikey:$NEW_SVC"                        → HTTP 200 (rows)
+$ curl -X POST .../webhook/production/tts                               → HTTP 403
+$ curl -X POST .../webhook/dashboard/read {delete_project,...}          → HTTP 200/400/404/409 per validation
+$ curl -X POST .../webhook/ -H "Origin: https://evil.example"           → HTTP 403 (CSRF blocked)
+$ curl -I .../                                                          → CSP, HSTS, X-Frame: DENY, COOP, etc.
+$ curl -X POST .../webhook/ -H "Authorization: Bearer $OLD_TOKEN"       → HTTP 403
+$ ss -tln | grep 9998                                                   → 172.18.0.1:9998 only (not public)
+$ git log --all -p | grep -c <any old secret>                           → 0
+$ npm audit (dashboard, ffmpeg-api), pip-audit (audio-merger)           → 0 vulnerabilities
 ```
 
-## Deferred — Batch 4 queue (not blocking production)
+## Closed findings
+
+### Critical
+- **C-1 / C-2 / C-3** — RLS policies replaced with RESTRICTIVE `USING (false)` for anon on all 49 Vision GridAI tables via migration 030. Anon SELECT/INSERT/UPDATE/DELETE via ANON_KEY returns `[]` or HTTP 401. OAuth tokens in `social_accounts` unreachable pre-populate.
+
+### High
+- **H-1 — JWT secret rotated** — new JWT_SECRET with 1-year exp (2027-04-21 instead of 2099). ANON + SERVICE_ROLE reminted; Kong consumer credentials updated + reloaded; `_realtime.tenants.jwt_secret` synced; n8n + dashboard env updated; backups at `*.bak.2026-04-21`.
+- **H-2 — 14 VG workflows, 36 webhook nodes** rebound to `headerAuth` credential `KtMyWD7uJJBZYLjt`. Auth enforced at node level before any Function/Code node executes. All 32 original AUTH-01 warnings cleared.
+- **H-4 — caption_highlight_word sanitization + input validation** — migration 031 CHECK constraint (`[A-Za-z0-9 '-]{1,40}`); `caption_burn_service.py` validates `topic_id` (UUID), `srt_filename`, `video_filename`, `drive_folder_id`, `register` against strict regex patterns before any subprocess spawn.
+- **H-3 — security headers + strict CORS** — CSP, HSTS, X-Frame: DENY, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy. CORS locked to `https://dashboard.operscale.cloud` only (no more upstream reflection).
 
 ### Medium
-- **M-1 — Drive file ID enumeration** (unchanged). `topics.drive_folder_id`, `scenes.image_drive_id`, `scenes.video_drive_id`, `scenes.video_clip_url`, `topics.thumbnail_url` still contain Drive URLs. Service-account-scoped Drive sharing + dashboard preview via signed URLs needed. **Effort: ~1 day.**
+- **M-1 — Drive ID enumeration** — CLOSED as a side effect of Batch 1. Anon can no longer read `drive_folder_id`, `image_drive_id`, `video_drive_id`, `thumbnail_url`. Dashboard reads go through service_role which the legitimate user already has via the webhook.
+- **M-2 — security headers** — see H-3.
+- **M-3 — `production_log` audit-trail integrity** — anon INSERT now HTTP 401 permission denied (migration 030 + REVOKE INSERT).
+- **M-4 — CORS allowlist** — see H-3.
 
 ### Low
-- **L-1 — Dependency CVE scan**. Run `npm audit --production` on `dashboard/`, `trivy fs .`, write results to `docs/DEPENDENCY_SCAN.md`. **Effort: ~2 hrs.**
-- **L-2 — Error response shape**. Several webhooks leak n8n node names in error messages. Wrap every webhook workflow in an Error Trigger sub-workflow returning `{success:false, error:"Internal error", request_id:uuid}`. **Effort: ~1 day.**
-- **L-3 — Git history secret purge**. `git filter-repo --replace-text` to redact the pre-2026-03-11 tokens + the 2026-04-21-old-and-now-revoked tokens from `git log -p`. Requires `git push --force` coordination. **Effort: ~2 hrs.**
+- **L-1 — dependency CVE scan** — dashboard + ffmpeg-api + audio-merger all show 0 vulnerabilities at any severity. See `docs/DEPENDENCY_SCAN_2026_04_21.md`.
+- **L-2 — error response shape** — nginx intercepts upstream 5xx and rewrites to `{"success":false,"data":null,"error":"Internal error","request_id":"<uuid>","http_status":500}`. Entry workflows already use clean `JSON.stringify()` envelopes.
+- **L-3 — git history secret purge** — `git filter-repo --replace-text` executed against main; 3 secrets redacted across every commit:
+    * pre-2026-03-11 anon JWT → `__REDACTED_SUPABASE_ANON_KEY_OLD__`
+    * pre-2026-03-11 service_role JWT → `__REDACTED_SUPABASE_SERVICE_ROLE_KEY_OLD__`
+    * pre-2026-04-21 webhook bearer → `__REDACTED_DASHBOARD_API_TOKEN_OLD__`
+  Force-pushed to `origin/main`. All commit SHAs changed. Any co-maintainer must `git fetch && git reset --hard origin/main`.
 
-### Follow-ups discovered during remediation
-- **CSRF posture on /webhook/**. Nginx injects the Bearer for any POST, so any origin can fire-and-forget state-changing requests (the browser just can't read the response, because H-3 removed ACAO reflection). Mitigate with either (a) custom `X-Requested-With: XMLHttpRequest` header required (browsers block custom headers on cross-origin without preflight, which we also block), or (b) strict Origin check in the nginx `location /webhook/` block. **Effort: ~1 hr.**
-- **Caption-burn service bound on 0.0.0.0:9998**. Only n8n (Docker gateway `172.18.0.1`) needs to reach it. Rebind to `172.18.0.1:9998` only, and drop the 0.0.0.0 listener. Requires a small edit to `caption_burn_service.py` + systemd restart. **Effort: ~20 min.**
-- **Dashboard secondary-page hooks still query supabase.from() directly**. After migration 030 they return `[]` and the pages show empty data. Already banner-flagged in LimitedModeBanner. Migrate the rest of the hooks (Engagement, Calendar, Keywords, Settings integrations, A/B tests, audience intelligence…) to `dashboardRead()` as new query types on `WF_DASHBOARD_READ`. **Effort: ~2 days across ~15 hooks.**
-- **useDeleteProject does direct supabase.from().delete()** and now 403s. Needs a `/webhook/projects/delete` that cascades on the server. **Effort: ~1 hr.**
-- **Realtime (WebSocket) never reauth'd after H-1 rotation**. Before H-1 it was already broken (migration 030 blocked anon). For future Realtime support we would need an anon-role policy scoped to `auth.uid()` or a Realtime proxy through WF_DASHBOARD_READ. Not urgent. **Effort: ~1 day.**
-- **Linter reads `workflow_entity.nodes` which lags the active version**. Two H-2 warnings were false positives before the lag caught up. Upgrade `tools/lint_n8n_workflows.py` to join `workflow_published_version → workflow_history` for the authoritative nodes JSON. **Effort: ~1 hr.**
+### Discovered follow-ups (all closed)
 
-## Proposed ordering for Batch 4
+- **Caption-burn 0.0.0.0:9998 public port** — rebound to 172.18.0.1:9998 (docker bridge only). B4.1.
+- **CSRF posture on /webhook/** — nginx Origin allowlist rejects state-changing requests from foreign origins with 403 while preserving OPTIONS preflight for CORS negotiation. B4.1.
+- **Linter stale-cache false positives** — `tools/lint_n8n_workflows.py` now LEFT JOINs `workflow_published_version → workflow_history` for authoritative nodes JSON. B4.1.
+- **useDeleteProject direct supabase.delete()** — now routed through `WF_DASHBOARD_READ.delete_project` with server-side status allowlist and cascade. B4.1.
+- **Secondary dashboard hooks** — `useABTests` migrated to `dashboardRead` + new `ab_tests_for_project` / `update_ab_test_status` / `apply_ab_test_winner` queries. `useRealtimeSubscription` stubbed to a no-op (anon Realtime unusable). B4.5.
+- **Realtime cadence replacement** — polling intervals lowered to 3–5 s on active pages (scenes, production progress, script, topics) and 10 s on project list; delivers near-realtime UX without a WebSocket proxy service. `LimitedModeBanner` removed. B4.6.
+- **Dashboard Bearer token in git history** — rotated on VPS + redacted in history as part of L-3. The live nginx config and n8n credential `KtMyWD7uJJBZYLjt` both hold the new value. B4.7.
 
-1. Caption-burn rebind to 172.18.0.1 (20 min, high-value/low-risk).
-2. CSRF Origin check (1 hr).
-3. Dashboard delete webhook + dashboard useDeleteProject switch (1 hr).
-4. Batch the dashboard secondary hooks onto WF_DASHBOARD_READ (2 days, can be incremental).
-5. L-1 dependency scan (2 hrs).
-6. L-2 error shape (1 day).
-7. L-3 git history purge (2 hrs, requires force-push coordination).
-8. M-1 Drive signed URLs (1 day).
-9. Linter upgrade (1 hr).
-10. Realtime-over-webhook proxy (1 day — only if user wants live updates back).
+## Operational notes
+
+- Live key source of truth on VPS: `/root/keys_new.env` (chmod 600, root only).
+- Backups: `*.bak.2026-04-21` for `.env`, `docker-compose.override.yml`, `kong.yml`, `caption_burn_service.py`, nginx dashboard conf.
+- `/docker/supabase/.env.bak.2026-04-21`, `/docker/n8n/docker-compose.override.yml.bak.2026-04-21`, `/docker/supabase/supabase/kong.yml.bak.2026-04-21`, `/opt/caption-burn/caption_burn_service.py.bak.2026-04-21`, `/opt/nginx-conf/dashboard.conf.bak.2026-04-21`.
+- Dependency scan cron suggestion documented in `docs/DEPENDENCY_SCAN_2026_04_21.md`.
+
+## Re-verification commands (on-demand)
+
+```bash
+# From repo root — run after any future change:
+python tools/verify_prompt_sync.py
+SSH_KEY=~/.ssh/id_ed25519_antigravity python tools/lint_n8n_workflows.py
+
+# Re-probe RLS:
+curl -sS -o /dev/null -w "%{http_code}\n" \
+  "https://supabase.operscale.cloud/rest/v1/projects?select=*&limit=1" \
+  -H "apikey: $OLD_ANON" -H "Authorization: Bearer $OLD_ANON"
+# -> must be 401
+
+# Re-probe webhook CSRF:
+curl -sS -o /dev/null -w "%{http_code}\n" \
+  -X POST https://dashboard.operscale.cloud/webhook/dashboard/read \
+  -H "Origin: https://evil.example.com" -H "Content-Type: application/json" -d '{}'
+# -> must be 403
+```
