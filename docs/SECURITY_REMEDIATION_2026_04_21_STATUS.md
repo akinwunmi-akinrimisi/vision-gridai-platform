@@ -1,6 +1,7 @@
 # Security Remediation Status — 2026-04-21 Audit
-_Last updated: 2026-04-22 — Batch 4 complete._
+_Last updated: 2026-04-23 — Batch 4 complete + post-ship UX hotfixes._
 _Audit source: `docs/SECURITY_AUDIT_2026_04_21.md`_
+_Current HEAD: `792c23b` on `origin/main` (synced)._
 
 ## Summary
 
@@ -27,7 +28,39 @@ Plus all 7 follow-ups discovered during remediation: all closed.
 | `d9a8c5f` | security(B4.2,B4.3) — dep CVE scan + 5xx error shape |
 | `89661d0` | security(B4.5) — useABTests migration + Realtime stub |
 | `24ca3a9` | security(B4.6) — sub-5s polling + drop banner |
-| **This commit** | security(B4.7 + final status) — git history purge |
+| `8c23984` | security(B4.7 + final status) — git history purge |
+| `5715748` | fix(dashboard): silence WebSocket noise (1st attempt — see revert) |
+| `8a9f319` | fix(dashboard): revert the realtime.params tweak that blanked the page |
+| `1ddb427` | fix(sidebar): replace 2 Realtime channels with react-query derivations |
+| `792c23b` | fix(dashboard): supabase-js shim + sb_query handler — restores every page |
+
+## Post-B4.7 production hotfixes
+
+After Batch 4 shipped, the live dashboard surfaced two residual
+issues caused by the RLS lockdown that the batches hadn't covered:
+
+- **"WebSocket not available" console spam.** The auto-connecting
+  supabase-js Realtime client, plus `ConnectionStatus.jsx` opening a
+  control channel, plus `Sidebar.jsx` opening two postgres_changes
+  channels, kept retrying WS handshakes that anon can no longer auth.
+  Commits `5715748` → `8a9f319` → `1ddb427` swapped every browser
+  Realtime subscriber for webhook polling / react-query derivations.
+
+- **Pages showing empty data (Channel Analyzer, Research, YouTube
+  Discovery, Niche Research, Intelligence Hub, Keywords, Daily Ideas,
+  Engagement Hub, Social Publisher, Content Calendar, Shorts Creator,
+  Video Review, Settings).** 35+ files still had multi-line
+  `supabase.from(...).select(...).eq(...)` chains that returned `[]`
+  under the new RLS. Commit `792c23b` replaced
+  `dashboard/src/lib/supabase.js` with a hand-rolled shim that
+  preserves the supabase-js fluent API but routes every chain through
+  a new `sb_query` handler in WF_DASHBOARD_READ, which runs the query
+  with service_role against a 47-table allowlist. 100+ call sites
+  restored without touching the pages themselves.
+
+Net effect: no code in the browser holds a DB key, no WebSocket is
+ever opened, no direct REST call to Supabase, every page hits only
+`/webhook/dashboard/read` with the nginx-injected bearer.
 
 _(The pre-B4.7 commit SHAs are shown as "rewritten" because the git-filter-repo pass in B4.7 rewrote every commit to redact old secrets. `git log` on `main` now shows the new SHAs.)_
 
