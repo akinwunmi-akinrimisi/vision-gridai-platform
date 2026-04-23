@@ -1,5 +1,5 @@
 # Security Remediation Status — 2026-04-21 Audit
-_Last updated: 2026-04-23 — Batch 4 complete + post-ship UX hotfixes._
+_Last updated: 2026-04-23 — Batch 4 complete + post-ship UX hotfixes + JWT-rotation credential-sweep followup._
 _Audit source: `docs/SECURITY_AUDIT_2026_04_21.md`_
 _Current HEAD: `792c23b` on `origin/main` (synced)._
 
@@ -125,6 +125,80 @@ $ npm audit (dashboard, ffmpeg-api), pip-audit (audio-merger)           → 0 vu
 - Backups: `*.bak.2026-04-21` for `.env`, `docker-compose.override.yml`, `kong.yml`, `caption_burn_service.py`, nginx dashboard conf.
 - `/docker/supabase/.env.bak.2026-04-21`, `/docker/n8n/docker-compose.override.yml.bak.2026-04-21`, `/docker/supabase/supabase/kong.yml.bak.2026-04-21`, `/opt/caption-burn/caption_burn_service.py.bak.2026-04-21`, `/opt/nginx-conf/dashboard.conf.bak.2026-04-21`.
 - Dependency scan cron suggestion documented in `docs/DEPENDENCY_SCAN_2026_04_21.md`.
+
+## 2026-04-23 followup — defects the Apr-21 rotation sweep missed
+
+Two defect families surfaced on 2026-04-23 that the Batch 3 rotation (H-1) didn't catch. Root cause in both cases: the rotation updated environment files + Kong + realtime tenants, but did **not** sweep the encrypted n8n `credentials_entity` rows that some workflows use instead of `$env`, and did not rescan for pre-existing expression-authoring bugs whose error shape happens to look JWT-shaped.
+
+### Family A — stale n8n credentials
+
+| Credential ID | Name | Type | Stored JWT `iat` / `exp` | Scope of impact |
+|---|---|---|---|---|
+| `QsqqFXtnLakNfVKR` | Supabase Service Role | httpHeaderAuth | 2026-03-02 / 2099 (old) | 65+ HTTP Request nodes across **7 active workflows** |
+| `J9VjA3SICbcxAq7G` | Supabase | supabaseApi | 2026-03-02 / 2099 (old) | 9 active non-VG workflows (Cal.com, WhatsApp, Lead Outreach) — cross-project, same symptom |
+| `5JokeQj3U9W4Ys7p` | DASHBOARD_API_TOKEN | httpHeaderAuth | pre-rotation `825d069e…` | Inert in production (zero active workflow references) but was wrong by policy — fixed for consistency |
+
+Affected active VG workflows that had been silently erroring or would error on next trigger:
+- `WF_PROJECT_CREATE — Niche Research + Prompt Generation` (14 nodes)
+- `WF_TOPICS_GENERATE — Generate 25 Topics + Avatars` (11 nodes)
+- `WF_TOPICS_ACTION — Approve/Reject/Refine/Edit Topics` (15 nodes)
+- `WF_SCRIPT_GENERATE — 3-Pass Script Generation` (11 nodes)
+- `WF_SOCIAL_POSTER` (4 nodes)
+- `WF_SOCIAL_ANALYTICS` (2 nodes) — already failed its 2026-04-21 22:00 + 2026-04-22 22:00 daily cron with `JWSError JWSInvalidSignature`
+- `WF_MASTER` (8 nodes)
+
+Closure pathway (per cred): `docker exec n8n-n8n-1 n8n export:credentials --id=<CID> --decrypted --output=<path>` → `jq` patch `.data.value` / `.data.serviceRole` to the fresh JWT from `/root/keys_new.env` → `docker exec n8n-n8n-1 n8n import:credentials --input=<path>`. Import preserves the credential ID so all 7 workflows automatically pick up the new value with zero workflow edits.
+
+Verification: `WF_SOCIAL_ANALYTICS` ran successfully at 2026-04-23 14:24 (execution 76334) after two consecutive post-rotation cron failures. Direct curl with the post-patch credential value returns `HTTP 200`.
+
+### Family B — pre-existing `=` prefix bug on 17 HTTP nodes
+
+In n8n, a parameter value starting with `=` is evaluated as an expression; otherwise it's a literal string. Two workflows had the `Authorization` header value stored as the literal template:
+
+```diff
+-  "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
++  "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+```
+
+Supabase PostgREST then received the literal string `Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}` in the Authorization header and replied `{"code":"PGRST301","message":"JWSError (CompactDecodeError Invalid number of parts: Expected 3 parts; got 2)"}`. This defect **predates** the Apr-21 rotation — `WF_SUPERVISOR` had been silently failing every 30 minutes for 30+ days (≈1,440 failures), ~80/day on the main cron sweep. The error text is JWT-flavoured which is why this got lumped into the same audit as Family A, but the root cause is authoring-time, not rotation.
+
+Affected active workflows:
+- `WF_SUPERVISOR` — 11 nodes (reliability watchdog, every 30 min)
+- `WF_ANALYTICS_CRON` — 6 nodes (daily YouTube analytics pull)
+
+Closure pathway (per workflow): `docker exec n8n-n8n-1 n8n export:workflow --id=<WID>` → `jq '.[0].nodes |= map(...)'` to prepend `=` to every `.headerParameters.parameters[].value` whose value starts with `Bearer {{` → `docker exec n8n-n8n-1 n8n import:workflow --input=<path>`. Import auto-deactivates; reactivate via `POST /api/v1/workflows/<id>/activate` with `X-N8N-API-KEY` so the schedule trigger re-registers without an n8n restart.
+
+Verification: `WF_SUPERVISOR` ran successfully at 2026-04-23 14:30:00 (execution 76352) — first green tick in 30+ days.
+
+### Broad re-scan (2026-04-23 post-patch)
+
+```
+$ jq '.[] | .parameters.headerParameters.parameters[] |
+       select(((.value//""|tostring)|contains("{{"))
+          and ((.value//""|tostring)|startswith("=") | not))' \
+    <every active VG workflow>                                  → 0 matches
+```
+
+### Rollback material
+
+`/root/backups/jwt-fix-20260423T142023Z/` — 3 credential JSONs (pre-patch, decrypted) + 9 workflow JSONs + `credentials_entity.sql` table dump.
+
+### Rotation runbook (additions for next rotation)
+
+1. **After updating `/docker/supabase/.env`**, also enumerate encrypted n8n credentials and patch them:
+   ```bash
+   sqlite3 /var/lib/docker/volumes/n8n_data/_data/database.sqlite \
+     "SELECT id,name,type FROM credentials_entity
+      WHERE type IN ('httpHeaderAuth','supabaseApi')
+         OR name LIKE '%Supabase%' OR name LIKE '%Bearer%' OR name LIKE '%DASHBOARD%'"
+   # For each ID: export --decrypted → jq patch → import
+   ```
+2. **Before calling it done, scan for expression-authoring bugs** — the JWT-shape error can mask a static defect that's been lurking for months:
+   ```bash
+   jq '.[] | .parameters.headerParameters.parameters[]? |
+        select(((.value//""|tostring)|contains("{{"))
+           and ((.value//""|tostring)|startswith("=") | not))'
+   ```
 
 ## Re-verification commands (on-demand)
 
