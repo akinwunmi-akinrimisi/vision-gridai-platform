@@ -21,19 +21,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('docs-site/requirements.txt') }}
+          cache: 'pip'
+          cache-dependency-path: 'docs-site/requirements.txt'
 
       - name: Install dependencies
         run: pip install -r docs-site/requirements.txt
