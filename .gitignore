@@ -60,3 +60,7 @@ Thumbs.db
 .vscode/
 .idea/
 .gstack/
+
+# MkDocs build output
+docs-site/site/
+docs-site/.cache/

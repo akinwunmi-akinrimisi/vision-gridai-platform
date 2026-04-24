@@ -1,0 +1,16 @@
+/* Wider Mermaid diagrams */
+.mermaid {
+  text-align: center;
+}
+
+/* Reference table tweaks */
+.md-typeset table:not([class]) {
+  font-size: 0.75rem;
+}
+
+/* Prevent absurdly tall tables */
+.md-typeset table:not([class]) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}

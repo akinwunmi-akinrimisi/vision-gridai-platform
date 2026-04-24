@@ -1,0 +1,116 @@
+site_name: Vision GridAI Platform
+site_description: Operator reference for the Vision GridAI multi-niche AI video production platform
+site_url: https://akinwunmi-akinrimisi.github.io/vision-gridai-platform/
+repo_url: https://github.com/akinwunmi-akinrimisi/vision-gridai-platform
+repo_name: akinwunmi-akinrimisi/vision-gridai-platform
+edit_uri: edit/main/docs-site/docs/
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - toc.integrate
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mermaid2
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2.fence_mermaid_custom
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Concepts:
+    - Why this platform exists: concepts/why.md
+    - The 4 approval gates: concepts/gates.md
+    - Pipeline economics: concepts/economics.md
+    - Glossary: concepts/glossary.md
+  - End-to-End Pipeline:
+    - Phase A · Project Creation: pipeline/phase-a-project-creation.md
+    - Phase B · Topic Generation (Gate 1): pipeline/phase-b-topic-generation.md
+    - Phase C · 3-Pass Script (Gate 2): pipeline/phase-c-script-generation.md
+    - Phase D · Production: pipeline/phase-d-production.md
+    - Phase E · Review & Publish (Gate 3): pipeline/phase-e-review-publish.md
+    - Phase F · Analytics: pipeline/phase-f-analytics.md
+    - Phase G · Shorts (Gate 4): pipeline/phase-g-shorts.md
+    - Phase H · Social Posting: pipeline/phase-h-social.md
+  - Subsystems:
+    - Topic Intelligence: subsystems/topic-intelligence.md
+    - Production Registers: subsystems/registers.md
+    - Style DNA + Composition: subsystems/style-dna.md
+    - Caption Burn Service: subsystems/caption-burn.md
+    - Background Music (Lyria): subsystems/music-lyria.md
+    - Resume / Retry: subsystems/resume-retry.md
+  - Dashboard:
+    - Page map: dashboard/page-map.md
+    - Page reference: dashboard/page-reference.md
+    - Realtime patterns: dashboard/realtime-patterns.md
+  - Database:
+    - Schema overview: database/schema-overview.md
+    - Table reference: database/table-reference.md
+    - Migration history: database/migration-history.md
+  - n8n Workflows:
+    - Architecture: workflows/architecture.md
+    - Reference (~50 cards): workflows/reference.md
+    - Status: workflows/status.md
+  - Prompts:
+    - Where prompts live: prompts/where-they-live.md
+    - System prompts: prompts/system-prompts.md
+    - Prompt templates: prompts/templates.md
+  - Infrastructure:
+    - VPS layout: infrastructure/vps-layout.md
+    - Service mesh: infrastructure/service-mesh.md
+    - Auth + secrets: infrastructure/auth-secrets.md
+  - Operations:
+    - Cost economics: operations/cost-economics.md
+    - Debugging recipes: operations/debugging-recipes.md
+    - Incident log: operations/incident-log.md
