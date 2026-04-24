@@ -4,6 +4,18 @@ node_modules/
 # Build output
 dashboard/dist/
 
+# Test coverage & reports
+dashboard/coverage/
+dashboard/playwright-report/
+dashboard/test-results/
+dashboard/qa-screenshots/
+
+# Local Claude Code task state
+.claude/scheduled_tasks.lock
+
+# Editor backup files
+*.bak
+
 # Superpowers brainstorm sessions
 .superpowers/
 
