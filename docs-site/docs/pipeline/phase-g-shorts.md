@@ -1,6 +1,6 @@
 # Phase G · Shorts (Gate 4)
 
-> Analyze a published long-form video for ~20 viral-worthy clips, halt at Gate 4 for human review, then produce native 9:16 shorts with fresh TTS + 9:16 images + kinetic captions. **Cost:** ~$0.50 analysis + ~$0.88 production per topic (~20 clips). **Duration:** ~2 minutes analysis, then waits for Gate 4; production ~30-60 minutes per topic.
+> Analyze a published long-form video for ~20 viral-worthy clips, halt at Gate 4 for human review, then produce native 9:16 shorts with fresh TTS + 9:16 images + kinetic captions. **Cost:** ~$0.50 analysis + ~$22 production per topic (20 clips: TTS $0.28 + images $2.46 + 9:16 I2V/T2V $19.50 — see [`Dashboard_Implementation_Plan.md` §10](https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/Dashboard_Implementation_Plan.md#10-cost-estimate)). **Duration:** ~2 minutes analysis, then waits for Gate 4; production ~30-60 minutes per topic.
 
 ## Goal
 
