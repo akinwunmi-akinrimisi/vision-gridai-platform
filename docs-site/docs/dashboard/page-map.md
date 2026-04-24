@@ -2,8 +2,8 @@
 
 The dashboard is a React 18 SPA mounted at
 [`https://dashboard.operscale.cloud`](https://dashboard.operscale.cloud) with
-**24 routes** declared in
-[`dashboard/src/App.jsx:48-71`](https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/dashboard/src/App.jsx).
+**22 routes** declared in
+[`dashboard/src/App.jsx:49-70`](https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/dashboard/src/App.jsx).
 Every route is lazy-loaded (`React.lazy` + `Suspense`) so the initial bundle
 only ships the layout, sidebar, and auth gate. Navigation happens through two
 channels: the persistent **Sidebar**

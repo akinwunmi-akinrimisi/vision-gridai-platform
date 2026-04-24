@@ -33,8 +33,9 @@ triggers, and a one-sentence purpose. Routes are taken verbatim from
 ### `/research`
 
 - **Component:** `dashboard/src/pages/Research.jsx`
-- **Hooks:** `useResearch` (queries: latest run, categories, results;
-  mutations: trigger run, cancel run)
+- **Hooks:** from `useResearch`: `useLatestRun`, `useAllRuns`,
+  `useRunById`, `useCategories`, `useResults`, `useRunResearch`,
+  `useCancelResearch`
 - **Reads tables:** `research_runs`, `research_categories`,
   `research_results`
 - **Calls webhooks:** `POST /webhook/research/run`,
@@ -47,9 +48,8 @@ triggers, and a one-sentence purpose. Routes are taken verbatim from
 ### `/youtube-discovery`
 
 - **Component:** `dashboard/src/pages/YouTubeDiscovery.jsx`
-- **Hooks:** from `useYouTubeDiscovery`: `useDiscoveryRuns`,
-  `useDiscoveryResults`, `useTriggerDiscovery`, `useCancelDiscovery`,
-  `useAnalyzeVideo`
+- **Hooks:** from `useYouTubeDiscovery`: `useLatestDiscoveryRun`,
+  `useAllDiscoveryRuns`, `useRunDiscovery`, `useAllAnalyses`
 - **Reads tables:** `yt_discovery_runs`, `yt_discovery_results`
 - **Calls webhooks:** `POST /webhook/youtube/discover`
 - **Purpose:** Niche-research engine that scrapes top YouTube channels
@@ -305,7 +305,7 @@ triggers, and a one-sentence purpose. Routes are taken verbatim from
 - **Component:** `dashboard/src/pages/AICoach.jsx`
 - **Hooks:** from `useAICoach`: `useCoachSessions`,
   `useCoachMessages`, `useSendCoachMessage`,
-  `useCreateCoachSession`, `useArchiveCoachSession`
+  `useCreateSession`, `useArchiveSession`, `useRenameSession`
 - **Reads tables:** `coach_sessions`, `coach_messages`
 - **Calls webhooks:** `POST /webhook/coach/message`
   (`timeoutMs: 120_000`)
@@ -345,7 +345,7 @@ The following routes are reachable only via in-page links or direct URL:
 
 ## Inventory match
 
-The 24 routes above match `App.jsx` 1:1. No additional routes were
+The 22 routes above match [`App.jsx:49-70`](https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/dashboard/src/App.jsx) 1:1. No additional routes were
 discovered beyond the design-spec list; **`Keywords`**,
 **`IntelligenceHub`**, **`DailyIdeas`**, **`AICoach`**,
 **`YouTubeDiscovery`**, **`VideoAnalysis`**, and **`ChannelAnalyzer`** were
