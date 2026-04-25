@@ -1,0 +1,180 @@
+{
+  "name": "WF_COMPETITOR_ANALYZER",
+  "description": "Weekly per-project competitor analyzer. Cron Sunday 02:00 UTC. For each AU project, runs swot_channel_au per channel in channel_analyses (last 30d), then swot_subniche_au synthesis. Writes synthesis to analysis_groups (existing table) keyed by sub_niche.",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "cron-1",
+      "name": "Cron: Sunday 02:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300],
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 2 * * 0" }] }
+      }
+    },
+    {
+      "id": "webhook-1",
+      "name": "Webhook: Manual",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 440],
+      "parameters": {
+        "path": "competitor-analyzer/run",
+        "httpMethod": "POST",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "id": "respond-202",
+      "name": "202 Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [470, 440],
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 202,
+        "responseBody": "={ \"status\": \"queued\" }"
+      }
+    },
+    {
+      "id": "http-projects",
+      "name": "List AU Projects",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "https://supabase.operscale.cloud/rest/v1/projects?country_target=eq.AU&select=id,name,niche",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "split-1",
+      "name": "Per Project",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [700, 300],
+      "parameters": { "batchSize": 1 }
+    },
+    {
+      "id": "http-channels",
+      "name": "Fetch Recent Channel Analyses",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [930, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://supabase.operscale.cloud/rest/v1/channel_analyses?project_id=eq.{{ $('Per Project').first().json.id }}&analyzed_at=gte.{{ $now.minus({days:30}).toISO() }}&select=*&order=analyzed_at.desc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "exec-router-subniche",
+      "name": "Resolve swot_subniche_au",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1160, 300],
+      "parameters": {
+        "source": "database",
+        "workflowId": { "value": "={{ $env.WF_COUNTRY_ROUTER_ID }}", "mode": "id" },
+        "workflowInputs": {
+          "values": [
+            { "name": "workflow_name", "value": "WF_COMPETITOR_ANALYZER" },
+            { "name": "country_target", "value": "AU" },
+            { "name": "prompt_stage", "value": "subniche" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "code-payload",
+      "name": "Build Synthesis Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1390, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const project = $('Per Project').first().json;\nconst channels = $('Fetch Recent Channel Analyses').first().json;\nconst promptResolved = $input.first().json;\n\n// Group channels by sub_niche, then synthesize one SWOT per sub_niche\nconst bySubNiche = {};\nfor (const ch of (channels || [])) {\n  const sn = ch.sub_niche || 'unknown';\n  if (!bySubNiche[sn]) bySubNiche[sn] = [];\n  bySubNiche[sn].push(ch);\n}\n\nconst items = [];\nfor (const [sn, group] of Object.entries(bySubNiche)) {\n  if (group.length < 3) continue;\n  items.push({ json: {\n    project_id: project.id,\n    sub_niche: sn,\n    competitor_channel_analyses: group,\n    prompt_text: promptResolved.prompt_text\n  }});\n}\nreturn items;"
+      }
+    },
+    {
+      "id": "http-anthropic",
+      "name": "Call Claude (SWOT Synthesis)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "model", "value": "claude-sonnet-4-20250514" },
+            { "name": "max_tokens", "value": "8000" },
+            { "name": "system", "value": "={{ $json.prompt_text }}" },
+            { "name": "messages", "value": "=[{\"role\":\"user\",\"content\":\"Synthesize {{ $json.sub_niche }} SWOT from {{ $json.competitor_channel_analyses.length }} channel analyses. Input: {{ JSON.stringify({sub_niche: $json.sub_niche, competitor_channel_analyses: $json.competitor_channel_analyses}) }}\"}]" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "http-upsert-group",
+      "name": "Upsert analysis_groups",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1850, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://supabase.operscale.cloud/rest/v1/analysis_groups",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={ \"project_id\": \"{{ $('Build Synthesis Payload').first().json.project_id }}\", \"name\": \"AU SWOT — {{ $('Build Synthesis Payload').first().json.sub_niche }}\", \"description\": \"Auto-generated weekly SWOT synthesis\", \"status\": \"active\", \"swot_payload\": {{ JSON.stringify($input.first().json.content?.[0]?.text || $input.first().json) }} }"
+      }
+    }
+  ],
+  "connections": {
+    "Cron: Sunday 02:00 UTC": { "main": [[{ "node": "List AU Projects", "type": "main", "index": 0 }]] },
+    "Webhook: Manual": { "main": [[{ "node": "202 Accepted", "type": "main", "index": 0 }]] },
+    "202 Accepted": { "main": [[{ "node": "List AU Projects", "type": "main", "index": 0 }]] },
+    "List AU Projects": { "main": [[{ "node": "Per Project", "type": "main", "index": 0 }]] },
+    "Per Project": { "main": [[{ "node": "Fetch Recent Channel Analyses", "type": "main", "index": 0 }]] },
+    "Fetch Recent Channel Analyses": { "main": [[{ "node": "Resolve swot_subniche_au", "type": "main", "index": 0 }]] },
+    "Resolve swot_subniche_au": { "main": [[{ "node": "Build Synthesis Payload", "type": "main", "index": 0 }]] },
+    "Build Synthesis Payload": { "main": [[{ "node": "Call Claude (SWOT Synthesis)", "type": "main", "index": 0 }]] },
+    "Call Claude (SWOT Synthesis)": { "main": [[{ "node": "Upsert analysis_groups", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["competitor-analyzer", "au-overlay", "weekly"]
+}
