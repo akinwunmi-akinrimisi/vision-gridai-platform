@@ -9,10 +9,18 @@
       "name": "Cron: 05:00 AEST Daily",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 240],
+      "position": [
+        240,
+        240
+      ],
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 19 * * *" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 19 * * *"
+            }
+          ]
         }
       }
     },
@@ -21,12 +29,21 @@
       "name": "Webhook: Manual Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 380],
+      "position": [
+        240,
+        380
+      ],
       "parameters": {
         "path": "topic-intelligence/run",
         "httpMethod": "POST",
         "authentication": "headerAuth",
         "responseMode": "responseNode"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
       }
     },
     {
@@ -34,14 +51,22 @@
       "name": "Auth Check",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [470, 380],
+      "position": [
+        470,
+        380
+      ],
       "parameters": {
         "conditions": {
-          "conditions": [{
-            "leftValue": "={{ $json.headers.authorization }}",
-            "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
-            "operator": { "type": "string", "operation": "equals" }
-          }]
+          "conditions": [
+            {
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
         }
       }
     },
@@ -50,7 +75,10 @@
       "name": "401 Unauthorized",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [700, 460],
+      "position": [
+        700,
+        460
+      ],
       "parameters": {
         "respondWith": "json",
         "responseCode": 401,
@@ -62,7 +90,10 @@
       "name": "202 Accepted",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [700, 300],
+      "position": [
+        700,
+        300
+      ],
       "parameters": {
         "respondWith": "json",
         "responseCode": 202,
@@ -74,15 +105,24 @@
       "name": "List AU Projects",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [930, 300],
+      "position": [
+        930,
+        300
+      ],
       "parameters": {
         "method": "GET",
         "url": "https://supabase.operscale.cloud/rest/v1/projects?country_target=eq.AU&select=id,name,niche_description,parent_project_id,style_dna,cost_ceiling_usd",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
           ]
         }
       }
@@ -92,23 +132,43 @@
       "name": "Split Per Project",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [1160, 300],
-      "parameters": { "batchSize": 1 }
+      "position": [
+        1160,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1
+      }
     },
     {
       "id": "exec-router",
       "name": "Resolve Discovery Prompt",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
-      "position": [1390, 300],
+      "position": [
+        1390,
+        300
+      ],
       "parameters": {
         "source": "database",
-        "workflowId": { "value": "={{ $env.WF_COUNTRY_ROUTER_ID }}", "mode": "id" },
+        "workflowId": {
+          "value": "={{ $env.WF_COUNTRY_ROUTER_ID }}",
+          "mode": "id"
+        },
         "workflowInputs": {
           "values": [
-            { "name": "workflow_name", "value": "WF_TOPIC_INTELLIGENCE" },
-            { "name": "country_target", "value": "AU" },
-            { "name": "prompt_stage", "value": "discover" }
+            {
+              "name": "workflow_name",
+              "value": "WF_TOPIC_INTELLIGENCE"
+            },
+            {
+              "name": "country_target",
+              "value": "AU"
+            },
+            {
+              "name": "prompt_stage",
+              "value": "discover"
+            }
           ]
         }
       }
@@ -118,15 +178,24 @@
       "name": "Fetch Recent Research",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1620, 300],
+      "position": [
+        1620,
+        300
+      ],
       "parameters": {
         "method": "GET",
         "url": "=https://supabase.operscale.cloud/rest/v1/research_results?project_id=eq.{{ $('Split Per Project').first().json.id }}&order=created_at.desc&limit=200&select=*",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
           ]
         }
       }
@@ -136,15 +205,24 @@
       "name": "Fetch Upcoming Calendar",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1620, 440],
+      "position": [
+        1620,
+        440
+      ],
       "parameters": {
         "method": "GET",
         "url": "=https://supabase.operscale.cloud/rest/v1/country_calendar_events?country_target=eq.AU&scheduled_at=gte.{{ $now.toISO() }}&order=scheduled_at.asc&limit=20",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
           ]
         }
       }
@@ -154,7 +232,10 @@
       "name": "Build Anthropic Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1850, 380],
+      "position": [
+        1850,
+        380
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "const project = $('Split Per Project').first().json;\nconst promptResolved = $('Resolve Discovery Prompt').first().json;\nconst research = $('Fetch Recent Research').first().json;\nconst calendar = $('Fetch Upcoming Calendar').first().json;\n\nconst defaultWeights = {\n  credit_cards_au: 0.30,\n  super_au: 0.20,\n  property_mortgage_au: 0.20,\n  tax_au: 0.20,\n  etf_investing_au: 0.10\n};\n\nconst userInput = {\n  daily_seed: Math.floor(Date.now() / 86400000),\n  sub_niche_weights: defaultWeights,\n  must_include_formats: ['evergreen', 'news_response', 'comparison'],\n  recent_research_summary: (research || []).slice(0, 50).map(r => ({ source: r.source, title: r.title, score: r.score })),\n  upcoming_events: (calendar || []).map(e => ({ event: e.event_name, when: e.scheduled_at, sub_niches: e.affected_sub_niches }))\n};\n\nreturn [{ json: {\n  project_id: project.id,\n  prompt_text: promptResolved.prompt_text,\n  user_input_json: userInput\n} }];"
@@ -165,25 +246,49 @@
       "name": "Call Claude (Topic Discovery)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2080, 380],
+      "position": [
+        2080,
+        380
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.anthropic.com/v1/messages",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "model", "value": "claude-sonnet-4-20250514" },
-            { "name": "max_tokens", "value": "8000" },
-            { "name": "system", "value": "={{ $json.prompt_text }}" },
-            { "name": "messages", "value": "=[{\"role\": \"user\", \"content\": \"Generate today's 20 candidate topics. Input: {{ JSON.stringify($json.user_input_json) }}\"}]" }
+            {
+              "name": "model",
+              "value": "claude-sonnet-4-20250514"
+            },
+            {
+              "name": "max_tokens",
+              "value": "8000"
+            },
+            {
+              "name": "system",
+              "value": "={{ $json.prompt_text }}"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Generate today's 20 candidate topics. Input: {{ JSON.stringify($json.user_input_json) }}\"}]"
+            }
           ]
         }
       }
@@ -193,7 +298,10 @@
       "name": "Parse + Insert Topics",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2310, 380],
+      "position": [
+        2310,
+        380
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "const project = $('Split Per Project').first().json;\nconst response = $input.first().json;\nconst payload = response.content?.[0]?.text || response.completion || '';\n\nlet parsed;\ntry {\n  // Strip leading JSON-fence noise if present\n  const jsonText = payload.replace(/^[^{\\[]*/, '').replace(/[^}\\]]*$/, '');\n  parsed = JSON.parse(jsonText);\n} catch (e) {\n  return [{ json: { error: 'Could not parse topics from Claude response', raw: payload.slice(0, 500) } }];\n}\n\nconst topics = (parsed.topics || []).slice(0, 20);\nreturn topics.map((t, idx) => ({ json: {\n  project_id: project.id,\n  country_target: 'AU',\n  topic_number: idx + 1,\n  original_title: t.working_title,\n  seo_title: t.working_title,\n  niche_variant: t.sub_niche,\n  production_register: t.proposed_register,\n  primary_keyword: t.primary_keyword,\n  required_disclaimers: (t.required_disclaimers || []),\n  review_status: 'pending'\n  // gap_score populated by next node\n}}));"
@@ -204,15 +312,30 @@
       "name": "Resolve Gap-Score Prompt",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
-      "position": [2540, 380],
+      "position": [
+        2540,
+        380
+      ],
       "parameters": {
         "source": "database",
-        "workflowId": { "value": "={{ $env.WF_COUNTRY_ROUTER_ID }}", "mode": "id" },
+        "workflowId": {
+          "value": "={{ $env.WF_COUNTRY_ROUTER_ID }}",
+          "mode": "id"
+        },
         "workflowInputs": {
           "values": [
-            { "name": "workflow_name", "value": "WF_TOPIC_INTELLIGENCE" },
-            { "name": "country_target", "value": "AU" },
-            { "name": "prompt_stage", "value": "gap_score" }
+            {
+              "name": "workflow_name",
+              "value": "WF_TOPIC_INTELLIGENCE"
+            },
+            {
+              "name": "country_target",
+              "value": "AU"
+            },
+            {
+              "name": "prompt_stage",
+              "value": "gap_score"
+            }
           ]
         }
       }
@@ -222,17 +345,32 @@
       "name": "Insert Top 5 Topics",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2770, 380],
+      "position": [
+        2770,
+        380
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://supabase.operscale.cloud/rest/v1/topics",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -245,16 +383,28 @@
       "name": "Log Run",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3000, 380],
+      "position": [
+        3000,
+        380
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://supabase.operscale.cloud/rest/v1/production_logs",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -264,33 +414,179 @@
     }
   ],
   "connections": {
-    "Cron: 05:00 AEST Daily": { "main": [[{ "node": "List AU Projects", "type": "main", "index": 0 }]] },
-    "Webhook: Manual Trigger": { "main": [[{ "node": "Auth Check", "type": "main", "index": 0 }]] },
-    "Auth Check": {
-      "main": [
-        [{ "node": "202 Accepted", "type": "main", "index": 0 }],
-        [{ "node": "401 Unauthorized", "type": "main", "index": 0 }]
-      ]
-    },
-    "202 Accepted": { "main": [[{ "node": "List AU Projects", "type": "main", "index": 0 }]] },
-    "List AU Projects": { "main": [[{ "node": "Split Per Project", "type": "main", "index": 0 }]] },
-    "Split Per Project": { "main": [[{ "node": "Resolve Discovery Prompt", "type": "main", "index": 0 }]] },
-    "Resolve Discovery Prompt": {
+    "Cron: 05:00 AEST Daily": {
       "main": [
         [
-          { "node": "Fetch Recent Research", "type": "main", "index": 0 },
-          { "node": "Fetch Upcoming Calendar", "type": "main", "index": 0 }
+          {
+            "node": "List AU Projects",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Fetch Recent Research": { "main": [[{ "node": "Build Anthropic Payload", "type": "main", "index": 0 }]] },
-    "Fetch Upcoming Calendar": { "main": [[{ "node": "Build Anthropic Payload", "type": "main", "index": 0 }]] },
-    "Build Anthropic Payload": { "main": [[{ "node": "Call Claude (Topic Discovery)", "type": "main", "index": 0 }]] },
-    "Call Claude (Topic Discovery)": { "main": [[{ "node": "Parse + Insert Topics", "type": "main", "index": 0 }]] },
-    "Parse + Insert Topics": { "main": [[{ "node": "Resolve Gap-Score Prompt", "type": "main", "index": 0 }]] },
-    "Resolve Gap-Score Prompt": { "main": [[{ "node": "Insert Top 5 Topics", "type": "main", "index": 0 }]] },
-    "Insert Top 5 Topics": { "main": [[{ "node": "Log Run", "type": "main", "index": 0 }]] }
+    "Webhook: Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Auth Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth Check": {
+      "main": [
+        [
+          {
+            "node": "202 Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "401 Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "202 Accepted": {
+      "main": [
+        [
+          {
+            "node": "List AU Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List AU Projects": {
+      "main": [
+        [
+          {
+            "node": "Split Per Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Per Project": {
+      "main": [
+        [
+          {
+            "node": "Resolve Discovery Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Discovery Prompt": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent Research",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Upcoming Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recent Research": {
+      "main": [
+        [
+          {
+            "node": "Build Anthropic Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Upcoming Calendar": {
+      "main": [
+        [
+          {
+            "node": "Build Anthropic Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Anthropic Payload": {
+      "main": [
+        [
+          {
+            "node": "Call Claude (Topic Discovery)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude (Topic Discovery)": {
+      "main": [
+        [
+          {
+            "node": "Parse + Insert Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse + Insert Topics": {
+      "main": [
+        [
+          {
+            "node": "Resolve Gap-Score Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Gap-Score Prompt": {
+      "main": [
+        [
+          {
+            "node": "Insert Top 5 Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Top 5 Topics": {
+      "main": [
+        [
+          {
+            "node": "Log Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": ["topic-intelligence", "au-overlay", "country-aware"]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "topic-intelligence",
+    "au-overlay",
+    "country-aware"
+  ]
 }
