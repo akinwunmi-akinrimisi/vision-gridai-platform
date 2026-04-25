@@ -1,0 +1,1091 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="Operator reference for the Vision GridAI multi-niche AI video production platform" name="description"/>
+<link href="https://akinwunmi-akinrimisi.github.io/vision-gridai-platform/dashboard/realtime-patterns/" rel="canonical"/>
+<link href="../page-reference/" rel="prev"/>
+<link href="../../database/schema-overview/" rel="next"/>
+<link href="../../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.5.40" name="generator"/>
+<title>Realtime patterns - Vision GridAI Platform</title>
+<link href="../../assets/stylesheets/main.8c3ca2c6.min.css" rel="stylesheet"/>
+<link href="../../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../../stylesheets/extra.css" rel="stylesheet"/>
+<script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="indigo" data-md-color-primary="deep-purple" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#realtime-data-patterns">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Vision GridAI Platform" class="md-header__button md-logo" data-md-component="logo" href="../.." title="Vision GridAI Platform">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Vision GridAI Platform
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Realtime patterns
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: light)" data-md-color-primary="deep-purple" data-md-color-scheme="default" id="__palette_0" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-primary="deep-purple" data-md-color-scheme="slate" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_0" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+</form>
+<script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+<div class="md-search__suggest" data-md-component="search-suggest"></div>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 496 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+</div>
+<div class="md-source__repository">
+    akinwunmi-akinrimisi/vision-gridai-platform
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<nav aria-label="Tabs" class="md-tabs" data-md-component="tabs">
+<div class="md-grid">
+<ul class="md-tabs__list">
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../..">
+        
+  
+    
+  
+  Home
+
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../concepts/why/">
+          
+  
+    
+  
+  Concepts
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../pipeline/phase-a-project-creation/">
+          
+  
+    
+  
+  End-to-End Pipeline
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../subsystems/topic-intelligence/">
+          
+  
+    
+  
+  Subsystems
+
+        </a>
+</li>
+<li class="md-tabs__item md-tabs__item--active">
+<a class="md-tabs__link" href="../page-map/">
+          
+  
+    
+  
+  Dashboard
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../database/schema-overview/">
+          
+  
+    
+  
+  Database
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../workflows/architecture/">
+          
+  
+    
+  
+  n8n Workflows
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../prompts/where-they-live/">
+          
+  
+    
+  
+  Prompts
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../infrastructure/vps-layout/">
+          
+  
+    
+  
+  Infrastructure
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../operations/cost-economics/">
+          
+  
+    
+  
+  Operations
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../au/overview/">
+          
+  
+    
+  
+  Australia overlay
+
+        </a>
+</li>
+</ul>
+</div>
+</nav>
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Vision GridAI Platform" class="md-nav__button md-logo" data-md-component="logo" href="../.." title="Vision GridAI Platform">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+    Vision GridAI Platform
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 496 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+</div>
+<div class="md-source__repository">
+    akinwunmi-akinrimisi/vision-gridai-platform
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../..">
+<span class="md-ellipsis">
+    Home
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+<span class="md-ellipsis">
+    Concepts
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_2_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+            Concepts
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../concepts/why/">
+<span class="md-ellipsis">
+    Why this platform exists
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../concepts/gates/">
+<span class="md-ellipsis">
+    The 4 approval gates
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../concepts/economics/">
+<span class="md-ellipsis">
+    Pipeline economics
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../concepts/glossary/">
+<span class="md-ellipsis">
+    Glossary
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+<span class="md-ellipsis">
+    End-to-End Pipeline
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+            End-to-End Pipeline
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-a-project-creation/">
+<span class="md-ellipsis">
+    Phase A · Project Creation
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-b-topic-generation/">
+<span class="md-ellipsis">
+    Phase B · Topic Generation (Gate 1)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-c-script-generation/">
+<span class="md-ellipsis">
+    Phase C · 3-Pass Script (Gate 2)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-d-production/">
+<span class="md-ellipsis">
+    Phase D · Production
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-e-review-publish/">
+<span class="md-ellipsis">
+    Phase E · Review &amp; Publish (Gate 3)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-f-analytics/">
+<span class="md-ellipsis">
+    Phase F · Analytics
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-g-shorts/">
+<span class="md-ellipsis">
+    Phase G · Shorts (Gate 4)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-h-social/">
+<span class="md-ellipsis">
+    Phase H · Social Posting
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+<span class="md-ellipsis">
+    Subsystems
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+            Subsystems
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/topic-intelligence/">
+<span class="md-ellipsis">
+    Topic Intelligence
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/registers/">
+<span class="md-ellipsis">
+    Production Registers
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/style-dna/">
+<span class="md-ellipsis">
+    Style DNA + Composition
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/caption-burn/">
+<span class="md-ellipsis">
+    Caption Burn Service
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/music-lyria/">
+<span class="md-ellipsis">
+    Background Music (Lyria)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/resume-retry/">
+<span class="md-ellipsis">
+    Resume / Retry
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+<span class="md-ellipsis">
+    Dashboard
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_5_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+            Dashboard
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../page-map/">
+<span class="md-ellipsis">
+    Page map
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../page-reference/">
+<span class="md-ellipsis">
+    Page reference
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    Realtime patterns
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    Realtime patterns
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#why-realtime-still-matters">
+<span class="md-ellipsis">
+      Why "Realtime" still matters
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#tables-published-to-supabase_realtime">
+<span class="md-ellipsis">
+      Tables published to supabase_realtime
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#standard-subscription-pattern-legacy-future-proof">
+<span class="md-ellipsis">
+      Standard subscription pattern (legacy / future-proof)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#current-shim-sb_query-over-wf_dashboard_read">
+<span class="md-ellipsis">
+      Current shim — sb_query over WF_DASHBOARD_READ
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#realtime-autoconnect-was-killed">
+<span class="md-ellipsis">
+      Realtime autoconnect was killed
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#replica-identity-full-why-every-realtime-table-needs-it">
+<span class="md-ellipsis">
+      REPLICA IDENTITY FULL — why every Realtime table needs it
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#jwt-rotation-gotcha">
+<span class="md-ellipsis">
+      JWT rotation gotcha
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#write-broadcast-render-flow">
+<span class="md-ellipsis">
+      Write-broadcast-render flow
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_6" type="checkbox"/>
+<label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+<span class="md-ellipsis">
+    Database
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_6_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_6">
+<span class="md-nav__icon md-icon"></span>
+            Database
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../database/schema-overview/">
+<span class="md-ellipsis">
+    Schema overview
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../database/table-reference/">
+<span class="md-ellipsis">
+    Table reference
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../database/migration-history/">
+<span class="md-ellipsis">
+    Migration history
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_7" type="checkbox"/>
+<label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+<span class="md-ellipsis">
+    n8n Workflows
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_7_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_7">
+<span class="md-nav__icon md-icon"></span>
+            n8n Workflows
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../workflows/architecture/">
+<span class="md-ellipsis">
+    Architecture
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../workflows/reference/">
+<span class="md-ellipsis">
+    Reference (~50 cards)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../workflows/status/">
+<span class="md-ellipsis">
+    Status
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_8" type="checkbox"/>
+<label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+<span class="md-ellipsis">
+    Prompts
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_8_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_8">
+<span class="md-nav__icon md-icon"></span>
+            Prompts
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../prompts/where-they-live/">
+<span class="md-ellipsis">
+    Where prompts live
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../prompts/system-prompts/">
+<span class="md-ellipsis">
+    System prompts
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../prompts/templates/">
+<span class="md-ellipsis">
+    Prompt templates
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_9" type="checkbox"/>
+<label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+<span class="md-ellipsis">
+    Infrastructure
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_9_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_9">
+<span class="md-nav__icon md-icon"></span>
+            Infrastructure
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../infrastructure/vps-layout/">
+<span class="md-ellipsis">
+    VPS layout
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../infrastructure/service-mesh/">
+<span class="md-ellipsis">
+    Service mesh
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../infrastructure/auth-secrets/">
+<span class="md-ellipsis">
+    Auth + secrets
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10" type="checkbox"/>
+<label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+<span class="md-ellipsis">
+    Operations
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_10_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_10">
+<span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../operations/cost-economics/">
+<span class="md-ellipsis">
+    Cost economics
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../operations/debugging-recipes/">
+<span class="md-ellipsis">
+    Debugging recipes
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../operations/incident-log/">
+<span class="md-ellipsis">
+    Incident log
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_11" type="checkbox"/>
+<label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+<span class="md-ellipsis">
+    Australia overlay
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_11_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_11">
+<span class="md-nav__icon md-icon"></span>
+            Australia overlay
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../au/overview/">
+<span class="md-ellipsis">
+    Overview
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../au/sub-niches/">
+<span class="md-ellipsis">
+    Sub-niches
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../au/compliance/">
+<span class="md-ellipsis">
+    Compliance + demonetization audit
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<a class="md-content__button md-icon" href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/edit/main/docs-site/docs/dashboard/realtime-patterns.md" title="Edit this page">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+</a>
+<h1 id="realtime-data-patterns">Realtime data patterns<a class="headerlink" href="#realtime-data-patterns" title="Permanent link">¶</a></h1>
+<p>The dashboard's promise is that every n8n write — a TTS file landing, a
+scene image rendering, a topic flipping to <code>approved</code> — appears in the
+operator's UI without a refresh. Originally this was wired through
+Supabase Realtime WebSocket subscriptions; after the 2026-04-21 RLS
+lockdown (migration 030) it is wired through <strong>n8n-mediated polling</strong>
+under the same shape. This page documents both the legacy Realtime model
+(still the source of truth for <code>REPLICA IDENTITY FULL</code> and the
+<code>supabase_realtime</code> publication) and the current shim architecture so
+operators understand which knobs apply when.</p>
+<h2 id="why-realtime-still-matters">Why "Realtime" still matters<a class="headerlink" href="#why-realtime-still-matters" title="Permanent link">¶</a></h2>
+<p>Even with the WebSocket subscriber stubbed out
+(<a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/dashboard/src/hooks/useRealtimeSubscription.js"><code>hooks/useRealtimeSubscription.js</code></a>),
+the underlying Postgres broadcast plumbing is intact. If a future batch
+re-enables an authenticated Realtime proxy (tracked in
+<a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/docs/SECURITY_REMEDIATION_2026_04_21_STATUS.md"><code>docs/SECURITY_REMEDIATION_2026_04_21_STATUS.md</code></a>
+batch B4.6 follow-on), the existing <code>REPLICA IDENTITY FULL</code> and
+<code>supabase_realtime</code> publication entries pick it back up immediately. So
+this page is forward-looking too: get those settings wrong and the dashboard
+stays half-blind even after the proxy lands.</p>
+<h2 id="tables-published-to-supabase_realtime">Tables published to <code>supabase_realtime</code><a class="headerlink" href="#tables-published-to-supabase_realtime" title="Permanent link">¶</a></h2>
+<p>Tables published across the migration history. Source: every <code>ALTER
+PUBLICATION supabase_realtime ADD TABLE</code> statement in
+<a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/tree/main/supabase/migrations"><code>supabase/migrations/</code></a>.</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>First published in</th>
+<th>UPDATE-broadcast (REPLICA IDENTITY FULL)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scenes</code></td>
+<td>001_initial_schema</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>topics</code></td>
+<td>001_initial_schema</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>projects</code></td>
+<td>001_initial_schema</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>production_log</code></td>
+<td>001_initial_schema</td>
+<td>(PK only)</td>
+</tr>
+<tr>
+<td><code>shorts</code></td>
+<td>001_initial_schema</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>research_runs</code></td>
+<td>002_research_tables</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>research_categories</code></td>
+<td>002_research_tables</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>scheduled_posts</code></td>
+<td>004_calendar_engagement_music</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>comments</code></td>
+<td>004_calendar_engagement_music</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>production_logs</code></td>
+<td>004_calendar_engagement_music</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>kinetic_jobs</code>, <code>kinetic_scenes</code></td>
+<td>008_kinetic_typography</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>system_prompts</code></td>
+<td>010_intelligence_foundation</td>
+<td>(PK only)</td>
+</tr>
+<tr>
+<td><code>competitor_channels</code>, <code>competitor_videos</code>, <code>competitor_alerts</code></td>
+<td>011_competitor_intel</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>ab_tests</code>, <code>ab_test_variants</code></td>
+<td>012_ctr_and_ab_testing</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>niche_health_history</code>, <code>pps_config</code>, <code>revenue_attribution</code></td>
+<td>016_analytics_and_niche_health</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>audience_insights</code>, <code>daily_ideas</code></td>
+<td>017_audience_memory</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>coach_sessions</code>, <code>coach_messages</code></td>
+<td>(intelligence batch)</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>style_profiles</code></td>
+<td>011_competitor_intel</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>cost_calculator_snapshots</code></td>
+<td>019_hybrid_scene_pipeline</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>analysis_groups</code>, <code>channel_analyses</code>, <code>discovered_channels</code></td>
+<td>020_channel_analyzer</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>niche_viability_reports</code></td>
+<td>021_niche_viability</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>keywords</code>, <code>topic_keywords</code></td>
+<td>014_keywords</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table>
+<p>Use the live list:
+<code>grep -E "supabase_realtime ADD TABLE|REPLICA IDENTITY FULL" supabase/migrations/*.sql</code>.</p>
+<h2 id="standard-subscription-pattern-legacy-future-proof">Standard subscription pattern (legacy / future-proof)<a class="headerlink" href="#standard-subscription-pattern-legacy-future-proof" title="Permanent link">¶</a></h2>
+<p>Hooks call <code>useRealtimeSubscription(table, filter, queryKeysToInvalidate)</code>
+which previously opened a single <code>postgres_changes</code> channel and invalidated
+the named React-query keys on every change. Today the function is a no-op,
+but the call sites are intentionally preserved so the wiring survives a
+future re-enable:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="c1">// dashboard/src/hooks/useResearch.js:11-17</span>
+<a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a><span class="nx">useRealtimeSubscription</span><span class="p">(</span>
+<a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a><span class="w">  </span><span class="s1">'research_runs'</span><span class="p">,</span>
+<a href="#__codelineno-0-4" id="__codelineno-0-4" name="__codelineno-0-4"></a><span class="w">  </span><span class="kc">null</span><span class="p">,</span>
+<a href="#__codelineno-0-5" id="__codelineno-0-5" name="__codelineno-0-5"></a><span class="w">  </span><span class="p">[[</span><span class="s1">'research-run-latest'</span><span class="p">]],</span>
+<a href="#__codelineno-0-6" id="__codelineno-0-6" name="__codelineno-0-6"></a><span class="p">);</span>
+</code></pre></div>
+<p>The pre-lockdown body (preserved in git history) opened a Supabase channel
+shaped like:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a><span class="nx">supabase</span><span class="p">.</span><span class="nx">channel</span><span class="p">(</span><span class="s1">'research_runs_changes'</span><span class="p">)</span>
+<a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a><span class="w">  </span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">'postgres_changes'</span><span class="p">,</span>
+<a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">event</span><span class="o">:</span><span class="w"> </span><span class="s1">'*'</span><span class="p">,</span><span class="w"> </span><span class="nx">schema</span><span class="o">:</span><span class="w"> </span><span class="s1">'public'</span><span class="p">,</span><span class="w"> </span><span class="nx">table</span><span class="o">:</span><span class="w"> </span><span class="s1">'research_runs'</span><span class="w"> </span><span class="p">},</span>
+<a href="#__codelineno-1-4" id="__codelineno-1-4" name="__codelineno-1-4"></a><span class="w">    </span><span class="p">(</span><span class="nx">payload</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">queryClient</span><span class="p">.</span><span class="nx">invalidateQueries</span><span class="p">([</span><span class="s1">'research-run-latest'</span><span class="p">]))</span>
+<a href="#__codelineno-1-5" id="__codelineno-1-5" name="__codelineno-1-5"></a><span class="w">  </span><span class="p">.</span><span class="nx">subscribe</span><span class="p">();</span>
+</code></pre></div>
+<h2 id="current-shim-sb_query-over-wf_dashboard_read">Current shim — <code>sb_query</code> over <code>WF_DASHBOARD_READ</code><a class="headerlink" href="#current-shim-sb_query-over-wf_dashboard_read" title="Permanent link">¶</a></h2>
+<p>Migration 030 set every VG table to <code>RESTRICTIVE USING (false)</code> for the
+<code>anon</code> role, killing both direct PostgREST reads <strong>and</strong> any anon Realtime
+subscription. To keep the 35+ hooks compiling, the dashboard now imports a
+hand-rolled Supabase shim that mimics the fluent client API but POSTs each
+query to the <code>dashboardRead('sb_query', ...)</code> webhook
+(<a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/dashboard/src/lib/supabase.js"><code>dashboard/src/lib/supabase.js:1-26</code></a>):</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="c1">// dashboard/src/lib/supabase.js — shim entrypoint (excerpt)</span>
+<a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a><span class="kd">function</span><span class="w"> </span><span class="nx">exec</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a href="#__codelineno-2-3" id="__codelineno-2-3" name="__codelineno-2-3"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">dashboardRead</span><span class="p">(</span><span class="s1">'sb_query'</span><span class="p">,</span><span class="w"> </span><span class="nx">state</span><span class="p">).</span><span class="nx">then</span><span class="p">((</span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a href="#__codelineno-2-4" id="__codelineno-2-4" name="__codelineno-2-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">data</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="s1">'rows'</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nx">data</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="s1">'count'</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a href="#__codelineno-2-5" id="__codelineno-2-5" name="__codelineno-2-5"></a><span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">data</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">.</span><span class="nx">rows</span><span class="p">,</span><span class="w"> </span><span class="nx">error</span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nx">count</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">.</span><span class="nx">count</span><span class="w"> </span><span class="p">};</span>
+<a href="#__codelineno-2-6" id="__codelineno-2-6" name="__codelineno-2-6"></a><span class="w">    </span><span class="p">}</span>
+<a href="#__codelineno-2-7" id="__codelineno-2-7" name="__codelineno-2-7"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">error</span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nx">count</span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="p">};</span>
+<a href="#__codelineno-2-8" id="__codelineno-2-8" name="__codelineno-2-8"></a><span class="w">  </span><span class="p">});</span>
+<a href="#__codelineno-2-9" id="__codelineno-2-9" name="__codelineno-2-9"></a><span class="p">}</span>
+</code></pre></div>
+<p><code>dashboardRead('sb_query', state)</code> is a thin wrapper around
+<code>webhookCall('dashboard/read', { query: 'sb_query', params: state })</code> (see
+<a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/dashboard/src/lib/api.js"><code>dashboard/src/lib/api.js:62-68</code></a>).
+Server-side, <code>WF_DASHBOARD_READ</code> validates the payload against an allowlist
+of tables + operations and runs the request with the <strong>service_role</strong> JWT
+that never leaves n8n. From the hook's perspective the call returns
+<code>{ data, error, count }</code> exactly as <code>@supabase/supabase-js</code> would, so call
+sites are unchanged. Mutations route the same way: an <code>update</code>/<code>insert</code> is
+just another <code>state.action</code> value the workflow handles.</p>
+<h2 id="realtime-autoconnect-was-killed">Realtime autoconnect was killed<a class="headerlink" href="#realtime-autoconnect-was-killed" title="Permanent link">¶</a></h2>
+<p>Pre-lockdown, the dashboard imported the real <code>@supabase/supabase-js</code>
+client which auto-opened a Realtime WebSocket on init. After lockdown that
+WebSocket failed forever (every <code>postgres_changes</code> event was filtered out
+by RLS) and spammed <code>WebSocket not available</code> in the console, plus
+periodic reconnect attempts. The shim replaces <code>supabase.channel()</code> with a
+no-op stub that emits a single <code>'DISABLED'</code> callback and never opens a
+socket:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a><span class="c1">// dashboard/src/lib/supabase.js:138-145</span>
+<a href="#__codelineno-3-2" id="__codelineno-3-2" name="__codelineno-3-2"></a><span class="kd">function</span><span class="w"> </span><span class="nx">stubChannel</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a href="#__codelineno-3-3" id="__codelineno-3-3" name="__codelineno-3-3"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">ch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a href="#__codelineno-3-4" id="__codelineno-3-4" name="__codelineno-3-4"></a><span class="w">    </span><span class="nx">on</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">ch</span><span class="p">;</span><span class="w"> </span><span class="p">},</span>
+<a href="#__codelineno-3-5" id="__codelineno-3-5" name="__codelineno-3-5"></a><span class="w">    </span><span class="nx">subscribe</span><span class="p">(</span><span class="nx">cb</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="ow">typeof</span><span class="w"> </span><span class="nx">cb</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">'function'</span><span class="p">)</span><span class="w"> </span><span class="nx">cb</span><span class="p">(</span><span class="s1">'DISABLED'</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">ch</span><span class="p">;</span><span class="w"> </span><span class="p">},</span>
+<a href="#__codelineno-3-6" id="__codelineno-3-6" name="__codelineno-3-6"></a><span class="w">    </span><span class="nx">unsubscribe</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nb">Promise</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="s1">'ok'</span><span class="p">);</span><span class="w"> </span><span class="p">},</span>
+<a href="#__codelineno-3-7" id="__codelineno-3-7" name="__codelineno-3-7"></a><span class="w">  </span><span class="p">};</span>
+<a href="#__codelineno-3-8" id="__codelineno-3-8" name="__codelineno-3-8"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">ch</span><span class="p">;</span>
+<a href="#__codelineno-3-9" id="__codelineno-3-9" name="__codelineno-3-9"></a><span class="p">}</span>
+</code></pre></div>
+<p>Cache freshness is now provided by <strong>react-query polling</strong> at 3-5 s on
+active pages (scenes, production progress, script, topics) and 10 s on the
+project list — fast enough that the operator perceives the same near-live
+UX. The earlier <code>LimitedModeBanner</code> was removed once polling cadence was
+tuned (batch B4.6 in the security remediation log).</p>
+<h2 id="replica-identity-full-why-every-realtime-table-needs-it">REPLICA IDENTITY FULL — why every Realtime table needs it<a class="headerlink" href="#replica-identity-full-why-every-realtime-table-needs-it" title="Permanent link">¶</a></h2>
+<p>When a future Realtime proxy lands, the <code>UPDATE</code> payload broadcast on each
+<code>postgres_changes</code> event will contain only the row's primary key columns
+<strong>unless</strong> the table is set to <code>REPLICA IDENTITY FULL</code>. The dashboard
+uses the <code>payload.new</code> row to update React-query caches in place — an
+empty payload would force a full refetch on every change, defeating the
+optimisation. Source: CLAUDE.md "Gotchas" entry <em>Supabase Realtime
+requires the table to have REPLICA IDENTITY FULL for UPDATE events</em>.</p>
+<p>Set it once per table:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-4-1" id="__codelineno-4-1" name="__codelineno-4-1"></a><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">scenes</span><span class="w"> </span><span class="n">REPLICA</span><span class="w"> </span><span class="k">IDENTITY</span><span class="w"> </span><span class="k">FULL</span><span class="p">;</span>
+</code></pre></div>
+<p>Every table the dashboard reads from should have this set. Two
+exceptions visible in the migration history (<code>production_log</code>,
+<code>system_prompts</code>) only get INSERT events from n8n and are read append-only
+by the dashboard, so PK-only payloads are sufficient there.</p>
+<h2 id="jwt-rotation-gotcha">JWT rotation gotcha<a class="headerlink" href="#jwt-rotation-gotcha" title="Permanent link">¶</a></h2>
+<p>When the Supabase JWT secret rotates, <strong><code>.env</code> is not the only place that
+holds it</strong>. Realtime stores its own per-tenant copy in
+<code>_realtime.tenants.jwt_secret</code>. Forgetting to update the tenant rows
+leaves Realtime returning <code>signature_error</code> on every client subscribe even
+after <code>docker compose restart realtime</code>. Source:
+<a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/memory/">memory/feedback_realtime_tenant_jwt.md</a>
+and the 2026-04-23 follow-up entry in MEMORY.md (B4.7 hotfix).</p>
+<p>The full rotation order:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-5-1" id="__codelineno-5-1" name="__codelineno-5-1"></a><span class="c1">-- 1. Update env files: /docker/supabase/.env, /docker/n8n/docker-compose.override.yml</span>
+<a href="#__codelineno-5-2" id="__codelineno-5-2" name="__codelineno-5-2"></a><span class="c1">-- 2. Rotate ANON + SERVICE_ROLE keys signed with the new secret</span>
+<a href="#__codelineno-5-3" id="__codelineno-5-3" name="__codelineno-5-3"></a><span class="c1">-- 3. Update both Realtime tenants:</span>
+<a href="#__codelineno-5-4" id="__codelineno-5-4" name="__codelineno-5-4"></a><span class="k">UPDATE</span><span class="w"> </span><span class="n">_realtime</span><span class="p">.</span><span class="n">tenants</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">jwt_secret</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'$NEW_JWT_SECRET'</span>
+<a href="#__codelineno-5-5" id="__codelineno-5-5" name="__codelineno-5-5"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">external_id</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">'realtime'</span><span class="p">,</span><span class="w"> </span><span class="s1">'realtime-dev'</span><span class="p">);</span>
+<a href="#__codelineno-5-6" id="__codelineno-5-6" name="__codelineno-5-6"></a>
+<a href="#__codelineno-5-7" id="__codelineno-5-7" name="__codelineno-5-7"></a><span class="c1">-- 4. Reload Kong consumer credentials, then:</span>
+<a href="#__codelineno-5-8" id="__codelineno-5-8" name="__codelineno-5-8"></a><span class="n">docker</span><span class="w"> </span><span class="n">compose</span><span class="w"> </span><span class="k">restart</span><span class="w"> </span><span class="n">realtime</span>
+<a href="#__codelineno-5-9" id="__codelineno-5-9" name="__codelineno-5-9"></a><span class="n">docker</span><span class="w"> </span><span class="k">exec</span><span class="w"> </span><span class="n">supabase</span><span class="o">-</span><span class="n">kong</span><span class="o">-</span><span class="mi">1</span><span class="w"> </span><span class="n">kong</span><span class="w"> </span><span class="n">reload</span>
+</code></pre></div>
+<p>Verify: <code>docker logs --since 2m supabase-realtime-1 | grep -c
+signature_error</code> returns <code>0</code>.</p>
+<h2 id="write-broadcast-render-flow">Write-broadcast-render flow<a class="headerlink" href="#write-broadcast-render-flow" title="Permanent link">¶</a></h2>
+<pre class="mermaid"><code>sequenceDiagram
+    participant N as n8n workflow
+    participant PG as Postgres
+    participant RT as Supabase Realtime
+    participant DR as WF_DASHBOARD_READ
+    participant DB as Dashboard component
+
+    N-&gt;&gt;PG: PATCH /scenes?id=eq.X (image_status='uploaded')
+    PG--&gt;&gt;RT: WAL: postgres_changes event<br/>(REPLICA IDENTITY FULL → full new row)
+    Note over RT,DB: Pre-lockdown path (currently disabled):<br/>RT WebSocket → handler → invalidate query
+    DB-&gt;&gt;DR: react-query polls every 3-5s<br/>POST /webhook/dashboard/read<br/>{query: 'scene_progress', params: {topic_id: X}}
+    DR-&gt;&gt;PG: SELECT (service_role)
+    PG--&gt;&gt;DR: scene rows
+    DR--&gt;&gt;DB: 200 OK { data: rows }
+    DB-&gt;&gt;DB: react-query merges → component re-renders
+</code></pre>
+<p>Once the authenticated Realtime proxy ships, the third arrow becomes a
+WebSocket push instead of a poll, but the rest of the chain — including
+the <code>dashboardRead</code> shim for one-off reads — is unchanged. That is why
+every existing <code>useRealtimeSubscription</code> call site is left in place: the
+day Realtime returns, only one file changes.</p>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+<button class="md-top md-icon" data-md-component="top" hidden="" type="button">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "toc.integrate"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+<script src="../../assets/javascripts/bundle.525ec568.min.js"></script>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+window.mermaidConfig = {default: {
+    startOnLoad: false
+}};</script></body>
+</html>

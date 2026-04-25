@@ -1,0 +1,3607 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Operator reference for the Vision GridAI multi-niche AI video production platform">
+      
+      
+      
+        <link rel="canonical" href="https://akinwunmi-akinrimisi.github.io/vision-gridai-platform/workflows/reference/">
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../status/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.40">
+    
+    
+      
+        <title>Reference (~50 cards) - Vision GridAI Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.8c3ca2c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#workflow-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Vision GridAI Platform" class="md-header__button md-logo" aria-label="Vision GridAI Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Vision GridAI Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Reference (~50 cards)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    akinwunmi-akinrimisi/vision-gridai-platform
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../concepts/why/" class="md-tabs__link">
+          
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../pipeline/phase-a-project-creation/" class="md-tabs__link">
+          
+  
+    
+  
+  End-to-End Pipeline
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../subsystems/topic-intelligence/" class="md-tabs__link">
+          
+  
+    
+  
+  Subsystems
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dashboard/page-map/" class="md-tabs__link">
+          
+  
+    
+  
+  Dashboard
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../database/schema-overview/" class="md-tabs__link">
+          
+  
+    
+  
+  Database
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+    
+  
+  n8n Workflows
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../prompts/where-they-live/" class="md-tabs__link">
+          
+  
+    
+  
+  Prompts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../infrastructure/vps-layout/" class="md-tabs__link">
+          
+  
+    
+  
+  Infrastructure
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/cost-economics/" class="md-tabs__link">
+          
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../au/overview/" class="md-tabs__link">
+          
+  
+    
+  
+  Australia overlay
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Vision GridAI Platform" class="md-nav__button md-logo" aria-label="Vision GridAI Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Vision GridAI Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    akinwunmi-akinrimisi/vision-gridai-platform
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Concepts
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Concepts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/why/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Why this platform exists
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/gates/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    The 4 approval gates
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/economics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pipeline economics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    End-to-End Pipeline
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            End-to-End Pipeline
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-a-project-creation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase A · Project Creation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-b-topic-generation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase B · Topic Generation (Gate 1)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-c-script-generation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase C · 3-Pass Script (Gate 2)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-d-production/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase D · Production
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-e-review-publish/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase E · Review & Publish (Gate 3)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-f-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase F · Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-g-shorts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase G · Shorts (Gate 4)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-h-social/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase H · Social Posting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Subsystems
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Subsystems
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/topic-intelligence/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Topic Intelligence
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/registers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Production Registers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/style-dna/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Style DNA + Composition
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/caption-burn/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Caption Burn Service
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/music-lyria/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Background Music (Lyria)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/resume-retry/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resume / Retry
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboard
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboard
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/page-map/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Page map
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/page-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Page reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/realtime-patterns/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Realtime patterns
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Database
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Database
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/schema-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Schema overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/table-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Table reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../database/migration-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Migration history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    n8n Workflows
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            n8n Workflows
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Reference (~50 cards)
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Reference (~50 cards)
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#production" class="md-nav__link">
+    <span class="md-ellipsis">
+      Production
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Production">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wf_master" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_MASTER
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_project_create" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_PROJECT_CREATE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_topics_generate" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_TOPICS_GENERATE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_topics_action" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_TOPICS_ACTION
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_script_generate" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SCRIPT_GENERATE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_script_pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SCRIPT_PASS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_script_approve" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SCRIPT_APPROVE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_script_reject" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SCRIPT_REJECT
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_register_analyze" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_REGISTER_ANALYZE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_scene_classify" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SCENE_CLASSIFY
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_tts_audio" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_TTS_AUDIO
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_image_generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_IMAGE_GENERATION
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_scene_image_processor" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SCENE_IMAGE_PROCESSOR
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_scene_i2v_processor" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SCENE_I2V_PROCESSOR
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_scene_t2v_processor" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SCENE_T2V_PROCESSOR
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_seedance_i2v" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SEEDANCE_I2V
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_ken_burns" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_KEN_BURNS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_captions_assembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_CAPTIONS_ASSEMBLY
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_music_generate" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_MUSIC_GENERATE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_endcard" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_ENDCARD
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_thumbnail_generate" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_THUMBNAIL_GENERATE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_video_metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_VIDEO_METADATA
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_qa_check" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_QA_CHECK
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_platform_metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_PLATFORM_METADATA
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_retry_wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_RETRY_WRAPPER
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_assembly_watchdog" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_ASSEMBLY_WATCHDOG
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#research-intelligence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Research / Intelligence
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Research / Intelligence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wf_research_orchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_RESEARCH_ORCHESTRATOR
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_research_reddit" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_RESEARCH_REDDIT
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_research_youtube" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_RESEARCH_YOUTUBE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_research_tiktok" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_RESEARCH_TIKTOK
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_research_google_trends" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_RESEARCH_GOOGLE_TRENDS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_research_quora" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_RESEARCH_QUORA
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_research_categorize" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_RESEARCH_CATEGORIZE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_youtube_discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_YOUTUBE_DISCOVERY
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_youtube_analyze" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_YOUTUBE_ANALYZE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_audience_intelligence" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_AUDIENCE_INTELLIGENCE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_channel_analyze" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_CHANNEL_ANALYZE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_channel_compare" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_CHANNEL_COMPARE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_discover_competitors" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_DISCOVER_COMPETITORS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_competitor_monitor" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_COMPETITOR_MONITOR
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_daily_ideas" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_DAILY_IDEAS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_keyword_scan" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_KEYWORD_SCAN
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_niche_health" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_NICHE_HEALTH
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_niche_viability" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_NICHE_VIABILITY
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_outlier_score" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_OUTLIER_SCORE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_seo_score" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SEO_SCORE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_hook_analyzer" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_HOOK_ANALYZER
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_pps_calibrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_PPS_CALIBRATE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_predict_performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_PREDICT_PERFORMANCE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_rpm_classify" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_RPM_CLASSIFY
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_revenue_attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_REVENUE_ATTRIBUTION
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_ab_test_rotate" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_AB_TEST_ROTATE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_ctr_optimize" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_CTR_OPTIMIZE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_thumbnail_score" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_THUMBNAIL_SCORE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_viral_tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_VIRAL_TAG
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_style_dna" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_STYLE_DNA
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_supervisor" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SUPERVISOR
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#analytics-engagement" class="md-nav__link">
+    <span class="md-ellipsis">
+      Analytics / Engagement
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Analytics / Engagement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wf_analytics_cron" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_ANALYTICS_CRON
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_comments_sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_COMMENTS_SYNC
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_comment_analyze" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_COMMENT_ANALYZE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_ai_coach" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_AI_COACH
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#social" class="md-nav__link">
+    <span class="md-ellipsis">
+      Social
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Social">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wf_schedule_publisher" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SCHEDULE_PUBLISHER
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_social_poster" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SOCIAL_POSTER
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_social_analytics" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SOCIAL_ANALYTICS
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utility-webhook" class="md-nav__link">
+    <span class="md-ellipsis">
+      Utility / Webhook
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Utility / Webhook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wf_dashboard_read" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_DASHBOARD_READ
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_webhook_production" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_WEBHOOK_PRODUCTION
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_shorts_analyze" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SHORTS_ANALYZE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_shorts_produce" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_SHORTS_PRODUCE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_create_project_from_analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_CREATE_PROJECT_FROM_ANALYSIS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_youtube_upload" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_YOUTUBE_UPLOAD
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_webhook_publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_WEBHOOK_PUBLISH
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_webhook_settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_WEBHOOK_SETTINGS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_webhook_status" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_WEBHOOK_STATUS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_webhook_project_create" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_WEBHOOK_PROJECT_CREATE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_webhook_topics_generate" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_WEBHOOK_TOPICS_GENERATE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_webhook_topics_action" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_WEBHOOK_TOPICS_ACTION
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#australia-overlay-added-2026-04-25" class="md-nav__link">
+    <span class="md-ellipsis">
+      Australia overlay (added 2026-04-25)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Australia overlay (added 2026-04-25)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wf_country_router" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_COUNTRY_ROUTER
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_topic_intelligence" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_TOPIC_INTELLIGENCE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_demonetization_audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_DEMONETIZATION_AUDIT
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_coach_report" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_COACH_REPORT
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wf_competitor_analyzer" class="md-nav__link">
+    <span class="md-ellipsis">
+      WF_COMPETITOR_ANALYZER
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../status/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Status
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Prompts
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Prompts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../prompts/where-they-live/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Where prompts live
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../prompts/system-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    System prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../prompts/templates/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prompt templates
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Infrastructure
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Infrastructure
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure/vps-layout/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    VPS layout
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure/service-mesh/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Service mesh
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure/auth-secrets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Auth + secrets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-economics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost economics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/debugging-recipes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Debugging recipes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/incident-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Incident log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Australia overlay
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            Australia overlay
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../au/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../au/sub-niches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Sub-niches
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../au/compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Compliance + demonetization audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/edit/main/docs-site/docs/workflows/reference.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="workflow-reference">Workflow reference<a class="headerlink" href="#workflow-reference" title="Permanent link">&para;</a></h1>
+<p>One <strong>Template 2</strong> card per Vision GridAI workflow, grouped by domain. Two
+caveats apply across the page:</p>
+<ul>
+<li><strong>Snapshot, may differ from live.</strong> Cards marked with this badge are
+  populated from the JSON checked into <code>workflows/</code> only — we have no
+  guarantee the live n8n VPS matches. Cards with an n8n ID listed are
+  cross-referenced against <code>MEMORY.md</code> "Production Workflow IDs" and
+  reflect the live state as of the last verification there.</li>
+<li><strong>Webhook auth.</strong> Every webhook-triggered card requires the standard
+  <code>Authorization: Bearer ${DASHBOARD_API_TOKEN}</code> header. See
+  <a href="../architecture/#webhook-bearer-auth-the-missing-expression-trap">Architecture</a>
+  for the rationale and the <code>=</code> expression trap.</li>
+</ul>
+<p>For active/inactive state, see <a href="../status/">workflow status</a>. For chain
+patterns, see <a href="../architecture/">Architecture</a>.</p>
+<hr />
+<h2 id="production">Production<a class="headerlink" href="#production" title="Permanent link">&para;</a></h2>
+<h3 id="wf_master">WF_MASTER<a class="headerlink" href="#wf_master" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ (live, no JSON ID in MEMORY) · <strong>Trigger:</strong> webhook (<code>/webhook/master/start</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Resume launcher. Reads a topic's column state and POSTs to the right next-stage webhook.</li>
+<li><strong>Reads:</strong> <code>topics.script_json</code>, <code>topics.status</code>, <code>topics.images_progress</code>, <code>topics.audio_progress</code>, <code>topics.assembly_status</code>, <code>topics.thumbnail_url</code>.</li>
+<li><strong>Writes:</strong> none directly (logs via <code>production_log</code>).</li>
+<li><strong>Calls:</strong> the next-stage webhook (<code>/webhook/script/generate</code>, <code>/webhook/scene-classify</code>, <code>/webhook/production/images</code>, <code>/webhook/production/tts</code>, <code>/webhook/production/assembly</code>, <code>/webhook/production/thumbnail</code>).</li>
+<li><strong>Notes:</strong> 18 nodes. Returns <code>HTTP 202</code> and lets the chain run async. <code>start_from='auto'</code> is the normal path; pass a stage name to force re-run.</li>
+</ul>
+<h3 id="wf_project_create">WF_PROJECT_CREATE<a class="headerlink" href="#wf_project_create" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/internal/project-create</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Niche research + dynamic prompt generation for a new project.</li>
+<li><strong>Reads:</strong> request body (<code>name</code>, <code>niche</code>, <code>niche_description</code>).</li>
+<li><strong>Writes:</strong> <code>projects</code> row, <code>niche_profiles</code>, <code>prompt_configs</code> (auto-generated system + topic + script prompts).</li>
+<li><strong>Calls:</strong> Anthropic API (Claude with web_search tool).</li>
+<li><strong>Notes:</strong> 30 nodes. Snapshot, may differ from live.</li>
+</ul>
+<h3 id="wf_topics_generate">WF_TOPICS_GENERATE<a class="headerlink" href="#wf_topics_generate" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/topics/generate</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Generate 25 topics + avatars for a project (Phase B / Gate 1).</li>
+<li><strong>Reads:</strong> <code>projects</code> (niche, expertise, playlist angles, blue-ocean strategy), <code>niche_profiles</code>.</li>
+<li><strong>Writes:</strong> 25 rows into <code>topics</code>, 25 into <code>avatars</code>, 1 into <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude (3-pass blue-ocean prompt), <code>WF_OUTLIER_SCORE</code> and <code>WF_SEO_SCORE</code> (sub-workflow).</li>
+<li><strong>Notes:</strong> 26 nodes. After Session 38 fix, scoring chain is restored via a <code>Prep Scoring Input</code> Set node that reattaches <code>project_id</code>. See <code>MEMORY.md</code> Session 38 part 7.</li>
+</ul>
+<h3 id="wf_topics_action">WF_TOPICS_ACTION<a class="headerlink" href="#wf_topics_action" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/topics/action</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Gate 1 actions — approve / reject / refine / edit topic / edit avatar.</li>
+<li><strong>Reads:</strong> <code>topics</code> (incl. all 24 sibling topics for refine context), <code>avatars</code>.</li>
+<li><strong>Writes:</strong> <code>topics.review_status</code>, <code>topics.refinement_history</code>, <code>avatars.*</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude (refinement only).</li>
+<li><strong>Notes:</strong> 29 nodes. Switch node has 5 outputs (one per action). Hardened in Session 9 (idempotency + production_log + error handler).</li>
+</ul>
+<h3 id="wf_script_generate">WF_SCRIPT_GENERATE<a class="headerlink" href="#wf_script_generate" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>DzugaN9GtVpTznvs</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/script/generate</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> 3-pass script generation orchestrator. Calls <code>WF_SCRIPT_PASS</code> three times with rolling context.</li>
+<li><strong>Reads:</strong> <code>topics</code>, <code>avatars</code>, <code>prompt_configs</code> (script_pass1/2/3), <code>projects.niche_*</code>, intelligence-layer tables (via 029 RPC).</li>
+<li><strong>Writes:</strong> <code>topics.script_json</code>, <code>topics.script_evaluation</code>, <code>topics.script_pass_scores</code>, <code>topics.word_count</code>, <code>topics.scene_count</code>, <code>scenes</code> (172 rows), <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude (Sonnet) via <code>WF_SCRIPT_PASS</code> sub-workflow.</li>
+<li><strong>Notes:</strong> 26 nodes. Per-pass threshold 6.0, combined threshold 7.0, max 3 regenerations.</li>
+</ul>
+<h3 id="wf_script_pass">WF_SCRIPT_PASS<a class="headerlink" href="#wf_script_pass" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>CRC9USwaGgk7x6xN</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow (Execute Workflow)</p>
+<ul>
+<li><strong>Purpose:</strong> Execute one script pass + evaluate it. Single unified workflow handles all 3 passes.</li>
+<li><strong>Reads:</strong> input from caller (<code>pass_number</code>, <code>prompt</code>, <code>prior_pass_summary</code>).</li>
+<li><strong>Writes:</strong> returns <code>{ script_text, evaluation, score }</code> to caller.</li>
+<li><strong>Calls:</strong> Anthropic Claude (Sonnet for pass, Haiku for eval), <code>WF_RETRY_WRAPPER</code>.</li>
+<li><strong>Notes:</strong> 2 nodes shown in JSON (skeletal export); live workflow does the actual heavy lifting. Snapshot, may differ from live.</li>
+</ul>
+<h3 id="wf_script_approve">WF_SCRIPT_APPROVE<a class="headerlink" href="#wf_script_approve" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>qRsX9Ec7DWxqJiaS</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/script/approve</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Gate 2 approval. Sets <code>pipeline_stage='cost_selection'</code> so the dashboard can present cost calculator.</li>
+<li><strong>Reads:</strong> <code>topics</code>, request body.</li>
+<li><strong>Writes:</strong> <code>topics.script_review_status='approved'</code>, <code>topics.pipeline_stage='cost_selection'</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> none (does NOT directly trigger production — that happens after the cost-calculator gate).</li>
+<li><strong>Notes:</strong> 10 nodes.</li>
+</ul>
+<h3 id="wf_script_reject">WF_SCRIPT_REJECT<a class="headerlink" href="#wf_script_reject" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>7yo7dZAtewNxK9TE</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/script/reject</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Gate 2 rejection / refinement.</li>
+<li><strong>Reads:</strong> <code>topics</code>, request body (rejection feedback).</li>
+<li><strong>Writes:</strong> <code>topics.script_review_status='rejected'</code>, <code>topics.script_review_feedback</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> optionally re-fires <code>WF_SCRIPT_GENERATE</code> if user requested a regenerate.</li>
+<li><strong>Notes:</strong> 8 nodes.</li>
+</ul>
+<h3 id="wf_register_analyze">WF_REGISTER_ANALYZE<a class="headerlink" href="#wf_register_analyze" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>Miy5h5O7ncIIrnRg</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/register/analyze</code> — live; no JSON in <code>workflows/</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Topic-stage <strong>register classifier</strong>. Picks the best of 5 cinematic registers (Economist / Premium / Noir / Signal / Archive) for a given topic via Claude Haiku. Different role from <code>WF_SCENE_CLASSIFY</code> — this runs once per topic at the topic stage; SCENE_CLASSIFY runs per-scene at the production stage.</li>
+<li><strong>Reads:</strong> topic working title + primary keyword + research brief.</li>
+<li><strong>Writes:</strong> <code>topics.production_register</code>, <code>topics.register_recommendations</code> (JSONB with <code>top_2</code>, <code>all_5_ranked</code>, <code>era_detected</code>), <code>topics.register_era_detected</code> (Archive only). Also <code>topics.niche_variant</code> for AU projects (after 032 patch).</li>
+<li><strong>Calls:</strong> Anthropic Claude (Haiku).</li>
+<li><strong>Notes:</strong> Snapshot from <code>MEMORY.md</code> only — workflow JSON not in <code>workflows/</code>. Per the <a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/image_creation_guidelines_prompts/IMPLEMENTATION_PLAN_v3_EXECUTABLE.md">v3 implementation plan</a>, the column is named <code>register_recommendations</code> — not <code>register_analysis_json</code> as the AU strategy doc mistakenly labels it.</li>
+</ul>
+<h3 id="wf_scene_classify">WF_SCENE_CLASSIFY<a class="headerlink" href="#wf_scene_classify" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>WaPnGhyhQO2gDemX</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/scene-classify</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Visual-type classification (<code>static_image</code> / <code>i2v</code> / <code>t2v</code>) per scene. Updates <code>pipeline_stage='tts'</code> then triggers production.</li>
+<li><strong>Reads:</strong> <code>scenes</code>, <code>topics</code>.</li>
+<li><strong>Writes:</strong> <code>scenes.visual_type</code>, <code>topics.pipeline_stage</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude (Haiku), then POSTs to <code>/webhook/production/trigger</code>.</li>
+<li><strong>Notes:</strong> 11 nodes. Auto-pass for image-only registers.</li>
+</ul>
+<h3 id="wf_tts_audio">WF_TTS_AUDIO<a class="headerlink" href="#wf_tts_audio" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>4L2j3aU2WGnfcvvj</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/production/tts</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Generate per-scene voiceover via Google Cloud TTS (Chirp 3 HD).</li>
+<li><strong>Reads:</strong> <code>scenes</code> (with <code>audio_status='pending'</code>), <code>topics.target_voice</code>.</li>
+<li><strong>Writes:</strong> <code>scenes.audio_file_drive_id</code>, <code>scenes.audio_duration_ms</code>, <code>scenes.audio_status='uploaded'</code>, <code>topics.audio_progress</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Google Cloud TTS, Google Drive, <code>WF_RETRY_WRAPPER</code>.</li>
+<li><strong>Notes:</strong> 39 nodes. Resume-aware: skips scenes already uploaded. Activated in Session 9 after <code>child_process</code> was added to <code>NODE_FUNCTION_ALLOW_BUILTIN</code>.</li>
+</ul>
+<h3 id="wf_image_generation">WF_IMAGE_GENERATION<a class="headerlink" href="#wf_image_generation" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>ScP3yoaeuK7BwpUo</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/production/images</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Per-scene image generation via Fal.ai Seedream 4.5.</li>
+<li><strong>Reads:</strong> <code>scenes</code> (with <code>image_status='pending'</code>), <code>topics.style_dna</code>, <code>prompt_templates</code> (composition prefixes).</li>
+<li><strong>Writes:</strong> <code>scenes.image_url</code>, <code>scenes.image_drive_id</code>, <code>scenes.image_status='uploaded'</code>, <code>topics.images_progress</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Fal.ai (<code>fal-ai/bytedance/seedream/v4.5/text-to-image</code>) async queue, <code>WF_RETRY_WRAPPER</code>.</li>
+<li><strong>Notes:</strong> 20 nodes. Universal negative prompt applied per call. Composition prefix + scene subject + style DNA built per prompt.</li>
+</ul>
+<h3 id="wf_scene_image_processor">WF_SCENE_IMAGE_PROCESSOR<a class="headerlink" href="#wf_scene_image_processor" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>Lik3MUT0E9a6JUum</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/process-scene/image</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Single-scene image worker — generates + uploads one image, used for retries / individual scene fixes.</li>
+<li><strong>Reads:</strong> scene row by ID.</li>
+<li><strong>Writes:</strong> <code>scenes.image_*</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Fal.ai, Google Drive.</li>
+<li><strong>Notes:</strong> 7 nodes.</li>
+</ul>
+<h3 id="wf_scene_i2v_processor">WF_SCENE_I2V_PROCESSOR<a class="headerlink" href="#wf_scene_i2v_processor" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>TOkpPY35veSf5snS</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (live; no JSON checked in)</p>
+<ul>
+<li><strong>Purpose:</strong> Single-scene I2V (image-to-video) worker — generates one Seedance 2.0 Fast clip from an image.</li>
+<li><strong>Reads:</strong> scene row.</li>
+<li><strong>Writes:</strong> <code>scenes.video_url</code>, <code>scenes.video_drive_id</code>, <code>scenes.video_status</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Fal.ai (<code>fal-ai/bytedance/seedance/v2/fast/i2v</code>).</li>
+<li><strong>Notes:</strong> Snapshot from <code>MEMORY.md</code> only — workflow JSON not in <code>workflows/</code>.</li>
+</ul>
+<h3 id="wf_scene_t2v_processor">WF_SCENE_T2V_PROCESSOR<a class="headerlink" href="#wf_scene_t2v_processor" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>VLrMKfaDeKYFLU75</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (live; no JSON checked in)</p>
+<ul>
+<li><strong>Purpose:</strong> Single-scene T2V (text-to-video) worker.</li>
+<li><strong>Reads:</strong> scene row.</li>
+<li><strong>Writes:</strong> <code>scenes.video_*</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Fal.ai T2V model.</li>
+<li><strong>Notes:</strong> Snapshot from <code>MEMORY.md</code> only — workflow JSON not in <code>workflows/</code>.</li>
+</ul>
+<h3 id="wf_seedance_i2v">WF_SEEDANCE_I2V<a class="headerlink" href="#wf_seedance_i2v" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/production/i2v-hybrid</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Hybrid-scene I2V orchestrator (Cost Calculator selected ratio of scenes).</li>
+<li><strong>Reads:</strong> <code>scenes</code> (with <code>clip_status='pending'</code> and <code>visual_type='i2v'</code>).</li>
+<li><strong>Writes:</strong> <code>scenes.video_*</code>, <code>topics.i2v_progress</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Fal.ai Seedance 2.0 Fast, <code>WF_RETRY_WRAPPER</code>.</li>
+<li><strong>Notes:</strong> 9 nodes.</li>
+</ul>
+<h3 id="wf_ken_burns">WF_KEN_BURNS<a class="headerlink" href="#wf_ken_burns" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/production/ken-burns</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Per-scene FFmpeg Ken Burns motion + color grade. Fires <code>/webhook/production/captions-assembly</code> when done.</li>
+<li><strong>Reads:</strong> <code>scenes</code> (with <code>clip_status='pending'</code>), <code>scenes.zoom_direction</code>, <code>scenes.color_mood</code>, <code>scenes.selective_color_element</code>.</li>
+<li><strong>Writes:</strong> <code>scenes.clip_url</code>, <code>scenes.clip_status='uploaded'</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> FFmpeg via <code>docker exec</code>, Google Drive.</li>
+<li><strong>Notes:</strong> 11 nodes. Selective-color scenes skip color grade. Batches of 20 to manage VPS memory.</li>
+</ul>
+<h3 id="wf_captions_assembly">WF_CAPTIONS_ASSEMBLY<a class="headerlink" href="#wf_captions_assembly" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>Fhdy66BLRh7rAwTi</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/production/assembly</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Concat all 172 scene clips with xfade transitions, normalize audio, fire caption-burn service, upload final to Drive.</li>
+<li><strong>Reads:</strong> all <code>scenes</code> for topic, <code>topics.transition_to_next</code> per scene.</li>
+<li><strong>Writes:</strong> <code>topics.assembly_status</code>, <code>topics.drive_video_url</code>, <code>production_log</code>. Triggers <code>WF_THUMBNAIL_GENERATE</code> and <code>WF_VIDEO_METADATA</code> via "Log Assembly Complete".</li>
+<li><strong>Calls:</strong> FFmpeg via <code>docker exec</code>, caption burn service <code>:9998</code>, Google Drive.</li>
+<li><strong>Notes:</strong> 47 nodes. <strong>Three-layer crash prevention</strong> (Build Scene Clip auto-fix, Concat Video pre-scan, post-concat duration check). 15-20 scene batches before final concat.</li>
+</ul>
+<h3 id="wf_music_generate">WF_MUSIC_GENERATE<a class="headerlink" href="#wf_music_generate" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Generate background music via Vertex AI Lyria, ducked under voiceover.</li>
+<li><strong>Reads:</strong> <code>topics.music_sections</code>, <code>projects.music_*</code>.</li>
+<li><strong>Writes:</strong> writes track to Drive, returns URL to caller.</li>
+<li><strong>Calls:</strong> Vertex AI Lyria (<code>lyria-002</code>), FFmpeg ducking.</li>
+<li><strong>Notes:</strong> 3 nodes (skeletal). Snapshot, may differ from live.</li>
+</ul>
+<h3 id="wf_endcard">WF_ENDCARD<a class="headerlink" href="#wf_endcard" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Append branded end card (5-8s long-form, 3s short).</li>
+<li><strong>Reads:</strong> input video URL + duration.</li>
+<li><strong>Writes:</strong> new video URL with end card appended.</li>
+<li><strong>Calls:</strong> FFmpeg.</li>
+<li><strong>Notes:</strong> 3 nodes (skeletal).</li>
+</ul>
+<h3 id="wf_thumbnail_generate">WF_THUMBNAIL_GENERATE<a class="headerlink" href="#wf_thumbnail_generate" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>7GqpEAug8hxxU7f6</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> chained from <code>WF_CAPTIONS_ASSEMBLY</code> (live; no JSON checked in)</p>
+<ul>
+<li><strong>Purpose:</strong> Generate thumbnail via Fal.ai Seedream + text overlay (Sharp/Jimp). Photorealistic style locked (Canon EOS R5, RAW, teal-orange grade).</li>
+<li><strong>Reads:</strong> <code>topics.script_metadata.thumbnail_prompt</code>, <code>topics.style_dna</code>.</li>
+<li><strong>Writes:</strong> <code>topics.thumbnail_url</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> Fal.ai Seedream, Google Drive.</li>
+<li><strong>Notes:</strong> Snapshot from <code>MEMORY.md</code> only — workflow JSON not in <code>workflows/</code>.</li>
+</ul>
+<h3 id="wf_video_metadata">WF_VIDEO_METADATA<a class="headerlink" href="#wf_video_metadata" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>k0F6KAtkn74PEIDl</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> chained from <code>WF_CAPTIONS_ASSEMBLY</code> (live; no JSON checked in)</p>
+<ul>
+<li><strong>Purpose:</strong> Generate YouTube SEO description (3-5K chars) + 15-20 tags + chapter timestamps. Uploads SEO doc to Drive.</li>
+<li><strong>Reads:</strong> <code>topics.script_json</code>, intelligence layer via 029 RPC.</li>
+<li><strong>Writes:</strong> <code>topics.yt_description</code>, <code>topics.yt_tags</code>, Drive SEO doc.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 10 nodes per <code>MEMORY.md</code>. After 029 renderer rollout, coverage went from ~5% to 100% of intelligence sources.</li>
+</ul>
+<h3 id="wf_qa_check">WF_QA_CHECK<a class="headerlink" href="#wf_qa_check" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Run 13 automated QA checks on assembled video (visual / caption / audio / platform compliance).</li>
+<li><strong>Reads:</strong> final render via FFprobe.</li>
+<li><strong>Writes:</strong> <code>renders.qa_results</code> (JSONB).</li>
+<li><strong>Calls:</strong> FFprobe via <code>docker exec</code>.</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal). Auto-pilot fires publish only when all 13 pass.</li>
+</ul>
+<h3 id="wf_platform_metadata">WF_PLATFORM_METADATA<a class="headerlink" href="#wf_platform_metadata" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Generate platform-specific captions/hashtags (YouTube, TikTok, Instagram).</li>
+<li><strong>Reads:</strong> topic data.</li>
+<li><strong>Writes:</strong> <code>platform_metadata</code> rows.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal).</li>
+</ul>
+<h3 id="wf_retry_wrapper">WF_RETRY_WRAPPER<a class="headerlink" href="#wf_retry_wrapper" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow (Execute Workflow Trigger)</p>
+<ul>
+<li><strong>Purpose:</strong> Reusable exponential-backoff retry wrapper for ALL external API calls.</li>
+<li><strong>Reads:</strong> input <code>{ url, method, headers, body, maxRetries }</code>.</li>
+<li><strong>Writes:</strong> returns <code>{ success, data, attempts }</code>.</li>
+<li><strong>Calls:</strong> the wrapped HTTP request, with backoff <code>1s → 2s → 4s → 8s</code> (cap 30s).</li>
+<li><strong>Notes:</strong> 3 nodes. Default <code>maxRetries=4</code>. Must be called as Execute Workflow, not webhook.</li>
+</ul>
+<h3 id="wf_assembly_watchdog">WF_ASSEMBLY_WATCHDOG<a class="headerlink" href="#wf_assembly_watchdog" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>Exm836gCGtxNKOeD</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> cron (live; no JSON checked in)</p>
+<ul>
+<li><strong>Purpose:</strong> Detect stuck assemblies (FFmpeg hung, caption-burn timeout) and surface to dashboard.</li>
+<li><strong>Reads:</strong> <code>topics.assembly_status</code>, <code>production_logs</code>.</li>
+<li><strong>Writes:</strong> alerts on <code>production_log</code>, optionally retries.</li>
+<li><strong>Calls:</strong> none (read-mostly).</li>
+<li><strong>Notes:</strong> Snapshot from <code>MEMORY.md</code> only.</li>
+</ul>
+<hr />
+<h2 id="research-intelligence">Research / Intelligence<a class="headerlink" href="#research-intelligence" title="Permanent link">&para;</a></h2>
+<h3 id="wf_research_orchestrator">WF_RESEARCH_ORCHESTRATOR<a class="headerlink" href="#wf_research_orchestrator" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>sq67vfV0vHhaL2hd</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/research/run</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Topic Intelligence orchestrator. Derives keywords via Haiku, dispatches 5-source parallel scrape, triggers categorization on completion.</li>
+<li><strong>Reads:</strong> <code>projects.niche</code>, <code>projects.niche_description</code>.</li>
+<li><strong>Writes:</strong> <code>research_runs</code> row, progress columns.</li>
+<li><strong>Calls:</strong> WF_RESEARCH_REDDIT, _YOUTUBE, _TIKTOK, _GOOGLE_TRENDS, _QUORA in parallel; then WF_RESEARCH_CATEGORIZE.</li>
+<li><strong>Notes:</strong> 4 nodes (orchestrator only — heavy work in sub-workflows).</li>
+</ul>
+<h3 id="wf_research_reddit">WF_RESEARCH_REDDIT<a class="headerlink" href="#wf_research_reddit" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Mine top Reddit posts/comments by keyword (PRAW or Apify).</li>
+<li><strong>Reads:</strong> input keywords, <code>time_range</code>.</li>
+<li><strong>Writes:</strong> <code>research_results</code> rows (top 10 by upvotes + comments×2, last 7d).</li>
+<li><strong>Calls:</strong> Reddit API / Apify.</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal). Snapshot, may differ from live.</li>
+</ul>
+<h3 id="wf_research_youtube">WF_RESEARCH_YOUTUBE<a class="headerlink" href="#wf_research_youtube" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Mine top YouTube comments by keyword.</li>
+<li><strong>Reads:</strong> input keywords.</li>
+<li><strong>Writes:</strong> <code>research_results</code> (top 10 by likes + replies×3).</li>
+<li><strong>Calls:</strong> YouTube Data API v3.</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal).</li>
+</ul>
+<h3 id="wf_research_tiktok">WF_RESEARCH_TIKTOK<a class="headerlink" href="#wf_research_tiktok" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Mine top TikTok posts by keyword via Apify.</li>
+<li><strong>Reads:</strong> input keywords.</li>
+<li><strong>Writes:</strong> <code>research_results</code> (top 10 by likes + comments×2 + shares×3).</li>
+<li><strong>Calls:</strong> Apify TikTok actor.</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal). Apify cold-start can hit 120s — set timeout accordingly.</li>
+</ul>
+<h3 id="wf_research_google_trends">WF_RESEARCH_GOOGLE_TRENDS<a class="headerlink" href="#wf_research_google_trends" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Pull Google Trends interest + People-Also-Ask via pytrends + SerpAPI.</li>
+<li><strong>Reads:</strong> input keywords.</li>
+<li><strong>Writes:</strong> <code>research_results</code> (interest × 10, PAA base 500, breakout 2×).</li>
+<li><strong>Calls:</strong> pytrends, SerpAPI.</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal).</li>
+</ul>
+<h3 id="wf_research_quora">WF_RESEARCH_QUORA<a class="headerlink" href="#wf_research_quora" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Mine top Quora questions by keyword via Apify.</li>
+<li><strong>Reads:</strong> input keywords.</li>
+<li><strong>Writes:</strong> <code>research_results</code> (top 10 by follows + answers×2).</li>
+<li><strong>Calls:</strong> Apify Quora actor.</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal).</li>
+</ul>
+<h3 id="wf_research_categorize">WF_RESEARCH_CATEGORIZE<a class="headerlink" href="#wf_research_categorize" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Cluster + rank research results, generate video titles per category.</li>
+<li><strong>Reads:</strong> all <code>research_results</code> for the run.</li>
+<li><strong>Writes:</strong> <code>research_categories</code> (gold/silver/bronze tier).</li>
+<li><strong>Calls:</strong> Anthropic Claude (Haiku).</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal).</li>
+</ul>
+<h3 id="wf_youtube_discovery">WF_YOUTUBE_DISCOVERY<a class="headerlink" href="#wf_youtube_discovery" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>jE9UBJhqYnjrUAIy</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/youtube/discover</code> — live; no JSON checked in)</p>
+<ul>
+<li><strong>Purpose:</strong> Niche-research engine — scrape top YouTube channels by keyword and surface high-engagement videos.</li>
+<li><strong>Reads:</strong> request body <code>{ niche, keywords }</code>.</li>
+<li><strong>Writes:</strong> <code>yt_discovery_runs</code>, <code>yt_discovery_results</code> (live tables; not in <code>supabase/migrations/</code>).</li>
+<li><strong>Calls:</strong> YouTube Data API v3 (~5,000 quota units per run; max 2 runs/day).</li>
+<li><strong>Notes:</strong> Snapshot from <code>MEMORY.md</code> only.</li>
+</ul>
+<h3 id="wf_youtube_analyze">WF_YOUTUBE_ANALYZE<a class="headerlink" href="#wf_youtube_analyze" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>T26tPJTPt2ZCdY0p</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/youtube/analyze</code> — live; no JSON checked in)</p>
+<ul>
+<li><strong>Purpose:</strong> Per-video Claude analysis (10x strategy, content quality, comment insights).</li>
+<li><strong>Reads:</strong> <code>yt_discovery_results</code> row.</li>
+<li><strong>Writes:</strong> <code>yt_video_analyses</code> row.</li>
+<li><strong>Calls:</strong> Anthropic Claude (Sonnet).</li>
+<li><strong>Notes:</strong> Consumed by intelligence renderer (migration 029).</li>
+</ul>
+<h3 id="wf_audience_intelligence">WF_AUDIENCE_INTELLIGENCE<a class="headerlink" href="#wf_audience_intelligence" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/audience/intelligence</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Audience Memory Layer (CF16) — synthesize <code>audience_insights</code> from <code>audience_comments</code>.</li>
+<li><strong>Reads:</strong> <code>audience_comments</code> for project.</li>
+<li><strong>Writes:</strong> <code>audience_insights</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_channel_analyze">WF_CHANNEL_ANALYZE<a class="headerlink" href="#wf_channel_analyze" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/channel-analyze</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Deep-analyze a single YouTube channel (top videos, content pillars, monetization signals).</li>
+<li><strong>Reads:</strong> request body (channel ID).</li>
+<li><strong>Writes:</strong> <code>channel_analyses</code> row, optionally feeds <code>analysis_groups</code>.</li>
+<li><strong>Calls:</strong> YouTube Data API v3, Anthropic Claude.</li>
+<li><strong>Notes:</strong> 11 nodes.</li>
+</ul>
+<h3 id="wf_channel_compare">WF_CHANNEL_COMPARE<a class="headerlink" href="#wf_channel_compare" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/channel-compare</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Compare two or more channels side-by-side, generate competitive report.</li>
+<li><strong>Reads:</strong> <code>channel_analyses</code> rows.</li>
+<li><strong>Writes:</strong> <code>channel_comparison_reports</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 7 nodes.</li>
+</ul>
+<h3 id="wf_discover_competitors">WF_DISCOVER_COMPETITORS<a class="headerlink" href="#wf_discover_competitors" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/discover-competitors</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Niche-keyword overlap scoring (60%) + cleaned-query channel discovery.</li>
+<li><strong>Reads:</strong> <code>projects.niche</code>, <code>projects.niche_description</code>.</li>
+<li><strong>Writes:</strong> <code>discovered_channels</code>.</li>
+<li><strong>Calls:</strong> YouTube Data API v3, Anthropic Claude.</li>
+<li><strong>Notes:</strong> 9 nodes. Rewritten in Session 38 part 2 to fix off-niche results.</li>
+</ul>
+<h3 id="wf_competitor_monitor">WF_COMPETITOR_MONITOR<a class="headerlink" href="#wf_competitor_monitor" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/competitor/monitor/run</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Periodic competitor video drop check.</li>
+<li><strong>Reads:</strong> <code>competitor_channels</code>, prior runs.</li>
+<li><strong>Writes:</strong> alerts on <code>production_log</code>.</li>
+<li><strong>Calls:</strong> YouTube Data API v3.</li>
+<li><strong>Notes:</strong> 7 nodes.</li>
+</ul>
+<h3 id="wf_daily_ideas">WF_DAILY_IDEAS<a class="headerlink" href="#wf_daily_ideas" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/ideas/generate</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> AI Coach (CF08) — daily project-aware idea generation.</li>
+<li><strong>Reads:</strong> project intelligence layer via 029 RPC.</li>
+<li><strong>Writes:</strong> <code>daily_ideas</code> rows.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_keyword_scan">WF_KEYWORD_SCAN<a class="headerlink" href="#wf_keyword_scan" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/keywords/scan</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Keyword research + saturation scan.</li>
+<li><strong>Reads:</strong> project niche.</li>
+<li><strong>Writes:</strong> <code>keywords</code>, <code>topic_keywords</code>.</li>
+<li><strong>Calls:</strong> SerpAPI, pytrends.</li>
+<li><strong>Notes:</strong> 8 nodes.</li>
+</ul>
+<h3 id="wf_niche_health">WF_NICHE_HEALTH<a class="headerlink" href="#wf_niche_health" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/niche-health/compute</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Weekly niche-health score (CF11) — composite over RPM, saturation, audience growth.</li>
+<li><strong>Reads:</strong> project + intelligence-layer tables.</li>
+<li><strong>Writes:</strong> <code>niche_health_history</code>, <code>projects.niche_health_score</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_niche_viability">WF_NICHE_VIABILITY<a class="headerlink" href="#wf_niche_viability" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/niche-viability</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Niche viability assessment — entry-ease / sponsorship reasoning / revenue projections.</li>
+<li><strong>Reads:</strong> <code>analysis_groups</code>, <code>channel_analyses</code>, <code>audience_insights</code>.</li>
+<li><strong>Writes:</strong> <code>niche_viability_reports</code>, <code>projects.niche_viability_*</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 10 nodes. Column rename <code>entry_difficulty_*</code> → <code>entry_ease_*</code> retroactively applied by migration 026 + Session 38.</li>
+</ul>
+<h3 id="wf_outlier_score">WF_OUTLIER_SCORE<a class="headerlink" href="#wf_outlier_score" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Per-topic outlier scoring (how unusual is this topic vs niche baseline).</li>
+<li><strong>Reads:</strong> topic + project niche.</li>
+<li><strong>Writes:</strong> <code>topics.outlier_score</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 5 nodes. Auth credential swap landed in Session 38 part 7 (<code>DASHBOARD_API_TOKEN</code> → <code>Authorization</code>).</li>
+</ul>
+<h3 id="wf_seo_score">WF_SEO_SCORE<a class="headerlink" href="#wf_seo_score" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> Per-topic SEO score (search-volume × competition × intent fit).</li>
+<li><strong>Reads:</strong> topic, keyword data.</li>
+<li><strong>Writes:</strong> <code>topics.seo_score</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude, SerpAPI.</li>
+<li><strong>Notes:</strong> 5 nodes. Same Session 38 credential fix as <code>WF_OUTLIER_SCORE</code>.</li>
+</ul>
+<h3 id="wf_hook_analyzer">WF_HOOK_ANALYZER<a class="headerlink" href="#wf_hook_analyzer" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/hooks/analyze</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Analyze script hook strength, suggest rewrites.</li>
+<li><strong>Reads:</strong> <code>topics.script_json</code> first scenes.</li>
+<li><strong>Writes:</strong> <code>topics.script_evaluation.hook_*</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_pps_calibrate">WF_PPS_CALIBRATE<a class="headerlink" href="#wf_pps_calibrate" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/pps/calibrate</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Calibrate Performance Prediction Score model (CF13) per project from historical analytics.</li>
+<li><strong>Reads:</strong> <code>topics.yt_*</code> analytics, <code>projects</code>.</li>
+<li><strong>Writes:</strong> <code>pps_calibration</code> row.</li>
+<li><strong>Calls:</strong> Anthropic Claude (statistical reasoning).</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_predict_performance">WF_PREDICT_PERFORMANCE<a class="headerlink" href="#wf_predict_performance" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/pps/calculate</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Run a topic through the calibrated PPS model to predict views/CTR/RPM.</li>
+<li><strong>Reads:</strong> <code>pps_config</code>, <code>pps_calibration</code>, topic, intelligence layer.</li>
+<li><strong>Writes:</strong> <code>topics.predicted_*</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_rpm_classify">WF_RPM_CLASSIFY<a class="headerlink" href="#wf_rpm_classify" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/rpm/classify</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Classify a niche/topic into an RPM tier from <code>rpm_benchmarks</code>.</li>
+<li><strong>Reads:</strong> <code>rpm_benchmarks</code>, project niche.</li>
+<li><strong>Writes:</strong> <code>projects.rpm_tier</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 5 nodes.</li>
+</ul>
+<h3 id="wf_revenue_attribution">WF_REVENUE_ATTRIBUTION<a class="headerlink" href="#wf_revenue_attribution" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/revenue/attribute</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Attribute revenue to topics via YouTube + AdSense (CF12).</li>
+<li><strong>Reads:</strong> <code>topics.yt_estimated_revenue</code>, monetization tables.</li>
+<li><strong>Writes:</strong> <code>revenue_attribution</code> rows.</li>
+<li><strong>Calls:</strong> YouTube Analytics API.</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_ab_test_rotate">WF_AB_TEST_ROTATE<a class="headerlink" href="#wf_ab_test_rotate" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/ab-test/start</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Rotate <code>ab_test_variants</code> on the live YouTube video, capture impressions + views per window.</li>
+<li><strong>Reads:</strong> <code>ab_tests</code>, <code>ab_test_variants</code>, YouTube Analytics.</li>
+<li><strong>Writes:</strong> <code>ab_test_impressions</code>, <code>ab_tests.current_variant_id</code>, <code>ab_test_variants.is_winner</code>.</li>
+<li><strong>Calls:</strong> YouTube Data API v3 (update video / thumbnail), YouTube Analytics API.</li>
+<li><strong>Notes:</strong> 8 nodes. Confidence threshold default 0.95.</li>
+</ul>
+<h3 id="wf_ctr_optimize">WF_CTR_OPTIMIZE<a class="headerlink" href="#wf_ctr_optimize" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/ctr/optimize</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Pre-publish CTR scoring (CF05/CF06) — predict CTR for title/thumbnail variants.</li>
+<li><strong>Reads:</strong> topic, candidate variants.</li>
+<li><strong>Writes:</strong> <code>ab_test_variants.predicted_ctr_score</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_thumbnail_score">WF_THUMBNAIL_SCORE<a class="headerlink" href="#wf_thumbnail_score" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/thumbnail/score</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Score a candidate thumbnail against niche baselines.</li>
+<li><strong>Reads:</strong> thumbnail URL, niche.</li>
+<li><strong>Writes:</strong> scoring result (caller uses).</li>
+<li><strong>Calls:</strong> Anthropic Claude (vision).</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_viral_tag">WF_VIRAL_TAG<a class="headerlink" href="#wf_viral_tag" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/viral/tag</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Tag candidate clips with viral signals (used by <code>WF_SHORTS_ANALYZE</code>).</li>
+<li><strong>Reads:</strong> scene narration, hook strength.</li>
+<li><strong>Writes:</strong> scoring result.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 6 nodes.</li>
+</ul>
+<h3 id="wf_style_dna">WF_STYLE_DNA<a class="headerlink" href="#wf_style_dna" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/style-dna/analyze</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Generate / refresh the locked Style DNA string for a project.</li>
+<li><strong>Reads:</strong> project niche, sample images.</li>
+<li><strong>Writes:</strong> <code>projects.style_dna</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 7 nodes. Locked per project — should never change mid-video.</li>
+</ul>
+<h3 id="wf_supervisor">WF_SUPERVISOR<a class="headerlink" href="#wf_supervisor" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> cron (every 30 min)</p>
+<ul>
+<li><strong>Purpose:</strong> Pipeline-wide health watchdog. Detects stuck topics, retries failed scenes, alerts on cost-budget breach.</li>
+<li><strong>Reads:</strong> <code>topics</code>, <code>scenes</code>, <code>production_logs</code>, <code>projects.monthly_*</code>.</li>
+<li><strong>Writes:</strong> alerts on <code>production_log</code>, may retry / skip scenes.</li>
+<li><strong>Calls:</strong> Supabase only.</li>
+<li><strong>Notes:</strong> 26 nodes. <strong>Was silently failing for ~30 days</strong> before Session 38 fixed the missing-<code>=</code> Authorization expression bug across 11 nodes.</li>
+</ul>
+<hr />
+<h2 id="analytics-engagement">Analytics / Engagement<a class="headerlink" href="#analytics-engagement" title="Permanent link">&para;</a></h2>
+<h3 id="wf_analytics_cron">WF_ANALYTICS_CRON<a class="headerlink" href="#wf_analytics_cron" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> cron (daily)</p>
+<ul>
+<li><strong>Purpose:</strong> Daily YouTube + TikTok + Instagram analytics pull, write to <code>topics.yt_*</code> / shorts platform metrics.</li>
+<li><strong>Reads:</strong> all published <code>topics</code>, <code>shorts</code>.</li>
+<li><strong>Writes:</strong> <code>topics.yt_*</code>, <code>shorts.tiktok_*</code>, <code>shorts.instagram_*</code>, <code>shorts.youtube_shorts_*</code>.</li>
+<li><strong>Calls:</strong> YouTube Analytics API, TikTok API, Instagram Graph API.</li>
+<li><strong>Notes:</strong> 23 nodes. <strong>Was silently failing for ~30 days</strong> before Session 38 fixed the missing-<code>=</code> bug across 6 nodes.</li>
+</ul>
+<h3 id="wf_comments_sync">WF_COMMENTS_SYNC<a class="headerlink" href="#wf_comments_sync" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> cron (daily)</p>
+<ul>
+<li><strong>Purpose:</strong> Sync new comments from YouTube/TikTok/Instagram into <code>comments</code>, then trigger <code>WF_COMMENT_ANALYZE</code>.</li>
+<li><strong>Reads:</strong> all published topics + shorts.</li>
+<li><strong>Writes:</strong> <code>comments</code> rows.</li>
+<li><strong>Calls:</strong> YouTube/TikTok/Instagram APIs.</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal).</li>
+</ul>
+<h3 id="wf_comment_analyze">WF_COMMENT_ANALYZE<a class="headerlink" href="#wf_comment_analyze" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> AI sentiment + intent scoring for new comments.</li>
+<li><strong>Reads:</strong> new <code>comments</code>.</li>
+<li><strong>Writes:</strong> <code>comments.sentiment</code>, <code>comments.intent_score</code>, <code>comments.intent_signals</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude (Haiku).</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal). Comments with <code>intent_score &gt; 0.7</code> flagged on Engagement Hub.</li>
+</ul>
+<h3 id="wf_ai_coach">WF_AI_COACH<a class="headerlink" href="#wf_ai_coach" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/coach/message</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> AI Coach chat surface (CF09) — project-aware Q&amp;A over intelligence layer.</li>
+<li><strong>Reads:</strong> project intelligence via 029 RPC.</li>
+<li><strong>Writes:</strong> message log (audit only).</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 5 nodes.</li>
+</ul>
+<hr />
+<h2 id="social">Social<a class="headerlink" href="#social" title="Permanent link">&para;</a></h2>
+<h3 id="wf_schedule_publisher">WF_SCHEDULE_PUBLISHER<a class="headerlink" href="#wf_schedule_publisher" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> cron (every 15 min)</p>
+<ul>
+<li><strong>Purpose:</strong> Pick due <code>scheduled_posts</code> rows, upload to platform, mark published.</li>
+<li><strong>Reads:</strong> <code>scheduled_posts</code> where <code>status='scheduled'</code> AND <code>scheduled_at &lt;= NOW()</code>.</li>
+<li><strong>Writes:</strong> <code>scheduled_posts.status</code>, <code>scheduled_posts.published_at</code>, <code>scheduled_posts.error_message</code>.</li>
+<li><strong>Calls:</strong> YouTube / TikTok / Instagram upload APIs.</li>
+<li><strong>Notes:</strong> 2 nodes (skeletal). Visibility defaults from <code>projects.auto_pilot_default_visibility</code> (<code>unlisted</code>).</li>
+</ul>
+<h3 id="wf_social_poster">WF_SOCIAL_POSTER<a class="headerlink" href="#wf_social_poster" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/social/post</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Direct social posting (immediate, not scheduled).</li>
+<li><strong>Reads:</strong> <code>shorts</code> row, <code>social_accounts</code>, <code>platform_metadata</code>.</li>
+<li><strong>Writes:</strong> <code>shorts.{tiktok,instagram,youtube_shorts}_*</code>.</li>
+<li><strong>Calls:</strong> TikTok Content API, Instagram Graph API, YouTube Data API v3.</li>
+<li><strong>Notes:</strong> 15 nodes. Credentials rotated in Session 38 part 8.</li>
+</ul>
+<h3 id="wf_social_analytics">WF_SOCIAL_ANALYTICS<a class="headerlink" href="#wf_social_analytics" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/social/analytics/refresh</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Per-shorts engagement refresh across all 3 platforms.</li>
+<li><strong>Reads:</strong> <code>shorts</code> rows with platform IDs set.</li>
+<li><strong>Writes:</strong> <code>shorts.{tiktok,instagram,youtube_shorts}_{views,likes,comments,shares}</code>.</li>
+<li><strong>Calls:</strong> TikTok, Instagram, YouTube APIs.</li>
+<li><strong>Notes:</strong> 12 nodes. Verified post-Session 38 credential rotation.</li>
+</ul>
+<hr />
+<h2 id="utility-webhook">Utility / Webhook<a class="headerlink" href="#utility-webhook" title="Permanent link">&para;</a></h2>
+<h3 id="wf_dashboard_read">WF_DASHBOARD_READ<a class="headerlink" href="#wf_dashboard_read" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/dashboard/read</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Aggregator — single read endpoint the dashboard hits for project-level rollups (avoids N round-trips to PostgREST).</li>
+<li><strong>Reads:</strong> <code>projects</code>, <code>topics</code>, <code>scenes</code> (counts only).</li>
+<li><strong>Writes:</strong> none.</li>
+<li><strong>Calls:</strong> Supabase only.</li>
+<li><strong>Notes:</strong> 3 nodes.</li>
+</ul>
+<h3 id="wf_webhook_production">WF_WEBHOOK_PRODUCTION<a class="headerlink" href="#wf_webhook_production" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>SsdE4siQ8EbO76ye</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (multiple paths)</p>
+<ul>
+<li><strong>Purpose:</strong> Single workflow exposes all production-control endpoints: <code>/webhook/production/{trigger,trigger-batch,stop,resume,restart,retry-scene,retry-all-failed,skip-scene,skip-all-failed,edit-retry-scene,assemble}</code>.</li>
+<li><strong>Reads:</strong> <code>topics</code>, <code>scenes</code>, request body.</li>
+<li><strong>Writes:</strong> <code>topics.*</code>, <code>scenes.*</code>, <code>production_log</code>.</li>
+<li><strong>Calls:</strong> routes to the right downstream production webhook.</li>
+<li><strong>Notes:</strong> 77 nodes — the largest workflow. Top-of-pipeline router.</li>
+</ul>
+<h3 id="wf_shorts_analyze">WF_SHORTS_ANALYZE<a class="headerlink" href="#wf_shorts_analyze" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>pbh7LaZI9kua5oxI</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/shorts/analyze</code> — live; no JSON checked in)</p>
+<ul>
+<li><strong>Purpose:</strong> Analyze a published topic for 20 viral clip candidates (Gate 4 pre-production).</li>
+<li><strong>Reads:</strong> <code>topics.script_json</code>, <code>topics.yt_*</code> analytics.</li>
+<li><strong>Writes:</strong> <code>shorts</code> candidate rows (<code>review_status='pending'</code>).</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> Snapshot from <code>MEMORY.md</code> only.</li>
+</ul>
+<h3 id="wf_shorts_produce">WF_SHORTS_PRODUCE<a class="headerlink" href="#wf_shorts_produce" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> <code>mg9gWUz2yiGhOq7r</code> · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/shorts/produce</code> — live; no JSON checked in)</p>
+<ul>
+<li><strong>Purpose:</strong> Build approved shorts: fresh TTS, 9:16 images, Ken Burns / I2V, kinetic captions, assembly.</li>
+<li><strong>Reads:</strong> <code>shorts</code> row, project assets.</li>
+<li><strong>Writes:</strong> <code>shorts.portrait_drive_url</code>, <code>shorts.thumbnail_url</code>, <code>shorts.production_*</code>.</li>
+<li><strong>Calls:</strong> Google TTS, Fal.ai Seedream + Seedance, FFmpeg, caption burn service <code>:9998</code>.</li>
+<li><strong>Notes:</strong> Snapshot from <code>MEMORY.md</code> only.</li>
+</ul>
+<h3 id="wf_create_project_from_analysis">WF_CREATE_PROJECT_FROM_ANALYSIS<a class="headerlink" href="#wf_create_project_from_analysis" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/project/create-from-analysis</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Materialize a <code>projects</code> row from a <code>niche_viability_reports</code> decision.</li>
+<li><strong>Reads:</strong> <code>niche_viability_reports</code>, <code>analysis_groups</code>.</li>
+<li><strong>Writes:</strong> <code>projects</code> row, FK from <code>analysis_groups.project_id</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude (for prompt-config bootstrap).</li>
+<li><strong>Notes:</strong> 9 nodes.</li>
+</ul>
+<h3 id="wf_youtube_upload">WF_YOUTUBE_UPLOAD<a class="headerlink" href="#wf_youtube_upload" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow</p>
+<ul>
+<li><strong>Purpose:</strong> YouTube resumable upload with metadata + captions + thumbnail.</li>
+<li><strong>Reads:</strong> input <code>{ topic_id, file_url, title, description, tags, thumbnail_url, visibility }</code>.</li>
+<li><strong>Writes:</strong> <code>topics.youtube_url</code>, <code>topics.youtube_video_id</code>, <code>topics.youtube_caption_id</code>, <code>topics.published_at</code>.</li>
+<li><strong>Calls:</strong> YouTube Data API v3.</li>
+<li><strong>Notes:</strong> 30 nodes. Quota: 1,600 units per upload — budget for max 6 uploads/day.</li>
+</ul>
+<h3 id="wf_webhook_publish">WF_WEBHOOK_PUBLISH<a class="headerlink" href="#wf_webhook_publish" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/video/schedule</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Schedule or immediately publish a finished topic. Wraps <code>WF_YOUTUBE_UPLOAD</code>.</li>
+<li><strong>Reads:</strong> <code>topics</code>, <code>platform_metadata</code>, <code>renders</code>.</li>
+<li><strong>Writes:</strong> <code>topics.published_at</code>, <code>scheduled_posts</code>.</li>
+<li><strong>Calls:</strong> <code>WF_YOUTUBE_UPLOAD</code> via Execute Workflow (workflow ID from <code>$env.WF_YOUTUBE_UPLOAD_ID</code>).</li>
+<li><strong>Notes:</strong> 63 nodes.</li>
+</ul>
+<h3 id="wf_webhook_settings">WF_WEBHOOK_SETTINGS<a class="headerlink" href="#wf_webhook_settings" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/prompts/regenerate</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Settings page surface — regenerate prompt configs for a project, edit auto-pilot thresholds.</li>
+<li><strong>Reads:</strong> <code>projects</code>, <code>prompt_configs</code>.</li>
+<li><strong>Writes:</strong> <code>prompt_configs</code> (new versions), <code>projects.auto_pilot_*</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude.</li>
+<li><strong>Notes:</strong> 29 nodes.</li>
+</ul>
+<h3 id="wf_webhook_status">WF_WEBHOOK_STATUS<a class="headerlink" href="#wf_webhook_status" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/status</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Health check endpoint.</li>
+<li><strong>Reads:</strong> none.</li>
+<li><strong>Writes:</strong> none.</li>
+<li><strong>Calls:</strong> none.</li>
+<li><strong>Notes:</strong> 4 nodes. Returns <code>{ status: 'healthy', services: {...} }</code>.</li>
+</ul>
+<h3 id="wf_webhook_project_create">WF_WEBHOOK_PROJECT_CREATE<a class="headerlink" href="#wf_webhook_project_create" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ⚠️ stub · <strong>Trigger:</strong> webhook (<code>/webhook/project/create</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Original Phase-1 stub for project creation. Superseded by <code>WF_PROJECT_CREATE</code> at <code>/webhook/internal/project-create</code>.</li>
+<li><strong>Notes:</strong> 4 nodes (stub). Kept for backwards compatibility; dashboard now hits the internal endpoint.</li>
+</ul>
+<h3 id="wf_webhook_topics_generate">WF_WEBHOOK_TOPICS_GENERATE<a class="headerlink" href="#wf_webhook_topics_generate" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ⚠️ stub · <strong>Trigger:</strong> webhook (<code>/webhook/topics/generate</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Original Phase-1 stub. <strong>Webhook path collides with <code>WF_TOPICS_GENERATE</code></strong> — the larger workflow takes precedence on n8n's internal routing because both bind the same path.</li>
+<li><strong>Notes:</strong> 4 nodes (stub). Reconciliation needed.</li>
+</ul>
+<h3 id="wf_webhook_topics_action">WF_WEBHOOK_TOPICS_ACTION<a class="headerlink" href="#wf_webhook_topics_action" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ⚠️ stub · <strong>Trigger:</strong> webhook (<code>/webhook/topics/action</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Original Phase-1 stub. <strong>Webhook path collides with <code>WF_TOPICS_ACTION</code></strong>.</li>
+<li><strong>Notes:</strong> 4 nodes (stub). Reconciliation needed (see <a href="../status/">status</a>).</li>
+</ul>
+<hr />
+<h2 id="australia-overlay-added-2026-04-25">Australia overlay (added 2026-04-25)<a class="headerlink" href="#australia-overlay-added-2026-04-25" title="Permanent link">&para;</a></h2>
+<p>Country-aware workflows added by migration 032. All gate on
+<code>topics.country_target = 'AU'</code>; for General projects they short-circuit
+to a no-op response.</p>
+<h3 id="wf_country_router">WF_COUNTRY_ROUTER<a class="headerlink" href="#wf_country_router" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> sub-workflow (Execute Workflow Trigger)</p>
+<ul>
+<li><strong>Purpose:</strong> Resolves the active prompt key for any <code>(workflow_name, country_target, prompt_stage)</code> tuple. Single source of truth for country-aware prompt routing — every country-branched workflow calls it instead of querying <code>system_prompts</code> directly.</li>
+<li><strong>Reads:</strong> input <code>{workflow_name, country_target, prompt_stage}</code> from caller; queries <code>system_prompts</code> for the resolved key.</li>
+<li><strong>Writes:</strong> none.</li>
+<li><strong>Calls:</strong> Supabase REST.</li>
+<li><strong>Notes:</strong> 4 nodes. Used by all 5 new AU workflows + the 6 Switch-node patches on existing workflows. Has a <code>HAS_AU_SIBLING</code> allowlist that controls whether to route to a <code>_au</code>-suffixed prompt or to the General master with country slot variables.</li>
+</ul>
+<h3 id="wf_topic_intelligence">WF_TOPIC_INTELLIGENCE<a class="headerlink" href="#wf_topic_intelligence" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> cron <code>0 19 * * *</code> UTC (= 05:00 AEST) + webhook (<code>/webhook/topic-intelligence/run</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Daily AU topic discovery + Gate-1 gap-score ranking. Per AU project: pulls recent <code>research_results</code>, <code>competitor_channels</code> coverage, and upcoming <code>country_calendar_events</code>; calls <code>topic_discover_au</code> for 20 candidates; calls <code>gap_score_au</code> per candidate; inserts top 5 into <code>topics</code>.</li>
+<li><strong>Reads:</strong> <code>projects</code> (filtered to <code>country_target='AU'</code>), <code>research_results</code>, <code>competitor_channels</code>, <code>country_calendar_events</code>.</li>
+<li><strong>Writes:</strong> <code>topics</code> (5 rows per project per day with <code>country_target='AU'</code>, <code>niche_variant</code>, <code>gap_score</code>, <code>gap_score_modifiers</code>, <code>review_status='pending'</code>), <code>production_logs</code>.</li>
+<li><strong>Calls:</strong> Anthropic Claude (Sonnet via the <code>topic_discover_au</code> prompt; Haiku via <code>gap_score_au</code>), <code>WF_COUNTRY_ROUTER</code>.</li>
+<li><strong>Notes:</strong> Country-aware so future markets reuse the same workflow — only the prompt mapping in <code>WF_COUNTRY_ROUTER</code> changes.</li>
+</ul>
+<h3 id="wf_demonetization_audit">WF_DEMONETIZATION_AUDIT<a class="headerlink" href="#wf_demonetization_audit" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> webhook (<code>/webhook/demonetization/audit</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Pre-publish (Gate 3) compliance audit. Runs <code>demon_audit_au</code> against the final script + title + description against <code>country_compliance_rules</code>. Writes <code>topics.demonetization_audit_result</code> and flips <code>topics.compliance_review_status</code>.</li>
+<li><strong>Reads:</strong> <code>topics</code>, <code>country_compliance_rules</code>.</li>
+<li><strong>Writes:</strong> <code>topics.demonetization_audit_result</code> (JSONB), <code>topics.compliance_review_status</code> (<code>approved</code> / <code>pending</code> / <code>rejected</code>).</li>
+<li><strong>Calls:</strong> Anthropic Claude (Sonnet), <code>WF_COUNTRY_ROUTER</code>.</li>
+<li><strong>Notes:</strong> Returns <code>{decision: 'clear', skipped: true}</code> immediately for <code>country_target='GENERAL'</code>. AU-only enforcement.</li>
+</ul>
+<h3 id="wf_coach_report">WF_COACH_REPORT<a class="headerlink" href="#wf_coach_report" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> cron <code>0 6 1 * *</code> UTC (1st of each month, 06:00 UTC)</p>
+<ul>
+<li><strong>Purpose:</strong> Monthly strategic coach report per project. Aggregates prior-month performance + competitor moves + next-month calendar; calls <code>coach_monthly_au</code> (or future <code>coach_monthly_general</code>); writes to <code>coach_reports</code> table.</li>
+<li><strong>Reads:</strong> <code>projects</code> (<code>country_target IN ('AU','GENERAL')</code>), <code>topics</code> (last month), <code>country_calendar_events</code> (next month), <code>channel_analyses</code> (recent).</li>
+<li><strong>Writes:</strong> <code>coach_reports</code> row.</li>
+<li><strong>Calls:</strong> Anthropic Claude (Sonnet), <code>WF_COUNTRY_ROUTER</code>.</li>
+<li><strong>Notes:</strong> Fires only for projects with ≥1 published topic in the prior month.</li>
+</ul>
+<h3 id="wf_competitor_analyzer">WF_COMPETITOR_ANALYZER<a class="headerlink" href="#wf_competitor_analyzer" title="Permanent link">&para;</a></h3>
+<p><strong>ID:</strong> — · <strong>Active:</strong> ✅ · <strong>Trigger:</strong> cron <code>0 2 * * 0</code> UTC (Sunday 02:00 UTC) + webhook (<code>/webhook/competitor-analyzer/run</code>)</p>
+<ul>
+<li><strong>Purpose:</strong> Weekly per-AU-project SWOT synthesis from existing <code>channel_analyses</code>. Groups channels by <code>sub_niche</code>; for each group with ≥3 channels, calls <code>swot_subniche_au</code>; writes synthesis to <code>analysis_groups</code> (existing table).</li>
+<li><strong>Reads:</strong> <code>projects</code> (AU), <code>channel_analyses</code> (last 30 days).</li>
+<li><strong>Writes:</strong> <code>analysis_groups</code> row per sub-niche with <code>swot_payload</code> JSONB.</li>
+<li><strong>Calls:</strong> Anthropic Claude (Sonnet via <code>swot_subniche_au</code>), <code>WF_COUNTRY_ROUTER</code>.</li>
+<li><strong>Notes:</strong> First useful run requires the 5-sub-niche competitor seed (~20 channels) to have run through <code>WF_DISCOVER_COMPETITORS</code> + <code>WF_CHANNEL_ANALYZE</code>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "toc.integrate"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.525ec568.min.js"></script>
+      
+    
+  </body>
+</html>

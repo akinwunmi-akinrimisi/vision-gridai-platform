@@ -1,0 +1,1243 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="Operator reference for the Vision GridAI multi-niche AI video production platform" name="description"/>
+<link href="https://akinwunmi-akinrimisi.github.io/vision-gridai-platform/database/schema-overview/" rel="canonical"/>
+<link href="../../dashboard/realtime-patterns/" rel="prev"/>
+<link href="../table-reference/" rel="next"/>
+<link href="../../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.5.40" name="generator"/>
+<title>Schema overview - Vision GridAI Platform</title>
+<link href="../../assets/stylesheets/main.8c3ca2c6.min.css" rel="stylesheet"/>
+<link href="../../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../../stylesheets/extra.css" rel="stylesheet"/>
+<script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="indigo" data-md-color-primary="deep-purple" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#database-schema-overview">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Vision GridAI Platform" class="md-header__button md-logo" data-md-component="logo" href="../.." title="Vision GridAI Platform">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Vision GridAI Platform
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Schema overview
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: light)" data-md-color-primary="deep-purple" data-md-color-scheme="default" id="__palette_0" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-primary="deep-purple" data-md-color-scheme="slate" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_0" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+</form>
+<script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+<div class="md-search__suggest" data-md-component="search-suggest"></div>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 496 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+</div>
+<div class="md-source__repository">
+    akinwunmi-akinrimisi/vision-gridai-platform
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<nav aria-label="Tabs" class="md-tabs" data-md-component="tabs">
+<div class="md-grid">
+<ul class="md-tabs__list">
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../..">
+        
+  
+    
+  
+  Home
+
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../concepts/why/">
+          
+  
+    
+  
+  Concepts
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../pipeline/phase-a-project-creation/">
+          
+  
+    
+  
+  End-to-End Pipeline
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../subsystems/topic-intelligence/">
+          
+  
+    
+  
+  Subsystems
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../dashboard/page-map/">
+          
+  
+    
+  
+  Dashboard
+
+        </a>
+</li>
+<li class="md-tabs__item md-tabs__item--active">
+<a class="md-tabs__link" href="./">
+          
+  
+    
+  
+  Database
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../workflows/architecture/">
+          
+  
+    
+  
+  n8n Workflows
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../prompts/where-they-live/">
+          
+  
+    
+  
+  Prompts
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../infrastructure/vps-layout/">
+          
+  
+    
+  
+  Infrastructure
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../operations/cost-economics/">
+          
+  
+    
+  
+  Operations
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../au/overview/">
+          
+  
+    
+  
+  Australia overlay
+
+        </a>
+</li>
+</ul>
+</div>
+</nav>
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Vision GridAI Platform" class="md-nav__button md-logo" data-md-component="logo" href="../.." title="Vision GridAI Platform">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+    Vision GridAI Platform
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 496 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+</div>
+<div class="md-source__repository">
+    akinwunmi-akinrimisi/vision-gridai-platform
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../..">
+<span class="md-ellipsis">
+    Home
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+<span class="md-ellipsis">
+    Concepts
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_2_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+            Concepts
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../concepts/why/">
+<span class="md-ellipsis">
+    Why this platform exists
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../concepts/gates/">
+<span class="md-ellipsis">
+    The 4 approval gates
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../concepts/economics/">
+<span class="md-ellipsis">
+    Pipeline economics
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../concepts/glossary/">
+<span class="md-ellipsis">
+    Glossary
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+<span class="md-ellipsis">
+    End-to-End Pipeline
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+            End-to-End Pipeline
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-a-project-creation/">
+<span class="md-ellipsis">
+    Phase A · Project Creation
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-b-topic-generation/">
+<span class="md-ellipsis">
+    Phase B · Topic Generation (Gate 1)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-c-script-generation/">
+<span class="md-ellipsis">
+    Phase C · 3-Pass Script (Gate 2)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-d-production/">
+<span class="md-ellipsis">
+    Phase D · Production
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-e-review-publish/">
+<span class="md-ellipsis">
+    Phase E · Review &amp; Publish (Gate 3)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-f-analytics/">
+<span class="md-ellipsis">
+    Phase F · Analytics
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-g-shorts/">
+<span class="md-ellipsis">
+    Phase G · Shorts (Gate 4)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../pipeline/phase-h-social/">
+<span class="md-ellipsis">
+    Phase H · Social Posting
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+<span class="md-ellipsis">
+    Subsystems
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+            Subsystems
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/topic-intelligence/">
+<span class="md-ellipsis">
+    Topic Intelligence
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/registers/">
+<span class="md-ellipsis">
+    Production Registers
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/style-dna/">
+<span class="md-ellipsis">
+    Style DNA + Composition
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/caption-burn/">
+<span class="md-ellipsis">
+    Caption Burn Service
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/music-lyria/">
+<span class="md-ellipsis">
+    Background Music (Lyria)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../subsystems/resume-retry/">
+<span class="md-ellipsis">
+    Resume / Retry
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+<span class="md-ellipsis">
+    Dashboard
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_5_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+            Dashboard
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../dashboard/page-map/">
+<span class="md-ellipsis">
+    Page map
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../dashboard/page-reference/">
+<span class="md-ellipsis">
+    Page reference
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../dashboard/realtime-patterns/">
+<span class="md-ellipsis">
+    Realtime patterns
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_6" type="checkbox"/>
+<label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+<span class="md-ellipsis">
+    Database
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_6_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_6">
+<span class="md-nav__icon md-icon"></span>
+            Database
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    Schema overview
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    Schema overview
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#core-relationships">
+<span class="md-ellipsis">
+      Core relationships
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#domains-every-table-grouped">
+<span class="md-ellipsis">
+      Domains — every table grouped
+    </span>
+</a>
+<nav aria-label="Domains — every table grouped" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#core-video-pipeline-12-tables">
+<span class="md-ellipsis">
+      Core video pipeline (12 tables)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#production-audit-3-tables">
+<span class="md-ellipsis">
+      Production audit (3 tables)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#shorts-social-3-tables">
+<span class="md-ellipsis">
+      Shorts + social (3 tables)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#engagement-3-tables">
+<span class="md-ellipsis">
+      Engagement (3 tables)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#topic-intelligence-research-3-tables">
+<span class="md-ellipsis">
+      Topic Intelligence research (3 tables)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#intelligence-layer-16-tables">
+<span class="md-ellipsis">
+      Intelligence Layer (~16 tables)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#channel-analyzer-viability-4-tables">
+<span class="md-ellipsis">
+      Channel analyzer + viability (4 tables)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#youtube-discovery-per-video-analysis-3-tables">
+<span class="md-ellipsis">
+      YouTube discovery + per-video analysis (3 tables)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#auth-rls">
+<span class="md-ellipsis">
+      Auth / RLS
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#realtime-publication">
+<span class="md-ellipsis">
+      Realtime publication
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../table-reference/">
+<span class="md-ellipsis">
+    Table reference
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../migration-history/">
+<span class="md-ellipsis">
+    Migration history
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_7" type="checkbox"/>
+<label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+<span class="md-ellipsis">
+    n8n Workflows
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_7_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_7">
+<span class="md-nav__icon md-icon"></span>
+            n8n Workflows
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../workflows/architecture/">
+<span class="md-ellipsis">
+    Architecture
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../workflows/reference/">
+<span class="md-ellipsis">
+    Reference (~50 cards)
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../workflows/status/">
+<span class="md-ellipsis">
+    Status
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_8" type="checkbox"/>
+<label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+<span class="md-ellipsis">
+    Prompts
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_8_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_8">
+<span class="md-nav__icon md-icon"></span>
+            Prompts
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../prompts/where-they-live/">
+<span class="md-ellipsis">
+    Where prompts live
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../prompts/system-prompts/">
+<span class="md-ellipsis">
+    System prompts
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../prompts/templates/">
+<span class="md-ellipsis">
+    Prompt templates
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_9" type="checkbox"/>
+<label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+<span class="md-ellipsis">
+    Infrastructure
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_9_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_9">
+<span class="md-nav__icon md-icon"></span>
+            Infrastructure
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../infrastructure/vps-layout/">
+<span class="md-ellipsis">
+    VPS layout
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../infrastructure/service-mesh/">
+<span class="md-ellipsis">
+    Service mesh
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../infrastructure/auth-secrets/">
+<span class="md-ellipsis">
+    Auth + secrets
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10" type="checkbox"/>
+<label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+<span class="md-ellipsis">
+    Operations
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_10_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_10">
+<span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../operations/cost-economics/">
+<span class="md-ellipsis">
+    Cost economics
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../operations/debugging-recipes/">
+<span class="md-ellipsis">
+    Debugging recipes
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../operations/incident-log/">
+<span class="md-ellipsis">
+    Incident log
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_11" type="checkbox"/>
+<label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+<span class="md-ellipsis">
+    Australia overlay
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_11_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_11">
+<span class="md-nav__icon md-icon"></span>
+            Australia overlay
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../au/overview/">
+<span class="md-ellipsis">
+    Overview
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../au/sub-niches/">
+<span class="md-ellipsis">
+    Sub-niches
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../au/compliance/">
+<span class="md-ellipsis">
+    Compliance + demonetization audit
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<a class="md-content__button md-icon" href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/edit/main/docs-site/docs/database/schema-overview.md" title="Edit this page">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+</a>
+<h1 id="database-schema-overview">Database schema overview<a class="headerlink" href="#database-schema-overview" title="Permanent link">¶</a></h1>
+<p>Vision GridAI runs on self-hosted Supabase Postgres at
+<code>https://supabase.operscale.cloud</code>. The public schema holds <strong>~50 tables</strong>
+that fall into seven domains: core video pipeline, production audit, shorts
++ social, engagement, Topic Intelligence research, the Intelligence Layer
+(scoring, prediction, advisory, audience memory), and a small infrastructure
+slice for analysis groups + production registers. All tables are owned by
+<code>postgres</code>; reads flow through PostgREST on Kong; writes from n8n use the
+<code>service_role</code> JWT and from the dashboard go through <code>WF_DASHBOARD_READ</code> and
+dedicated mutation webhooks (see <a href="../../dashboard/realtime-patterns/">Realtime data patterns</a>)
+because anon was locked out of every VG table by
+<a href="../migration-history/#post-audit-lockdown-030-031">migration 030</a>.</p>
+<p>This page is the map. For column-level detail see the
+<a href="../table-reference/">table reference</a>. For when each table arrived see the
+<a href="../migration-history/">migration history</a>.</p>
+<h2 id="core-relationships">Core relationships<a class="headerlink" href="#core-relationships" title="Permanent link">¶</a></h2>
+<p>The pipeline backbone is one project → many topics → many scenes, with a
+single avatar per topic and a parallel <code>shorts</code> stream that clips from
+finished topics into 9:16 viral candidates. Cascade deletes on
+<code>project_id</code> mean removing a project removes everything underneath it
+(topics, scenes, shorts, avatars, scheduled_posts, comments, …).</p>
+<pre class="mermaid"><code>erDiagram
+    projects ||--o| niche_profiles : "AI-generated profile"
+    projects ||--o{ prompt_configs : "per-project prompts"
+    projects ||--o{ topics : "owns 25 topics"
+    projects ||--o{ social_accounts : "OAuth tokens"
+    topics ||--|| avatars : "customer avatar"
+    topics ||--o{ scenes : "172 scenes per topic"
+    topics ||--o{ shorts : "20 viral clips per topic"
+    topics ||--o{ production_logs : "structured pipeline log"
+    topics ||--o{ scheduled_posts : "calendar entries"
+    topics ||--o{ comments : "engagement feed"
+</code></pre>
+<p>The diagram is deliberately reduced — full FK detail sits with each table's
+card in the <a href="../table-reference/">table reference</a>. Notable rules not shown:</p>
+<ul>
+<li><code>scenes.project_id</code> is denormalised (a scene already has a topic FK that
+  knows the project) so workflows can write a single SELECT to filter "all
+  scenes for project X" without joining.</li>
+<li><code>shorts</code> references <code>topics(id)</code> and <code>projects(id)</code> directly. There is no
+  FK from <code>shorts</code> to <code>social_accounts</code> — instead the <code>shorts</code> row carries
+  per-platform status columns (<code>tiktok_status</code>, <code>instagram_status</code>,
+  <code>youtube_shorts_status</code>) and <code>social_accounts</code> is looked up by
+  <code>(project_id, platform)</code> at post-time by <code>WF_SOCIAL_POSTER</code>.</li>
+<li>Several Intelligence Layer tables (<code>pps_calibration</code>, <code>revenue_attribution</code>,
+  <code>coach_messages</code>, <code>competitor_videos</code>) denormalise <code>project_id</code> alongside
+  their natural parent FK so dashboard queries can scope to a project
+  without a 3-table join.</li>
+</ul>
+<h2 id="domains-every-table-grouped">Domains — every table grouped<a class="headerlink" href="#domains-every-table-grouped" title="Permanent link">¶</a></h2>
+<h3 id="core-video-pipeline-12-tables">Core video pipeline (12 tables)<a class="headerlink" href="#core-video-pipeline-12-tables" title="Permanent link">¶</a></h3>
+<p>The 4-gate flow from project creation to a publish-ready video file. Every
+row in <code>topics</code> is one video; every row in <code>scenes</code> is one of its 172
+narration beats.</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Migration introduced</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>projects</code></td>
+<td>Top-level row per niche/channel direction. Holds niche profile fields, playlists, default model IDs, auto-pilot config, music prefs, viability digest, niche health score.</td>
+<td>001 (extended by 004, 007, 010, 014, 015, 016, 019, 020, 021)</td>
+</tr>
+<tr>
+<td><code>niche_profiles</code></td>
+<td>Free-form research output from Phase A: competitor audit, audience pain points, keyword research, blue-ocean opportunities.</td>
+<td>001</td>
+</tr>
+<tr>
+<td><code>prompt_configs</code></td>
+<td>Per-project AI prompt templates (versioned, <code>is_active</code> flag). System prompts and registry entries live in <code>system_prompts</code> instead.</td>
+<td>001</td>
+</tr>
+<tr>
+<td><code>system_prompts</code></td>
+<td>Universal prompt library (<code>prompt_type</code> UNIQUE). Topic generator master, script pass templates, evaluators. Read by every Claude-call workflow.</td>
+<td>007 (<code>007_grand_master_integration.sql</code>)</td>
+</tr>
+<tr>
+<td><code>production_registers</code></td>
+<td>Five seeded register rows (Economist, Premium, Noir, Signal, Archive). JSONB config carries image anchors, TTS voice, music BPM, Ken Burns preset, font family.</td>
+<td>024</td>
+</tr>
+<tr>
+<td><code>topics</code></td>
+<td>One per video. ~150 columns covering review state, script JSONB, scene/audio progress, YouTube metadata, intelligence scores, CTR predictions, hooks, viral moments, video ratio, register selection, ROI. The widest table in the schema.</td>
+<td>001 (extended by ~10 later migrations)</td>
+</tr>
+<tr>
+<td><code>avatars</code></td>
+<td>Customer avatar per topic — name/age, occupation, pain point, emotional driver, dream outcome, plus richer psychographics + audience segment from migration 007.</td>
+<td>001 (extended by 007)</td>
+</tr>
+<tr>
+<td><code>scenes</code></td>
+<td>Per-scene manifest. Narration text, image prompt, audio file URL, image URL, optional video clip URL (hybrid pipeline), per-stage status columns, cinematic fields (color_mood, zoom_direction, transition_to_next, composition_prefix, selective_color_element), production register stamp.</td>
+<td>001 (extended by 003, 019, 023; pruned by 009; constrained by 031)</td>
+</tr>
+<tr>
+<td><code>shorts</code></td>
+<td>Short-form clip rows (one per viral candidate). Carries virality score, rewritten narration JSONB, 9:16 image prompts, per-platform status + post IDs + analytics. <strong>Created by <code>skills.sh</code> bootstrap, not by a numbered migration.</strong></td>
+<td>not in <code>supabase/migrations/</code></td>
+</tr>
+<tr>
+<td><code>cost_calculator_snapshots</code></td>
+<td>Audit row per Cost Calculator gate decision. Keeps the four ratio options + the user's pick.</td>
+<td>019</td>
+</tr>
+<tr>
+<td><code>keywords</code></td>
+<td>Project-scoped keyword graph — search_volume_proxy, competition_level, opportunity_score, related_keywords JSONB.</td>
+<td>010</td>
+</tr>
+<tr>
+<td><code>topic_keywords</code></td>
+<td>Junction table linking topics to keywords with relevance scores.</td>
+<td>010</td>
+</tr>
+</tbody>
+</table>
+<h3 id="production-audit-3-tables">Production audit (3 tables)<a class="headerlink" href="#production-audit-3-tables" title="Permanent link">¶</a></h3>
+<p>Append-only record of what the pipeline did and what it cost.</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Migration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>production_log</code></td>
+<td>Original audit trail. One row per stage transition.</td>
+<td>001</td>
+</tr>
+<tr>
+<td><code>production_logs</code></td>
+<td>Structured per-API-call log (note plural — both tables coexist). Stage, scene number, action, status, duration, cost USD, retry count, error message, metadata. Source of <code>topics.production_cost_usd</code> aggregation.</td>
+<td>004</td>
+</tr>
+<tr>
+<td><code>renders</code></td>
+<td>Per-platform export (YouTube long, YouTube Shorts, TikTok, Instagram). CRF, preset, bitrate, file size, render time.</td>
+<td>004</td>
+</tr>
+</tbody>
+</table>
+<h3 id="shorts-social-3-tables">Shorts + social (3 tables)<a class="headerlink" href="#shorts-social-3-tables" title="Permanent link">¶</a></h3>
+<p>Already shown in core: <code>shorts</code>. Plus:</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Migration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>social_accounts</code></td>
+<td>Per-project OAuth tokens (TikTok, Instagram, YouTube). Token + refresh + expiry. <strong>Like <code>shorts</code>, created by <code>skills.sh</code> rather than a numbered migration.</strong> Locked down by 030 since it carries OAuth secrets.</td>
+<td>not in <code>supabase/migrations/</code></td>
+</tr>
+<tr>
+<td><code>scheduled_posts</code></td>
+<td>Calendar scheduling state. <code>(topic_id, platform, scheduled_at)</code> rows that the every-15-min cron picks up and publishes.</td>
+<td>004</td>
+</tr>
+<tr>
+<td><code>platform_metadata</code></td>
+<td>Per-platform title/description/tags/hashtags/thumbnail. Unique on <code>(topic_id, platform)</code>.</td>
+<td>004</td>
+</tr>
+</tbody>
+</table>
+<h3 id="engagement-3-tables">Engagement (3 tables)<a class="headerlink" href="#engagement-3-tables" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Migration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>comments</code></td>
+<td>Unified engagement feed across YouTube/TikTok/Instagram. Sentiment, intent_score, intent_signals, replied flag.</td>
+<td>004</td>
+</tr>
+<tr>
+<td><code>audience_comments</code></td>
+<td>Per-comment classification with Haiku — question/complaint/praise/suggestion/noise. Distinct from <code>comments</code> (this one is project-scoped audience memory; the other is per-video conversation).</td>
+<td>017</td>
+</tr>
+<tr>
+<td><code>audience_insights</code></td>
+<td>Weekly project-scoped synthesis from Opus. Renders <code>audience_context_block</code> injected into Pass 1 of script generation.</td>
+<td>017</td>
+</tr>
+</tbody>
+</table>
+<h3 id="topic-intelligence-research-3-tables">Topic Intelligence research (3 tables)<a class="headerlink" href="#topic-intelligence-research-3-tables" title="Permanent link">¶</a></h3>
+<p>The 5-source on-demand research engine. See <a href="../../subsystems/topic-intelligence/">Topic Intelligence subsystem</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Migration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>research_runs</code></td>
+<td>One row per <code>/webhook/research/run</code> invocation. Status, sources_completed, derived_keywords, platforms (extended by 006), time_range.</td>
+<td>002 (extended by 006)</td>
+</tr>
+<tr>
+<td><code>research_results</code></td>
+<td>~50 raw scraped items per run, 10 per source. Engagement score, source URL, ai_video_title, category_id.</td>
+<td>002</td>
+</tr>
+<tr>
+<td><code>research_categories</code></td>
+<td>4-8 AI-clustered groups per run, ranked. <code>top_video_title</code>, <code>total_engagement</code>, <code>result_count</code>.</td>
+<td>002</td>
+</tr>
+</tbody>
+</table>
+<h3 id="intelligence-layer-16-tables">Intelligence Layer (~16 tables)<a class="headerlink" href="#intelligence-layer-16-tables" title="Permanent link">¶</a></h3>
+<p>Built across S1-S8 sprints (migrations 010-017). Adds outlier scoring, SEO,
+RPM, CTR optimisation, A/B testing, prediction, advisory, niche health,
+revenue attribution, audience memory.</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Migration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rpm_benchmarks</code></td>
+<td>Static lookup of 12 niche RPM ranges (finance, credit_cards, gaming, …).</td>
+<td>010</td>
+</tr>
+<tr>
+<td><code>competitor_channels</code></td>
+<td>Per-project tracked YouTube channels with rolling 30/90d view averages.</td>
+<td>011</td>
+</tr>
+<tr>
+<td><code>competitor_videos</code></td>
+<td>Tracked uploads from competitor channels with outlier flag + ratio.</td>
+<td>011</td>
+</tr>
+<tr>
+<td><code>competitor_alerts</code></td>
+<td>Dashboard notifications (outlier_breakout, topic_match, rapid_growth, channel_surge, style_dna_ready).</td>
+<td>011</td>
+</tr>
+<tr>
+<td><code>competitor_intelligence</code></td>
+<td>Weekly Claude synthesis per project with cluster summaries.</td>
+<td>011</td>
+</tr>
+<tr>
+<td><code>style_profiles</code></td>
+<td>CF14 Style DNA per analysed channel — title formulas, thumbnail DNA, content pillars, upload cadence.</td>
+<td>011</td>
+</tr>
+<tr>
+<td><code>ab_tests</code></td>
+<td>Per-topic A/B test config (title | thumbnail | combined).</td>
+<td>012</td>
+</tr>
+<tr>
+<td><code>ab_test_variants</code></td>
+<td>A/B/C variants with predicted CTR + cumulative impressions/views.</td>
+<td>012</td>
+</tr>
+<tr>
+<td><code>ab_test_impressions</code></td>
+<td>Time-series snapshot of CTR per rotation window.</td>
+<td>012</td>
+</tr>
+<tr>
+<td><code>pps_config</code></td>
+<td>Per-project Predicted Performance Score weights (sum-to-1.0 enforced).</td>
+<td>013</td>
+</tr>
+<tr>
+<td><code>pps_calibration</code></td>
+<td>Post-publish predicted-vs-actual variance for weight regression.</td>
+<td>013</td>
+</tr>
+<tr>
+<td><code>daily_ideas</code></td>
+<td>CF08 — daily Opus-generated batch of 15-20 ranked topic ideas.</td>
+<td>015</td>
+</tr>
+<tr>
+<td><code>coach_sessions</code></td>
+<td>CF09 AI Coach conversation threads.</td>
+<td>015</td>
+</tr>
+<tr>
+<td><code>coach_messages</code></td>
+<td>Individual conversation turns with context_snapshot JSONB.</td>
+<td>015</td>
+</tr>
+<tr>
+<td><code>niche_health_history</code></td>
+<td>Weekly 0-100 niche health score per project with momentum trend.</td>
+<td>016</td>
+</tr>
+<tr>
+<td><code>revenue_attribution</code></td>
+<td>Per-topic monthly snapshot — production cost, views, revenue, RPM, ROI.</td>
+<td>016</td>
+</tr>
+</tbody>
+</table>
+<h3 id="channel-analyzer-viability-4-tables">Channel analyzer + viability (4 tables)<a class="headerlink" href="#channel-analyzer-viability-4-tables" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Migration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>channel_analyses</code></td>
+<td>Standalone YouTube channel deep-dives — top videos, blue-ocean opportunities, verdict.</td>
+<td>020</td>
+</tr>
+<tr>
+<td><code>channel_comparison_reports</code></td>
+<td>Multi-channel comparison with combined topic landscape + differentiation strategy.</td>
+<td>020</td>
+</tr>
+<tr>
+<td><code>analysis_groups</code></td>
+<td>Named container for channel analyses (counters self-healed by triggers in 026, viability progress in 027).</td>
+<td>022</td>
+</tr>
+<tr>
+<td><code>discovered_channels</code></td>
+<td>Auto-discovered competitors staged before deep analysis.</td>
+<td>021</td>
+</tr>
+<tr>
+<td><code>niche_viability_reports</code></td>
+<td>One per analysis group — viability score, four weighted factors (monetization, audience demand, competition gap, entry ease), revenue projections, blue-ocean opportunities, topics to avoid.</td>
+<td>021 (column rename in 026)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="youtube-discovery-per-video-analysis-3-tables">YouTube discovery + per-video analysis (3 tables)<a class="headerlink" href="#youtube-discovery-per-video-analysis-3-tables" title="Permanent link">¶</a></h3>
+<p>These three tables (<code>yt_discovery_runs</code>, <code>yt_discovery_results</code>,
+<code>yt_video_analyses</code>) are referenced by <code>WF_YOUTUBE_DISCOVERY</code> and migration
+029's intelligence renderer but are <strong>not created by any numbered migration
+in this repo</strong> — they were applied directly to the live VPS. Documented in
+the table reference for completeness.</p>
+<h3 id="auth-rls">Auth / RLS<a class="headerlink" href="#auth-rls" title="Permanent link">¶</a></h3>
+<p>There are no auth-domain tables in this schema — Supabase Auth (<code>auth.users</code>,
+<code>auth.sessions</code>, etc.) lives in the <code>auth</code> schema and is not used by Vision
+GridAI's single-operator model. RLS is the only enforcement layer for
+public-schema access. After
+<a href="../migration-history/#post-audit-lockdown-030-031">migration 030</a> every
+table carries an <code>_anon_deny</code> restrictive policy and a <code>_service_role</code>
+permissive policy, so anon is blocked at the policy layer <strong>and</strong> revoked
+at the GRANT layer.</p>
+<h2 id="realtime-publication">Realtime publication<a class="headerlink" href="#realtime-publication" title="Permanent link">¶</a></h2>
+<p>Most operator-facing tables are on the <code>supabase_realtime</code> publication with
+<code>REPLICA IDENTITY FULL</code> so the dashboard can subscribe to UPDATE payloads.
+The full set is recorded per-table in the
+<a href="../table-reference/">table reference</a> — examples: <code>topics</code>, <code>scenes</code>,
+<code>projects</code>, <code>shorts</code>, <code>research_runs</code>, <code>research_categories</code>,
+<code>scheduled_posts</code>, <code>comments</code>, <code>production_logs</code>, <code>competitor_alerts</code>,
+<code>channel_analyses</code>, <code>analysis_groups</code>, <code>niche_viability_reports</code>,
+<code>audience_insights</code>, <code>daily_ideas</code>, <code>niche_health_history</code>. After the RLS
+lockdown the dashboard hits these via authenticated <code>WF_DASHBOARD_READ</code>
+proxy reads rather than direct Supabase Realtime subscriptions in most
+places — see <a href="../../dashboard/realtime-patterns/">Realtime data patterns</a>.</p>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+<button class="md-top md-icon" data-md-component="top" hidden="" type="button">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "toc.integrate"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+<script src="../../assets/javascripts/bundle.525ec568.min.js"></script>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+window.mermaidConfig = {default: {
+    startOnLoad: false
+}};</script></body>
+</html>

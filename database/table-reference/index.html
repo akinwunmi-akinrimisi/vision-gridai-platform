@@ -1,0 +1,5270 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Operator reference for the Vision GridAI multi-niche AI video production platform">
+      
+      
+      
+        <link rel="canonical" href="https://akinwunmi-akinrimisi.github.io/vision-gridai-platform/database/table-reference/">
+      
+      
+        <link rel="prev" href="../schema-overview/">
+      
+      
+        <link rel="next" href="../migration-history/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.40">
+    
+    
+      
+        <title>Table reference - Vision GridAI Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.8c3ca2c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#table-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Vision GridAI Platform" class="md-header__button md-logo" aria-label="Vision GridAI Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Vision GridAI Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Table reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    akinwunmi-akinrimisi/vision-gridai-platform
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../concepts/why/" class="md-tabs__link">
+          
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../pipeline/phase-a-project-creation/" class="md-tabs__link">
+          
+  
+    
+  
+  End-to-End Pipeline
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../subsystems/topic-intelligence/" class="md-tabs__link">
+          
+  
+    
+  
+  Subsystems
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dashboard/page-map/" class="md-tabs__link">
+          
+  
+    
+  
+  Dashboard
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../schema-overview/" class="md-tabs__link">
+          
+  
+    
+  
+  Database
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../workflows/architecture/" class="md-tabs__link">
+          
+  
+    
+  
+  n8n Workflows
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../prompts/where-they-live/" class="md-tabs__link">
+          
+  
+    
+  
+  Prompts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../infrastructure/vps-layout/" class="md-tabs__link">
+          
+  
+    
+  
+  Infrastructure
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/cost-economics/" class="md-tabs__link">
+          
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../au/overview/" class="md-tabs__link">
+          
+  
+    
+  
+  Australia overlay
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Vision GridAI Platform" class="md-nav__button md-logo" aria-label="Vision GridAI Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Vision GridAI Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    akinwunmi-akinrimisi/vision-gridai-platform
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Concepts
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Concepts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/why/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Why this platform exists
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/gates/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    The 4 approval gates
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/economics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pipeline economics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    End-to-End Pipeline
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            End-to-End Pipeline
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-a-project-creation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase A · Project Creation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-b-topic-generation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase B · Topic Generation (Gate 1)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-c-script-generation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase C · 3-Pass Script (Gate 2)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-d-production/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase D · Production
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-e-review-publish/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase E · Review & Publish (Gate 3)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-f-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase F · Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-g-shorts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase G · Shorts (Gate 4)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pipeline/phase-h-social/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Phase H · Social Posting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Subsystems
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Subsystems
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/topic-intelligence/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Topic Intelligence
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/registers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Production Registers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/style-dna/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Style DNA + Composition
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/caption-burn/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Caption Burn Service
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/music-lyria/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Background Music (Lyria)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../subsystems/resume-retry/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resume / Retry
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboard
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboard
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/page-map/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Page map
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/page-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Page reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/realtime-patterns/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Realtime patterns
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Database
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Database
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schema-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Schema overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Table reference
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Table reference
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-video-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core video pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core video pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: projects
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-niche_profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: niche_profiles
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-prompt_configs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: prompt_configs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-system_prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: system_prompts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-production_registers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: production_registers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: topics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-avatars" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: avatars
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-scenes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: scenes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-shorts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: shorts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-cost_calculator_snapshots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: cost_calculator_snapshots
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-keywords" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: keywords
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-topic_keywords" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: topic_keywords
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#production-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Production audit
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Production audit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-production_log" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: production_log
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-production_logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: production_logs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-renders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: renders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-music_library" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: music_library
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shorts-social" class="md-nav__link">
+    <span class="md-ellipsis">
+      Shorts + social
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shorts + social">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-social_accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: social_accounts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-scheduled_posts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: scheduled_posts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-platform_metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: platform_metadata
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ctr-ab-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      CTR + AB testing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CTR + AB testing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-ab_tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: ab_tests
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-ab_test_variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: ab_test_variants
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-ab_test_impressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: ab_test_impressions
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#engagement" class="md-nav__link">
+    <span class="md-ellipsis">
+      Engagement
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Engagement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-comments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: comments
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-audience_comments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: audience_comments
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-audience_insights" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: audience_insights
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#topic-intelligence-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      Topic Intelligence research
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Topic Intelligence research">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-research_runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: research_runs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-research_results" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: research_results
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-research_categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: research_categories
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#intelligence-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Intelligence Layer
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Intelligence Layer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-rpm_benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: rpm_benchmarks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tables-competitor_channels-competitor_videos-competitor_alerts-competitor_intelligence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tables: competitor_channels, competitor_videos, competitor_alerts, competitor_intelligence
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-style_profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: style_profiles
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tables-ab_tests-ab_test_variants-ab_test_impressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tables: ab_tests, ab_test_variants, ab_test_impressions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-pps_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: pps_config
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-pps_calibration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: pps_calibration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-daily_ideas" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: daily_ideas
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tables-coach_sessions-coach_messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tables: coach_sessions, coach_messages
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-niche_health_history" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: niche_health_history
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-revenue_attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: revenue_attribution
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#channel-analyzer-viability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Channel analyzer + viability
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Channel analyzer + viability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-channel_analyses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: channel_analyses
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-channel_comparison_reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: channel_comparison_reports
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-discovered_channels" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: discovered_channels
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-niche_viability_reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: niche_viability_reports
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-analysis_groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table: analysis_groups
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#youtube-discovery-per-video-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      YouTube discovery + per-video analysis
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="YouTube discovery + per-video analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tables-yt_discovery_runs-yt_discovery_results-yt_video_analyses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tables: yt_discovery_runs, yt_discovery_results, yt_video_analyses
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Migration history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    n8n Workflows
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            n8n Workflows
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../workflows/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../workflows/reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Reference (~50 cards)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../workflows/status/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Status
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Prompts
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Prompts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../prompts/where-they-live/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Where prompts live
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../prompts/system-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    System prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../prompts/templates/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prompt templates
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Infrastructure
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Infrastructure
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure/vps-layout/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    VPS layout
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure/service-mesh/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Service mesh
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure/auth-secrets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Auth + secrets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-economics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost economics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/debugging-recipes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Debugging recipes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/incident-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Incident log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Australia overlay
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            Australia overlay
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../au/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../au/sub-niches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Sub-niches
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../au/compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Compliance + demonetization audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/edit/main/docs-site/docs/database/table-reference.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="table-reference">Table reference<a class="headerlink" href="#table-reference" title="Permanent link">&para;</a></h1>
+<p>One card per significant Vision GridAI table, organised by domain. Column
+lists are top-level only — for tables with 30+ columns, the most-used ~10
+are shown with a pointer to the source migration for the rest. RLS state
+reflects the post-<a href="../migration-history/#post-audit-lockdown-030-031">migration 030</a>
+lockdown: every VG table is <code>RESTRICTIVE FOR anon DENY</code> + <code>PERMISSIVE FOR
+service_role</code>. The "Realtime" line lists whether the table is on the
+<code>supabase_realtime</code> publication with <code>REPLICA IDENTITY FULL</code>.</p>
+<p>Cardinality and semantics are summarised in the
+<a href="../schema-overview/">schema overview</a>. Column-level evolution beyond what's
+shown here lives in the <a href="../migration-history/">migration history</a>.</p>
+<h2 id="core-video-pipeline">Core video pipeline<a class="headerlink" href="#core-video-pipeline" title="Permanent link">&para;</a></h2>
+<h3 id="table-projects">Table: <code>projects</code><a class="headerlink" href="#table-projects" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> One row per niche/channel direction. Holds AI-generated niche
+profile (system prompt, expertise profile, blue-ocean strategy, red-ocean
+list), playlist metadata (5 playlists), default model IDs and per-unit
+costs, auto-pilot configuration, music preferences, niche viability digest,
+weekly niche health score, and Style DNA. The widest projects-domain table —
+~50 columns assembled across 10 migrations.</p>
+<p><strong>Realtime:</strong> yes (<code>REPLICA IDENTITY FULL</code>)  ·  <strong>RLS:</strong> locked-down (anon
+denied, service_role permitted)</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td><code>gen_random_uuid()</code></td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>TEXT NOT NULL</td>
+<td>Operator-facing project name</td>
+</tr>
+<tr>
+<td><code>niche</code></td>
+<td>TEXT NOT NULL</td>
+<td>Niche slug (e.g. <code>us_credit_cards</code>)</td>
+</tr>
+<tr>
+<td><code>niche_description</code></td>
+<td>TEXT</td>
+<td>Long-form description fed into prompts</td>
+</tr>
+<tr>
+<td><code>channel_style</code></td>
+<td>TEXT</td>
+<td>Default <code>'2hr_documentary'</code></td>
+</tr>
+<tr>
+<td><code>niche_system_prompt</code></td>
+<td>TEXT</td>
+<td>Phase A AI-generated system prompt</td>
+</tr>
+<tr>
+<td><code>niche_expertise_profile</code></td>
+<td>TEXT</td>
+<td>"Senior Credit Card Analyst…" string</td>
+</tr>
+<tr>
+<td><code>niche_red_ocean_topics</code></td>
+<td>TEXT[]</td>
+<td>Topics to AVOID</td>
+</tr>
+<tr>
+<td><code>style_dna</code></td>
+<td>TEXT</td>
+<td>Locked per project, appended to every image prompt (added 004)</td>
+</tr>
+<tr>
+<td><code>auto_pilot_enabled</code></td>
+<td>BOOLEAN</td>
+<td>Default false (added 004)</td>
+</tr>
+<tr>
+<td><code>auto_pilot_default_visibility</code></td>
+<td>TEXT</td>
+<td>Default <code>'unlisted'</code> — never <code>'public'</code> (added 004)</td>
+</tr>
+<tr>
+<td><code>niche_viability_score</code></td>
+<td>INTEGER 0-100</td>
+<td>From <code>niche_viability_reports</code> (added 021)</td>
+</tr>
+<tr>
+<td><code>niche_health_score</code></td>
+<td>INTEGER 0-100</td>
+<td>Weekly Claude-computed (added 016)</td>
+</tr>
+<tr>
+<td><code>music_enabled</code> / <code>music_volume</code> / <code>music_mood_override</code> / <code>music_source</code></td>
+<td>mixed</td>
+<td>Lyria + ducking config (added 014)</td>
+</tr>
+</tbody>
+</table>
+<p>…plus ~35 more across playlists, YouTube channel/playlist IDs, Drive folder
+IDs, model defaults (<code>image_model</code>, <code>i2v_model</code>, <code>image_cost</code>, etc.), RPM
+classification, viability fields, and analysis_group_id.</p>
+<p><strong>Written by:</strong> WF_PROJECT_CREATE, WF_NICHE_VIABILITY (viability fields),
+WF_NICHE_HEALTH_CRON, dashboard <code>/settings</code>
+<strong>Read by:</strong> every workflow that needs niche context (which is most of them)
+<strong>Migration history:</strong> 001 (created), 004 (auto-pilot + style_dna), 007
+(playlist 4 + 5), 010 (RPM cols), 014 (music prefs), 015 (audience),
+016 (niche health), 019 (model defaults bumped to Seedream 4.5 + Seedance
+2.0), 020 (channel_analysis_context, analysis_group_id), 021 (viability
+digest)</p>
+<hr />
+<h3 id="table-niche_profiles">Table: <code>niche_profiles</code><a class="headerlink" href="#table-niche_profiles" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Free-form research output from Phase A. Stores the JSONB
+returned by Claude after web-searching the niche.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>UUID FK → projects</td>
+<td>CASCADE delete</td>
+</tr>
+<tr>
+<td><code>competitor_analysis</code></td>
+<td>JSONB</td>
+<td><code>{channels: [...], top_videos: [...], gaps: [...]}</code></td>
+</tr>
+<tr>
+<td><code>audience_pain_points</code></td>
+<td>JSONB</td>
+<td><code>{reddit: [...], quora: [...], forums: [...]}</code></td>
+</tr>
+<tr>
+<td><code>keyword_research</code></td>
+<td>JSONB</td>
+<td><code>{high_volume, low_competition, trending}</code></td>
+</tr>
+<tr>
+<td><code>blue_ocean_opportunities</code></td>
+<td>JSONB</td>
+<td><code>{unoccupied_angles, value_curve_gaps}</code></td>
+</tr>
+<tr>
+<td><code>search_queries_used</code></td>
+<td>TEXT[]</td>
+<td>Audit</td>
+</tr>
+<tr>
+<td><code>search_results_raw</code></td>
+<td>JSONB</td>
+<td>Audit</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> WF_PROJECT_CREATE
+<strong>Read by:</strong> WF_TOPICS_GENERATE (via the intelligence renderer RPC since 029)
+<strong>Migration history:</strong> 001</p>
+<hr />
+<h3 id="table-prompt_configs">Table: <code>prompt_configs</code><a class="headerlink" href="#table-prompt_configs" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Per-project prompt templates with version history and
+<code>is_active</code> flag. System-wide prompts live in <code>system_prompts</code> instead.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>UUID FK</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>prompt_type</code></td>
+<td>TEXT</td>
+<td>e.g. <code>topic_generator</code>, <code>script_pass1</code></td>
+</tr>
+<tr>
+<td><code>prompt_text</code></td>
+<td>TEXT</td>
+<td>The actual template</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>is_active</code></td>
+<td>BOOLEAN</td>
+<td>Only one active per (project_id, prompt_type)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> WF_PROJECT_CREATE (initial seed), dashboard <code>/settings</code>
+prompt editor
+<strong>Read by:</strong> every Claude-call workflow
+<strong>Migration history:</strong> 001</p>
+<hr />
+<h3 id="table-system_prompts">Table: <code>system_prompts</code><a class="headerlink" href="#table-system_prompts" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Universal prompt registry — one row per <code>prompt_type</code> (UNIQUE).
+Holds the Master Topic Generator, the 3-pass script templates, the
+evaluator, the metadata generator, and the music mood descriptor.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>prompt_type</code></td>
+<td>TEXT UNIQUE</td>
+<td>e.g. <code>topic_generator_master</code></td>
+</tr>
+<tr>
+<td><code>prompt_text</code></td>
+<td>TEXT</td>
+<td>Full markdown prompt body (some are 30+ KB)</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>is_active</code></td>
+<td>BOOLEAN</td>
+<td></td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>TEXT</td>
+<td>One-liner shown in the dashboard's prompt editor</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> migration 007 seed; dashboard prompt editor
+<strong>Read by:</strong> WF_TOPICS_GENERATE, WF_SCRIPT_GENERATE, WF_SCRIPT_PASS,
+WF_VIDEO_METADATA, WF_MUSIC_GENERATE
+<strong>Migration history:</strong> 007 (<code>007_grand_master_integration.sql</code> creates the
+table; <code>007_seed_system_prompts.sql</code> populates 8 rows)</p>
+<hr />
+<h3 id="table-production_registers">Table: <code>production_registers</code><a class="headerlink" href="#table-production_registers" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Five seeded register rows. Each row's <code>config</code> JSONB carries
+image_anchors, negative_additions, tts_voice, tts_speaking_rate,
+music_bpm_min/max, music_mood_keywords, ken_burns_default_preset,
+typical_scene_length_sec, transition_duration_ms, font_family. The
+<code>REGISTER_05_ARCHIVE</code> row also carries <code>image_anchors_by_era</code> (1920s, 1960s,
+1980s, 2000s, modern) for sub-LUT selection.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>register_id</code></td>
+<td>TEXT PK</td>
+<td>One of <code>REGISTER_01_ECONOMIST</code>, <code>REGISTER_02_PREMIUM</code>, <code>REGISTER_03_NOIR</code>, <code>REGISTER_04_SIGNAL</code>, <code>REGISTER_05_ARCHIVE</code></td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>TEXT</td>
+<td>Display name</td>
+</tr>
+<tr>
+<td><code>short_description</code></td>
+<td>TEXT</td>
+<td>One-liner</td>
+</tr>
+<tr>
+<td><code>accent_color_hex</code></td>
+<td>TEXT</td>
+<td>Brand swatch</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>JSONB NOT NULL</td>
+<td>Production parameters keyed as above</td>
+</tr>
+<tr>
+<td><code>version</code> / <code>is_active</code></td>
+<td>mixed</td>
+<td>Defaults 1 / true</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note on naming:</strong> the brief refers to this table as <code>register_specs</code>;
+the actual table is <code>production_registers</code>. There is no separate
+<code>register_specs</code> table.</p>
+</blockquote>
+<p><strong>Written by:</strong> migration 024 seed (idempotent ON CONFLICT update)
+<strong>Read by:</strong> WF_IMAGE_GENERATION, WF_TTS_AUDIO, WF_MUSIC_GENERATE,
+WF_KEN_BURNS
+<strong>Migration history:</strong> 024</p>
+<hr />
+<h3 id="table-topics">Table: <code>topics</code><a class="headerlink" href="#table-topics" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> One row per video. The schema's largest single table —
+~150 columns across all extensions. Carries Phase B topic metadata,
+review/refinement state, the full 3-pass script as JSONB, scene/audio
+production progress, intelligence scoring (outlier, SEO, hooks, viral
+moments, predicted performance score), CTR predictions for title and
+thumbnail, video ratio + production register selections, YouTube metadata
++ analytics + traffic-source breakdown, ROI, and ALL gate-status columns
+(<code>review_status</code>, <code>script_review_status</code>, <code>video_review_status</code>).</p>
+<p><strong>Realtime:</strong> yes (<code>REPLICA IDENTITY FULL</code>)  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>UUID FK</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>topic_number</code></td>
+<td>INTEGER</td>
+<td>1-25 within project</td>
+</tr>
+<tr>
+<td><code>seo_title</code></td>
+<td>TEXT</td>
+<td>The chosen title (also see <code>selected_title</code> from CF05)</td>
+</tr>
+<tr>
+<td><code>narrative_hook</code></td>
+<td>TEXT</td>
+<td>2-3 sentence cold open</td>
+</tr>
+<tr>
+<td><code>review_status</code></td>
+<td>TEXT</td>
+<td>Gate 1 — <code>pending</code> / <code>approved</code> / <code>rejected</code> / <code>refined</code></td>
+</tr>
+<tr>
+<td><code>script_review_status</code></td>
+<td>TEXT</td>
+<td>Gate 2</td>
+</tr>
+<tr>
+<td><code>video_review_status</code></td>
+<td>TEXT</td>
+<td>Gate 3</td>
+</tr>
+<tr>
+<td><code>script_json</code></td>
+<td>JSONB</td>
+<td>Full Pass-1+2+3 scenes array</td>
+</tr>
+<tr>
+<td><code>pipeline_stage</code></td>
+<td>TEXT</td>
+<td><code>pending</code> → <code>scripting</code> → <code>cost_selection</code> → <code>register_selection</code> → <code>classifying</code> → <code>tts</code> → <code>images</code> → <code>i2v</code> → <code>ken_burns</code> → <code>assembly</code> → <code>render</code> → <code>complete</code> (constraint extended in 025)</td>
+</tr>
+<tr>
+<td><code>outlier_score</code> / <code>seo_score</code></td>
+<td>INTEGER 0-100</td>
+<td>CF01 + CF02 (added 010)</td>
+</tr>
+<tr>
+<td><code>predicted_performance_score</code></td>
+<td>INTEGER 0-100</td>
+<td>CF13 PPS (added 013)</td>
+</tr>
+<tr>
+<td><code>title_options</code> / <code>selected_title</code> / <code>title_ctr_score</code></td>
+<td>mixed</td>
+<td>CF05 (added 012)</td>
+</tr>
+<tr>
+<td><code>thumbnail_ctr_score</code> / <code>thumbnail_decision</code></td>
+<td>mixed</td>
+<td>CF06 (added 012)</td>
+</tr>
+<tr>
+<td><code>viral_moments</code> / <code>hook_scores</code></td>
+<td>JSONB</td>
+<td>CF12 (added 013)</td>
+</tr>
+<tr>
+<td><code>production_mode</code> / <code>production_register</code></td>
+<td>TEXT</td>
+<td>Register-gate selections (added 023)</td>
+</tr>
+<tr>
+<td><code>yt_views</code> / <code>yt_ctr</code> / <code>yt_estimated_revenue</code> / <code>yt_traffic_source_breakdown</code></td>
+<td>mixed</td>
+<td>YouTube Analytics pull</td>
+</tr>
+<tr>
+<td><code>production_cost_usd</code> / <code>roi_pct</code> / <code>break_even_views</code></td>
+<td>DECIMAL</td>
+<td>CF15 (added 016)</td>
+</tr>
+</tbody>
+</table>
+<p>…plus ~110 more covering avatar fields, script attempts/scoring, drive IDs,
+YouTube IDs, refinement history, intelligence sub-scores, audience-source
+fields, and timestamp columns for every stage. Full schema across
+migrations 001, 003, 007, 010, 011, 012, 013, 016, 019, 023.</p>
+<p><strong>Written by:</strong> WF_TOPICS_GENERATE (initial 25 rows), every gate-action
+webhook, every production workflow stage
+<strong>Read by:</strong> every dashboard page, every production workflow
+<strong>Migration history:</strong> see above</p>
+<hr />
+<h3 id="table-avatars">Table: <code>avatars</code><a class="headerlink" href="#table-avatars" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> One customer avatar per topic.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>topic_id</code></td>
+<td>UUID FK</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>UUID FK</td>
+<td>CASCADE (denormalised)</td>
+</tr>
+<tr>
+<td><code>video_title_short</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>avatar_name_age</code></td>
+<td>TEXT</td>
+<td>"Marcus, 34"</td>
+</tr>
+<tr>
+<td><code>occupation_income</code></td>
+<td>TEXT</td>
+<td>"Software engineer, $145K"</td>
+</tr>
+<tr>
+<td><code>pain_point</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>emotional_driver</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>dream_outcome</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>psychographics</code></td>
+<td>TEXT</td>
+<td>Added 007</td>
+</tr>
+<tr>
+<td><code>key_emotional_drivers</code></td>
+<td>TEXT</td>
+<td>Added 007</td>
+</tr>
+<tr>
+<td><code>target_audience_segment</code></td>
+<td>TEXT</td>
+<td>Added 007</td>
+</tr>
+<tr>
+<td><code>viewer_search_intent</code></td>
+<td>TEXT</td>
+<td>Added 007</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> WF_TOPICS_GENERATE
+<strong>Read by:</strong> WF_SCRIPT_GENERATE (avatar fields fan into Pass 1 prompt)
+<strong>Migration history:</strong> 001 (created), 007 (richer v3.0 fields)</p>
+<hr />
+<h3 id="table-scenes">Table: <code>scenes</code><a class="headerlink" href="#table-scenes" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Per-scene manifest. One row per scene per topic (~172 per
+long-form video). Carries narration, image prompt, audio + image + video
+URLs, per-stage status, cinematic fields (color_mood, zoom_direction,
+transition_to_next, composition_prefix, selective_color_element), and the
+hybrid-pipeline video clip placement.</p>
+<p><strong>Realtime:</strong> yes (<code>REPLICA IDENTITY FULL</code>)  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>topic_id</code></td>
+<td>UUID FK</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>UUID FK</td>
+<td>denormalised</td>
+</tr>
+<tr>
+<td><code>scene_number</code></td>
+<td>INTEGER</td>
+<td>1..N</td>
+</tr>
+<tr>
+<td><code>scene_id</code></td>
+<td>TEXT</td>
+<td>e.g. <code>scene_001</code></td>
+</tr>
+<tr>
+<td><code>narration_text</code></td>
+<td>TEXT</td>
+<td>TTS input</td>
+</tr>
+<tr>
+<td><code>image_prompt</code></td>
+<td>TEXT</td>
+<td>Seedream 4.5 input (composition_prefix + subject + style_dna)</td>
+</tr>
+<tr>
+<td><code>visual_type</code></td>
+<td>TEXT</td>
+<td>Always <code>static_image</code> since 003</td>
+</tr>
+<tr>
+<td><code>audio_duration_ms</code></td>
+<td>INTEGER</td>
+<td>Master clock</td>
+</tr>
+<tr>
+<td><code>image_url</code> / <code>video_url</code></td>
+<td>TEXT</td>
+<td>Drive URLs</td>
+</tr>
+<tr>
+<td><code>audio_status</code> / <code>image_status</code> / <code>video_status</code> / <code>clip_status</code></td>
+<td>TEXT</td>
+<td>Per-stage</td>
+</tr>
+<tr>
+<td><code>color_mood</code> / <code>zoom_direction</code></td>
+<td>TEXT</td>
+<td>Added 003; map to FFmpeg filter chains</td>
+</tr>
+<tr>
+<td><code>composition_prefix</code> / <code>selective_color_element</code></td>
+<td>TEXT</td>
+<td>Added 003</td>
+</tr>
+<tr>
+<td><code>caption_highlight_word</code></td>
+<td>TEXT</td>
+<td>Added 003; <strong>constrained to ≤40 chars + safe ASCII charset by 031</strong></td>
+</tr>
+<tr>
+<td><code>transition_to_next</code></td>
+<td>TEXT</td>
+<td>xfade type</td>
+</tr>
+<tr>
+<td><code>has_video</code> / <code>video_clip_url</code> / <code>video_placement_start_ms</code> / <code>video_placement_end_ms</code></td>
+<td>mixed</td>
+<td>Hybrid pipeline (added 019)</td>
+</tr>
+<tr>
+<td><code>scene_classification</code></td>
+<td>TEXT</td>
+<td><code>motion_required</code> / <code>motion_beneficial</code> / <code>static_optimal</code> (added 019)</td>
+</tr>
+<tr>
+<td><code>production_register</code></td>
+<td>TEXT</td>
+<td>Stamped by WF_SCENE_CLASSIFY (added 023)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> WF_SCRIPT_GENERATE (initial INSERT), every per-scene
+production workflow (UPDATE per stage)
+<strong>Read by:</strong> every dashboard scene viewer, every production workflow
+<strong>Migration history:</strong> 001 (created), 003 (cinematic fields), 005 (Remotion
+hybrid — DROPPED by 009), 009 (cleanup), 019 (hybrid I2V), 023 (register
+stamp), 031 (caption_highlight_word CHECK)</p>
+<hr />
+<h3 id="table-shorts">Table: <code>shorts</code><a class="headerlink" href="#table-shorts" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Short-form clip rows. One row per viral candidate (typically
+20 per long-form topic). Carries virality score + reason, rewritten
+short-form narration + image prompts, emphasis word map, per-platform
+status + post IDs + analytics.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>topic_id</code> / <code>project_id</code></td>
+<td>UUID FK</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>clip_number</code> / <code>start_scene</code> / <code>end_scene</code></td>
+<td>INTEGER</td>
+<td>Source-scene span</td>
+</tr>
+<tr>
+<td><code>virality_score</code></td>
+<td>INTEGER 1-10</td>
+<td></td>
+</tr>
+<tr>
+<td><code>clip_title</code> / <code>hook_text</code> / <code>hashtags</code> / <code>caption</code></td>
+<td>mixed</td>
+<td>Authored content</td>
+</tr>
+<tr>
+<td><code>rewritten_narration</code> / <code>rewritten_image_prompts</code> / <code>emphasis_word_map</code></td>
+<td>JSONB</td>
+<td>Re-built for short-form</td>
+</tr>
+<tr>
+<td><code>short_form_style</code></td>
+<td>TEXT</td>
+<td>Default <code>'tiktok_bold'</code></td>
+</tr>
+<tr>
+<td><code>portrait_drive_id</code> / <code>portrait_drive_url</code></td>
+<td>TEXT</td>
+<td>Final 9:16 mp4</td>
+</tr>
+<tr>
+<td><code>thumbnail_url</code> / <code>srt_text</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>review_status</code> / <code>production_status</code> / <code>production_progress</code></td>
+<td>TEXT</td>
+<td>Pipeline state</td>
+</tr>
+<tr>
+<td><code>tiktok_status</code> / <code>tiktok_post_id</code> / <code>tiktok_views</code> / <code>tiktok_likes</code> / <code>tiktok_comments</code> / <code>tiktok_shares</code></td>
+<td>mixed</td>
+<td>TikTok per-platform block</td>
+</tr>
+<tr>
+<td><code>instagram_*</code></td>
+<td>mixed</td>
+<td>Same shape for Instagram</td>
+</tr>
+<tr>
+<td><code>youtube_shorts_*</code></td>
+<td>mixed</td>
+<td>Same shape for YouTube Shorts</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> WF_SHORTS_ANALYZE (initial 20 rows at Gate 4),
+WF_SHORTS_PRODUCE (production fields), WF_SOCIAL_POSTER (per-platform
+status + post IDs), WF_SOCIAL_ANALYTICS (per-platform metrics)
+<strong>Read by:</strong> dashboard <code>/shorts</code> and <code>/social</code> pages
+<strong>Migration history:</strong> <strong>Not in <code>supabase/migrations/</code>.</strong> Created by
+<code>skills.sh</code> bootstrap (and CLAUDE.md describes it as "incl. shorts +
+social_accounts tables" in migration 001 — the description is aspirational;
+the bootstrap is the ground truth).</p>
+<hr />
+<h3 id="table-cost_calculator_snapshots">Table: <code>cost_calculator_snapshots</code><a class="headerlink" href="#table-cost_calculator_snapshots" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Audit row per Cost Calculator gate decision. Captures the four
+ratio options shown to the operator and the one they picked.</p>
+<p><strong>Realtime:</strong> yes (added to publication in 019)  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>topic_id</code> / <code>project_id</code></td>
+<td>UUID FK</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>scene_count</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>options</code></td>
+<td>JSONB NOT NULL</td>
+<td>The four <code>100_0</code> / <code>95_5</code> / <code>90_10</code> / <code>85_15</code> cost projections</td>
+</tr>
+<tr>
+<td><code>selected_option</code></td>
+<td>TEXT</td>
+<td>One of the four (CHECK)</td>
+</tr>
+<tr>
+<td><code>scene_classifications</code></td>
+<td>JSONB</td>
+<td>The motion classifications at decision time</td>
+</tr>
+<tr>
+<td><code>selected_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> dashboard Cost Calculator → <code>/webhook/cost/select</code>
+<strong>Read by:</strong> dashboard for audit, WF_SCENE_CLASSIFY (uses <code>selected_option</code>)
+<strong>Migration history:</strong> 019</p>
+<hr />
+<h3 id="table-keywords">Table: <code>keywords</code><a class="headerlink" href="#table-keywords" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Project-scoped keyword graph. Stores discovered keywords with
+search-volume proxies, competition signals, and opportunity scores.</p>
+<p><strong>Realtime:</strong> yes (added to publication in 010)  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>UUID FK</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>keyword</code> / <code>normalized_keyword</code></td>
+<td>VARCHAR</td>
+<td>UNIQUE on <code>(project_id, normalized_keyword)</code></td>
+</tr>
+<tr>
+<td><code>search_volume_proxy</code> / <code>autocomplete_hits</code> / <code>competing_videos_count</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>competition_level</code></td>
+<td>VARCHAR(10)</td>
+<td><code>low</code> / <code>medium</code> / <code>high</code> (CHECK)</td>
+</tr>
+<tr>
+<td><code>opportunity_score</code></td>
+<td>INTEGER 0-100</td>
+<td></td>
+</tr>
+<tr>
+<td><code>seo_classification</code></td>
+<td>VARCHAR(20)</td>
+<td><code>blue-ocean</code> / <code>competitive</code> / <code>red-ocean</code> / <code>dead-sea</code></td>
+</tr>
+<tr>
+<td><code>related_keywords</code></td>
+<td>JSONB</td>
+<td>Array of <code>{keyword, autocomplete_hits}</code></td>
+</tr>
+<tr>
+<td><code>trend_signal</code></td>
+<td>VARCHAR(20)</td>
+<td><code>rising</code> / <code>stable</code> / <code>declining</code></td>
+</tr>
+<tr>
+<td><code>times_used_in_topics</code></td>
+<td>INTEGER</td>
+<td>Bumped by topic_keywords inserts</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> keyword scan workflow
+<strong>Read by:</strong> dashboard keyword research panels
+<strong>Migration history:</strong> 010</p>
+<hr />
+<h3 id="table-topic_keywords">Table: <code>topic_keywords</code><a class="headerlink" href="#table-topic_keywords" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Junction table linking topics to researched keywords with a
+relevance score and a primary-keyword flag.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>topic_id</code> / <code>keyword_id</code></td>
+<td>UUID</td>
+<td>UNIQUE on <code>(topic_id, keyword_id)</code></td>
+</tr>
+<tr>
+<td><code>relevance_score</code></td>
+<td>INTEGER 0-100</td>
+<td></td>
+</tr>
+<tr>
+<td><code>is_primary</code></td>
+<td>BOOLEAN</td>
+<td>One primary per topic (not enforced by constraint)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> WF_TOPICS_GENERATE (links chosen topics to keywords)
+<strong>Read by:</strong> dashboard keyword research panels
+<strong>Migration history:</strong> 010</p>
+<hr />
+<h2 id="production-audit">Production audit<a class="headerlink" href="#production-audit" title="Permanent link">&para;</a></h2>
+<h3 id="table-production_log">Table: <code>production_log</code><a class="headerlink" href="#table-production_log" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Original audit trail (singular, from migration 001). One row
+per stage transition.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>project_id</code> / <code>topic_id</code></td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td><code>stage</code></td>
+<td>TEXT</td>
+<td>e.g. <code>script_generation</code></td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td>TEXT</td>
+<td><code>started</code> / <code>completed</code> / <code>failed</code> / <code>retried</code> / <code>skipped</code></td>
+</tr>
+<tr>
+<td><code>details</code></td>
+<td>JSONB</td>
+<td>Free-form</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 001</p>
+<hr />
+<h3 id="table-production_logs">Table: <code>production_logs</code><a class="headerlink" href="#table-production_logs" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Structured per-API-call log (note plural — both tables
+coexist). The single source of truth for cost roll-ups.</p>
+<p><strong>Realtime:</strong> yes (added in 004)  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>topic_id</code></td>
+<td>UUID</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>stage</code></td>
+<td>TEXT</td>
+<td><code>tts</code> / <code>image_gen</code> / <code>ken_burns</code> / <code>color_grade</code> / <code>captions</code> / <code>assembly</code> / <code>render</code></td>
+</tr>
+<tr>
+<td><code>scene_number</code></td>
+<td>INTEGER</td>
+<td>Nullable (e.g. for whole-topic actions)</td>
+</tr>
+<tr>
+<td><code>action</code> / <code>status</code></td>
+<td>TEXT</td>
+<td><code>started</code> / <code>completed</code> / <code>failed</code> / <code>retried</code></td>
+</tr>
+<tr>
+<td><code>duration_ms</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>cost_usd</code></td>
+<td>NUMERIC(8,4)</td>
+<td>Aggregated into <code>topics.production_cost_usd</code></td>
+</tr>
+<tr>
+<td><code>error_message</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>retry_count</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> every external API call wrapper (Fal.ai, Claude, Google
+TTS, YouTube)
+<strong>Read by:</strong> dashboard <code>/topic/:id</code> ProductionMonitor; the cost-rollup
+trigger that bumps <code>topics.production_cost_usd</code>
+<strong>Migration history:</strong> 004</p>
+<hr />
+<h3 id="table-renders">Table: <code>renders</code><a class="headerlink" href="#table-renders" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> One row per platform export of a topic.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>topic_id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td><code>platform</code></td>
+<td>TEXT</td>
+<td><code>youtube_long</code> / <code>youtube_shorts</code> / <code>tiktok</code> / <code>instagram</code></td>
+</tr>
+<tr>
+<td><code>file_url</code> / <code>file_drive_id</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>file_size_bytes</code></td>
+<td>BIGINT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>render_time_seconds</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>crf</code> / <code>preset</code> / <code>max_bitrate</code> / <code>audio_bitrate</code> / <code>resolution</code></td>
+<td>mixed</td>
+<td>Encoding params</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 004</p>
+<hr />
+<h3 id="table-music_library">Table: <code>music_library</code><a class="headerlink" href="#table-music_library" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Catalogue of background-music tracks (Lyria-generated or
+hand-uploaded) referenced by mood when assembling a video's audio bed.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>TEXT NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>mood_tags</code></td>
+<td>TEXT[]</td>
+<td>e.g. <code>['tense', 'hopeful', 'triumphant', 'reflective']</code></td>
+</tr>
+<tr>
+<td><code>bpm</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>duration_seconds</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>file_url</code> / <code>file_drive_id</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>instrument_palette</code></td>
+<td>TEXT</td>
+<td>e.g. <code>'low cello drone, sparse piano'</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 004</p>
+<hr />
+<h2 id="shorts-social">Shorts + social<a class="headerlink" href="#shorts-social" title="Permanent link">&para;</a></h2>
+<h3 id="table-social_accounts">Table: <code>social_accounts</code><a class="headerlink" href="#table-social_accounts" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Per-project OAuth tokens for posting workflows. <strong>One of two
+tables holding production secrets in the database</strong> (the other being
+<code>prompt_configs</code> if it stores API keys, which it does not). Locked down
+extra-aggressively by 030.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down (anon DENY restrictive policy)</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>platform</code></td>
+<td>TEXT NOT NULL</td>
+<td><code>tiktok</code> / <code>instagram</code> / <code>youtube</code></td>
+</tr>
+<tr>
+<td><code>account_name</code> / <code>account_id</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>access_token</code> / <code>refresh_token</code></td>
+<td>TEXT</td>
+<td>OAuth credentials</td>
+</tr>
+<tr>
+<td><code>token_expires_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td></td>
+</tr>
+<tr>
+<td><code>is_active</code></td>
+<td>BOOLEAN</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Written by:</strong> OAuth callback workflows
+<strong>Read by:</strong> WF_SOCIAL_POSTER, WF_SOCIAL_ANALYTICS
+<strong>Migration history:</strong> <strong>Not in <code>supabase/migrations/</code>.</strong> Same source as
+<code>shorts</code> — created by <code>skills.sh</code> bootstrap.</p>
+<hr />
+<h3 id="table-scheduled_posts">Table: <code>scheduled_posts</code><a class="headerlink" href="#table-scheduled_posts" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Calendar scheduling state. The every-15-min cron picks up rows
+where <code>status = 'scheduled' AND scheduled_at &lt;= NOW()</code> and dispatches them
+to <code>WF_SCHEDULE_PUBLISHER</code>.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>topic_id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>platform</code></td>
+<td>TEXT NOT NULL</td>
+<td><code>youtube</code> / <code>tiktok</code> / <code>instagram</code></td>
+</tr>
+<tr>
+<td><code>scheduled_at</code></td>
+<td>TIMESTAMPTZ NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>TEXT</td>
+<td><code>scheduled</code> / <code>publishing</code> / <code>published</code> / <code>failed</code> / <code>cancelled</code></td>
+</tr>
+<tr>
+<td><code>published_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td></td>
+</tr>
+<tr>
+<td><code>visibility</code></td>
+<td>TEXT</td>
+<td><code>public</code> / <code>unlisted</code> / <code>private</code> (default <code>unlisted</code>)</td>
+</tr>
+<tr>
+<td><code>error_message</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 004</p>
+<hr />
+<h3 id="table-platform_metadata">Table: <code>platform_metadata</code><a class="headerlink" href="#table-platform_metadata" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Per-platform title/description/tags for a topic. UNIQUE on
+<code>(topic_id, platform)</code>.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>topic_id</code></td>
+<td>UUID</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>platform</code></td>
+<td>TEXT NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>TEXT NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>tags</code> / <code>hashtags</code></td>
+<td>TEXT[]</td>
+<td></td>
+</tr>
+<tr>
+<td><code>thumbnail_url</code> / <code>thumbnail_text</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 004</p>
+<hr />
+<h2 id="ctr-ab-testing">CTR + AB testing<a class="headerlink" href="#ctr-ab-testing" title="Permanent link">&para;</a></h2>
+<h3 id="table-ab_tests">Table: <code>ab_tests</code><a class="headerlink" href="#table-ab_tests" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> One AB-test definition per topic. Drives title and/or
+thumbnail rotation against the live YouTube video, with statistical
+confidence tracking and an <code>is_winner</code> promotion step.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>topic_id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td><code>project_id</code> denormalized</td>
+</tr>
+<tr>
+<td><code>youtube_video_id</code></td>
+<td>VARCHAR(20)</td>
+<td>Set after publish</td>
+</tr>
+<tr>
+<td><code>test_type</code></td>
+<td>VARCHAR(20)</td>
+<td><code>title</code> / <code>thumbnail</code> / <code>combined</code></td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>VARCHAR(20)</td>
+<td><code>pending</code> / <code>running</code> / <code>paused</code> / <code>completed</code> / <code>aborted</code></td>
+</tr>
+<tr>
+<td><code>min_impressions_per_variant</code> / <code>min_days_per_variant</code></td>
+<td>INTEGER</td>
+<td>Test gating thresholds</td>
+</tr>
+<tr>
+<td><code>rotation_interval_hours</code></td>
+<td>INTEGER</td>
+<td>Default 48</td>
+</tr>
+<tr>
+<td><code>confidence_threshold</code></td>
+<td>FLOAT</td>
+<td>Default 0.95</td>
+</tr>
+<tr>
+<td><code>current_variant_id</code> / <code>winning_variant_id</code></td>
+<td>UUID</td>
+<td>Soft-FK to <code>ab_test_variants</code></td>
+</tr>
+<tr>
+<td><code>last_rotated_at</code> / <code>started_at</code> / <code>completed_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td></td>
+</tr>
+<tr>
+<td><code>winner_applied</code></td>
+<td>BOOLEAN</td>
+<td>Was the winner promoted as the permanent live version?</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 012</p>
+<hr />
+<h3 id="table-ab_test_variants">Table: <code>ab_test_variants</code><a class="headerlink" href="#table-ab_test_variants" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> The candidate titles/thumbnails being rotated for an
+<code>ab_tests</code> row. Up to 5 variants per test; baseline is <code>variant_order = 0</code>.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>ab_test_id</code></td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td><code>variant_label</code></td>
+<td>VARCHAR(10)</td>
+<td><code>'A'</code> / <code>'B'</code> / <code>'C'</code> (unique per test)</td>
+</tr>
+<tr>
+<td><code>variant_order</code></td>
+<td>INTEGER</td>
+<td>0 = baseline, 1+ = challengers</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>VARCHAR(500)</td>
+<td>Null if thumbnail-only test</td>
+</tr>
+<tr>
+<td><code>thumbnail_url</code> / <code>thumbnail_drive_id</code></td>
+<td>mixed</td>
+<td>Null if title-only test</td>
+</tr>
+<tr>
+<td><code>predicted_ctr_score</code></td>
+<td>INTEGER</td>
+<td>From CF05/CF06 pre-publish scoring</td>
+</tr>
+<tr>
+<td><code>total_impressions</code> / <code>total_views</code> / <code>total_ctr</code></td>
+<td>mixed</td>
+<td>Cumulative while live</td>
+</tr>
+<tr>
+<td><code>total_hours_live</code> / <code>rotation_count</code> / <code>last_live_at</code></td>
+<td>mixed</td>
+<td>Live-time accounting</td>
+</tr>
+<tr>
+<td><code>confidence_score</code></td>
+<td>FLOAT</td>
+<td>Statistical confidence this variant is the winner</td>
+</tr>
+<tr>
+<td><code>is_winner</code></td>
+<td>BOOLEAN</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 012</p>
+<hr />
+<h3 id="table-ab_test_impressions">Table: <code>ab_test_impressions</code><a class="headerlink" href="#table-ab_test_impressions" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Per-window impressions/views snapshots from YouTube Analytics,
+keyed to the variant that was live during the window. Drives the rolling
+CTR + significance computation.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>ab_test_variant_id</code> / <code>ab_test_id</code></td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td><code>snapshot_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td>When this row was captured</td>
+</tr>
+<tr>
+<td><code>window_start</code> / <code>window_end</code></td>
+<td>TIMESTAMPTZ</td>
+<td>Measurement window</td>
+</tr>
+<tr>
+<td><code>impressions</code> / <code>views</code></td>
+<td>INTEGER</td>
+<td>Delta in this window</td>
+</tr>
+<tr>
+<td><code>ctr</code></td>
+<td>FLOAT</td>
+<td><code>views / impressions</code> for this window</td>
+</tr>
+<tr>
+<td><code>avg_view_duration_seconds</code></td>
+<td>FLOAT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>VARCHAR(30)</td>
+<td>Default <code>'youtube_analytics_api'</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 012</p>
+<hr />
+<h2 id="engagement">Engagement<a class="headerlink" href="#engagement" title="Permanent link">&para;</a></h2>
+<h3 id="table-comments">Table: <code>comments</code><a class="headerlink" href="#table-comments" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Unified engagement feed across YouTube/TikTok/Instagram with
+AI-classified sentiment + intent.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>topic_id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>platform</code> / <code>platform_comment_id</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>author</code> / <code>author_avatar_url</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>text</code></td>
+<td>TEXT NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>sentiment</code></td>
+<td>TEXT</td>
+<td><code>positive</code> / <code>negative</code> / <code>neutral</code></td>
+</tr>
+<tr>
+<td><code>intent_score</code></td>
+<td>NUMERIC(3,2)</td>
+<td>0.00-1.00</td>
+</tr>
+<tr>
+<td><code>intent_signals</code></td>
+<td>TEXT[]</td>
+<td>e.g. <code>['link_request', 'price_inquiry']</code></td>
+</tr>
+<tr>
+<td><code>like_count</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>replied</code> / <code>reply_text</code> / <code>replied_at</code></td>
+<td>mixed</td>
+<td>Operator-driven</td>
+</tr>
+<tr>
+<td><code>fetched_at</code> / <code>created_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 004</p>
+<hr />
+<h3 id="table-audience_comments">Table: <code>audience_comments</code><a class="headerlink" href="#table-audience_comments" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Per-comment classification feeding the audience memory
+synthesis. Separate from <code>comments</code> because this one is project-scoped
+audience memory; <code>comments</code> is per-video conversation.</p>
+<p><strong>Realtime:</strong> no (high-volume)  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>project_id</code> / <code>topic_id</code></td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td><code>youtube_video_id</code> / <code>youtube_comment_id</code></td>
+<td>VARCHAR</td>
+<td>UNIQUE on <code>(project_id, youtube_comment_id)</code></td>
+</tr>
+<tr>
+<td><code>author_display_name</code> / <code>author_channel_id</code></td>
+<td>VARCHAR</td>
+<td>For persona correlation</td>
+</tr>
+<tr>
+<td><code>comment_text</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>classification</code></td>
+<td>VARCHAR(20)</td>
+<td><code>question</code> / <code>complaint</code> / <code>praise</code> / <code>suggestion</code> / <code>noise</code> (CHECK)</td>
+</tr>
+<tr>
+<td><code>extracted_intent</code></td>
+<td>TEXT</td>
+<td>Haiku-extracted one-liner</td>
+</tr>
+<tr>
+<td><code>language_hint</code></td>
+<td>VARCHAR(10)</td>
+<td>ISO 2-letter</td>
+</tr>
+<tr>
+<td><code>classified_at</code> / <code>classified_by</code> / <code>first_seen_at</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 017</p>
+<hr />
+<h3 id="table-audience_insights">Table: <code>audience_insights</code><a class="headerlink" href="#table-audience_insights" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Weekly project-scoped synthesis from Opus. Renders the
+<code>audience_context_block</code> injected into Pass 1 of every script generation.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>UNIQUE on <code>(project_id, week_of)</code></td>
+</tr>
+<tr>
+<td><code>week_of</code></td>
+<td>DATE</td>
+<td>Sunday</td>
+</tr>
+<tr>
+<td><code>comments_analyzed</code> / <code>questions_count</code> / <code>complaints_count</code> / <code>praise_count</code> / <code>suggestions_count</code> / <code>noise_count</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>recurring_questions</code> / <code>content_complaints</code> / <code>topic_suggestions</code></td>
+<td>JSONB</td>
+<td>Arrays of structured items</td>
+</tr>
+<tr>
+<td><code>audience_persona_summary</code></td>
+<td>TEXT</td>
+<td>One paragraph</td>
+</tr>
+<tr>
+<td><code>vocabulary_level</code></td>
+<td>VARCHAR(20)</td>
+<td><code>beginner</code> / <code>intermediate</code> / <code>advanced</code> / <code>mixed</code></td>
+</tr>
+<tr>
+<td><code>audience_context_block</code></td>
+<td>TEXT</td>
+<td>Pre-rendered prompt block</td>
+</tr>
+<tr>
+<td><code>synthesis_cost_usd</code></td>
+<td>FLOAT</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 017</p>
+<hr />
+<h2 id="topic-intelligence-research">Topic Intelligence research<a class="headerlink" href="#topic-intelligence-research" title="Permanent link">&para;</a></h2>
+<h3 id="table-research_runs">Table: <code>research_runs</code><a class="headerlink" href="#table-research_runs" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> One row per <code>/webhook/research/run</code> invocation.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>TEXT</td>
+<td><code>pending</code> / <code>scraping</code> / <code>categorizing</code> / <code>complete</code> / <code>failed</code></td>
+</tr>
+<tr>
+<td><code>sources_completed</code></td>
+<td>INTEGER</td>
+<td>0-5</td>
+</tr>
+<tr>
+<td><code>total_results</code> / <code>total_categories</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>derived_keywords</code></td>
+<td>TEXT[]</td>
+<td>AI-derived per-niche</td>
+</tr>
+<tr>
+<td><code>platforms</code></td>
+<td>TEXT[]</td>
+<td>Default <code>['reddit','youtube','tiktok','trends','quora']</code> (added 006)</td>
+</tr>
+<tr>
+<td><code>time_range</code></td>
+<td>TEXT</td>
+<td>Default <code>'7d'</code> (added 006, replaces older <code>lookback_days</code>)</td>
+</tr>
+<tr>
+<td><code>started_at</code> / <code>completed_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td></td>
+</tr>
+<tr>
+<td><code>error_log</code></td>
+<td>JSONB</td>
+<td>Append-only</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 002 (created), 006 (platforms + time_range,
+<code>lookback_days</code> dropped)</p>
+<hr />
+<h3 id="table-research_results">Table: <code>research_results</code><a class="headerlink" href="#table-research_results" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> ~50 raw scraped items per run (10 per source × 5 sources).</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>run_id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>CASCADE on run_id</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>TEXT</td>
+<td><code>reddit</code> / <code>youtube</code> / <code>tiktok</code> / <code>google_trends</code> / <code>quora</code></td>
+</tr>
+<tr>
+<td><code>raw_text</code></td>
+<td>TEXT NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>source_url</code></td>
+<td>TEXT NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>engagement_score</code></td>
+<td>INTEGER</td>
+<td>Per-source ranking formula (see migration 002 footer)</td>
+</tr>
+<tr>
+<td><code>upvotes</code> / <code>comments</code> / <code>shares</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>posted_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td></td>
+</tr>
+<tr>
+<td><code>ai_video_title</code></td>
+<td>TEXT</td>
+<td>Suggested title from categoriser</td>
+</tr>
+<tr>
+<td><code>category_id</code></td>
+<td>UUID FK → research_categories</td>
+<td>SET NULL (added 002)</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 002</p>
+<hr />
+<h3 id="table-research_categories">Table: <code>research_categories</code><a class="headerlink" href="#table-research_categories" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> AI-generated clusters per run, ranked.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>run_id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td>TEXT NOT NULL</td>
+<td>3-6 words</td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td>TEXT</td>
+<td>2-3 sentences</td>
+</tr>
+<tr>
+<td><code>total_engagement</code> / <code>result_count</code> / <code>rank</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>top_video_title</code></td>
+<td>TEXT</td>
+<td>Best title from cluster</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 002</p>
+<hr />
+<h2 id="intelligence-layer">Intelligence Layer<a class="headerlink" href="#intelligence-layer" title="Permanent link">&para;</a></h2>
+<h3 id="table-rpm_benchmarks">Table: <code>rpm_benchmarks</code><a class="headerlink" href="#table-rpm_benchmarks" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Static RPM lookup for 12 niches (finance, credit_cards,
+insurance, health_wellness, software_saas, education, business, gaming,
+entertainment, travel, cooking, tech_reviews). Seeded by 010.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>VARCHAR(50) UNIQUE</td>
+<td>Lookup key</td>
+</tr>
+<tr>
+<td><code>display_name</code></td>
+<td>VARCHAR(100)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>rpm_low</code> / <code>rpm_mid</code> / <code>rpm_high</code></td>
+<td>FLOAT NOT NULL</td>
+<td>USD per 1000 views</td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 010</p>
+<hr />
+<h3 id="tables-competitor_channels-competitor_videos-competitor_alerts-competitor_intelligence">Tables: <code>competitor_channels</code>, <code>competitor_videos</code>, <code>competitor_alerts</code>, <code>competitor_intelligence</code><a class="headerlink" href="#tables-competitor_channels-competitor_videos-competitor_alerts-competitor_intelligence" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> CF04 Competitor Channel Monitor + weekly synthesis. The four
+tables form a pipeline: channels are tracked → videos are crawled →
+outliers raise alerts → weekly Claude generates a synthesis row.</p>
+<p><strong>Realtime:</strong> all four are on the publication  ·  <strong>RLS:</strong> all locked-down</p>
+<p><code>competitor_channels</code> (~25 columns) — channel_id, channel_name,
+uploads_playlist_id, subscriber_count, avg_views_30d/90d, last_checked_at,
+consecutive_fetch_failures.</p>
+<p><code>competitor_videos</code> (~20 columns) — title, thumbnail_url, published_at,
+duration_seconds, is_shorts, views_24h/7d/30d, is_outlier, outlier_ratio,
+matched_topic_id.</p>
+<p><code>competitor_alerts</code> — alert_type (CHECK: outlier_breakout / topic_match /
+rapid_growth / channel_surge / style_dna_ready), severity (low/normal/
+high/critical), is_read, is_dismissed.</p>
+<p><code>competitor_intelligence</code> — week_of (UNIQUE per project), top_topic_clusters
+JSONB, emerging_patterns JSONB, summary_markdown.</p>
+<p><strong>Migration history:</strong> 011</p>
+<hr />
+<h3 id="table-style_profiles">Table: <code>style_profiles</code><a class="headerlink" href="#table-style_profiles" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> CF14 Style DNA per analysed channel — title formulas, thumbnail
+DNA, content pillars, upload cadence.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>project_id</code> / <code>competitor_channel_id</code></td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td><code>channel_id</code> / <code>channel_name</code> / <code>channel_url</code></td>
+<td>VARCHAR/TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>title_formulas</code></td>
+<td>JSONB</td>
+<td>Array of <code>{pattern_name, template, frequency_pct, ...}</code></td>
+</tr>
+<tr>
+<td><code>title_stats</code></td>
+<td>JSONB</td>
+<td>Aggregate stats</td>
+</tr>
+<tr>
+<td><code>thumbnail_dna</code></td>
+<td>JSONB</td>
+<td><code>{dominant_colors, text_position, face_presence_pct, ...}</code></td>
+</tr>
+<tr>
+<td><code>content_pillars</code></td>
+<td>JSONB</td>
+<td>Array of pillars with example_titles</td>
+</tr>
+<tr>
+<td><code>upload_cadence</code></td>
+<td>JSONB</td>
+<td><code>{uploads_per_week, preferred_days, ...}</code></td>
+</tr>
+<tr>
+<td><code>replication_difficulty</code></td>
+<td>VARCHAR(10)</td>
+<td><code>easy</code> / <code>medium</code> / <code>hard</code></td>
+</tr>
+<tr>
+<td><code>style_summary</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>applied_to_project</code> / <code>applied_at</code></td>
+<td>mixed</td>
+<td>Operator pin</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 011</p>
+<hr />
+<h3 id="tables-ab_tests-ab_test_variants-ab_test_impressions">Tables: <code>ab_tests</code>, <code>ab_test_variants</code>, <code>ab_test_impressions</code><a class="headerlink" href="#tables-ab_tests-ab_test_variants-ab_test_impressions" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> CF17 A/B Testing Engine. Rotates title and/or thumbnail
+variants on live YouTube videos and snapshots CTR per window.</p>
+<p><strong>Realtime:</strong> <code>ab_tests</code> + <code>ab_test_variants</code> on publication;
+<code>ab_test_impressions</code> is time-series (no realtime)
+<strong>RLS:</strong> all locked-down</p>
+<p><code>ab_tests</code> — test_type (CHECK: title / thumbnail / combined), status
+(pending / running / paused / completed / aborted), rotation_interval_hours,
+confidence_threshold, current_variant_id, winning_variant_id,
+winner_applied.</p>
+<p><code>ab_test_variants</code> — variant_label (A/B/C), title, thumbnail_url,
+predicted_ctr_score, total_impressions, total_views, total_ctr,
+rotation_count, confidence_score, is_winner.</p>
+<p><code>ab_test_impressions</code> — snapshot_at, window_start, window_end, impressions,
+views, ctr, avg_view_duration_seconds (delta values per window).</p>
+<p><strong>Migration history:</strong> 012</p>
+<hr />
+<h3 id="table-pps_config">Table: <code>pps_config</code><a class="headerlink" href="#table-pps_config" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Per-project PPS factor weights (one row per project) with a
+sum-to-1.0 CHECK constraint.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>project_id</code></td>
+<td>UUID UNIQUE</td>
+<td></td>
+</tr>
+<tr>
+<td><code>outlier_weight</code></td>
+<td>FLOAT</td>
+<td>Default 0.30</td>
+</tr>
+<tr>
+<td><code>seo_weight</code></td>
+<td>FLOAT</td>
+<td>Default 0.20</td>
+</tr>
+<tr>
+<td><code>script_quality_weight</code></td>
+<td>FLOAT</td>
+<td>Default 0.20</td>
+</tr>
+<tr>
+<td><code>niche_health_weight</code></td>
+<td>FLOAT</td>
+<td>Default 0.15</td>
+</tr>
+<tr>
+<td><code>thumbnail_ctr_weight</code></td>
+<td>FLOAT</td>
+<td>Default 0.10</td>
+</tr>
+<tr>
+<td><code>title_ctr_weight</code></td>
+<td>FLOAT</td>
+<td>Default 0.05</td>
+</tr>
+<tr>
+<td><code>calibration_sample_count</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 013</p>
+<hr />
+<h3 id="table-pps_calibration">Table: <code>pps_calibration</code><a class="headerlink" href="#table-pps_calibration" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Post-publish predicted-vs-actual variance for weight
+regression.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>topic_id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>UNIQUE on <code>(topic_id, calibration_run_at)</code></td>
+</tr>
+<tr>
+<td><code>predicted_pps</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>pps_breakdown</code></td>
+<td>JSONB</td>
+<td>Snapshot of per-factor scores at prediction time</td>
+</tr>
+<tr>
+<td><code>actual_views_7d</code> / <code>actual_views_30d</code> / <code>actual_impressions_30d</code> / <code>actual_ctr</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>actual_revenue_usd</code></td>
+<td>FLOAT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>implied_actual_score</code></td>
+<td>INTEGER</td>
+<td>Normalised 0-100</td>
+</tr>
+<tr>
+<td><code>variance_pct</code></td>
+<td>FLOAT</td>
+<td>(implied_actual − predicted) / predicted</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 013</p>
+<hr />
+<h3 id="table-daily_ideas">Table: <code>daily_ideas</code><a class="headerlink" href="#table-daily_ideas" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> CF08 — daily Opus-generated batch of 15-20 ranked topic ideas,
+contextualised by niche + competitor activity + trending keywords.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>CASCADE</td>
+</tr>
+<tr>
+<td><code>run_date</code></td>
+<td>DATE</td>
+<td>One batch per project per day</td>
+</tr>
+<tr>
+<td><code>batch_id</code></td>
+<td>UUID</td>
+<td>Groups all ideas from one run</td>
+</tr>
+<tr>
+<td><code>position_in_batch</code></td>
+<td>INTEGER</td>
+<td>1-20</td>
+</tr>
+<tr>
+<td><code>idea_title</code></td>
+<td>VARCHAR(300)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>idea_angle</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>viral_potential_score</code> / <code>seo_opportunity_score</code> / <code>rpm_fit_score</code> / <code>combined_score</code></td>
+<td>INTEGER 0-100</td>
+<td></td>
+</tr>
+<tr>
+<td><code>rationale</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>source_signals</code></td>
+<td>JSONB</td>
+<td><code>{competitor_titles, trending_keywords, recent_topics}</code></td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>VARCHAR(20)</td>
+<td><code>pending</code> / <code>saved</code> / <code>dismissed</code> / <code>used</code></td>
+</tr>
+<tr>
+<td><code>used_as_topic_id</code></td>
+<td>UUID FK → topics</td>
+<td>SET NULL on topic delete</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 015</p>
+<hr />
+<h3 id="tables-coach_sessions-coach_messages">Tables: <code>coach_sessions</code>, <code>coach_messages</code><a class="headerlink" href="#tables-coach_sessions-coach_messages" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> CF09 AI Growth Coach conversational advisor with persistent
+session history and project-context injection.</p>
+<p><strong>Realtime:</strong> both on publication  ·  <strong>RLS:</strong> both locked-down</p>
+<p><code>coach_sessions</code> — title (auto-derived), focus_area (growth / monetization /
+competitors / content / general), message_count, total_input_tokens,
+total_output_tokens, estimated_cost_usd, last_message_at, is_archived.</p>
+<p><code>coach_messages</code> — turn_index, role (user/assistant/system), content,
+context_snapshot JSONB (project_state, competitor_activity, pps_trends,
+niche_health, recent_topics at turn time), input_tokens, output_tokens,
+cost_usd, claude_model.</p>
+<p><strong>Migration history:</strong> 015</p>
+<hr />
+<h3 id="table-niche_health_history">Table: <code>niche_health_history</code><a class="headerlink" href="#table-niche_health_history" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Weekly 0-100 niche health score per project with momentum
+trend.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>UNIQUE on <code>(project_id, week_of)</code></td>
+</tr>
+<tr>
+<td><code>week_of</code></td>
+<td>DATE</td>
+<td>Sunday</td>
+</tr>
+<tr>
+<td><code>health_score</code></td>
+<td>INTEGER 0-100 NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>classification</code></td>
+<td>VARCHAR(20)</td>
+<td><code>thriving</code> / <code>stable</code> / <code>warning</code> / <code>critical</code></td>
+</tr>
+<tr>
+<td><code>momentum_trend</code></td>
+<td>VARCHAR(20)</td>
+<td><code>rising</code> / <code>stable</code> / <code>declining</code></td>
+</tr>
+<tr>
+<td><code>saturation_signal</code></td>
+<td>BOOLEAN</td>
+<td></td>
+</tr>
+<tr>
+<td><code>competitor_velocity_score</code> / <code>new_channel_entry_score</code> / <code>topic_freshness_score</code> / <code>rpm_stability_score</code></td>
+<td>INTEGER</td>
+<td>Sub-factor contributions</td>
+</tr>
+<tr>
+<td><code>score_breakdown</code></td>
+<td>JSONB</td>
+<td>Full factor JSON for tooltip</td>
+</tr>
+<tr>
+<td><code>week_over_week_delta</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>insight_summary</code></td>
+<td>TEXT</td>
+<td>Claude one-liner</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 016</p>
+<hr />
+<h3 id="table-revenue_attribution">Table: <code>revenue_attribution</code><a class="headerlink" href="#table-revenue_attribution" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Per-topic monthly snapshot — production cost, views, revenue,
+RPM, ROI.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>topic_id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td>UNIQUE on <code>(topic_id, snapshot_month)</code></td>
+</tr>
+<tr>
+<td><code>snapshot_month</code></td>
+<td>DATE</td>
+<td>YYYY-MM-01</td>
+</tr>
+<tr>
+<td><code>youtube_video_id</code></td>
+<td>VARCHAR(20)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>production_cost_usd</code></td>
+<td>DECIMAL(8,3)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>cost_breakdown</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>views_30d</code> / <code>impressions_30d</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>ctr_30d</code> / <code>avg_view_duration_seconds</code></td>
+<td>FLOAT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>estimated_revenue_usd</code></td>
+<td>DECIMAL(10,2)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>actual_rpm_usd</code></td>
+<td>DECIMAL(6,2)</td>
+<td>revenue / (views / 1000)</td>
+</tr>
+<tr>
+<td><code>rpm_vs_niche_benchmark_pct</code></td>
+<td>DECIMAL(6,2)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>roi_pct</code></td>
+<td>DECIMAL(8,2)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>break_even_achieved</code></td>
+<td>BOOLEAN</td>
+<td></td>
+</tr>
+<tr>
+<td><code>analytics_api_successful</code> / <code>analytics_error_message</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 016</p>
+<hr />
+<h2 id="channel-analyzer-viability">Channel analyzer + viability<a class="headerlink" href="#channel-analyzer-viability" title="Permanent link">&para;</a></h2>
+<h3 id="table-channel_analyses">Table: <code>channel_analyses</code><a class="headerlink" href="#table-channel_analyses" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Standalone YouTube channel deep-dives.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>youtube_channel_id</code></td>
+<td>TEXT NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>channel_name</code> / <code>channel_url</code> / <code>channel_description</code> / <code>channel_avatar_url</code> / <code>channel_banner_url</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>subscriber_count</code> / <code>total_view_count</code> / <code>video_count</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>avg_views_per_video</code> / <code>median_views_per_video</code> / <code>upload_frequency_days</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>growth_trajectory</code></td>
+<td>TEXT</td>
+<td><code>accelerating</code> / <code>stable</code> / <code>decelerating</code> / <code>dormant</code></td>
+</tr>
+<tr>
+<td><code>primary_topics</code></td>
+<td>TEXT[]</td>
+<td></td>
+</tr>
+<tr>
+<td><code>title_patterns</code> / <code>thumbnail_patterns</code> / <code>scripting_depth</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>top_videos</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>strengths</code> / <code>weaknesses</code></td>
+<td>TEXT[]</td>
+<td></td>
+</tr>
+<tr>
+<td><code>blue_ocean_opportunities</code> / <code>content_saturation_map</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>verdict</code></td>
+<td>TEXT</td>
+<td><code>strong_opportunity</code> / <code>moderate_opportunity</code> / <code>weak_opportunity</code> / <code>avoid</code></td>
+</tr>
+<tr>
+<td><code>verdict_score</code></td>
+<td>INTEGER 0-100</td>
+<td></td>
+</tr>
+<tr>
+<td><code>analysis_group_id</code></td>
+<td>UUID FK → analysis_groups</td>
+<td>Added by 022</td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>UUID FK → projects</td>
+<td>SET NULL</td>
+</tr>
+<tr>
+<td><code>analysis_cost_usd</code> / <code>analysis_duration_seconds</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 020 (created), 022 (FK to analysis_groups)</p>
+<hr />
+<h3 id="table-channel_comparison_reports">Table: <code>channel_comparison_reports</code><a class="headerlink" href="#table-channel_comparison_reports" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Multi-channel comparison aggregating multiple
+<code>channel_analyses</code> into a single report.</p>
+<p><strong>Realtime:</strong> no  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>analysis_group_id</code></td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td><code>channel_analysis_ids</code></td>
+<td>UUID[] NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>combined_topic_landscape</code> / <code>combined_blue_ocean_gaps</code> / <code>combined_saturation_map</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>differentiation_strategy</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>recommended_niche_description</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>recommended_content_pillars</code></td>
+<td>TEXT[]</td>
+<td></td>
+</tr>
+<tr>
+<td><code>overall_verdict</code> / <code>overall_verdict_score</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>UUID FK</td>
+<td>SET NULL</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 020</p>
+<hr />
+<h3 id="table-discovered_channels">Table: <code>discovered_channels</code><a class="headerlink" href="#table-discovered_channels" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Auto-discovered competitor channels staged before deep
+analysis.</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>analysis_group_id</code> / <code>source_channel_analysis_id</code></td>
+<td>UUID</td>
+<td>UNIQUE on <code>(analysis_group_id, youtube_channel_id)</code></td>
+</tr>
+<tr>
+<td><code>youtube_channel_id</code> / <code>channel_name</code> / <code>channel_handle</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>subscriber_count</code> / <code>total_view_count</code> / <code>video_count</code> / <code>avg_views_per_video</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>discovery_method</code></td>
+<td>TEXT</td>
+<td><code>keyword_search</code> / <code>related_channels</code> / <code>tag_match</code> / <code>manual</code></td>
+</tr>
+<tr>
+<td><code>discovery_rank</code></td>
+<td>INTEGER</td>
+<td></td>
+</tr>
+<tr>
+<td><code>relevance_score</code></td>
+<td>INTEGER 0-100</td>
+<td></td>
+</tr>
+<tr>
+<td><code>analysis_depth</code></td>
+<td>TEXT</td>
+<td><code>quick</code> / <code>medium</code> / <code>deep</code></td>
+</tr>
+<tr>
+<td><code>analysis_status</code></td>
+<td>TEXT</td>
+<td><code>discovered</code> / <code>analyzing</code> / <code>completed</code> / <code>skipped</code> / <code>failed</code></td>
+</tr>
+<tr>
+<td><code>channel_analysis_id</code></td>
+<td>UUID FK</td>
+<td>SET NULL once analysed</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 021</p>
+<hr />
+<h3 id="table-niche_viability_reports">Table: <code>niche_viability_reports</code><a class="headerlink" href="#table-niche_viability_reports" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> One per analysis group. Carries the headline viability score
+plus four weighted factors, monetization estimates, blue-ocean strategy,
+moat indicators, revenue projections, and seed content (recommended_topics,
+topics_to_avoid, content pillars, title/thumbnail DNA).</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code> / <code>analysis_group_id</code> / <code>project_id</code></td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td><code>channels_analyzed</code> / <code>total_subscribers</code> / <code>total_monthly_views</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>viability_score</code></td>
+<td>INTEGER 0-100 NOT NULL</td>
+<td></td>
+</tr>
+<tr>
+<td><code>viability_verdict</code> / <code>viability_reasoning</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>monetization_score</code> / <code>monetization_breakdown</code></td>
+<td>INTEGER + JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>audience_demand_score</code> / <code>audience_demand_breakdown</code></td>
+<td>INTEGER + JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>competition_gap_score</code> / <code>competition_gap_breakdown</code></td>
+<td>INTEGER + JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>entry_ease_score</code> / <code>entry_ease_breakdown</code></td>
+<td>INTEGER + JSONB</td>
+<td><strong>Renamed from <code>entry_difficulty_*</code> by migration 026</strong></td>
+</tr>
+<tr>
+<td><code>estimated_rpm_low/mid/high</code></td>
+<td>NUMERIC(6,2)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>ad_category</code> / <code>sponsorship_potential</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>blue_ocean_opportunities</code> / <code>saturated_topics</code> / <code>recommended_topics</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>topics_to_avoid</code></td>
+<td>TEXT[]</td>
+<td></td>
+</tr>
+<tr>
+<td><code>recommended_angle</code> / <code>recommended_content_pillars</code> / <code>differentiation_strategy</code></td>
+<td>mixed</td>
+<td></td>
+</tr>
+<tr>
+<td><code>moat_indicators</code> / <code>revenue_projections</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>script_depth_targets</code> / <code>title_dna_patterns</code> / <code>thumbnail_dna_patterns</code></td>
+<td>JSONB</td>
+<td></td>
+</tr>
+<tr>
+<td><code>analysis_cost_usd</code></td>
+<td>NUMERIC(8,4)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 021 (created), 026 (entry_difficulty → entry_ease
+column rename)</p>
+<hr />
+<h3 id="table-analysis_groups">Table: <code>analysis_groups</code><a class="headerlink" href="#table-analysis_groups" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Named container for channel analyses with self-healing counter
+columns (added by 026 triggers).</p>
+<p><strong>Realtime:</strong> yes  ·  <strong>RLS:</strong> locked-down</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>name</code> / <code>description</code></td>
+<td>TEXT</td>
+<td></td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>TEXT</td>
+<td><code>active</code> / <code>archived</code></td>
+</tr>
+<tr>
+<td><code>channels_count</code> / <code>completed_count</code></td>
+<td>INTEGER</td>
+<td>Self-healed by 026 trigger from <code>channel_analyses</code></td>
+</tr>
+<tr>
+<td><code>has_viability_report</code></td>
+<td>BOOLEAN</td>
+<td>Self-healed by 026 trigger from <code>niche_viability_reports</code></td>
+</tr>
+<tr>
+<td><code>viability_score</code></td>
+<td>INTEGER 0-100</td>
+<td>Self-healed by 026 trigger</td>
+</tr>
+<tr>
+<td><code>viability_phase</code></td>
+<td>TEXT</td>
+<td><code>idle</code> / <code>validating</code> / <code>aggregating</code> / <code>analyzing</code> / <code>writing_report</code> / <code>linking</code> / <code>done</code> / <code>failed</code> (added 027)</td>
+</tr>
+<tr>
+<td><code>viability_started_at</code> / <code>viability_error</code></td>
+<td>mixed</td>
+<td>Added 027</td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>UUID FK</td>
+<td>SET NULL</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration history:</strong> 022 (created), 026 (trigger functions
+<code>sync_analysis_group_counters</code> + <code>sync_analysis_group_viability</code>,
+backfill, retroactive <code>entry_difficulty_*</code> rename), 027 (viability progress
+columns)</p>
+<hr />
+<h2 id="youtube-discovery-per-video-analysis">YouTube discovery + per-video analysis<a class="headerlink" href="#youtube-discovery-per-video-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="tables-yt_discovery_runs-yt_discovery_results-yt_video_analyses">Tables: <code>yt_discovery_runs</code>, <code>yt_discovery_results</code>, <code>yt_video_analyses</code><a class="headerlink" href="#tables-yt_discovery_runs-yt_discovery_results-yt_video_analyses" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Niche-research engine that scrapes top YouTube channels by
+keyword and surfaces high-engagement videos. <code>yt_video_analyses</code> is
+per-video Claude analysis (incl. <code>ten_x_strategy</code>, <code>content_quality</code>,
+<code>comment_insights</code>) consumed by the intelligence renderer in 029.</p>
+<p><strong>Realtime:</strong> unknown — not in any numbered migration  ·  <strong>RLS:</strong> locked
+down by 030 (which lists all three by name)</p>
+<blockquote>
+<p><strong>Schema source missing.</strong> No CREATE TABLE for these three tables exists
+in <code>supabase/migrations/</code>. They are referenced by:
+- migration 011 (FK soft-link from <code>competitor_channels.yt_discovery_result_id</code>),
+- migration 029 (the renderer reads <code>yt_video_analyses</code> columns),
+- migration 030 (the lockdown lists all three),
+- dashboard <code>useYouTubeDiscovery</code> hook,
+- workflows <code>WF_YOUTUBE_DISCOVERY</code>, <code>WF_YOUTUBE_ANALYZE</code>.</p>
+<p>Treat the live VPS Postgres as the schema source-of-truth; capture into
+a future migration before next clone.</p>
+</blockquote>
+<p><strong>Migration history:</strong> not in <code>supabase/migrations/</code> (live-applied only)</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "toc.integrate"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.525ec568.min.js"></script>
+      
+    
+  </body>
+</html>
