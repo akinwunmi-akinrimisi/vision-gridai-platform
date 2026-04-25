@@ -1,0 +1,356 @@
+{
+  "name": "WF_VIDEO_METADATA",
+  "nodes": [
+    {
+      "id": "webhook-metadata-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "metadata/generate",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        },
+        "authentication": "headerAuth"
+      },
+      "webhookId": "metadata-generate-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      }
+    },
+    {
+      "id": "if-auth-metadata",
+      "name": "Check Auth Token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        470,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-metadata",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "respond-unauthorized-metadata",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        690,
+        500
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      }
+    },
+    {
+      "id": "respond-accepted-metadata",
+      "name": "Respond Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        690,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Trigger').item.json.body.topic_id, message: 'Metadata generation started' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "fetch-topic-metadata",
+      "name": "Fetch Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        910,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Webhook Trigger').item.json.body.topic_id }}"
+            },
+            {
+              "name": "select",
+              "value": "id,project_id,seo_title,original_title,narrative_hook,key_segments,word_count,scene_count,script_metadata,drive_folder_id,country_target"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "fetch-project-metadata",
+      "name": "Fetch Project",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1130,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/projects",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ Array.isArray($('Fetch Topic').item.json) ? $('Fetch Topic').item.json[0].project_id : $('Fetch Topic').item.json.project_id }}"
+            },
+            {
+              "name": "select",
+              "value": "id,niche,niche_description,channel_style,playlist1_name,playlist2_name,playlist3_name"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "generate-metadata",
+      "name": "Generate Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1350,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Generate YouTube SEO description (3-5K chars) + 10 tags via Claude API\nvar topicArr = $('Fetch Topic').first().json;\nvar topic = Array.isArray(topicArr) ? topicArr[0] : topicArr;\nvar projectArr = $('Fetch Project').first().json;\nvar project = Array.isArray(projectArr) ? projectArr[0] : projectArr;\nvar topicId = $('Webhook Trigger').first().json.body.topic_id;\nvar projectId = topic.project_id || project.id;\n\n// CENTRAL INTELLIGENCE RENDERER (migration 028)\n// Stage = 'metadata'. Pulls title DNA, thumbnail DNA, recommended_angle,\n// audience_questions, revenue context, viability reasoning, etc. from RPC.\nvar renderedIntelligence = '';\ntry {\n  var intelRes = await fetch($env.SUPABASE_URL + '/rest/v1/rpc/render_project_intelligence', {\n    method: 'POST',\n    headers: {\n      apikey: $env.SUPABASE_ANON_KEY,\n      Authorization: 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({ p_project_id: projectId, p_stage: 'metadata' })\n  });\n  if (intelRes.ok) renderedIntelligence = await intelRes.json();\n} catch (_) {}\n\nvar title = topic.seo_title || topic.original_title;\nvar hook = topic.narrative_hook || '';\nvar segments = topic.key_segments || '';\nvar wordCount = topic.word_count || 0;\nvar sceneCount = topic.scene_count || 0;\nvar niche = project.niche || '';\nvar nicheDesc = project.niche_description || '';\nvar playlist1 = project.playlist1_name || '';\nvar playlist2 = project.playlist2_name || '';\nvar playlist3 = project.playlist3_name || '';\n\nvar basePrompt = 'You are an expert YouTube SEO strategist and copywriter specializing in long-form documentary content in the \"' + niche + '\" niche.\\n\\n'\n  + 'Generate a comprehensive YouTube video description and 10 SEO-optimized tags.\\n\\n'\n  + '=== VIDEO INFO ===\\n'\n  + 'TITLE: \"' + title + '\"\\n'\n  + 'NARRATIVE HOOK: \"' + hook + '\"\\n'\n  + 'CHAPTER SEGMENTS: \"' + segments + '\"\\n'\n  + 'NICHE: \"' + nicheDesc + '\"\\n'\n  + 'VIDEO STATS: ~' + wordCount + ' words, ' + sceneCount + ' scenes, ~2 hour documentary\\n'\n  + 'CHANNEL PLAYLISTS: \"' + playlist1 + '\", \"' + playlist2 + '\", \"' + playlist3 + '\"\\n\\n'\n  + '=== DESCRIPTION FORMAT (3,000-5,000 characters) ===\\n\\n'\n  + 'Structure in this EXACT order:\\n\\n'\n  + '**SECTION 1 - HOOK (200-300 chars)**\\n'\n  + 'First 200 characters appear in YouTube search results. Write a provocative, curiosity-driving opening. Do NOT start with \"In this video\". Start with a shocking fact, bold question, or counterintuitive statement.\\n\\n'\n  + '**SECTION 2 - BODY (500-800 chars)**\\n'\n  + 'What the viewer will discover. Reference specific segments. Build anticipation for the most surprising parts. Use line breaks between paragraphs.\\n\\n'\n  + '**SECTION 3 - CHAPTERS (timestamps)**\\n'\n  + 'Generate 8-12 YouTube chapter timestamps from the segment descriptions.\\n'\n  + 'Format: \"H:MM:SS Title\"\\n'\n  + 'First chapter MUST be 0:00:00. Space evenly across ~2 hours.\\n'\n  + 'Chapter titles should be intriguing (e.g., \"The $4.7 Billion Lie\" not \"Chapter 3\").\\n\\n'\n  + '**SECTION 4 - KEY TAKEAWAYS (5-7 bullet points)**\\n'\n  + 'Format each as a specific, actionable insight, not a vague summary.\\n\\n'\n  + '**SECTION 5 - CALL TO ACTION (2-3 sentences)**\\n'\n  + 'Subscribe prompt. Ask a specific question to drive comments. Mention the playlist.\\n\\n'\n  + '**SECTION 6 - HASHTAGS (3-5)**\\n'\n  + 'Relevant hashtags at the very end. Format: #TagOne #TagTwo\\n\\n'\n  + '=== RULES ===\\n'\n  + '- Total description: 3,000-5,000 characters\\n'\n  + '- Do NOT include links, social media handles, or placeholder text\\n'\n  + '- Do NOT use generic phrases like \"don\\'t forget to like and subscribe\"\\n'\n  + '- Write in a voice that matches the documentary tone (serious, investigative, revelatory)\\n'\n  + '- Use line breaks generously for readability\\n\\n'\n  + '=== TAG RULES ===\\n'\n  + '1. Generate exactly 10 SEO tags.\\n'\n  + '2. Mix: 2-3 broad niche tags, 3-4 specific topic tags, 3-4 long-tail search phrases.\\n'\n  + '3. All lowercase. Each tag 2-5 words. No single-word tags.\\n'\n  + '4. Include at least 1 tag matching a common YouTube search query verbatim.\\n'\n  + '5. Include the niche name in at least 2 tags.\\n\\n'\n  + 'CRITICAL: Return ONLY a raw JSON object, no markdown, no code fences. Keys: \"description\" (string with newlines) and \"tags\" (array of 10 strings).';\n\nvar promptText = (renderedIntelligence ? renderedIntelligence + '\\n\\n---\\n\\n' : '') + basePrompt;\n\n// === BEGIN AU OVERLAY (migration 034) — append country sections for AU\nif ((topic.country_target || 'GENERAL') === 'AU') {\n  try {\n    var __cbRes = await fetch($env.SUPABASE_URL + '/rest/v1/rpc/render_country_blocks', {\n      method: 'POST',\n      headers: { apikey: $env.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },\n      body: JSON.stringify({ p_country_target: 'AU' })\n    });\n    if (__cbRes.ok) {\n      var __cb = await __cbRes.json();\n      var __auAppend = [\n        __cb.country_compliance_block || '',\n        __cb.country_terminology_block || '',\n        __cb.country_calendar_context || '',\n        __cb.country_demonetization_constraints || ''\n      ].filter(Boolean).join('\\n\\n');\n      if (__auAppend) promptText = promptText + '\\n\\n=== AU COUNTRY CONTEXT ===\\n\\n' + __auAppend;\n    }\n  } catch (_) { /* leave promptText unchanged on RPC failure */ }\n}\n// === END AU OVERLAY ===\n\nvar claudeResp = await fetch('https://api.anthropic.com/v1/messages', {\n  method: 'POST',\n  headers: {\n    'x-api-key': $env.ANTHROPIC_API_KEY,\n    'anthropic-version': '2023-06-01',\n    'content-type': 'application/json'\n  },\n  body: JSON.stringify({\n    model: 'claude-sonnet-4-20250514',\n    max_tokens: 5000,\n    messages: [{ role: 'user', content: promptText }]\n  })\n});\n\nvar claudeResult = await claudeResp.json();\nif (!claudeResult.content || !claudeResult.content[0]) {\n  throw new Error('Claude API error: ' + JSON.stringify(claudeResult).substring(0, 500));\n}\n\nvar rawText = claudeResult.content[0].text;\nconsole.log('Claude response (first 300 chars): ' + rawText.substring(0, 300));\n\nvar metadata;\ntry {\n  metadata = JSON.parse(rawText.trim());\n} catch(e1) {\n  var cleaned = rawText.replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\n  try {\n    metadata = JSON.parse(cleaned);\n  } catch(e2) {\n    var jsonMatch = rawText.match(/\\{[\\s\\S]*\\}/);\n    if (!jsonMatch) throw new Error('No JSON found: ' + rawText.substring(0, 200));\n    metadata = JSON.parse(jsonMatch[0]);\n  }\n}\n\nif (!metadata.description) throw new Error('Missing description');\nif (!metadata.tags || !Array.isArray(metadata.tags)) throw new Error('Missing or invalid tags');\nwhile (metadata.tags.length < 10) metadata.tags.push(niche.toLowerCase() + ' documentary');\n\nconsole.log('Description: ' + metadata.description.length + ' chars, Tags: ' + metadata.tags.join(', '));\n\nreturn [{ json: {\n  topic_id: topicId,\n  project_id: topic.project_id,\n  drive_folder_id: topic.drive_folder_id,\n  title: title,\n  niche: niche,\n  description: metadata.description,\n  tags: metadata.tags,\n  current_script_metadata: topic.script_metadata\n} }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "update-metadata-supabase",
+      "name": "Update Supabase & Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1570,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Update Supabase with SEO metadata + prepare doc content for Drive upload\nvar data = $input.first().json;\nvar topicId = data.topic_id;\nvar projectId = data.project_id;\n\nvar raw = data.current_script_metadata;\nvar scriptMetadata;\nif (typeof raw === 'string') {\n  try { scriptMetadata = JSON.parse(raw); } catch(e) { scriptMetadata = {}; }\n} else {\n  scriptMetadata = raw || {};\n}\n\nscriptMetadata.yt_metadata = {\n  description: data.description,\n  tags: data.tags,\n  generated_at: new Date().toISOString()\n};\n\nvar supabaseHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=representation'\n};\n\n// Try PATCH with dedicated columns first, fallback to script_metadata only\nvar patchResp = await fetch(\n  $env.SUPABASE_URL + '/rest/v1/topics?id=eq.' + topicId,\n  {\n    method: 'PATCH',\n    headers: supabaseHeaders,\n    body: JSON.stringify({\n      yt_description: data.description,\n      yt_tags: data.tags,\n      script_metadata: scriptMetadata,\n      updated_at: new Date().toISOString()\n    })\n  }\n);\nif (!patchResp.ok) {\n  var errText = await patchResp.text();\n  if (errText.includes('yt_description') || errText.includes('yt_tags')) {\n    console.log('yt_description/yt_tags columns missing, saving to script_metadata only');\n    var fallbackResp = await fetch(\n      $env.SUPABASE_URL + '/rest/v1/topics?id=eq.' + topicId,\n      {\n        method: 'PATCH',\n        headers: supabaseHeaders,\n        body: JSON.stringify({\n          script_metadata: scriptMetadata,\n          updated_at: new Date().toISOString()\n        })\n      }\n    );\n    if (!fallbackResp.ok) throw new Error('Fallback PATCH failed: ' + fallbackResp.status);\n  } else {\n    throw new Error('PATCH topics error: ' + patchResp.status + ' ' + errText);\n  }\n}\nconsole.log('Updated topic ' + topicId + ' metadata');\n\nvar logResp = await fetch(\n  $env.SUPABASE_URL + '/rest/v1/production_log',\n  {\n    method: 'POST',\n    headers: supabaseHeaders,\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: topicId,\n      stage: 'metadata',\n      action: 'completed',\n      details: { description_length: data.description.length, tags: data.tags }\n    })\n  }\n);\nif (!logResp.ok) console.error('POST production_log error: ' + logResp.status);\n\nreturn [{ json: {\n  success: true,\n  topic_id: topicId,\n  project_id: projectId,\n  drive_folder_id: data.drive_folder_id,\n  title: data.title,\n  niche: data.niche,\n  description: data.description,\n  tags: data.tags\n} }];"
+      }
+    },
+    {
+      "id": "create-seo-doc",
+      "name": "Create SEO Doc",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1790,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Create formatted SEO document as text file for Drive upload\nvar data = $input.first().json;\nvar title = data.title || 'Untitled';\nvar niche = data.niche || '';\nvar description = data.description || '';\nvar tags = data.tags || [];\n\nvar doc = '======================================================\\n'\n  + '  SEO METADATA: ' + title + '\\n'\n  + '  Niche: ' + niche + '\\n'\n  + '  Generated: ' + new Date().toISOString().split('T')[0] + '\\n'\n  + '======================================================\\n\\n'\n  + '--- YOUTUBE DESCRIPTION ---\\n'\n  + '(Copy everything below into YouTube Studio)\\n\\n'\n  + description + '\\n\\n'\n  + '--- SEO TAGS ---\\n'\n  + '(Copy into YouTube Studio > Tags field)\\n\\n'\n  + tags.join(', ') + '\\n\\n'\n  + '--- INDIVIDUAL TAGS ---\\n';\n\nfor (var i = 0; i < tags.length; i++) {\n  doc += (i + 1) + '. ' + tags[i] + '\\n';\n}\n\ndoc += '\\n--- STATS ---\\n'\n  + 'Description length: ' + description.length + ' characters\\n'\n  + 'Tag count: ' + tags.length + '\\n'\n  + 'Search preview (first 200 chars): ' + description.substring(0, 200) + '...\\n';\n\nvar b64 = Buffer.from(doc, 'utf-8').toString('base64');\nvar safeName = title.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 50).trim();\nvar fileName = 'SEO_Metadata_' + safeName + '.txt';\n\nreturn [{\n  json: {\n    filename: fileName,\n    drive_folder_id: data.drive_folder_id,\n    topic_id: data.topic_id,\n    project_id: data.project_id\n  },\n  binary: {\n    data: {\n      data: b64,\n      mimeType: 'text/plain',\n      fileName: fileName\n    }\n  }\n}];"
+      }
+    },
+    {
+      "id": "upload-seo-doc",
+      "name": "Upload SEO Doc",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2010,
+        300
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "inputDataFieldName": "data",
+        "name": "={{ $json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.drive_folder_id }}",
+          "cachedResultName": "/ (Root folder)"
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "z0gigNHVnhcGz2pD",
+          "name": "GoogleDriveAccount"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Auth Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Auth Token": {
+      "main": [
+        [
+          {
+            "node": "Respond Accepted",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Topic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Topic": {
+      "main": [
+        [
+          {
+            "node": "Fetch Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Project": {
+      "main": [
+        [
+          {
+            "node": "Generate Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Metadata": {
+      "main": [
+        [
+          {
+            "node": "Update Supabase & Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Supabase & Log": {
+      "main": [
+        [
+          {
+            "node": "Create SEO Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SEO Doc": {
+      "main": [
+        [
+          {
+            "node": "Upload SEO Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}

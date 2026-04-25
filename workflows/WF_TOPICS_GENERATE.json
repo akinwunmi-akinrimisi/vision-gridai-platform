@@ -1,5 +1,5 @@
 {
-  "name": "WF_TOPICS_GENERATE \u2014 Generate 25 Topics + Avatars",
+  "name": "WF_TOPICS_GENERATE — Generate 25 Topics + Avatars",
   "nodes": [
     {
       "id": "wf-tg-webhook",
@@ -16,6 +16,13 @@
         "responseMode": "responseNode",
         "options": {
           "allowedOrigins": "*"
+        },
+        "authentication": "headerAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
         }
       },
       "webhookId": "wf-topics-generate-prod"
@@ -253,7 +260,7 @@
     },
     {
       "id": "wf-tg-status-generating",
-      "name": "Status \u2192 Generating",
+      "name": "Status → Generating",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -300,7 +307,7 @@
         520
       ],
       "parameters": {
-        "jsCode": "const project = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst masterPrompt = $('Read Prompt Config').first().json[0]?.prompt_text || $('Read Prompt Config').first().json?.prompt_text;\nconst idempotency = $('Idempotency Guard').first().json;\nconst project_id = idempotency.project_id;\nconst topicsNeeded = idempotency.topicsNeeded || 25;\nconst existingTitles = idempotency.existingTitles || [];\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst hdr = { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK };\n\nconst ca = project.competitive_analysis || {};\nconst analyses = ca.analyses || [];\n\nlet analysisPayload = '';\nif (analyses.length > 0) {\n  analysisPayload = JSON.stringify({ primary_analysis: analyses[0], additional_analyses: analyses.slice(1), project_niche: project.niche, project_description: project.niche_description }, null, 2);\n} else {\n  try {\n    const resp = await fetch(SB + '/rest/v1/niche_profiles?project_id=eq.' + project_id + '&order=created_at.desc&limit=1', { headers: hdr });\n    const profiles = await resp.json();\n    const profile = profiles && profiles[0];\n    if (profile) {\n      analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 8 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' }, blue_ocean_analysis: { gaps_and_opportunities: (profile.blue_ocean_opportunities || {}).unoccupied_angles || [] }, comment_insights: { top_questions: ((profile.audience_pain_points || {}).reddit || []).slice(0, 10), complaints: ((profile.audience_pain_points || {}).forums || []).slice(0, 5) } }, null, 2);\n    }\n  } catch (e) {}\n  if (!analysisPayload) {\n    analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 7 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' } }, null, 2);\n  }\n}\n\nlet researchEnrichment = '';\ntry {\n  var rcResp = await fetch(SB + '/rest/v1/research_categories?project_id=eq.' + project_id + '&select=category_name,video_title_suggestion,summary,ranking_score,total_engagement&order=ranking_score.desc&limit=10', { headers: hdr });\n  var categories = await rcResp.json();\n  var rrResp = await fetch(SB + '/rest/v1/research_results?project_id=eq.' + project_id + '&select=title,source,engagement_score,raw_text&order=engagement_score.desc&limit=20', { headers: hdr });\n  var results = await rrResp.json();\n  var runResp = await fetch(SB + '/rest/v1/research_runs?project_id=eq.' + project_id + '&select=derived_keywords&order=created_at.desc&limit=1', { headers: hdr });\n  var runs = await runResp.json();\n  var sections = [];\n  if (categories && categories.length > 0) { sections.push('RANKED CATEGORIES:\\n' + categories.map(function(c, i) { return (i+1) + '. ' + (c.category_name||'') + ' (score:' + (c.ranking_score||0) + ') Suggested: ' + (c.video_title_suggestion||'N/A'); }).join('\\n')); }\n  if (results && results.length > 0) { var byS = {}; results.forEach(function(r) { var s = r.source||'unknown'; if(!byS[s]) byS[s]=[]; byS[s].push('- ['+r.engagement_score+'] '+(r.title||'').substring(0,150)); }); sections.push('HIGH-ENGAGEMENT CONTENT:\\n' + Object.keys(byS).map(function(s){return s.toUpperCase()+':\\n'+byS[s].slice(0,5).join('\\n');}).join('\\n\\n')); }\n  if (runs && runs[0] && runs[0].derived_keywords) { sections.push('KEYWORDS: ' + (Array.isArray(runs[0].derived_keywords) ? runs[0].derived_keywords.join(', ') : String(runs[0].derived_keywords)).substring(0,500)); }\n  if (sections.length > 0) { researchEnrichment = '\\n\\n=== RESEARCH DATA ===\\n' + sections.join('\\n\\n') + '\\n=== END ==='; }\n} catch (e) {}\n\nvar prompt = masterPrompt || '';\nprompt += '\\n\\n=== RESEARCH ANALYSIS PAYLOAD ===\\n' + analysisPayload;\nprompt += researchEnrichment;\nif (existingTitles.length > 0) { prompt += '\\n\\nEXISTING TOPICS - avoid overlap:\\n' + JSON.stringify(existingTitles); }\n\nvar ctx = project.channel_analysis_context;\nvar topicsToAvoid = project.topics_to_avoid || [];\nvar recommendedTopics = project.recommended_topics || [];\nvar recommendedAngle = project.recommended_angle || '';\nvar titleDna = project.title_dna_patterns;\nvar revProjections = project.revenue_projections;\n\nif (ctx || topicsToAvoid.length > 0 || recommendedTopics.length > 0) {\n  prompt += '\\n\\n=== COMPETITIVE INTELLIGENCE ===\\n';\n  if (ctx) {\n    if (ctx.blue_ocean_gaps && ctx.blue_ocean_gaps.length > 0) { prompt += '\\nBLUE-OCEAN OPPORTUNITIES:\\n'; ctx.blue_ocean_gaps.forEach(function(gap) { var g = typeof gap === 'string' ? gap : (gap.topic || gap.opportunity || JSON.stringify(gap)); prompt += '- ' + g + (gap.estimated_demand ? ' | Demand: '+gap.estimated_demand : '') + (gap.suggested_angle ? ' | Angle: '+gap.suggested_angle : '') + '\\n'; }); }\n    if (ctx.differentiation_strategy) { prompt += '\\nDIFFERENTIATION: ' + (typeof ctx.differentiation_strategy === 'string' ? ctx.differentiation_strategy : JSON.stringify(ctx.differentiation_strategy)) + '\\n'; }\n    if (ctx.content_pillars && ctx.content_pillars.length > 0) { prompt += '\\nCONTENT PILLARS: ' + ctx.content_pillars.join(', ') + '\\n'; }\n    if (ctx.comment_content_gaps && ctx.comment_content_gaps.length > 0) { prompt += '\\nAUDIENCE CONTENT GAPS:\\n'; ctx.comment_content_gaps.forEach(function(g) { prompt += '- ' + g + '\\n'; }); }\n    if (ctx.comment_requested_topics && ctx.comment_requested_topics.length > 0) { prompt += '\\nTOPICS VIEWERS REQUEST:\\n'; ctx.comment_requested_topics.forEach(function(t) { prompt += '- ' + t + '\\n'; }); }\n    if (ctx.comment_pain_points && ctx.comment_pain_points.length > 0) { prompt += '\\nAUDIENCE PAIN POINTS:\\n'; ctx.comment_pain_points.forEach(function(p) { prompt += '- ' + p + '\\n'; }); }\n    if (ctx.comment_top_questions && ctx.comment_top_questions.length > 0) { prompt += '\\nTOP QUESTIONS:\\n'; ctx.comment_top_questions.forEach(function(q) { prompt += '- ' + q + '\\n'; }); }\n    if (ctx.moat_indicators) { prompt += '\\nMOAT: ' + JSON.stringify(ctx.moat_indicators) + '\\n'; }\n  }\n  if (topicsToAvoid.length > 0) { prompt += '\\nTOPICS TO AVOID:\\n'; topicsToAvoid.forEach(function(t) { prompt += '- ' + t + '\\n'; }); prompt += 'NONE of the 25 topics should cover these.\\n'; }\n  if (recommendedTopics.length > 0) { prompt += '\\nRECOMMENDED SEEDS:\\n'; recommendedTopics.forEach(function(t) { var title = typeof t === 'string' ? t : (t.topic || t.title || JSON.stringify(t)); prompt += '- ' + title + (t.angle ? ' | Angle: '+t.angle : '') + (t.suggested_title_formula ? ' | Formula: '+t.suggested_title_formula : '') + '\\n'; }); }\n  if (recommendedAngle) { prompt += '\\nCHANNEL ANGLE: ' + recommendedAngle + '\\n'; }\n  if (titleDna) { prompt += '\\nTITLE DNA:\\n' + JSON.stringify(titleDna) + '\\n'; }\n  if (revProjections) { prompt += '\\nREVENUE: ' + JSON.stringify(revProjections) + '\\n'; }\n}\nvar viabScore = project.niche_viability_score;\nvar viabVerdict = project.niche_viability_verdict;\nif (viabScore || viabVerdict) { prompt += '\\nVIABILITY: ' + (viabScore || 'N/A') + '/100 - ' + (viabVerdict || 'N/A') + '\\n'; }\nvar scriptTargets = project.script_depth_targets;\nif (scriptTargets) { prompt += '\\nSCRIPT DEPTH: ' + JSON.stringify(scriptTargets) + '\\n'; }\nvar thumbDna = project.thumbnail_dna_patterns;\nif (thumbDna) { prompt += '\\nTHUMBNAIL DNA: ' + JSON.stringify(thumbDna) + '\\n'; }\nvar scriptRef = project.script_reference_data;\nif (scriptRef) { prompt += '\\nSCRIPTING REFERENCE:\\n' + JSON.stringify(scriptRef) + '\\n'; }\n\nreturn [{ json: { project_id: project_id, niche: project.niche, prompt: prompt } }];",
+        "jsCode": "const project = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst masterPrompt = $('Read Prompt Config').first().json[0]?.prompt_text || $('Read Prompt Config').first().json?.prompt_text;\nconst idempotency = $('Idempotency Guard').first().json;\nconst project_id = idempotency.project_id;\nconst topicsNeeded = idempotency.topicsNeeded || 25;\nconst existingTitles = idempotency.existingTitles || [];\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst hdr = { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK };\n\n// CENTRAL INTELLIGENCE RENDERER v2 (migration 029)\n// Now covers niche_profiles + yt_video_analyses + research_runs +\n// research_categories + research_results + audience_insights in addition\n// to projects/nvr/channel_analyses. The coverage check in migration 029\n// makes it impossible to add a new column to any of those 9 tables without\n// it landing in this rendered output.\nlet renderedIntelligence = '';\ntry {\n  const intelRes = await fetch(SB + '/rest/v1/rpc/render_project_intelligence', {\n    method: 'POST',\n    headers: {\n      apikey: $env.SUPABASE_ANON_KEY,\n      Authorization: 'Bearer ' + SRK,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({ p_project_id: project_id, p_stage: 'topics' })\n  });\n  if (intelRes.ok) renderedIntelligence = await intelRes.json();\n} catch (_) {}\n\n// analysisPayload preserved: it serves Grand_Master_Prompt_Topic_Generator_v3 §2\n// input contract (structured JSON payload). Primary source is project.competitive_analysis\n// (cached from bridge workflow). niche_profiles fallback kept as a safety net —\n// harmless duplication with the RPC's markdown rendering, but preserves the\n// structural JSON contract the Grand Master prompt was written against.\nconst ca = project.competitive_analysis || {};\nconst analyses = ca.analyses || [];\n\nlet analysisPayload = '';\nif (analyses.length > 0) {\n  analysisPayload = JSON.stringify({ primary_analysis: analyses[0], additional_analyses: analyses.slice(1), project_niche: project.niche, project_description: project.niche_description }, null, 2);\n} else {\n  try {\n    const resp = await fetch(SB + '/rest/v1/niche_profiles?project_id=eq.' + project_id + '&order=created_at.desc&limit=1', { headers: hdr });\n    const profiles = await resp.json();\n    const profile = profiles && profiles[0];\n    if (profile) {\n      analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 8 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' }, blue_ocean_analysis: { gaps_and_opportunities: (profile.blue_ocean_opportunities || {}).unoccupied_angles || [] }, comment_insights: { top_questions: ((profile.audience_pain_points || {}).reddit || []).slice(0, 10), complaints: ((profile.audience_pain_points || {}).forums || []).slice(0, 5) } }, null, 2);\n    }\n  } catch (e) {}\n  if (!analysisPayload) {\n    analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 7 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' } }, null, 2);\n  }\n}\n\n// researchEnrichment DELETED per migration 029 — research_runs +\n// research_categories + research_results are now fully rendered by the RPC\n// with richer per-result metadata (subreddit, author, upvotes/comments/shares,\n// AI-suggested titles) than the hand-built summary provided.\n\n// === BEGIN AU OVERLAY (migration 034) — substitute country-slot placeholders\n// Master prompts gained {country_compliance_block} / {country_terminology_block} /\n// {country_calendar_context} / {country_demonetization_constraints} via 033 §K.\n// render_country_blocks RPC returns the 4 sections per country_target\n// (empty strings for GENERAL — substitution becomes a no-op). RPC failure\n// leaves placeholders intact rather than silently stripping content.\nlet resolvedMaster = masterPrompt || '';\nconst __PLACEHOLDER_RE = /\\{country_(?:compliance_block|terminology_block|calendar_context|demonetization_constraints)\\}/;\nif (resolvedMaster && __PLACEHOLDER_RE.test(resolvedMaster)) {\n  try {\n    const __blocksRes = await fetch(SB + '/rest/v1/rpc/render_country_blocks', {\n      method: 'POST',\n      headers: { apikey: $env.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SRK, 'Content-Type': 'application/json' },\n      body: JSON.stringify({ p_country_target: (project.country_target || 'GENERAL') })\n    });\n    if (__blocksRes.ok) {\n      const __b = await __blocksRes.json();\n      resolvedMaster = resolvedMaster\n        .replace(/\\{country_compliance_block\\}/g, (__b.country_compliance_block || ''))\n        .replace(/\\{country_terminology_block\\}/g, (__b.country_terminology_block || ''))\n        .replace(/\\{country_calendar_context\\}/g, (__b.country_calendar_context || ''))\n        .replace(/\\{country_demonetization_constraints\\}/g, (__b.country_demonetization_constraints || ''));\n    }\n  } catch (_) { /* leave placeholders intact */ }\n}\n// === END AU OVERLAY ===\n\nvar prompt = renderedIntelligence ? renderedIntelligence + '\\n\\n---\\n\\n' : '';\nprompt += resolvedMaster;\nprompt += '\\n\\n=== RESEARCH ANALYSIS PAYLOAD ===\\n' + analysisPayload;\nif (existingTitles.length > 0) { prompt += '\\n\\nEXISTING TOPICS - avoid overlap:\\n' + JSON.stringify(existingTitles); }\n\nreturn [{ json: { project_id: project_id, niche: project.niche, prompt: prompt } }];\n",
         "mode": "runOnceForAllItems"
       }
     },
@@ -483,7 +490,7 @@
         660
       ],
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nif (response.error) throw new Error('Anthropic error: ' + (response.error.message || JSON.stringify(response.error)));\n\nconst text = (response.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\nlet jsonText = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst s = jsonText.indexOf('{'), e = jsonText.lastIndexOf('}');\nif (s === -1 || e === -1) throw new Error('No JSON object in response');\nconst parsed = JSON.parse(jsonText.substring(s, e + 1));\n\nconst project_id = $('Validate').first().json.project_id;\nconst startTopicNumber = $('Idempotency Guard').first().json.startTopicNumber || 1;\n\nconst playlists = parsed.playlists || [];\nconst topicRows = [];\nconst avatarData = [];\nconst playlistMeta = [];\n\nlet globalTopicNum = startTopicNumber;\n\nfor (let pi = 0; pi < playlists.length; pi++) {\n  const pl = playlists[pi];\n  playlistMeta.push({ name: pl.playlist_title, theme: pl.playlist_theme });\n\n  for (const t of (pl.topics || [])) {\n    topicRows.push({\n      project_id,\n      topic_number: t.topic_number || globalTopicNum,\n      playlist_group: pi + 1,\n      playlist_angle: pl.playlist_title || '',\n      original_title: t.subtopic || '',\n      seo_title: t.subtopic || '',\n      narrative_hook: t.primary_problem_trigger || '',\n      key_segments: t.video_style_structure || '',\n      estimated_cpm: null,\n      viral_potential: null,\n      core_domain_framework: t.core_domain_framework || '',\n      primary_problem_trigger: t.primary_problem_trigger || '',\n      target_audience_segment: t.target_audience_segment || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      video_style_structure: t.video_style_structure || '',\n      content_angle_blue_ocean: t.content_angle_blue_ocean || '',\n      viewer_search_intent: t.viewer_search_intent || '',\n      practical_takeaways: t.practical_takeaways || '',\n      review_status: 'pending',\n      status: 'pending'\n    });\n\n    avatarData.push({\n      audience_avatar: t.audience_avatar || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      target_audience_segment: t.target_audience_segment || '',\n      viewer_search_intent: t.viewer_search_intent || ''\n    });\n\n    globalTopicNum++;\n  }\n}\n\nreturn [{ json: { project_id, topicRows, avatarData, playlistMeta } }];",
+        "jsCode": "const response = $input.first().json;\nif (response.error) throw new Error('Anthropic error: ' + (response.error.message || JSON.stringify(response.error)));\n\nconst text = (response.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\nlet jsonText = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst s = jsonText.indexOf('{'), e = jsonText.lastIndexOf('}');\nif (s === -1 || e === -1) throw new Error('No JSON object in response');\nconst parsed = JSON.parse(jsonText.substring(s, e + 1));\n\nconst project_id = $('Validate').first().json.project_id;\n// === BEGIN AU OVERLAY (migration 034) — denormalize project.country_target onto each topic row\nconst __projForCountry = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst __country_target = (__projForCountry && __projForCountry.country_target) || 'GENERAL';\n// === END AU OVERLAY ===\nconst startTopicNumber = $('Idempotency Guard').first().json.startTopicNumber || 1;\n\nconst playlists = parsed.playlists || [];\nconst topicRows = [];\nconst avatarData = [];\nconst playlistMeta = [];\n\nlet globalTopicNum = startTopicNumber;\n\nfor (let pi = 0; pi < playlists.length; pi++) {\n  const pl = playlists[pi];\n  playlistMeta.push({ name: pl.playlist_title, theme: pl.playlist_theme });\n\n  for (const t of (pl.topics || [])) {\n    topicRows.push({\n      project_id,\n      topic_number: t.topic_number || globalTopicNum,\n      playlist_group: pi + 1,\n      playlist_angle: pl.playlist_title || '',\n      original_title: t.subtopic || '',\n      seo_title: t.subtopic || '',\n      narrative_hook: t.primary_problem_trigger || '',\n      key_segments: t.video_style_structure || '',\n      estimated_cpm: null,\n      viral_potential: null,\n      core_domain_framework: t.core_domain_framework || '',\n      primary_problem_trigger: t.primary_problem_trigger || '',\n      target_audience_segment: t.target_audience_segment || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      video_style_structure: t.video_style_structure || '',\n      content_angle_blue_ocean: t.content_angle_blue_ocean || '',\n      viewer_search_intent: t.viewer_search_intent || '',\n      practical_takeaways: t.practical_takeaways || '',\n      country_target: __country_target,\n      review_status: 'pending',\n      status: 'pending'\n    });\n\n    avatarData.push({\n      audience_avatar: t.audience_avatar || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      target_audience_segment: t.target_audience_segment || '',\n      viewer_search_intent: t.viewer_search_intent || ''\n    });\n\n    globalTopicNum++;\n  }\n}\n\nreturn [{ json: { project_id, topicRows, avatarData, playlistMeta } }];",
         "mode": "runOnceForAllItems"
       }
     },
@@ -536,7 +543,7 @@
         660
       ],
       "parameters": {
-        "jsCode": "// INSERT Topics returns 25 separate items \u2014 use $input.all()\nconst topics = $input.all().map(item => item.json);\nconst avatarData = $('Parse Topics').first().json.avatarData;\nconst topicRows = $('Parse Topics').first().json.topicRows;\nconst project_id = $('Validate').first().json.project_id;\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst AK = $env.ANTHROPIC_API_KEY;\n\n// Build avatar list text for Claude extraction\nconst avatarDescs = topics.map((t, i) => {\n  const a = avatarData[i] || {};\n  const tr = topicRows[i] || {};\n  return `Avatar ${i+1}:\\n- Name: ${(a.audience_avatar || '').substring(0, 100)}\\n- Topic: ${t.seo_title || t.original_title}\\n- Audience: ${a.target_audience_segment || ''}\\n- Psycho: ${(a.psychographics || '').substring(0, 200)}\\n- Pain: ${(tr.primary_problem_trigger || '').substring(0, 150)}`;\n}).join('\\n\\n');\n\n// Call Claude to extract 4 missing fields for all avatars in one batch\nconst prompt = `For each avatar below, extract/infer these 4 fields (1-2 sentences each):\\n1. occupation_income \u2014 job/role and income bracket\\n2. spending_profile \u2014 spending behavior relevant to topic\\n3. knowledge_level \u2014 beginner/intermediate/advanced + brief note\\n4. objection \u2014 #1 reason they would NOT act on this video\\n\\n${avatarDescs}\\n\\nReturn ONLY valid JSON array:\\n[{\"avatar_index\":1,\"occupation_income\":\"...\",\"spending_profile\":\"...\",\"knowledge_level\":\"...\",\"objection\":\"...\"}, ...]\\nNo markdown. Valid JSON only.`;\n\nlet extracted = [];\ntry {\n  const resp = await fetch('https://api.anthropic.com/v1/messages', {\n    method: 'POST',\n    headers: {'Content-Type': 'application/json', 'x-api-key': AK, 'anthropic-version': '2023-06-01'},\n    body: JSON.stringify({model: 'claude-sonnet-4-20250514', max_tokens: 16000, messages: [{role: 'user', content: prompt}]})\n  });\n  const d = await resp.json();\n  const txt = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  const clean = txt.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n  extracted = JSON.parse(clean.substring(clean.indexOf('['), clean.lastIndexOf(']') + 1));\n} catch (e) {\n  // Non-fatal \u2014 avatars will have partial data\n}\n\n// Build avatar rows with all fields\nconst avatarRows = topics.map((t, i) => {\n  const a = avatarData[i] || {};\n  const tr = topicRows[i] || {};\n  const ext = extracted.find(e => e.avatar_index === i + 1) || {};\n  const avatarText = a.audience_avatar || '';\n\n  return {\n    topic_id: t.id,\n    project_id,\n    video_title_short: t.seo_title || t.original_title,\n    avatar_name_age: avatarText.split('.')[0]?.trim()?.substring(0, 100) || null,\n    occupation_income: ext.occupation_income || null,\n    life_stage: a.target_audience_segment || null,\n    pain_point: tr.primary_problem_trigger || null,\n    spending_profile: ext.spending_profile || null,\n    knowledge_level: ext.knowledge_level || null,\n    emotional_driver: a.key_emotional_drivers || null,\n    online_hangouts: (a.viewer_search_intent || '').substring(0, 200) || null,\n    objection: ext.objection || null,\n    dream_outcome: (tr.practical_takeaways || '').substring(0, 200) || null,\n    psychographics: a.psychographics || null,\n    key_emotional_drivers: a.key_emotional_drivers || null,\n    target_audience_segment: a.target_audience_segment || null,\n    viewer_search_intent: a.viewer_search_intent || null,\n    review_status: 'pending'\n  };\n});\n\n// Update playlist metadata on project (non-fatal)\nconst playlistMeta = $('Parse Topics').first().json.playlistMeta || [];\nconst patch = {};\nfor (let i = 0; i < Math.min(playlistMeta.length, 5); i++) {\n  patch['playlist' + (i+1) + '_name'] = playlistMeta[i].name || '';\n  patch['playlist' + (i+1) + '_theme'] = playlistMeta[i].theme || '';\n}\nif (Object.keys(patch).length > 0) {\n  try {\n    await fetch(SB + '/rest/v1/projects?id=eq.' + project_id, {\n      method: 'PATCH',\n      headers: { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },\n      body: JSON.stringify(patch)\n    });\n  } catch (e) { /* non-fatal */ }\n}\n\nreturn [{ json: { project_id, avatarRows, topicsInserted: topics.length } }];",
+        "jsCode": "// INSERT Topics returns 25 separate items — use $input.all()\nconst topics = $input.all().map(item => item.json);\nconst avatarData = $('Parse Topics').first().json.avatarData;\nconst topicRows = $('Parse Topics').first().json.topicRows;\nconst project_id = $('Validate').first().json.project_id;\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst AK = $env.ANTHROPIC_API_KEY;\n\n// Build avatar list text for Claude extraction\nconst avatarDescs = topics.map((t, i) => {\n  const a = avatarData[i] || {};\n  const tr = topicRows[i] || {};\n  return `Avatar ${i+1}:\\n- Name: ${(a.audience_avatar || '').substring(0, 100)}\\n- Topic: ${t.seo_title || t.original_title}\\n- Audience: ${a.target_audience_segment || ''}\\n- Psycho: ${(a.psychographics || '').substring(0, 200)}\\n- Pain: ${(tr.primary_problem_trigger || '').substring(0, 150)}`;\n}).join('\\n\\n');\n\n// Call Claude to extract 4 missing fields for all avatars in one batch\nconst prompt = `For each avatar below, extract/infer these 4 fields (1-2 sentences each):\\n1. occupation_income — job/role and income bracket\\n2. spending_profile — spending behavior relevant to topic\\n3. knowledge_level — beginner/intermediate/advanced + brief note\\n4. objection — #1 reason they would NOT act on this video\\n\\n${avatarDescs}\\n\\nReturn ONLY valid JSON array:\\n[{\"avatar_index\":1,\"occupation_income\":\"...\",\"spending_profile\":\"...\",\"knowledge_level\":\"...\",\"objection\":\"...\"}, ...]\\nNo markdown. Valid JSON only.`;\n\nlet extracted = [];\ntry {\n  const resp = await fetch('https://api.anthropic.com/v1/messages', {\n    method: 'POST',\n    headers: {'Content-Type': 'application/json', 'x-api-key': AK, 'anthropic-version': '2023-06-01'},\n    body: JSON.stringify({model: 'claude-sonnet-4-20250514', max_tokens: 16000, messages: [{role: 'user', content: prompt}]})\n  });\n  const d = await resp.json();\n  const txt = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  const clean = txt.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n  extracted = JSON.parse(clean.substring(clean.indexOf('['), clean.lastIndexOf(']') + 1));\n} catch (e) {\n  // Non-fatal — avatars will have partial data\n}\n\n// Build avatar rows with all fields\nconst avatarRows = topics.map((t, i) => {\n  const a = avatarData[i] || {};\n  const tr = topicRows[i] || {};\n  const ext = extracted.find(e => e.avatar_index === i + 1) || {};\n  const avatarText = a.audience_avatar || '';\n\n  return {\n    topic_id: t.id,\n    project_id,\n    video_title_short: t.seo_title || t.original_title,\n    avatar_name_age: avatarText.split('.')[0]?.trim()?.substring(0, 100) || null,\n    occupation_income: ext.occupation_income || null,\n    life_stage: a.target_audience_segment || null,\n    pain_point: tr.primary_problem_trigger || null,\n    spending_profile: ext.spending_profile || null,\n    knowledge_level: ext.knowledge_level || null,\n    emotional_driver: a.key_emotional_drivers || null,\n    online_hangouts: (a.viewer_search_intent || '').substring(0, 200) || null,\n    objection: ext.objection || null,\n    dream_outcome: (tr.practical_takeaways || '').substring(0, 200) || null,\n    psychographics: a.psychographics || null,\n    key_emotional_drivers: a.key_emotional_drivers || null,\n    target_audience_segment: a.target_audience_segment || null,\n    viewer_search_intent: a.viewer_search_intent || null,\n    review_status: 'pending'\n  };\n});\n\n// Update playlist metadata on project (non-fatal)\nconst playlistMeta = $('Parse Topics').first().json.playlistMeta || [];\nconst patch = {};\nfor (let i = 0; i < Math.min(playlistMeta.length, 5); i++) {\n  patch['playlist' + (i+1) + '_name'] = playlistMeta[i].name || '';\n  patch['playlist' + (i+1) + '_theme'] = playlistMeta[i].theme || '';\n}\nif (Object.keys(patch).length > 0) {\n  try {\n    await fetch(SB + '/rest/v1/projects?id=eq.' + project_id, {\n      method: 'PATCH',\n      headers: { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },\n      body: JSON.stringify(patch)\n    });\n  } catch (e) { /* non-fatal */ }\n}\n\nreturn [{ json: { project_id, avatarRows, topicsInserted: topics.length } }];",
         "mode": "runOnceForAllItems"
       }
     },
@@ -581,7 +588,7 @@
     },
     {
       "id": "wf-tg-status-ready",
-      "name": "Status \u2192 Topics Pending",
+      "name": "Status → Topics Pending",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -590,7 +597,7 @@
       ],
       "parameters": {
         "method": "PATCH",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Validate').first().json.project_id }}",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Validate').first().json.project_id }}&status=eq.generating_topics",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -696,6 +703,43 @@
       "parameters": {
         "workflowId": "HirXQlJKumfBOhq0"
       }
+    },
+    {
+      "id": "a80e6aef-8b67-46e6-819c-2be834c72445",
+      "name": "Fire Register Analyze",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2910,
+        660
+      ],
+      "parameters": {
+        "jsCode": "// Dispatch register-analyze for each topic (fire-and-forget POST to local webhook)\n// WF_REGISTER_ANALYZE responds immediately from Validate Request; Analyze & Write runs async in background.\nconst topics = $input.all().map(item => item.json);\nconst parseTopics = $('Parse Topics').first().json.topicRows || [];\nconst DASHBOARD_TOKEN = $env.DASHBOARD_API_TOKEN;\nconst WEBHOOK_BASE = $env.N8N_WEBHOOK_BASE || 'http://localhost:5678/webhook';\n\nconst promises = topics.map((t, i) => {\n  const parsed = parseTopics[i] || {};\n  const payload = {\n    input_mode: 'topic',\n    topic_id: t.id,\n    topic_research_brief: [parsed.primary_problem_trigger, parsed.content_angle_blue_ocean, parsed.psychographics].filter(Boolean).join(' | '),\n    topic_angle: parsed.playlist_angle || '',\n    seo_title: t.seo_title || t.original_title || ''\n  };\n  return fetch(`${WEBHOOK_BASE}/register/analyze`, {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'Authorization': `Bearer ${DASHBOARD_TOKEN}`\n    },\n    body: JSON.stringify(payload)\n  })\n    .then(r => ({ topic_id: t.id, http: r.status }))\n    .catch(e => ({ topic_id: t.id, error: e.message }));\n});\n\ntry {\n  const results = await Promise.race([\n    Promise.all(promises),\n    new Promise((res) => setTimeout(() => res([{ warning: 'dispatch-timeout-5s' }]), 5000))\n  ]);\n  console.log('Register analyze dispatch:', JSON.stringify(results).slice(0, 800));\n} catch (e) {\n  console.log('Register analyze dispatch error (non-fatal): ' + e.message);\n}\n\n// Pass INSERT Topics output through unchanged so Map Avatars sees the same 25 items\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "1e82289d-ef01-491e-bae4-92e08c56a8f6",
+      "name": "Prep Scoring Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3840,
+        700
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-projectid",
+              "name": "project_id",
+              "value": "={{ $('Validate').first().json.project_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false
+      }
     }
   ],
   "connections": {
@@ -775,14 +819,14 @@
             "index": 0
           },
           {
-            "node": "Status \u2192 Generating",
+            "node": "Status → Generating",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Status \u2192 Generating": {
+    "Status → Generating": {
       "main": [
         [
           {
@@ -853,7 +897,7 @@
       "main": [
         [
           {
-            "node": "Map Avatars",
+            "node": "Fire Register Analyze",
             "type": "main",
             "index": 0
           }
@@ -875,14 +919,14 @@
       "main": [
         [
           {
-            "node": "Status \u2192 Topics Pending",
+            "node": "Status → Topics Pending",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Status \u2192 Topics Pending": {
+    "Status → Topics Pending": {
       "main": [
         [
           {
@@ -926,17 +970,6 @@
         ]
       ]
     },
-    "Log Completed": {
-      "main": [
-        [
-          {
-            "node": "Trigger WF_OUTLIER_SCORE",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Trigger WF_OUTLIER_SCORE": {
       "main": [
         [
@@ -947,6 +980,44 @@
           }
         ]
       ]
+    },
+    "Fire Register Analyze": {
+      "main": [
+        [
+          {
+            "node": "Map Avatars",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Completed": {
+      "main": [
+        [
+          {
+            "node": "Prep Scoring Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Scoring Input": {
+      "main": [
+        [
+          {
+            "node": "Trigger WF_OUTLIER_SCORE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   }
 }

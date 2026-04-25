@@ -1,0 +1,343 @@
+{
+  "name": "WF_THUMBNAIL_GENERATE",
+  "nodes": [
+    {
+      "id": "webhook-thumbnail-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "thumbnail/generate",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        },
+        "authentication": "headerAuth"
+      },
+      "webhookId": "thumbnail-generate-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      }
+    },
+    {
+      "id": "if-auth-thumbnail",
+      "name": "Check Auth Token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        470,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-thumbnail",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "respond-unauthorized",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        690,
+        500
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      }
+    },
+    {
+      "id": "respond-accepted",
+      "name": "Respond Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        690,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Trigger').item.json.body.topic_id, message: 'Thumbnail generation started' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "fetch-topic",
+      "name": "Fetch Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        910,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Webhook Trigger').item.json.body.topic_id }}"
+            },
+            {
+              "name": "select",
+              "value": "id,project_id,seo_title,original_title,narrative_hook,key_segments,script_metadata,drive_folder_id,country_target"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "generate-concepts",
+      "name": "Generate Concepts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1130,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Generate 2 thumbnail concepts with adaptive style selection\nvar topicArr = $('Fetch Topic').first().json;\nvar topic = Array.isArray(topicArr) ? topicArr[0] : topicArr;\nvar topicId = $('Webhook Trigger').first().json.body.topic_id;\nvar title = topic.seo_title || topic.original_title;\nvar hook = topic.narrative_hook || '';\nvar projectId = topic.project_id;\n\n// Fetch project niche\nvar projResp = await fetch(\n  $env.SUPABASE_URL + '/rest/v1/projects?id=eq.' + projectId + '&select=niche',\n  { headers: { 'apikey': $env.SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY } }\n);\nvar projData = await projResp.json();\nvar niche = (Array.isArray(projData) && projData[0]) ? projData[0].niche : '';\n\n// ── Fetch production_register + era (per-video cinematic register)\nvar registerId = topic.production_register || '';\nvar registerEra = topic.register_era_detected || '';\nvar registerGrade = 'teal-orange color grade (Hollywood blockbuster standard)';\nvar registerAccent = '';\nif (registerId) {\n  try {\n    var rResp = await fetch(\n      $env.SUPABASE_URL + '/rest/v1/production_registers?register_id=eq.' + registerId + '&select=config,accent_color_hex',\n      { headers: { 'apikey': $env.SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY } }\n    );\n    var rData = await rResp.json();\n    if (Array.isArray(rData) && rData[0]) {\n      registerAccent = rData[0].accent_color_hex || '';\n    }\n  } catch (e) { /* non-fatal */ }\n}\nvar REGISTER_GRADE_OVERRIDES = {\n  REGISTER_01_ECONOMIST: 'muted editorial documentary color grade with controlled warmth, amber midtones, subtle shadow cooling (Johnny Harris / Wendover documentary look)',\n  REGISTER_02_PREMIUM: 'Kodak Portra 400 color grade with teal shadows, amber highlights, and generous golden hour warmth (Bloomberg Originals luxury editorial)',\n  REGISTER_03_NOIR: 'bleach-bypass desaturated color grade with deep crushed blacks and cold blue shadows, low saturation, noir chiaroscuro (LEMMiNO / Netflix Dirty Money noir)',\n  REGISTER_04_SIGNAL: 'clinical cool color grade with blue-black shadows, cyan highlights, and high contrast for tech precision (Apple keynote / ColdFusion tech documentary)',\n  REGISTER_05_ARCHIVE: 'sepia-faded warm color grade with lifted shadows, low saturation, and period archival patina (Ken Burns documentary / mid-century Kodachrome)'\n};\nif (registerId && REGISTER_GRADE_OVERRIDES[registerId]) {\n  registerGrade = REGISTER_GRADE_OVERRIDES[registerId];\n}\n\n// Niche emotion profiles\nvar nicheEmotions = {\n  'betrayal_revenge': {\n    single_a: 'jaw-dropped shock, eyes wide, mouth agape, one tear rolling down cheek',\n    single_b: 'cold calculating fury, narrowed eyes, clenched jaw, veins visible on temple',\n    dual_left: 'sinister smirk, one eyebrow raised, knowing look, slight head tilt',\n    dual_right: 'devastated shock, wide tearful eyes, hand over mouth, crumbling composure',\n    scene_bg: 'a shattered family photo frame on a dark wooden table, broken glass, dramatic volumetric light beam, teal-orange color grade'\n  },\n  'legal_court': {\n    single_a: 'stunned disbelief, wide eyes, raised eyebrows, mouth slightly open',\n    single_b: 'stern suspicious glare, furrowed brows, piercing side-eye, jaw set tight',\n    dual_left: 'aggressive prosecutor pointing finger, intense focused stare, sharp suit',\n    dual_right: 'panicked defendant, sweat on forehead, loosened tie, darting fearful eyes',\n    scene_bg: 'empty dramatic courtroom interior, dark wood, single volumetric spotlight on witness stand, teal-orange color grade'\n  },\n  'true_crime': {\n    single_a: 'haunted thousand-yard stare, hollow glistening eyes, single tear, jaw clenched with fierce determination',\n    single_b: 'intense detective scrutiny, one eyebrow raised, skeptical frown, sharp analytical gaze',\n    dual_left: 'cold emotionless criminal stare, dead eyes, slight smirk, unflinching',\n    dual_right: 'determined detective, sharp analytical gaze, slight lean forward, badge visible',\n    scene_bg: 'dimly lit evidence room, red string connecting photos on corkboard, volumetric light beam cutting through dusty air, teal-orange color grade'\n  }\n};\n\nvar nicheKey = 'betrayal_revenge';\nvar nicheLower = niche.toLowerCase();\nif (nicheLower.includes('legal') || nicheLower.includes('court')) nicheKey = 'legal_court';\nelse if (nicheLower.includes('crime') || nicheLower.includes('serial') || nicheLower.includes('heist') || nicheLower.includes('unsolved')) nicheKey = 'true_crime';\n\nvar emotions = nicheEmotions[nicheKey];\n\nvar promptText = 'You are an elite YouTube thumbnail strategist for documentary channels (12%+ CTR).\\n\\n'\n  + 'VIDEO TITLE: \"' + title + '\"\\n'\n  + 'HOOK: \"' + hook + '\"\\n'\n  + 'NICHE: \"' + niche + '\"\\n\\n'\n  + 'You must generate 2 thumbnail concepts. For EACH concept, first choose the best STYLE:\\n\\n'\n  + 'STYLE OPTIONS:\\n'\n  + '1. \"single_face\" — One person\\'s face filling 65% of RIGHT side of frame. Left third is empty dark space for text overlay. Best for: personal stories, shocking reveals.\\n'\n  + '2. \"dual_face\" — Two opposing faces side by side with dark divider. Best for: conflict stories, betrayal, legal battles, investigations.\\n'\n  + '3. \"scene_overlay\" — Wide cinematic scene as background with a person\\'s face overlaid in lower-right corner (40% of frame). Upper-left quadrant darker for text. Best for: location-based stories, historical events, crime scenes.\\n\\n'\n  + 'RULES FOR CHOOSING STYLE:\\n'\n  + '- If the title implies TWO opposing parties or conflict -> dual_face\\n'\n  + '- If the title references a specific place, event, or scene -> scene_overlay\\n'\n  + '- If the title is about a single person\\'s experience or a shocking fact -> single_face\\n'\n  + '- Concept A and Concept B SHOULD use DIFFERENT styles for variety\\n'\n  + '- If both concepts naturally fit the same style, that\\'s OK, but prefer variety\\n\\n'\n  + 'For EACH concept provide:\\n\\n'\n  + '1. style: \"single_face\" | \"dual_face\" | \"scene_overlay\"\\n\\n'\n  + '2. text_words: 2-3 most POWERFUL words from the title. ALL CAPS. Skip articles/prepositions. Pick nouns/verbs with emotional punch.\\n\\n'\n  + '3. emphasis_index: Which word (0-based) gets color emphasis.\\n\\n'\n  + '4. image_prompts: Array of Fal.ai Seedream 4.0 prompts.\\n'\n  + '   - single_face: 1 prompt (1280x720 landscape, face fills 65% of RIGHT side, left third empty dark for text)\\n'\n  + '   - dual_face: 2 prompts (each 640x720 portrait, face fills 80%)\\n'\n  + '     - First prompt = left person (the antagonist/aggressor/prosecutor)\\n'\n  + '     - Second prompt = right person (the victim/defendant/detective)\\n'\n  + '   - scene_overlay: 2 prompts\\n'\n  + '     - First = wide 1280x720 scene (NO people, cinematic establishing shot, upper-left darker for text)\\n'\n  + '     - Second = 480x480 tight face portrait for overlay\\n\\n'\n  + '   === CRITICAL: PHOTOREALISTIC IMAGE RULES (MANDATORY) ===\\n'\n  + '   Every prompt MUST start with: \"Ultra-realistic DSLR photograph, shot on Canon EOS R5 85mm f/1.2\"\\n'\n  + '   Every prompt MUST end with: \"8K resolution, RAW photograph, photorealistic, NOT illustration, NOT painting, NOT sketch, NOT anime, NOT digital art\" followed by crop dimensions\\n\\n'\n  + '   Lighting (MANDATORY in every face prompt):\\n'\n  + '   - Studio rim lighting from behind creating golden edge light on hair and shoulders\\n'\n  + '   - Dramatic key light from 45 degrees casting sharp Rembrandt triangle shadow on far cheek\\n'\n  + '   - Catch lights visible in both eyes (critical for engagement)\\n\\n'\n  + '   Color grade: dark cinematic background with teal-orange color grade (Hollywood blockbuster standard)\\n'\n  + '   Detail: skin pores, fine facial hair, and micro-details visible. Photojournalistic quality.\\n'\n  + '   NO text, NO watermarks, NO logos, NO words of any kind in the image\\n'\n  + '   === END PHOTOREALISTIC RULES ===\\n\\n'\n  + '   Emotion guidance per niche:\\n'\n  + '   - single_face concept A: ' + emotions.single_a + '\\n'\n  + '   - single_face concept B: ' + emotions.single_b + '\\n'\n  + '   - dual_face left person: ' + emotions.dual_left + '\\n'\n  + '   - dual_face right person: ' + emotions.dual_right + '\\n'\n  + '   - scene_overlay background: ' + emotions.scene_bg + '\\n\\n'\n  + 'Return ONLY valid JSON:\\n'\n  + '{\"concepts\":[{\"style\":\"dual_face\",\"text_words\":[\"WORD1\",\"WORD2\"],\"emphasis_index\":0,\"image_prompts\":[\"prompt for left face...\",\"prompt for right face...\"]},{\"style\":\"single_face\",\"text_words\":[\"WORD1\",\"WORD2\"],\"emphasis_index\":1,\"image_prompts\":[\"prompt for single face...\"]}]}';\n\n// === BEGIN AU OVERLAY (migration 034) — append country sections for AU\nif ((topic.country_target || 'GENERAL') === 'AU') {\n  try {\n    var __cbRes = await fetch($env.SUPABASE_URL + '/rest/v1/rpc/render_country_blocks', {\n      method: 'POST',\n      headers: { apikey: $env.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },\n      body: JSON.stringify({ p_country_target: 'AU' })\n    });\n    if (__cbRes.ok) {\n      var __cb = await __cbRes.json();\n      var __auAppend = [\n        __cb.country_compliance_block || '',\n        __cb.country_terminology_block || '',\n        __cb.country_calendar_context || '',\n        __cb.country_demonetization_constraints || ''\n      ].filter(Boolean).join('\\n\\n');\n      if (__auAppend) promptText = promptText + '\\n\\n=== AU COUNTRY CONTEXT ===\\n\\n' + __auAppend;\n    }\n  } catch (_) { /* leave promptText unchanged on RPC failure */ }\n}\n// === END AU OVERLAY ===\n\nvar claudeResp = await fetch('https://api.anthropic.com/v1/messages', {\n  method: 'POST',\n  headers: {\n    'x-api-key': $env.ANTHROPIC_API_KEY,\n    'anthropic-version': '2023-06-01',\n    'content-type': 'application/json'\n  },\n  body: JSON.stringify({\n    model: 'claude-sonnet-4-20250514',\n    max_tokens: 3000,\n    messages: [{ role: 'user', content: promptText }]\n  })\n});\n\nvar claudeResult = await claudeResp.json();\nif (!claudeResult.content || !claudeResult.content[0]) {\n  throw new Error('Claude API error: ' + JSON.stringify(claudeResult).substring(0, 500));\n}\n\nvar concepts;\ntry {\n  var text = claudeResult.content[0].text;\n  var jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  concepts = JSON.parse(jsonMatch[0]).concepts;\n  if (!concepts || concepts.length < 2) throw new Error('Need 2 concepts');\n  var validStyles = ['single_face', 'dual_face', 'scene_overlay'];\n  for (var ci = 0; ci < concepts.length; ci++) {\n    var c = concepts[ci];\n    if (!validStyles.includes(c.style)) c.style = 'single_face';\n    if (!c.text_words || !Array.isArray(c.text_words)) throw new Error('Missing text_words');\n    if (c.text_words.length > 3) c.text_words = c.text_words.slice(0, 3);\n    if (typeof c.emphasis_index !== 'number') c.emphasis_index = 0;\n    if (!c.image_prompts || !Array.isArray(c.image_prompts)) throw new Error('Missing image_prompts');\n    var expectedCount = c.style === 'single_face' ? 1 : 2;\n    if (c.image_prompts.length < expectedCount) throw new Error('Style ' + c.style + ' needs ' + expectedCount + ' prompts, got ' + c.image_prompts.length);\n    c.image_prompts = c.image_prompts.slice(0, expectedCount);\n  }\n} catch (e) {\n  throw new Error('Claude parse error: ' + e.message);\n}\n\nconsole.log('A: style=' + concepts[0].style + ' words=[' + concepts[0].text_words.join(', ') + '] prompts=' + concepts[0].image_prompts.length);\nconsole.log('B: style=' + concepts[1].style + ' words=[' + concepts[1].text_words.join(', ') + '] prompts=' + concepts[1].image_prompts.length);\n\nreturn [{ json: {\n  topic_id: topicId,\n  project_id: projectId,\n  drive_folder_id: topic.drive_folder_id,\n  title: title,\n  niche: niche,\n  concepts: concepts\n} }];"
+      }
+    },
+    {
+      "id": "generate-images",
+      "name": "Generate Images",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1350,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Generate AI images — count depends on style (1 for single_face, 2 for dual/scene)\nvar execSync = require('child_process').execSync;\nvar data = $input.first().json;\nvar topicId = data.topic_id;\nvar concepts = data.concepts;\n\nvar workdir = '/tmp/production/' + topicId + '/thumbnails';\nexecSync('mkdir -p ' + workdir, { shell: '/bin/sh' });\n\n// Download Montserrat ExtraBold if not cached\nvar fontPath = '/tmp/Montserrat-ExtraBold.ttf';\ntry {\n  execSync('test -f ' + fontPath, { shell: '/bin/sh' });\n} catch(e) {\n  try {\n    execSync('curl -sL -o ' + fontPath + ' \"https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-ExtraBold.ttf\"', { shell: '/bin/sh', timeout: 15000 });\n  } catch(e2) {\n    fontPath = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';\n  }\n}\nconsole.log('Font: ' + fontPath);\n\nvar falHeaders = { 'Authorization': 'Key ' + $env.FAL_API_KEY, 'Content-Type': 'application/json' };\n\n// Size map per style and prompt index\nvar sizeMap = {\n  'single_face': [{ width: 1280, height: 720 }],\n  'dual_face': [{ width: 640, height: 720 }, { width: 640, height: 720 }],\n  'scene_overlay': [{ width: 1280, height: 720 }, { width: 480, height: 480 }]\n};\n\nfor (var v = 0; v < 2; v++) {\n  var style = concepts[v].style;\n  var prompts = concepts[v].image_prompts;\n  var sizes = sizeMap[style] || sizeMap['single_face'];\n\n  for (var p = 0; p < prompts.length; p++) {\n    var size = sizes[p] || sizes[0];\n    console.log('Variant ' + (v === 0 ? 'A' : 'B') + ' img' + p + ' (' + style + '): ' + size.width + 'x' + size.height);\n    var resp = await fetch('https://fal.run/fal-ai/bytedance/seedream/v4/text-to-image', {\n      method: 'POST',\n      headers: falHeaders,\n      body: JSON.stringify({\n        prompt: prompts[p],\n        image_size: size,\n        num_images: 1\n      })\n    });\n    var result = await resp.json();\n    if (!result.images || !result.images[0]) {\n      throw new Error('Fal.ai failed v' + v + ' img' + p + ': ' + JSON.stringify(result).substring(0, 300));\n    }\n    var outPath = workdir + '/ai_' + v + '_' + p + '.png';\n    execSync('curl -sL -o ' + outPath + ' \"' + result.images[0].url + '\"', { shell: '/bin/sh', timeout: 30000 });\n    console.log('Saved: ' + outPath);\n  }\n}\n\nreturn [{ json: {\n  topic_id: data.topic_id,\n  project_id: data.project_id,\n  drive_folder_id: data.drive_folder_id,\n  title: data.title,\n  niche: data.niche,\n  concepts: data.concepts,\n  workdir: workdir,\n  fontPath: fontPath\n} }];"
+      }
+    },
+    {
+      "id": "compose-thumbnails",
+      "name": "Compose Thumbnails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1570,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Compose thumbnails — layout adapts to style (single_face, dual_face, scene_overlay)\nvar execSync = require('child_process').execSync;\nvar data = $input.first().json;\nvar workdir = data.workdir;\nvar fontPath = data.fontPath;\nvar concepts = data.concepts;\nvar topicId = data.topic_id;\n\nvar palettes = [\n  { emphasisColor: 'yellow', textColor: 'white', borderColor: 'black', dividerColor: '255:230:0' },\n  { emphasisColor: '#FF2020', textColor: 'white', borderColor: 'black', dividerColor: '255:32:32' }\n];\n\nfor (var v = 0; v < 2; v++) {\n  var pal = palettes[v];\n  var style = concepts[v].style;\n  var words = concepts[v].text_words;\n  var emphIdx = concepts[v].emphasis_index || 0;\n  var output = workdir + '/thumb_' + (v === 0 ? 'a' : 'b') + '.png';\n\n  var wordCount = words.length;\n  var fontSize = wordCount === 2 ? 120 : 100;\n  var emphFontSize = Math.floor(fontSize * 1.15);\n  var lineSpacing = Math.floor(fontSize * 0.2);\n\n  // Calculate text block height\n  var totalH = 0;\n  for (var wi = 0; wi < wordCount; wi++) {\n    totalH += (wi === emphIdx ? emphFontSize : fontSize);\n    if (wi < wordCount - 1) totalH += lineSpacing;\n  }\n  var textStartY = 720 - totalH - 35;\n  var textX = 40;\n\n  console.log('Variant ' + (v === 0 ? 'A' : 'B') + ': style=' + style + ' words=[' + words.join(', ') + ']');\n\n  // --- STEP 1: Build base image per style ---\n  var baseImg = workdir + '/base_' + v + '.png';\n\n  if (style === 'single_face') {\n    // Single face: just copy the image\n    execSync('cp ' + workdir + '/ai_' + v + '_0.png ' + baseImg, { shell: '/bin/sh' });\n\n  } else if (style === 'dual_face') {\n    // Two 640x720 portraits side by side with dark gap + glow line\n    var left = workdir + '/ai_' + v + '_0.png';\n    var right = workdir + '/ai_' + v + '_1.png';\n    // Compose: place left at x=0, right at x=644, 4px dark gap with colored glow line\n    var dualFilter = '[0:v]scale=640:720[l];[1:v]scale=640:720[r];'\n      + 'color=c=black:s=1280x720:d=1[bg];'\n      + '[bg][l]overlay=0:0[t1];'\n      + '[t1][r]overlay=644:0[t2];'\n      + '[t2]drawbox=x=638:y=0:w=6:h=720:color=0x0A0A14@1:t=fill,'\n      + 'drawbox=x=639:y=0:w=2:h=720:color=0x' + pal.dividerColor.split(':').map(function(c){return ('0'+parseInt(c).toString(16)).slice(-2);}).join('') + '@0.8:t=fill[out]';\n    execSync('ffmpeg -y -i ' + left + ' -i ' + right\n      + ' -filter_complex \"' + dualFilter + '\" -map \"[out]\" -frames:v 1 ' + baseImg + ' 2>&1',\n      { shell: '/bin/sh', timeout: 30000 });\n\n  } else if (style === 'scene_overlay') {\n    // Wide scene + face overlay in lower-right corner\n    var scene = workdir + '/ai_' + v + '_0.png';\n    var face = workdir + '/ai_' + v + '_1.png';\n    // Scale face to 360x360 with rounded-ish border, overlay at bottom-right\n    var overlayFilter = '[1:v]scale=360:360[face];'\n      + '[0:v][face]overlay=890:330[t1];'\n      + '[t1]drawbox=x=888:y=328:w=364:h=364:color=0x' + pal.dividerColor.split(':').map(function(c){return ('0'+parseInt(c).toString(16)).slice(-2);}).join('') + '@0.7:t=2[out]';\n    execSync('ffmpeg -y -i ' + scene + ' -i ' + face\n      + ' -filter_complex \"' + overlayFilter + '\" -map \"[out]\" -frames:v 1 ' + baseImg + ' 2>&1',\n      { shell: '/bin/sh', timeout: 30000 });\n    // Shift text to left side for scene_overlay (face is on right)\n    textX = 40;\n  }\n\n  // --- STEP 2: Add gradient overlay + text ---\n  var filters = [];\n\n  // Gradient: darken bottom portion for text readability\n  if (style === 'scene_overlay') {\n    // Darker gradient for scene backgrounds (busier images)\n    filters.push('drawbox=x=0:y=280:w=850:h=80:color=black@0.15:t=fill');\n    filters.push('drawbox=x=0:y=360:w=850:h=80:color=black@0.3:t=fill');\n    filters.push('drawbox=x=0:y=440:w=850:h=80:color=black@0.45:t=fill');\n    filters.push('drawbox=x=0:y=520:w=850:h=200:color=black@0.6:t=fill');\n  } else {\n    // Standard gradient for face-based thumbnails\n    filters.push('drawbox=x=0:y=302:w=1280:h=72:color=black@0.1:t=fill');\n    filters.push('drawbox=x=0:y=374:w=1280:h=72:color=black@0.2:t=fill');\n    filters.push('drawbox=x=0:y=446:w=1280:h=72:color=black@0.35:t=fill');\n    filters.push('drawbox=x=0:y=518:w=1280:h=202:color=black@0.55:t=fill');\n  }\n\n  // Text overlays\n  var y = textStartY;\n  for (var wi = 0; wi < wordCount; wi++) {\n    var word = words[wi].toUpperCase();\n    var isEmph = (wi === emphIdx);\n    var fc = isEmph ? pal.emphasisColor : pal.textColor;\n    var fs = isEmph ? emphFontSize : fontSize;\n    var bw = isEmph ? 6 : 5;\n    var safeWord = word.replace(/'/g, '').replace(/:/g, '').replace(/\\\\/g, '');\n\n    filters.push(\n      \"drawtext=text='\" + safeWord + \"'\"\n      + \":fontfile='\" + fontPath + \"'\"\n      + ':fontsize=' + fs\n      + ':fontcolor=' + fc\n      + ':borderw=' + bw\n      + ':bordercolor=' + pal.borderColor\n      + ':x=' + textX\n      + ':y=' + Math.round(y)\n    );\n    y += fs + lineSpacing;\n  }\n\n  var filterStr = filters.join(',');\n  execSync(\"cat > \" + workdir + \"/f_\" + v + \".txt << 'FEOF'\\n\" + filterStr + \"\\nFEOF\", { shell: '/bin/sh' });\n  execSync('ffmpeg -y -i ' + baseImg + ' -filter_script:v ' + workdir + '/f_' + v + '.txt -frames:v 1 ' + output + ' 2>&1',\n    { shell: '/bin/sh', timeout: 30000 });\n  console.log('Thumbnail ' + (v === 0 ? 'A' : 'B') + ' (' + style + '): done');\n}\n\nvar thumbAB64 = execSync('base64 -w0 ' + workdir + '/thumb_a.png', { maxBuffer: 10 * 1024 * 1024 }).toString().trim();\nvar thumbBB64 = execSync('base64 -w0 ' + workdir + '/thumb_b.png', { maxBuffer: 10 * 1024 * 1024 }).toString().trim();\nconsole.log('Sizes: A=' + Math.round(thumbAB64.length / 1024) + 'KB, B=' + Math.round(thumbBB64.length / 1024) + 'KB');\n\nreturn [\n  {\n    json: { filename: 'thumbnail_option_a.png', drive_folder_id: data.drive_folder_id, topic_id: topicId, project_id: data.project_id, concept: concepts[0], variant: 'A' },\n    binary: { data: { data: thumbAB64, mimeType: 'image/png', fileName: 'thumbnail_option_a.png' } }\n  },\n  {\n    json: { filename: 'thumbnail_option_b.png', drive_folder_id: data.drive_folder_id, topic_id: topicId, project_id: data.project_id, concept: concepts[1], variant: 'B' },\n    binary: { data: { data: thumbBB64, mimeType: 'image/png', fileName: 'thumbnail_option_b.png' } }\n  }\n];"
+      }
+    },
+    {
+      "id": "upload-to-drive",
+      "name": "Upload to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1790,
+        300
+      ],
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $json.filename }}",
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "={{ $json.drive_folder_id }}",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "z0gigNHVnhcGz2pD",
+          "name": "GoogleDriveAccount"
+        }
+      }
+    },
+    {
+      "id": "update-supabase-log",
+      "name": "Update Supabase & Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2010,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Update Supabase: set thumbnail_url on topic + log to production_log\nvar uploads = $('Upload to Drive').all();\nvar conceptData = $('Generate Concepts').first().json;\nvar topicId = conceptData.topic_id;\nvar projectId = conceptData.project_id;\n\nvar thumbDetails = uploads.map(function(item, i) {\n  var concept = conceptData.concepts[i] || {};\n  return {\n    variant: i === 0 ? 'A' : 'B',\n    style: concept.style || 'single_face',\n    drive_file_id: item.json.id,\n    drive_file_name: item.json.name,\n    web_view_link: item.json.webViewLink,\n    web_content_link: item.json.webContentLink,\n    text_words: concept.text_words || [],\n    emphasis_index: concept.emphasis_index || 0,\n    image_prompts: concept.image_prompts || []\n  };\n});\n\nvar primaryUrl = thumbDetails[0].web_view_link || thumbDetails[0].web_content_link || '';\n\nvar supabaseHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=representation'\n};\n\nvar patchResp = await fetch(\n  $env.SUPABASE_URL + '/rest/v1/topics?id=eq.' + topicId,\n  {\n    method: 'PATCH',\n    headers: supabaseHeaders,\n    body: JSON.stringify({ thumbnail_url: primaryUrl, updated_at: new Date().toISOString() })\n  }\n);\nif (!patchResp.ok) console.error('PATCH topics error: ' + patchResp.status);\nconsole.log('Updated topic ' + topicId + ' thumbnail_url');\n\nvar logResp = await fetch(\n  $env.SUPABASE_URL + '/rest/v1/production_log',\n  {\n    method: 'POST',\n    headers: supabaseHeaders,\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: topicId,\n      stage: 'thumbnail',\n      action: 'completed',\n      details: {\n        thumbnails: thumbDetails,\n        primary_thumbnail: thumbDetails[0].drive_file_id,\n        styles_used: thumbDetails.map(function(t) { return t.style; })\n      }\n    })\n  }\n);\nif (!logResp.ok) console.error('POST production_log error: ' + logResp.status);\nconsole.log('Production log written');\n\nreturn [{ json: { success: true, topic_id: topicId, project_id: projectId, thumbnail_url: primaryUrl, thumbnails: thumbDetails } }];"
+      }
+    },
+    {
+      "id": "node-chain-58cbtI4P",
+      "name": "Trigger WF_THUMBNAIL_SCORE",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2260,
+        300
+      ],
+      "parameters": {
+        "workflowId": "58cbtI4PgUnVL39o"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Auth Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Auth Token": {
+      "main": [
+        [
+          {
+            "node": "Respond Accepted",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Topic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Topic": {
+      "main": [
+        [
+          {
+            "node": "Generate Concepts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Concepts": {
+      "main": [
+        [
+          {
+            "node": "Generate Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Images": {
+      "main": [
+        [
+          {
+            "node": "Compose Thumbnails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Thumbnails": {
+      "main": [
+        [
+          {
+            "node": "Upload to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Drive": {
+      "main": [
+        [
+          {
+            "node": "Update Supabase & Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Supabase & Log": {
+      "main": [
+        [
+          {
+            "node": "Trigger WF_THUMBNAIL_SCORE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}
