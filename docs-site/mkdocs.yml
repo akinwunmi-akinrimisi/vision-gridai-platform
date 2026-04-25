@@ -114,3 +114,7 @@ nav:
     - Cost economics: operations/cost-economics.md
     - Debugging recipes: operations/debugging-recipes.md
     - Incident log: operations/incident-log.md
+  - Australia overlay:
+    - Overview: au/overview.md
+    - Sub-niches: au/sub-niches.md
+    - Compliance + demonetization audit: au/compliance.md

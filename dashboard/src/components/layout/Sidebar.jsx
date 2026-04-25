@@ -25,6 +25,10 @@ import {
   Brain,
   Lightbulb,
   Radar,
+  Calendar,
+  Network,
+  ShieldCheck,
+  ScrollText,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -47,6 +51,8 @@ import {
 import useMediaQuery from '@/hooks/useMediaQuery';
 import { useQuotaStatus } from '@/hooks/useQuotaStatus';
 import { useProjects } from '@/hooks/useProjects';
+import { useCountryTab } from '@/hooks/useCountryTab';
+import CountryTab from '@/components/layout/CountryTab';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -58,6 +64,8 @@ const platformNavItems = [
   { label: 'Projects', icon: LayoutDashboard, path: '/' },
   { label: 'Shorts Creator', icon: Clapperboard, path: '/shorts' },
   { label: 'Social Publisher', icon: Share2, path: '/social' },
+  // AU-only platform items (filtered by useCountryTab.isAU)
+  { label: 'AU Compliance Inbox', icon: ShieldCheck, path: '/au/compliance', auOnly: true },
 ];
 
 const projectNavItems = [
@@ -72,6 +80,10 @@ const projectNavItems = [
   { label: 'Analytics', icon: BarChart3, path: '/project/:id/analytics' },
   { label: 'Calendar', icon: CalendarDays, path: '/project/:id/calendar' },
   { label: 'Engagement', icon: MessageCircle, path: '/project/:id/engagement' },
+  // AU-only project items (filtered by useCountryTab.isAU)
+  { label: 'AU Calendar', icon: Calendar, path: '/project/:id/au/calendar', auOnly: true },
+  { label: 'AU SWOT', icon: Network, path: '/project/:id/au/swot', auOnly: true },
+  { label: 'AU Coach Reports', icon: ScrollText, path: '/project/:id/au/coach', auOnly: true },
   { label: 'Settings', icon: Settings, path: '/project/:id/settings' },
 ];
 
@@ -274,6 +286,11 @@ export default function Sidebar({ onLogout, collapsed, setCollapsed }) {
   const projectId = projectIdMatch?.[1] || null;
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { isAU } = useCountryTab();
+
+  // Filter nav items: drop auOnly items when AU tab is not active.
+  const visiblePlatformNav = platformNavItems.filter((i) => !i.auOnly || isAU);
+  const visibleProjectNav = projectNavItems.filter((i) => !i.auOnly || isAU);
 
   const isInsideProject =
     !!projectId && location.pathname.startsWith('/project/');
@@ -330,6 +347,9 @@ export default function Sidebar({ onLogout, collapsed, setCollapsed }) {
           )}
         </div>
 
+        {/* ── Country Tab (General / Australia) ── */}
+        <CountryTab collapsed={collapsed} />
+
         {/* ── Project Selector (inside project context) ── */}
         {isInsideProject && (
           <ProjectSelector
@@ -375,7 +395,7 @@ export default function Sidebar({ onLogout, collapsed, setCollapsed }) {
               </span>
             </div>
           )}
-          {platformNavItems.map((item) => (
+          {visiblePlatformNav.map((item) => (
             <NavItem
               key={item.label}
               item={item}
@@ -397,7 +417,7 @@ export default function Sidebar({ onLogout, collapsed, setCollapsed }) {
                 </div>
               )}
               {collapsed && <div className="h-3" />}
-              {projectNavItems.map((item) => (
+              {visibleProjectNav.map((item) => (
                 <NavItem
                   key={item.label}
                   item={item}

@@ -27,6 +27,10 @@ const IntelligenceHub = lazy(() => import('./pages/IntelligenceHub'));
 const DailyIdeas = lazy(() => import('./pages/DailyIdeas'));
 const AICoach = lazy(() => import('./pages/AICoach'));
 const ChannelAnalyzer = lazy(() => import('./pages/ChannelAnalyzer'));
+const AUCalendar = lazy(() => import('./pages/AUCalendar'));
+const AUSWOT = lazy(() => import('./pages/AUSWOT'));
+const AUCoachReports = lazy(() => import('./pages/AUCoachReports'));
+const AUComplianceInbox = lazy(() => import('./pages/AUComplianceInbox'));
 
 const PageFallback = (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -68,6 +72,11 @@ export default function App() {
             <Route path="/social" element={<SocialPublisher />} />
             <Route path="/channel-analyzer" element={<ChannelAnalyzer />} />
             <Route path="/project/:id/settings" element={<Settings />} />
+            {/* ── AU overlay routes ── */}
+            <Route path="/au/compliance" element={<AUComplianceInbox />} />
+            <Route path="/project/:id/au/calendar" element={<AUCalendar />} />
+            <Route path="/project/:id/au/swot" element={<AUSWOT />} />
+            <Route path="/project/:id/au/coach" element={<AUCoachReports />} />
           </Routes>
         </Suspense>
       </AppLayout>

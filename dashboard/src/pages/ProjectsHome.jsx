@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 import { Plus, Folder, TrendingUp, DollarSign, Video, Sparkles } from 'lucide-react';
 import { useProjects, useRetryResearch, useDeleteProject } from '../hooks/useProjects';
 import { useNicheHealthHistoryBatch } from '../hooks/useAnalyticsIntelligence';
+import { useCountryTab } from '../hooks/useCountryTab';
 import PageHeader from '../components/shared/PageHeader';
 import KPICard from '../components/shared/KPICard';
 import EmptyState from '../components/shared/EmptyState';
@@ -22,9 +23,19 @@ export default function ProjectsHome() {
       window.history.replaceState({}, '');
     }
   }, [location.state]);
-  const { data: projects, isLoading, error } = useProjects();
+  const { data: allProjects, isLoading, error } = useProjects();
   const retryResearchMutation = useRetryResearch();
   const deleteProjectMutation = useDeleteProject();
+  const { country } = useCountryTab();
+
+  // Filter projects by active country tab. Projects without country_target
+  // (legacy rows) read as 'GENERAL'.
+  const projects = useMemo(() => {
+    if (!allProjects) return allProjects;
+    return allProjects.filter(
+      (p) => (p.country_target || 'GENERAL') === country
+    );
+  }, [allProjects, country]);
 
   // Sprint S7: batch-fetch niche health history (last 8 weeks) for every
   // project in a single Supabase call — avoids N+1 queries.

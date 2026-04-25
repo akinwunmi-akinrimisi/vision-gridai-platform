@@ -208,11 +208,27 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
     }
   };
 
-  const handleSave = () => {
-    if (onSave) {
-      onSave(prompt.id, editText);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+
+  const handleSaveClicked = () => {
+    if (prompt.requires_compliance_role) {
+      setConfirmText('');
+      setConfirmOpen(true);
+      return;
     }
+    if (onSave) onSave(prompt.id, editText);
   };
+
+  const handleConfirmSave = () => {
+    if (confirmText !== 'CONFIRM') return;
+    if (onSave) onSave(prompt.id, editText);
+    setConfirmOpen(false);
+    setConfirmText('');
+  };
+
+  // Backwards-compat: existing call sites pass handleSave
+  const handleSave = handleSaveClicked;
 
   const handleCancel = () => {
     setEditText(prompt.prompt_text);
@@ -365,6 +381,51 @@ export default function PromptCard({ prompt, projectId, onSave, onRevert }) {
         isOpen={showTestModal}
         onClose={() => setShowTestModal(false)}
       />
+
+      {/* Compliance-gated save confirmation
+          Triggered when prompt_templates.requires_compliance_role = true.
+          Forces operator to type CONFIRM before saving — soft gate, not a
+          role system. AU disclaimer rows (AD-01, AD-02, AD-04) carry this
+          flag per migration 032.
+      */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Compliance-sensitive prompt</DialogTitle>
+            <DialogDescription>
+              This prompt is flagged as compliance-sensitive (e.g., a verbatim
+              regulatory disclaimer). Editing it changes the legal protection
+              posture for any video using it.
+              <br /><br />
+              Type <strong className="font-mono">CONFIRM</strong> to save.
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="Type CONFIRM"
+            autoFocus
+            className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm font-mono"
+          />
+          <div className="flex gap-2 justify-end mt-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setConfirmOpen(false); setConfirmText(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={confirmText !== 'CONFIRM'}
+              onClick={handleConfirmSave}
+            >
+              Save changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

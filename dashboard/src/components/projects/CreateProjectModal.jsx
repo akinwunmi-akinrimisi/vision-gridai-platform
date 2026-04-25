@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { useCreateProject } from '../../hooks/useProjects';
+import { useCountryTab } from '../../hooks/useCountryTab';
 
 const EXAMPLE_HINTS = [
   'e.g., US Credit Cards',
@@ -47,6 +48,34 @@ export default function CreateProjectModal({ open, onOpenChange, prefillNiche, p
   const [selectedResultId, setSelectedResultId] = useState('');
 
   const createProject = useCreateProject();
+  const { isAU } = useCountryTab();
+
+  // AU-specific fields. Default values match Strategy §11.1 hub config.
+  const [auChannelType, setAuChannelType] = useState('hub');
+  const [auParentProjectId, setAuParentProjectId] = useState('');
+  const [auCostCeiling, setAuCostCeiling] = useState(8);
+  const [auNicheVariants, setAuNicheVariants] = useState([
+    'credit_cards_au',
+    'super_au',
+    'property_mortgage_au',
+    'tax_au',
+    'etf_investing_au',
+  ]);
+
+  // Fetch AU hub projects for spoke selection (only relevant when channel_type=spoke)
+  const { data: auHubs } = useQuery({
+    queryKey: ['au-hubs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('country_target', 'AU')
+        .eq('channel_type', 'hub');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open && isAU && auChannelType === 'spoke',
+  });
 
   // Fetch the latest complete research run (across all projects)
   const { data: latestRun } = useQuery({
@@ -161,12 +190,26 @@ export default function CreateProjectModal({ open, onOpenChange, prefillNiche, p
     if (!niche.trim() || niche.trim().length < 3) return;
 
     try {
-      await createProject.mutateAsync({
+      const payload = {
         niche: niche.trim(),
         description: description.trim() || undefined,
         target_video_count: targetVideoCount,
         reference_analyses: analysisIds || undefined,
-      });
+      };
+
+      // Inject AU overlay fields when the AU tab is active
+      if (isAU) {
+        payload.country_target = 'AU';
+        payload.language = 'en-AU';
+        payload.channel_type = auChannelType;
+        if (auChannelType === 'spoke' && auParentProjectId) {
+          payload.parent_project_id = auParentProjectId;
+        }
+        payload.cost_ceiling_usd = auCostCeiling;
+        payload.au_niche_variants = auNicheVariants;  // Backend reads this to seed sub-niche weights
+      }
+
+      await createProject.mutateAsync(payload);
 
       setShowSuccess(true);
       setTimeout(() => {
@@ -330,6 +373,112 @@ export default function CreateProjectModal({ open, onOpenChange, prefillNiche, p
                 disabled={isSubmitting}
               />
             </div>
+
+            {/* ── AU overlay fields (only visible when AU tab active) ── */}
+            {isAU && (
+              <div className="space-y-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/30">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  🇦🇺 Australia configuration
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="au-channel-type" className="block text-xs font-medium">
+                    Channel type
+                  </label>
+                  <Select
+                    value={auChannelType}
+                    onValueChange={setAuChannelType}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="au-channel-type" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hub">Hub (covers all 5 sub-niches)</SelectItem>
+                      <SelectItem value="spoke">Spoke (single sub-niche, links to a hub)</SelectItem>
+                      <SelectItem value="standalone">Standalone (no hub-spoke link)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {auChannelType === 'spoke' && (
+                  <div className="space-y-1.5">
+                    <label htmlFor="au-parent" className="block text-xs font-medium">
+                      Parent hub project
+                    </label>
+                    <Select
+                      value={auParentProjectId}
+                      onValueChange={setAuParentProjectId}
+                      disabled={isSubmitting || !auHubs?.length}
+                    >
+                      <SelectTrigger id="au-parent" className="w-full">
+                        <SelectValue placeholder={auHubs?.length ? 'Select hub...' : 'No hubs found — create a hub first'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(auHubs || []).map((h) => (
+                          <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label htmlFor="au-cost-ceiling" className="block text-xs font-medium">
+                    Per-video cost ceiling (USD)
+                  </label>
+                  <Input
+                    id="au-cost-ceiling"
+                    type="number"
+                    min={3}
+                    max={50}
+                    step={0.5}
+                    value={auCostCeiling}
+                    onChange={(e) => setAuCostCeiling(parseFloat(e.target.value) || 8)}
+                    disabled={isSubmitting}
+                  />
+                  <p className="text-2xs text-muted-foreground">
+                    Strategy §11.1 default $8. Cost Calculator gate raises a soft warning (not block) when projected cost exceeds.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium">
+                    Sub-niches covered
+                  </label>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {[
+                      ['credit_cards_au',     'Credit Cards & Points'],
+                      ['super_au',            'Superannuation'],
+                      ['property_mortgage_au','Property & Mortgages'],
+                      ['tax_au',              'Tax Strategy'],
+                      ['etf_investing_au',    'ETF & Share Investing'],
+                    ].map(([value, label]) => (
+                      <label key={value} className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={auNicheVariants.includes(value)}
+                          onChange={(e) => {
+                            setAuNicheVariants((prev) =>
+                              e.target.checked
+                                ? [...prev, value]
+                                : prev.filter((v) => v !== value)
+                            );
+                          }}
+                          disabled={isSubmitting}
+                          className="rounded"
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="text-2xs text-muted-foreground italic">
+                  Hub + 1 spoke (super_au) is the recommended v1 configuration. AU disclaimers (AD-01..04), AU calendar events, and AU compliance rules apply automatically — no setup needed beyond this form.
+                </p>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-2">

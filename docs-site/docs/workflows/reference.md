@@ -92,6 +92,15 @@ patterns, see [Architecture](architecture.md).
 - **Calls:** optionally re-fires `WF_SCRIPT_GENERATE` if user requested a regenerate.
 - **Notes:** 8 nodes.
 
+### WF_REGISTER_ANALYZE
+**ID:** `Miy5h5O7ncIIrnRg` · **Active:** ✅ · **Trigger:** webhook (`/webhook/register/analyze` — live; no JSON in `workflows/`)
+
+- **Purpose:** Topic-stage **register classifier**. Picks the best of 5 cinematic registers (Economist / Premium / Noir / Signal / Archive) for a given topic via Claude Haiku. Different role from `WF_SCENE_CLASSIFY` — this runs once per topic at the topic stage; SCENE_CLASSIFY runs per-scene at the production stage.
+- **Reads:** topic working title + primary keyword + research brief.
+- **Writes:** `topics.production_register`, `topics.register_recommendations` (JSONB with `top_2`, `all_5_ranked`, `era_detected`), `topics.register_era_detected` (Archive only). Also `topics.niche_variant` for AU projects (after 032 patch).
+- **Calls:** Anthropic Claude (Haiku).
+- **Notes:** Snapshot from `MEMORY.md` only — workflow JSON not in `workflows/`. Per the [v3 implementation plan](https://github.com/akinwunmi-akinrimisi/vision-gridai-platform/blob/main/image_creation_guidelines_prompts/IMPLEMENTATION_PLAN_v3_EXECUTABLE.md), the column is named `register_recommendations` — not `register_analysis_json` as the AU strategy doc mistakenly labels it.
+
 ### WF_SCENE_CLASSIFY
 **ID:** `WaPnGhyhQO2gDemX` · **Active:** ✅ · **Trigger:** webhook (`/webhook/scene-classify`)
 
@@ -701,3 +710,56 @@ patterns, see [Architecture](architecture.md).
 
 - **Purpose:** Original Phase-1 stub. **Webhook path collides with `WF_TOPICS_ACTION`**.
 - **Notes:** 4 nodes (stub). Reconciliation needed (see [status](status.md)).
+
+---
+
+## Australia overlay (added 2026-04-25)
+
+Country-aware workflows added by migration 032. All gate on
+`topics.country_target = 'AU'`; for General projects they short-circuit
+to a no-op response.
+
+### WF_COUNTRY_ROUTER
+**ID:** — · **Active:** ✅ · **Trigger:** sub-workflow (Execute Workflow Trigger)
+
+- **Purpose:** Resolves the active prompt key for any `(workflow_name, country_target, prompt_stage)` tuple. Single source of truth for country-aware prompt routing — every country-branched workflow calls it instead of querying `system_prompts` directly.
+- **Reads:** input `{workflow_name, country_target, prompt_stage}` from caller; queries `system_prompts` for the resolved key.
+- **Writes:** none.
+- **Calls:** Supabase REST.
+- **Notes:** 4 nodes. Used by all 5 new AU workflows + the 6 Switch-node patches on existing workflows. Has a `HAS_AU_SIBLING` allowlist that controls whether to route to a `_au`-suffixed prompt or to the General master with country slot variables.
+
+### WF_TOPIC_INTELLIGENCE
+**ID:** — · **Active:** ✅ · **Trigger:** cron `0 19 * * *` UTC (= 05:00 AEST) + webhook (`/webhook/topic-intelligence/run`)
+
+- **Purpose:** Daily AU topic discovery + Gate-1 gap-score ranking. Per AU project: pulls recent `research_results`, `competitor_channels` coverage, and upcoming `country_calendar_events`; calls `topic_discover_au` for 20 candidates; calls `gap_score_au` per candidate; inserts top 5 into `topics`.
+- **Reads:** `projects` (filtered to `country_target='AU'`), `research_results`, `competitor_channels`, `country_calendar_events`.
+- **Writes:** `topics` (5 rows per project per day with `country_target='AU'`, `niche_variant`, `gap_score`, `gap_score_modifiers`, `review_status='pending'`), `production_logs`.
+- **Calls:** Anthropic Claude (Sonnet via the `topic_discover_au` prompt; Haiku via `gap_score_au`), `WF_COUNTRY_ROUTER`.
+- **Notes:** Country-aware so future markets reuse the same workflow — only the prompt mapping in `WF_COUNTRY_ROUTER` changes.
+
+### WF_DEMONETIZATION_AUDIT
+**ID:** — · **Active:** ✅ · **Trigger:** webhook (`/webhook/demonetization/audit`)
+
+- **Purpose:** Pre-publish (Gate 3) compliance audit. Runs `demon_audit_au` against the final script + title + description against `country_compliance_rules`. Writes `topics.demonetization_audit_result` and flips `topics.compliance_review_status`.
+- **Reads:** `topics`, `country_compliance_rules`.
+- **Writes:** `topics.demonetization_audit_result` (JSONB), `topics.compliance_review_status` (`approved` / `pending` / `rejected`).
+- **Calls:** Anthropic Claude (Sonnet), `WF_COUNTRY_ROUTER`.
+- **Notes:** Returns `{decision: 'clear', skipped: true}` immediately for `country_target='GENERAL'`. AU-only enforcement.
+
+### WF_COACH_REPORT
+**ID:** — · **Active:** ✅ · **Trigger:** cron `0 6 1 * *` UTC (1st of each month, 06:00 UTC)
+
+- **Purpose:** Monthly strategic coach report per project. Aggregates prior-month performance + competitor moves + next-month calendar; calls `coach_monthly_au` (or future `coach_monthly_general`); writes to `coach_reports` table.
+- **Reads:** `projects` (`country_target IN ('AU','GENERAL')`), `topics` (last month), `country_calendar_events` (next month), `channel_analyses` (recent).
+- **Writes:** `coach_reports` row.
+- **Calls:** Anthropic Claude (Sonnet), `WF_COUNTRY_ROUTER`.
+- **Notes:** Fires only for projects with ≥1 published topic in the prior month.
+
+### WF_COMPETITOR_ANALYZER
+**ID:** — · **Active:** ✅ · **Trigger:** cron `0 2 * * 0` UTC (Sunday 02:00 UTC) + webhook (`/webhook/competitor-analyzer/run`)
+
+- **Purpose:** Weekly per-AU-project SWOT synthesis from existing `channel_analyses`. Groups channels by `sub_niche`; for each group with ≥3 channels, calls `swot_subniche_au`; writes synthesis to `analysis_groups` (existing table).
+- **Reads:** `projects` (AU), `channel_analyses` (last 30 days).
+- **Writes:** `analysis_groups` row per sub-niche with `swot_payload` JSONB.
+- **Calls:** Anthropic Claude (Sonnet via `swot_subniche_au`), `WF_COUNTRY_ROUTER`.
+- **Notes:** First useful run requires the 5-sub-niche competitor seed (~20 channels) to have run through `WF_DISCOVER_COMPETITORS` + `WF_CHANNEL_ANALYZE`.
