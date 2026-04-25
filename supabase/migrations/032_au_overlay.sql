@@ -1,5 +1,20 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- Migration 032 — Australia Country Overlay
+-- ⚠️  THIS MIGRATION WAS NEVER APPLIED. SUPERSEDED BY 033_au_overlay_corrected.sql
+-- ───────────────────────────────────────────────────────────────────────────
+-- A live-state audit on 2026-04-25 (see docs/superpowers/plans/
+-- 2026-04-25-au-overlay-GAP-AUDIT.md) found 4 blockers in this file:
+--   G1 — prompt_templates table did not exist live (this file INSERTed without CREATE)
+--   G2 — render_project_intelligence returns TEXT not JSONB (this file assumed JSONB)
+--   G3 — Live prompts use single-brace {var} placeholders (this file used double-brace)
+--   G4 — _verify_script_template_vars(text[]) signature differs (this file replaced it)
+-- Plus G11 — analysis_groups.swot_payload column missing (added in 033).
+--
+-- Migration 033 closes all 4 blockers + the swot_payload addition. This file
+-- is preserved as a planning artifact only. DO NOT APPLY.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Migration 032 — Australia Country Overlay  (NEVER APPLIED — see banner above)
 -- ───────────────────────────────────────────────────────────────────────────
 -- Adds country-aware overlay layer. General projects unchanged byte-for-byte.
 -- AU projects gain: niche_variants lookup, country_calendar_events,

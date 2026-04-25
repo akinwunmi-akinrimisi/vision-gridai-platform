@@ -94,13 +94,20 @@ Both files are the rollback artifacts.
 
 ---
 
-## 1. Phase 1 — Schema, tables, seeds (migration 032_au_overlay.sql)
+## 1. Phase 1 — Schema, tables, seeds (migration 033_au_overlay_corrected.sql)
+
+> **Note (2026-04-25):** Migration `032_au_overlay.sql` was the original draft but
+> was never applied — a live-state audit found 4 blockers (see
+> `2026-04-25-au-overlay-GAP-AUDIT.md`). The deployable migration is
+> `033_au_overlay_corrected.sql`, which closes all 4 blockers + adds
+> `analysis_groups.swot_payload`. This plan's section structure (A–L) and
+> goals are identical; only the file changed.
 
 **Single transaction.** All schema, all seeds, all renderer updates, all prompt updates land in one `BEGIN ... COMMIT`. If any step fails, the whole thing rolls back; no partial state.
 
-**File:** `supabase/migrations/032_au_overlay.sql`
+**File:** `supabase/migrations/033_au_overlay_corrected.sql` (032 retained as planning artifact only)
 
-The migration is fully written in `supabase/migrations/032_au_overlay.sql`. This plan describes its phases:
+The migration is fully written in `supabase/migrations/033_au_overlay_corrected.sql`. This plan describes its phases:
 
 ### 1.1 Section A — Schema additions
 
@@ -774,7 +781,7 @@ The Phase 1 migration is in a single `BEGIN ... COMMIT` so rollback is trivial.
 
 | Step | Action | Verify before next |
 |---|---|---|
-| 1 | Apply migration 032 (Phase 1, all sections A–L atomic) | `SELECT version FROM schema_migrations` shows 032 |
+| 1 | Apply migration 033_au_overlay_corrected (Phase 1, all sections A–L atomic) | `SELECT count(*) FROM niche_variants WHERE country_target='AU'` returns 5 |
 | 2 | Import 5 new workflow JSONs into n8n | Each appears in workflow list, activated |
 | 3 | Apply 6 Switch-node patches via n8n UI | Each workflow's executions show country branch firing for AU rows |
 | 4 | Deploy dashboard build | `/au/*` routes load; tab toggle works |
@@ -817,7 +824,7 @@ The Phase 1 migration is in a single `BEGIN ... COMMIT` so rollback is trivial.
 | AU `tts_voice_by_country` object shape breaks an unobserved General code path | Low | High | Backwards-compat: `tts_voice` string column is unchanged; resolver checks object first, falls back to string |
 | Switch nodes default to wrong branch (i.e., AU project routes through General prompts) | Medium | Medium | Each Switch validates `country_target` value; default branch is General; explicit AU branch matches `'AU'` literal |
 | `WF_TOPIC_INTELLIGENCE` cron fires before `competitor_channels` is seeded | High | Low | First-day output low quality but non-blocking; second-day after seed runs is correct |
-| Operator forgets to seed the 4 disclaimer rows before AU video #1 ships | Low | High | Migration 032 includes the seed atomically; `requires_compliance_role` true on AD-01/02/04 prevents accidental edit |
+| Operator forgets to seed the 4 disclaimer rows before AU video #1 ships | Low | High | Migration 033 includes the seed atomically; `requires_compliance_role` true on AD-01/02/04 prevents accidental edit |
 | Prompt v2 drift on General projects (the country slots stay empty but mistyped variable names cause silent template render failure) | Low | High | `_verify_script_template_vars()` catches; drift detector `tools/verify_prompt_sync.py` runs in CI |
 | AU disclaimer wording change required by ASIC update | Medium | Medium | PromptCard versioning handles in flight; old version stays as `is_active=false` for audit |
 

@@ -57,18 +57,26 @@ If any file is empty, **STOP** and investigate before proceeding.
 
 ---
 
-## 2. Apply migration 032
+## 2. Apply migration 033 (corrected; supersedes 032)
+
+> **Note:** `032_au_overlay.sql` was the original draft but had 4 blockers
+> against live state (see `2026-04-25-au-overlay-GAP-AUDIT.md`). The
+> deployable migration is `033_au_overlay_corrected.sql`. Always dry-run
+> first by swapping the final `COMMIT;` for `ROLLBACK;` and observing
+> output before applying for real.
 
 **Why:** schema + tables + seeds + renderer extension + prompt updates, all in one transaction.
 
 ```bash
 # Apply migration via SSH + docker exec
 scp -i ~/.ssh/id_ed25519_antigravity \
-  supabase/migrations/032_au_overlay.sql \
+  supabase/migrations/033_au_overlay_corrected.sql \
   root@srv1297445.hstgr.cloud:/tmp/
 
 ssh -i ~/.ssh/id_ed25519_antigravity root@srv1297445.hstgr.cloud \
-  "docker exec -i supabase-db-1 psql -U postgres -d postgres < /tmp/032_au_overlay.sql"
+  "docker cp /tmp/033_au_overlay_corrected.sql supabase-db-1:/tmp/ \
+   && docker exec -i supabase-db-1 psql -U postgres -d postgres \
+        -v ON_ERROR_STOP=1 -f /tmp/033_au_overlay_corrected.sql"
 ```
 
 Expected output: a series of `ALTER`/`CREATE`/`INSERT`/`COMMIT` lines, ending in `COMMIT`. No `ERROR:` lines.
@@ -376,7 +384,7 @@ These are baked into the workflow JSONs as `scheduleTrigger` nodes. Activating t
 
 After all 8 steps:
 
-- [ ] Migration 032 applied — verification queries pass
+- [ ] Migration 033 applied (032 superseded) — verification queries pass
 - [ ] 5 new workflows imported + activated; IDs added to `MEMORY.md`
 - [ ] 6 Switch-node patches applied to existing workflows; smoke-tested
 - [ ] Dashboard rebuilt + deployed; `/au/*` routes load
