@@ -3,25 +3,29 @@ import { supabase } from '../lib/supabase';
 import { useRealtimeSubscription } from './useRealtimeSubscription';
 import { webhookCall } from '../lib/api';
 import { toast } from 'sonner';
+import { useCountryTab } from './useCountryTab';
 
 /* ============================================================== */
 /*  QUERIES — analysis groups (from analysis_groups table)         */
 /* ============================================================== */
 
 /**
- * Fetch all active analysis groups from the analysis_groups table.
- * Sorted most-recent first.
+ * Fetch active analysis groups for the active country tab. Sorted most-
+ * recent first. country_target was added in migration 035; legacy rows
+ * default to 'GENERAL'.
  */
 export function useAnalysisGroups() {
-  useRealtimeSubscription('analysis_groups', null, [['analysis-groups']]);
+  const { country } = useCountryTab();
+  useRealtimeSubscription('analysis_groups', null, [['analysis-groups', country]]);
 
   return useQuery({
-    queryKey: ['analysis-groups'],
+    queryKey: ['analysis-groups', country],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('analysis_groups')
         .select('*')
         .eq('status', 'active')
+        .eq('country_target', country)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -103,6 +107,7 @@ export function useComparisonReport(groupId) {
  */
 export function useStartAnalysis() {
   const queryClient = useQueryClient();
+  const { country } = useCountryTab();
 
   return useMutation({
     mutationFn: async ({ channel_url, analysis_group_id, group_name }) => {
@@ -112,10 +117,12 @@ export function useStartAnalysis() {
         // Create a new analysis_groups row. channels_count/completed_count
         // are maintained by DB triggers (migration 026), so we leave them at 0 —
         // the trigger will bump them when WF_CHANNEL_ANALYZE inserts the row.
+        // country_target is denormalized from the active dashboard tab so
+        // ChannelAnalyzer's General/AU filter works correctly (migration 035).
         const name = group_name || (channel_url.replace(/https?:\/\/(www\.)?youtube\.com\/@?/i, '').split('/')[0] + ' Research');
         const { data: newGroup, error: insertErr } = await supabase
           .from('analysis_groups')
-          .insert({ name, status: 'active' })
+          .insert({ name, status: 'active', country_target: country })
           .select('id')
           .single();
         if (insertErr) throw insertErr;

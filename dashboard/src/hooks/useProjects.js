@@ -1,18 +1,34 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { dashboardRead, webhookCall } from '../lib/api';
+import { useCountryTab } from './useCountryTab';
 
 /**
  * Fetch all projects with topic summaries via the authenticated dashboard-read
- * webhook (migration 030 locked down Supabase anon). Polls every 20s for
+ * webhook (migration 030 locked down Supabase anon). Polls every 10s for
  * near-real-time updates since Realtime is disabled in locked-down mode.
+ *
+ * The result `data` is filtered to the active country tab (General or AU).
+ * Projects without country_target (legacy rows) are read as 'GENERAL'. Use
+ * `allData` for the unfiltered list (e.g. cross-tab summaries).
  */
 export function useProjects() {
-  return useQuery({
+  const { country } = useCountryTab();
+  const query = useQuery({
     queryKey: ['projects'],
     queryFn: () => dashboardRead('projects_list'),
     refetchInterval: 10_000,
   });
+
+  const filtered = useMemo(() => {
+    if (!query.data) return query.data;
+    return query.data.filter(
+      (p) => (p.country_target || 'GENERAL') === country
+    );
+  }, [query.data, country]);
+
+  return { ...query, data: filtered, allData: query.data };
 }
 
 /**
