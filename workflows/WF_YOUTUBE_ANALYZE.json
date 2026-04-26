@@ -60,5 +60,6 @@
     "executionTimeout": 600,
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
-  }
+  },
+  "active": true
 }

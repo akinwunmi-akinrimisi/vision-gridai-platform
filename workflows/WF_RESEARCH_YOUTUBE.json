@@ -1,1 +1,50 @@
-{"updatedAt":"2026-03-28T18:21:42.876Z","createdAt":"2026-03-28T18:21:42.876Z","id":"Gt9mU64OKi3nlWIV","name":"WF_RESEARCH_YOUTUBE","description":null,"active":false,"isArchived":false,"nodes":[{"id":"trigger-1","name":"Execute Workflow Trigger","type":"n8n-nodes-base.executeWorkflowTrigger","typeVersion":1.1,"position":[250,300],"parameters":{}},{"id":"code-1","name":"Scrape YouTube Comments","type":"n8n-nodes-base.code","typeVersion":2,"position":[500,300],"parameters":{"mode":"runOnceForAllItems","jsCode":"// YouTube comment scraper: search top videos, extract comments\nconst input = $input.first().json;\nconst keywords = input.keywords || [];\nconst runId = input.run_id;\nconst projectId = input.project_id;\nconst limit = 10;\nconst results = [];\n\ntry {\n  // Search YouTube for top videos\n  const searchResp = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(keywords.join(' '))}&type=video&order=relevance&publishedAfter=${new Date(Date.now()-7*86400000).toISOString()}&maxResults=5&key=${process.env.YOUTUBE_API_KEY}`,\n  });\n\n  const videoIds = (searchResp?.items || []).map(i => i.id.videoId).filter(Boolean);\n\n  // Get comments from top videos\n  for (const videoId of videoIds.slice(0, 3)) {\n    try {\n      const commentsResp = await this.helpers.httpRequest({\n        method: 'GET',\n        url: `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&order=relevance&maxResults=5&key=${process.env.YOUTUBE_API_KEY}`,\n      });\n\n      for (const item of (commentsResp?.items || []).slice(0, 4)) {\n        const c = item.snippet.topLevelComment.snippet;\n        results.push({\n          run_id: runId,\n          project_id: projectId,\n          source: 'youtube',\n          raw_text: c.textOriginal || c.textDisplay || '',\n          source_url: `https://youtube.com/watch?v=${videoId}`,\n          engagement_score: (c.likeCount || 0) + ((item.snippet.totalReplyCount || 0) * 3),\n          upvotes: c.likeCount || 0,\n          comments: item.snippet.totalReplyCount || 0,\n          posted_at: c.publishedAt,\n          metadata: { videoId, authorDisplayName: c.authorDisplayName },\n        });\n      }\n    } catch (e) { /* skip video on error */ }\n  }\n} catch (e) {\n  return [{ json: { source: 'youtube', success: false, error: e.message, results: [] } }];\n}\n\n// Bulk insert (take top 10 by engagement)\nconst top10 = results.sort((a,b) => b.engagement_score - a.engagement_score).slice(0, limit);\nif (top10.length > 0) {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${process.env.SUPABASE_URL}/rest/v1/research_results`,\n    headers: { 'apikey': process.env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },\n    body: JSON.stringify(top10),\n  });\n}\n\nreturn [{ json: { source: 'youtube', success: true, count: top10.length } }];"}}],"connections":{"Execute Workflow Trigger":{"main":[[{"node":"Scrape YouTube Comments","type":"main","index":0}]]}},"settings":{"executionOrder":"v1","executionTimeout":120,"callerPolicy":"workflowsFromSameOwner","availableInMCP":false},"staticData":null,"meta":null,"pinData":null,"versionId":"799fc124-fe2c-4318-845a-b7b737b8e9e4","activeVersionId":null,"versionCounter":1,"triggerCount":0,"shared":[{"updatedAt":"2026-03-28T18:21:42.877Z","createdAt":"2026-03-28T18:21:42.877Z","role":"workflow:owner","workflowId":"Gt9mU64OKi3nlWIV","projectId":"ccWn1Q4giuKzXIbJ","project":{"updatedAt":"2026-01-26T11:09:31.107Z","createdAt":"2026-01-26T03:51:33.410Z","id":"ccWn1Q4giuKzXIbJ","name":"Akinwunmi Akinrimisi <akinolacrypto@gmail.com>","type":"personal","icon":null,"description":null,"creatorId":"ab010feb-355c-4130-b354-4e929908258e"}}],"tags":[],"activeVersion":null}
+{
+  "name": "WF_RESEARCH_YOUTUBE",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "code-1",
+      "name": "Scrape YouTube Comments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// YouTube comment scraper: search top videos, extract comments\nconst input = $input.first().json;\nconst keywords = input.keywords || [];\nconst runId = input.run_id;\nconst projectId = input.project_id;\nconst limit = 10;\nconst results = [];\n\ntry {\n  // Search YouTube for top videos\n  const searchResp = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(keywords.join(' '))}&type=video&order=relevance&publishedAfter=${new Date(Date.now()-7*86400000).toISOString()}&maxResults=5&key=${process.env.YOUTUBE_API_KEY}`,\n  });\n\n  const videoIds = (searchResp?.items || []).map(i => i.id.videoId).filter(Boolean);\n\n  // Get comments from top videos\n  for (const videoId of videoIds.slice(0, 3)) {\n    try {\n      const commentsResp = await this.helpers.httpRequest({\n        method: 'GET',\n        url: `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&order=relevance&maxResults=5&key=${process.env.YOUTUBE_API_KEY}`,\n      });\n\n      for (const item of (commentsResp?.items || []).slice(0, 4)) {\n        const c = item.snippet.topLevelComment.snippet;\n        results.push({\n          run_id: runId,\n          project_id: projectId,\n          source: 'youtube',\n          raw_text: c.textOriginal || c.textDisplay || '',\n          source_url: `https://youtube.com/watch?v=${videoId}`,\n          engagement_score: (c.likeCount || 0) + ((item.snippet.totalReplyCount || 0) * 3),\n          upvotes: c.likeCount || 0,\n          comments: item.snippet.totalReplyCount || 0,\n          posted_at: c.publishedAt,\n          metadata: { videoId, authorDisplayName: c.authorDisplayName },\n        });\n      }\n    } catch (e) { /* skip video on error */ }\n  }\n} catch (e) {\n  return [{ json: { source: 'youtube', success: false, error: e.message, results: [] } }];\n}\n\n// Bulk insert (take top 10 by engagement)\nconst top10 = results.sort((a,b) => b.engagement_score - a.engagement_score).slice(0, limit);\nif (top10.length > 0) {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${process.env.SUPABASE_URL}/rest/v1/research_results`,\n    headers: { 'apikey': process.env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },\n    body: JSON.stringify(top10),\n  });\n}\n\nreturn [{ json: { source: 'youtube', success: true, count: top10.length } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scrape YouTube Comments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 120,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "active": false
+}

@@ -1,1 +1,50 @@
-{"updatedAt":"2026-03-28T19:10:37.436Z","createdAt":"2026-03-28T19:10:37.436Z","id":"bvhqnjwfti1OhvwV","name":"WF_COMMENT_ANALYZE","description":null,"active":false,"isArchived":false,"nodes":[{"id":"trigger-1","name":"Execute Workflow Trigger","type":"n8n-nodes-base.executeWorkflowTrigger","typeVersion":1.1,"position":[250,300],"parameters":{}},{"id":"code-1","name":"Analyze Sentiment + Intent","type":"n8n-nodes-base.code","typeVersion":2,"position":[500,300],"parameters":{"mode":"runOnceForAllItems","jsCode":"// AI sentiment + intent scoring for unanalyzed comments\nconst headers = { 'apikey': process.env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` };\n\n// Fetch unanalyzed comments (no sentiment set)\nconst comments = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${process.env.SUPABASE_URL}/rest/v1/comments?sentiment=is.null&select=id,text,platform&order=created_at.desc&limit=50`,\n  headers,\n});\n\nif (!comments || comments.length === 0) {\n  return [{ json: { analyzed: 0, message: 'No unanalyzed comments' } }];\n}\n\n// Batch analyze with Claude Haiku\nconst prompt = `Analyze these ${comments.length} comments. For each, provide:\n- sentiment: positive, negative, or neutral\n- intent_score: 0.0-1.0 (higher = purchase/interest intent)\n- intent_signals: array of detected signals like [\"link_request\", \"price_inquiry\", \"purchase_intent\", \"support_request\", \"praise\", \"complaint\"]\n\nComments:\n${JSON.stringify(comments.map((c, i) => ({ index: i, text: c.text.substring(0, 200), platform: c.platform })))}\n\nRespond ONLY in JSON: [{\"index\":0,\"sentiment\":\"positive\",\"intent_score\":0.3,\"intent_signals\":[\"praise\"]}]`;\n\ntry {\n  const aiResp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.anthropic.com/v1/messages',\n    headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },\n    body: JSON.stringify({ model: 'claude-3-5-haiku-20241022', max_tokens: 2048, messages: [{ role: 'user', content: prompt }] }),\n  });\n\n  const text = aiResp.content?.[0]?.text || '[]';\n  let analyses;\n  try { analyses = JSON.parse(text); } catch {\n    const m = text.match(/\\[[\\s\\S]*\\]/);\n    analyses = m ? JSON.parse(m[0]) : [];\n  }\n\n  let updated = 0;\n  for (const a of analyses) {\n    if (a.index !== undefined && comments[a.index]) {\n      await this.helpers.httpRequest({\n        method: 'PATCH',\n        url: `${process.env.SUPABASE_URL}/rest/v1/comments?id=eq.${comments[a.index].id}`,\n        headers: { ...headers, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          sentiment: a.sentiment || 'neutral',\n          intent_score: a.intent_score || 0,\n          intent_signals: a.intent_signals || [],\n        }),\n      });\n      updated++;\n    }\n  }\n\n  return [{ json: { analyzed: updated, total_comments: comments.length } }];\n} catch (e) {\n  return [{ json: { analyzed: 0, error: e.message } }];\n}"}}],"connections":{"Execute Workflow Trigger":{"main":[[{"node":"Analyze Sentiment + Intent","type":"main","index":0}]]}},"settings":{"executionOrder":"v1","executionTimeout":120,"callerPolicy":"workflowsFromSameOwner","availableInMCP":false},"staticData":null,"meta":null,"pinData":null,"versionId":"092119b3-f0ca-49fe-b08e-b121ebb5383c","activeVersionId":null,"versionCounter":1,"triggerCount":0,"shared":[{"updatedAt":"2026-03-28T19:10:37.437Z","createdAt":"2026-03-28T19:10:37.437Z","role":"workflow:owner","workflowId":"bvhqnjwfti1OhvwV","projectId":"ccWn1Q4giuKzXIbJ","project":{"updatedAt":"2026-01-26T11:09:31.107Z","createdAt":"2026-01-26T03:51:33.410Z","id":"ccWn1Q4giuKzXIbJ","name":"Akinwunmi Akinrimisi <akinolacrypto@gmail.com>","type":"personal","icon":null,"description":null,"creatorId":"ab010feb-355c-4130-b354-4e929908258e"}}],"tags":[],"activeVersion":null}
+{
+  "name": "WF_COMMENT_ANALYZE",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "code-1",
+      "name": "Analyze Sentiment + Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// AI sentiment + intent scoring for unanalyzed comments\nconst headers = { 'apikey': process.env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` };\n\n// Fetch unanalyzed comments (no sentiment set)\nconst comments = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${process.env.SUPABASE_URL}/rest/v1/comments?sentiment=is.null&select=id,text,platform&order=created_at.desc&limit=50`,\n  headers,\n});\n\nif (!comments || comments.length === 0) {\n  return [{ json: { analyzed: 0, message: 'No unanalyzed comments' } }];\n}\n\n// Batch analyze with Claude Haiku\nconst prompt = `Analyze these ${comments.length} comments. For each, provide:\n- sentiment: positive, negative, or neutral\n- intent_score: 0.0-1.0 (higher = purchase/interest intent)\n- intent_signals: array of detected signals like [\"link_request\", \"price_inquiry\", \"purchase_intent\", \"support_request\", \"praise\", \"complaint\"]\n\nComments:\n${JSON.stringify(comments.map((c, i) => ({ index: i, text: c.text.substring(0, 200), platform: c.platform })))}\n\nRespond ONLY in JSON: [{\"index\":0,\"sentiment\":\"positive\",\"intent_score\":0.3,\"intent_signals\":[\"praise\"]}]`;\n\ntry {\n  const aiResp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.anthropic.com/v1/messages',\n    headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },\n    body: JSON.stringify({ model: 'claude-3-5-haiku-20241022', max_tokens: 2048, messages: [{ role: 'user', content: prompt }] }),\n  });\n\n  const text = aiResp.content?.[0]?.text || '[]';\n  let analyses;\n  try { analyses = JSON.parse(text); } catch {\n    const m = text.match(/\\[[\\s\\S]*\\]/);\n    analyses = m ? JSON.parse(m[0]) : [];\n  }\n\n  let updated = 0;\n  for (const a of analyses) {\n    if (a.index !== undefined && comments[a.index]) {\n      await this.helpers.httpRequest({\n        method: 'PATCH',\n        url: `${process.env.SUPABASE_URL}/rest/v1/comments?id=eq.${comments[a.index].id}`,\n        headers: { ...headers, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          sentiment: a.sentiment || 'neutral',\n          intent_score: a.intent_score || 0,\n          intent_signals: a.intent_signals || [],\n        }),\n      });\n      updated++;\n    }\n  }\n\n  return [{ json: { analyzed: updated, total_comments: comments.length } }];\n} catch (e) {\n  return [{ json: { analyzed: 0, error: e.message } }];\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Analyze Sentiment + Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 120,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "active": false
+}

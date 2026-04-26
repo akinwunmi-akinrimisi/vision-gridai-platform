@@ -1,8 +1,5 @@
 {
   "name": "WF_DEMONETIZATION_AUDIT",
-  "description": "Country-aware Gate-3 pre-publish audit. Called from WF_QA_CHECK completion or directly via webhook. For GENERAL projects: returns clear immediately (no AU rules to enforce). For AU: runs demon_audit_au prompt against final script + title + description, writes result to topics.demonetization_audit_result + flips topics.compliance_review_status.",
-  "active": false,
-  "isArchived": false,
   "nodes": [
     {
       "id": "webhook-1",
@@ -452,11 +449,9 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "tags": [
-    "demonetization-audit",
-    "au-overlay",
-    "gate-3"
-  ]
+  "active": true
 }

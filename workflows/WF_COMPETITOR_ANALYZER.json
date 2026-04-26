@@ -1,8 +1,5 @@
 {
   "name": "WF_COMPETITOR_ANALYZER",
-  "description": "Weekly per-project competitor analyzer. Cron Sunday 02:00 UTC. For each AU project, runs swot_channel_au per channel in channel_analyses (last 30d), then swot_subniche_au synthesis. Writes synthesis to analysis_groups (existing table) keyed by sub_niche.",
-  "active": false,
-  "isArchived": false,
   "nodes": [
     {
       "id": "cron-1",
@@ -368,11 +365,9 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "tags": [
-    "competitor-analyzer",
-    "au-overlay",
-    "weekly"
-  ]
+  "active": true
 }

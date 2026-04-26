@@ -1,8 +1,5 @@
 {
   "name": "WF_COUNTRY_ROUTER",
-  "description": "Resolves the active prompt key for a (workflow_name, country_target, prompt_stage) tuple. Existing workflows call this as a sub-workflow when they need country-aware prompts. Returns the prompt_text + key + fallback so callers don't need to query system_prompts directly.",
-  "active": false,
-  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-1",
@@ -131,10 +128,9 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "tags": [
-    "country-router",
-    "au-overlay"
-  ]
+  "active": true
 }

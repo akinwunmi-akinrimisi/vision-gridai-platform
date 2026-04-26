@@ -1,25 +1,31 @@
 {
   "name": "WF_SEO_SCORE",
-  "active": false,
-  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-seo-1",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
-      "position": [200, 300],
-      "parameters": {}
+      "position": [
+        200,
+        300
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
     },
     {
       "id": "code-seo-fetch",
       "name": "Fetch Topics + Project",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 300],
+      "position": [
+        420,
+        300
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// CF02 WF_SEO_SCORE — fetch topics + project context.\n// Input: { project_id, force?: boolean }\n\nconst input = $input.first().json;\nconst projectId = input.project_id;\nconst force = input.force === true;\n\nif (!projectId) {\n  throw new Error('WF_SEO_SCORE requires { project_id } in trigger payload');\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nlet topicsUrl = `${supabaseUrl}/rest/v1/topics?project_id=eq.${projectId}&select=id,seo_title,original_title,narrative_hook,topic_number&order=topic_number.asc`;\nif (!force) topicsUrl += '&seo_scored_at=is.null';\n\nconst topicsRes = await fetch(topicsUrl, { method: 'GET', headers: sbHeaders });\nif (!topicsRes.ok) {\n  throw new Error(`Fetch topics failed: HTTP ${topicsRes.status}: ${await topicsRes.text()}`);\n}\nconst topics = await topicsRes.json();\n\nconst projUrl = `${supabaseUrl}/rest/v1/projects?id=eq.${projectId}&select=niche,niche_description,niche_expertise_profile`;\nconst projRes = await fetch(projUrl, { method: 'GET', headers: sbHeaders });\nif (!projRes.ok) {\n  throw new Error(`Fetch project failed: HTTP ${projRes.status}: ${await projRes.text()}`);\n}\nconst projArr = await projRes.json();\nconst project = projArr[0] || {};\n\nreturn [{\n  json: {\n    project_id: projectId,\n    force,\n    topics,\n    topic_count: topics.length,\n    niche: project.niche || '',\n    niche_description: project.niche_description || ''\n  }\n}];"
+        "jsCode": "// PATCH-WEBHOOK-UNWRAP: normalize trigger payload shape\n(() => {\n  const items = $input.all();\n  for (const it of items) {\n    if (it.json && it.json.body && !it.json.project_id && it.json.body.project_id) {\n      Object.assign(it.json, it.json.body);\n    }\n  }\n})();\n\n// CF02 WF_SEO_SCORE — fetch topics + project context.\n// Input: { project_id, force?: boolean }\n\nconst input = $input.first().json;\nconst projectId = input.project_id;\nconst force = input.force === true;\n\nif (!projectId) {\n  throw new Error('WF_SEO_SCORE requires { project_id } in trigger payload');\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nlet topicsUrl = `${supabaseUrl}/rest/v1/topics?project_id=eq.${projectId}&select=id,seo_title,original_title,narrative_hook,topic_number&order=topic_number.asc`;\nif (!force) topicsUrl += '&seo_scored_at=is.null';\n\nconst topicsRes = await fetch(topicsUrl, { method: 'GET', headers: sbHeaders });\nif (!topicsRes.ok) {\n  throw new Error(`Fetch topics failed: HTTP ${topicsRes.status}: ${await topicsRes.text()}`);\n}\nconst topics = await topicsRes.json();\n\nconst projUrl = `${supabaseUrl}/rest/v1/projects?id=eq.${projectId}&select=niche,niche_description,niche_expertise_profile`;\nconst projRes = await fetch(projUrl, { method: 'GET', headers: sbHeaders });\nif (!projRes.ok) {\n  throw new Error(`Fetch project failed: HTTP ${projRes.status}: ${await projRes.text()}`);\n}\nconst projArr = await projRes.json();\nconst project = projArr[0] || {};\n\nreturn [{\n  json: {\n    project_id: projectId,\n    force,\n    topics,\n    topic_count: topics.length,\n    niche: project.niche || '',\n    niche_description: project.niche_description || ''\n  }\n}];"
       }
     },
     {
@@ -27,7 +33,10 @@
       "name": "Split Into Batches",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 300],
+      "position": [
+        640,
+        300
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "const data = $input.first().json;\nconst topics = data.topics || [];\nconst BATCH_SIZE = 5;\n\nconst items = [];\nfor (let i = 0; i < topics.length; i += BATCH_SIZE) {\n  items.push({\n    json: {\n      project_id: data.project_id,\n      niche: data.niche,\n      niche_description: data.niche_description,\n      batch_index: Math.floor(i / BATCH_SIZE),\n      batch: topics.slice(i, i + BATCH_SIZE),\n      total_batches: Math.ceil(topics.length / BATCH_SIZE),\n      total_topics: topics.length\n    }\n  });\n}\n\nif (items.length === 0) {\n  return [{\n    json: {\n      project_id: data.project_id,\n      skipped: true,\n      reason: 'No topics pending SEO scoring (pass force=true to rescore)',\n      total_topics: 0\n    }\n  }];\n}\n\nreturn items;"
@@ -38,7 +47,10 @@
       "name": "Score Batch (Autocomplete + Search + Claude Opus)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, 300],
+      "position": [
+        880,
+        300
+      ],
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "// CF02 per-batch SEO scorer.\n// Steps per topic:\n//  1. Claude Opus generates 3 keyword variants (exact/broad/narrow)\n//  2. YouTube autocomplete for each variant\n//  3. YouTube search.list for primary keyword (totalResults + videoIds)\n//  4. YouTube videos.list for top10 avg views\n//  5. Claude Opus produces final seo_score + classification + summary\n//  6. PATCH topic + production_logs\n\nconst data = $input.item.json;\nif (data.skipped) return $input.item;\n\nconst batch = data.batch || [];\nconst projectId = data.project_id;\nconst niche = data.niche;\nconst nicheDesc = data.niche_description || niche;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst ytKey = $env.YOUTUBE_API_KEY;\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nlet quotaExhausted = false;\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  let lastStatus = 0;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      lastStatus = res.status;\n      if (res.ok) {\n        return { ok: true, json: await res.json(), status: res.status, attempts: attempt };\n      }\n      const body = await res.text();\n      if (res.status === 403 && /quotaExceeded|dailyLimitExceeded/i.test(body)) {\n        return { ok: false, quota: true, status: res.status, error: body, attempts: attempt };\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) {\n      lastErr = e;\n    }\n    if (attempt < maxRetries) {\n      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);\n      await sleep(delay);\n    }\n  }\n  return { ok: false, status: lastStatus, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\n// Tolerant autocomplete fetcher: one inline retry, parse suggestqueries response.\nasync function autocomplete(q) {\n  const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(q)}`;\n  for (let attempt = 1; attempt <= 2; attempt++) {\n    try {\n      const res = await fetch(url, { method: 'GET' });\n      if (res.ok) {\n        const txt = await res.text();\n        try {\n          const parsed = JSON.parse(txt);\n          // response shape: [query, [suggestions...], ...]\n          const arr = Array.isArray(parsed?.[1]) ? parsed[1] : [];\n          return { ok: true, suggestions: arr, count: arr.length };\n        } catch {\n          return { ok: true, suggestions: [], count: 0 };\n        }\n      }\n    } catch { /* retry once */ }\n    if (attempt === 1) await sleep(500);\n  }\n  return { ok: false, suggestions: [], count: 0 };\n}\n\nasync function logProduction(topicId, action, status, durationMs, costUsd, retryCount) {\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        project_id: projectId,\n        topic_id: topicId,\n        stage: 'seo_score',\n        scene_number: null,\n        action,\n        status,\n        duration_ms: durationMs,\n        cost_usd: costUsd,\n        retry_count: retryCount\n      })\n    });\n  } catch (_) { }\n}\n\nfunction extractPrimaryKeyword(title) {\n  if (!title) return '';\n  // strip common clickbait wrappers + take first 6 words\n  return title\n    .replace(/[\"'“”‘’]/g, '')\n    .replace(/[:\\-\\|].*$/, '')\n    .trim()\n    .split(/\\s+/)\n    .slice(0, 6)\n    .join(' ')\n    .toLowerCase();\n}\n\nfunction fallbackPayload(title, reason) {\n  return {\n    seo_score: 50,\n    seo_classification: null,\n    primary_keyword: extractPrimaryKeyword(title),\n    keyword_variants: [],\n    search_volume_proxy: null,\n    competition_level: null,\n    seo_opportunity_summary: reason,\n    seo_scored_at: new Date().toISOString()\n  };\n}\n\nasync function callOpus(userPrompt, maxTokens, label) {\n  return fetchWithRetry('https://api.anthropic.com/v1/messages', {\n    method: 'POST',\n    headers: {\n      'x-api-key': anthropicKey,\n      'anthropic-version': '2023-06-01',\n      'content-type': 'application/json'\n    },\n    body: JSON.stringify({\n      model: 'claude-opus-4-6',\n      max_tokens: maxTokens,\n      messages: [{ role: 'user', content: userPrompt }]\n    })\n  }, label);\n}\n\nfunction parseJsonLoose(text) {\n  if (!text) return null;\n  const clean = text.replace(/```json|```/g, '').trim();\n  try { return JSON.parse(clean); } catch { }\n  const m = clean.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch { } }\n  return null;\n}\n\nconst batchResults = [];\n\nfor (const topic of batch) {\n  const topicStart = Date.now();\n  let retryCount = 0;\n  const title = topic.seo_title || topic.original_title || '';\n\n  if (!title) {\n    batchResults.push({ topic_id: topic.id, patch: fallbackPayload('', 'Missing topic title') });\n    continue;\n  }\n\n  // --- 1. Generate 3 keyword variants via Opus ---\n  const variantPrompt = `Given topic \"${title}\" in niche \"${nicheDesc}\", produce 3 keyword variants: exact (topic as-is), broad (parent concept), narrow (specific sub-angle). Return JSON: {\"exact\": \"…\", \"broad\": \"…\", \"narrow\": \"…\"}. No other text.`;\n  const variantStart = Date.now();\n  const variantRes = await callOpus(variantPrompt, 200, 'claude_opus_variants');\n  retryCount += (variantRes.attempts || 1) - 1;\n\n  let variants = { exact: extractPrimaryKeyword(title), broad: niche || '', narrow: '' };\n  if (variantRes.ok) {\n    const parsed = parseJsonLoose(variantRes.json?.content?.[0]?.text || '');\n    if (parsed && (parsed.exact || parsed.broad || parsed.narrow)) {\n      variants = {\n        exact: String(parsed.exact || variants.exact).slice(0, 200),\n        broad: String(parsed.broad || variants.broad).slice(0, 200),\n        narrow: String(parsed.narrow || variants.narrow).slice(0, 200)\n      };\n    }\n    await logProduction(topic.id, 'claude_opus_variants', 'success', Date.now() - variantStart, 0.004, retryCount);\n  } else {\n    await logProduction(topic.id, 'claude_opus_variants', 'error', Date.now() - variantStart, 0, retryCount);\n  }\n\n  const variantArr = [variants.exact, variants.broad, variants.narrow].filter(v => v && v.trim().length);\n\n  // --- 2. Autocomplete per variant (200ms delay between) ---\n  const autocompleteCounts = [];\n  for (let i = 0; i < variantArr.length; i++) {\n    const ac = await autocomplete(variantArr[i]);\n    autocompleteCounts.push(ac.count || 0);\n    if (i < variantArr.length - 1) await sleep(200);\n  }\n  while (autocompleteCounts.length < 3) autocompleteCounts.push(0);\n\n  if (quotaExhausted) {\n    batchResults.push({ topic_id: topic.id, patch: fallbackPayload(title, 'YouTube quota exhausted during this run') });\n    continue;\n  }\n\n  // --- 3. YouTube search.list for primary keyword ---\n  const primary = variants.exact || extractPrimaryKeyword(title);\n  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(primary)}&type=video&maxResults=10&key=${ytKey}`;\n  const searchRes = await fetchWithRetry(searchUrl, { method: 'GET' }, 'yt_search_seo');\n  retryCount += (searchRes.attempts || 1) - 1;\n\n  if (searchRes.quota) {\n    quotaExhausted = true;\n    batchResults.push({ topic_id: topic.id, patch: fallbackPayload(title, 'YouTube quota exceeded (403)') });\n    await logProduction(topic.id, 'yt_search_seo', 'quota_exceeded', Date.now() - topicStart, 0, retryCount);\n    continue;\n  }\n\n  const totalResults = searchRes.ok ? (searchRes.json?.pageInfo?.totalResults || 0) : 0;\n  const videoIds = searchRes.ok ? (searchRes.json?.items || []).map(i => i.id?.videoId).filter(Boolean) : [];\n\n  // --- 4. videos.list for top10 stats ---\n  let top10AvgViews = 0;\n  let topResultPublished = null;\n  if (videoIds.length > 0) {\n    const vUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${videoIds.join(',')}&key=${ytKey}`;\n    const vRes = await fetchWithRetry(vUrl, { method: 'GET' }, 'yt_videos_seo');\n    retryCount += (vRes.attempts || 1) - 1;\n    if (vRes.quota) quotaExhausted = true;\n    if (vRes.ok) {\n      const items = vRes.json?.items || [];\n      const views = items.map(v => parseInt(v.statistics?.viewCount || '0', 10)).filter(v => v > 0);\n      top10AvgViews = views.length ? Math.round(views.reduce((a, b) => a + b, 0) / views.length) : 0;\n      topResultPublished = items[0]?.snippet?.publishedAt || null;\n    }\n  }\n\n  // --- 5. Claude Opus scoring call ---\n  const userPrompt = `SEO OPPORTUNITY ANALYSIS\n\nTopic: ${title}\nNiche: ${nicheDesc}\nPrimary Keyword: ${primary}\nKeyword Variants Generated: ${JSON.stringify(variantArr)}\n\nAUTOCOMPLETE DATA:\nKeyword 1 (${variantArr[0] || ''}): ${autocompleteCounts[0]} suggestions returned\nKeyword 2 (${variantArr[1] || ''}): ${autocompleteCounts[1]} suggestions returned\nKeyword 3 (${variantArr[2] || ''}): ${autocompleteCounts[2]} suggestions returned\n\nCOMPETITION DATA:\nYouTube search results for \"${primary}\": ${totalResults} videos\nEstimated top 10 videos average views: ${top10AvgViews}\nTop result published: ${topResultPublished || 'unknown'}\n\nScoring logic:\n  autocomplete_demand_score:\n    0 suggestions: 0\n    1-2: 20, 3-4: 45, 5-6: 65, 7-8: 85, 8+: 100\n  search_volume_proxy = avg(autocomplete_count_1, count_2, count_3) * 12.5\n  competition_inverse_score:\n    >500K: 0, 100K-500K: 15, 50K-100K: 35, 10K-50K: 55, 5K-10K: 70, 1K-5K: 85, <1K: 95\n  seo_score = (autocomplete_demand * 0.40) + (min(search_volume_proxy, 100) * 0.30) + (competition_inverse * 0.30)\n\nClassification rules:\n  blue-ocean: totalResults < 5,000 AND autocomplete suggestions > 4\n  competitive: totalResults 5K-100K\n  red-ocean: totalResults > 100K\n  dead-sea: totalResults < 1,000 AND autocomplete suggestions < 2\n\nReturn ONLY this JSON:\n{\n  \"seo_score\": <integer 0-100>,\n  \"seo_classification\": \"<blue-ocean|competitive|red-ocean|dead-sea>\",\n  \"primary_keyword\": \"<string>\",\n  \"keyword_variants\": [\"<string>\", \"<string>\", \"<string>\"],\n  \"search_demand_signal\": \"<high|medium|low|none>\",\n  \"competition_level\": \"<low|medium|high>\",\n  \"search_volume_proxy\": <integer>,\n  \"opportunity_summary\": \"<string, 1 sentence, be specific about numbers>\"\n}`;\n\n  const scoreStart = Date.now();\n  const scoreRes = await callOpus(userPrompt, 600, 'claude_opus_seo');\n  retryCount += (scoreRes.attempts || 1) - 1;\n\n  let patch;\n  if (!scoreRes.ok) {\n    patch = fallbackPayload(title, `Claude SEO call failed: ${scoreRes.error?.slice(0, 120) || 'unknown'}`);\n    await logProduction(topic.id, 'claude_opus_seo', 'error', Date.now() - scoreStart, 0, retryCount);\n  } else {\n    const parsed = parseJsonLoose(scoreRes.json?.content?.[0]?.text || '');\n    if (!parsed || typeof parsed.seo_score !== 'number') {\n      patch = fallbackPayload(title, 'Claude SEO response failed to parse');\n      await logProduction(topic.id, 'claude_opus_seo', 'parse_error', Date.now() - scoreStart, 0.012, retryCount);\n    } else {\n      const classification = ['blue-ocean', 'competitive', 'red-ocean', 'dead-sea'].includes(parsed.seo_classification)\n        ? parsed.seo_classification\n        : null;\n      const compLevel = ['low', 'medium', 'high'].includes(parsed.competition_level) ? parsed.competition_level : null;\n      const kv = Array.isArray(parsed.keyword_variants)\n        ? parsed.keyword_variants.slice(0, 10).map(v => String(v).slice(0, 200))\n        : variantArr;\n      patch = {\n        seo_score: Math.max(0, Math.min(100, Math.round(parsed.seo_score))),\n        seo_classification: classification,\n        primary_keyword: String(parsed.primary_keyword || primary).slice(0, 200),\n        keyword_variants: kv,\n        search_volume_proxy: parsed.search_volume_proxy != null ? parseInt(parsed.search_volume_proxy, 10) : null,\n        competition_level: compLevel,\n        seo_opportunity_summary: String(parsed.opportunity_summary || '').slice(0, 2000),\n        seo_scored_at: new Date().toISOString()\n      };\n      await logProduction(topic.id, 'claude_opus_seo', 'success', Date.now() - scoreStart, 0.014, retryCount);\n    }\n  }\n\n  batchResults.push({ topic_id: topic.id, patch });\n}\n\n// PATCH all topics\nfor (const r of batchResults) {\n  try {\n    const patchRes = await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${r.topic_id}`, {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify(r.patch)\n    });\n    if (!patchRes.ok) {\n      const t = await patchRes.text();\n      r.patch_error = `HTTP ${patchRes.status}: ${t.slice(0, 200)}`;\n    }\n  } catch (e) {\n    r.patch_error = e.message;\n  }\n}\n\nif (data.batch_index + 1 < data.total_batches) {\n  await sleep(2000);\n}\n\nreturn {\n  json: {\n    project_id: projectId,\n    batch_index: data.batch_index,\n    total_batches: data.total_batches,\n    scored: batchResults.length,\n    quota_exhausted: quotaExhausted,\n    results: batchResults\n  }\n};"
@@ -49,25 +61,97 @@
       "name": "Summarize Run",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 300],
+      "position": [
+        1120,
+        300
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "const items = $input.all().map(i => i.json).filter(j => !j.skipped);\nif (items.length === 0) {\n  return [{ json: { success: true, scored_total: 0, message: 'No topics needed SEO scoring' } }];\n}\n\nconst totalScored = items.reduce((s, b) => s + (b.scored || 0), 0);\nconst quota = items.some(b => b.quota_exhausted);\nconst projectId = items[0]?.project_id;\n\nreturn [{\n  json: {\n    success: true,\n    project_id: projectId,\n    scored_total: totalScored,\n    batches_processed: items.length,\n    quota_exhausted: quota,\n    finished_at: new Date().toISOString()\n  }\n}];"
       }
+    },
+    {
+      "id": "webhook-trigger-HirXQl",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        500
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "seo/score",
+        "responseMode": "lastNode",
+        "options": {
+          "allowedOrigins": "*"
+        },
+        "authentication": "headerAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      },
+      "webhookId": "auto-HirXQlJK"
     }
   ],
   "connections": {
     "Execute Workflow Trigger": {
-      "main": [[{ "node": "Fetch Topics + Project", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Fetch Topics + Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Topics + Project": {
-      "main": [[{ "node": "Split Into Batches", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Split Into Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Split Into Batches": {
-      "main": [[{ "node": "Score Batch (Autocomplete + Search + Claude Opus)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Score Batch (Autocomplete + Search + Claude Opus)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Score Batch (Autocomplete + Search + Claude Opus)": {
-      "main": [[{ "node": "Summarize Run", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Summarize Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Topics + Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -75,10 +159,8 @@
     "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none",
     "executionTimeout": 1800,
-    "callerPolicy": "workflowsFromSameOwner"
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "staticData": null,
-  "meta": null,
-  "pinData": {},
-  "tags": []
+  "active": true
 }

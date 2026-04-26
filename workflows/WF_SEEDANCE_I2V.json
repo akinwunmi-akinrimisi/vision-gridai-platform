@@ -1,30 +1,41 @@
 {
   "name": "WF_SEEDANCE_I2V",
-  "active": false,
-  "isArchived": false,
   "nodes": [
     {
       "id": "webhook-i2v-trigger",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 340],
+      "position": [
+        200,
+        340
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "production/i2v-hybrid",
         "responseMode": "responseNode",
         "options": {
           "allowedOrigins": "*"
-        }
+        },
+        "authentication": "headerAuth"
       },
-      "webhookId": "i2v-hybrid"
+      "webhookId": "i2v-hybrid",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      }
     },
     {
       "id": "if-auth-i2v",
       "name": "Check Auth Token",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [420, 340],
+      "position": [
+        420,
+        340
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -53,7 +64,10 @@
       "name": "Respond Unauthorized",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [640, 500],
+      "position": [
+        640,
+        500
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: false, error: 'Unauthorized' }) }}",
@@ -67,7 +81,10 @@
       "name": "Respond Accepted",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [640, 340],
+      "position": [
+        640,
+        340
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Trigger').item.json.body.topic_id, message: 'Seedance I2V generation started for hybrid video scenes' }, error: null }) }}",
@@ -81,7 +98,10 @@
       "name": "Fetch Video Scenes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [860, 340],
+      "position": [
+        860,
+        340
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// Fetch scenes with has_video=true for this topic. Resume support: only pending video_status.\nconst body = $('Webhook Trigger').item.json.body;\nconst topicId = body.topic_id;\nconst projectId = body.project_id;\n\nif (!topicId) {\n  return [{ json: { success: false, error: 'topic_id is required', scenes: [], skip: true } }];\n}\n\nconst sbUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// Fetch video scenes that still need I2V generation\nconst scenesUrl = `${sbUrl}/rest/v1/scenes?topic_id=eq.${topicId}&has_video=eq.true&video_status=eq.pending&image_status=eq.uploaded&order=scene_number.asc&select=id,topic_id,project_id,scene_number,scene_id,image_prompt,image_url,video_placement_start_ms,video_placement_end_ms,audio_duration_ms,zoom_direction,color_mood,composition_prefix`;\n\nconst resp = await fetch(scenesUrl, { method: 'GET', headers: sbHeaders });\nif (!resp.ok) {\n  const errText = await resp.text();\n  return [{ json: { success: false, error: `Failed to fetch scenes: HTTP ${resp.status}: ${errText.slice(0, 300)}`, scenes: [], skip: true } }];\n}\n\nconst scenes = await resp.json();\n\nif (!Array.isArray(scenes) || scenes.length === 0) {\n  // No video scenes to process — proceed directly to ken_burns\n  try {\n    await fetch(`${sbUrl}/rest/v1/topics?id=eq.${topicId}`, {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({ pipeline_stage: 'ken_burns' })\n    });\n  } catch (_) { }\n  return [{ json: { success: true, topic_id: topicId, project_id: projectId, scenes: [], skip: true, message: 'No pending video scenes — advancing to ken_burns' } }];\n}\n\n// Log start\ntry {\n  await fetch(`${sbUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId || scenes[0].project_id,\n      topic_id: topicId,\n      stage: 'i2v_hybrid',\n      scene_number: null,\n      action: 'started',\n      status: 'running',\n      duration_ms: 0,\n      cost_usd: 0,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\nreturn [{ json: {\n  success: true,\n  topic_id: topicId,\n  project_id: projectId || scenes[0].project_id,\n  scenes: scenes,\n  total_video_scenes: scenes.length,\n  skip: false\n} }];"
@@ -92,7 +112,10 @@
       "name": "If Has Video Scenes",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1080, 340],
+      "position": [
+        1080,
+        340
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -121,7 +144,10 @@
       "name": "Process Video Scenes Sequentially",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1300, 240],
+      "position": [
+        1300,
+        240
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// Process each video scene sequentially:\n// 1. Call Claude to rewrite image_prompt as motion prompt\n// 2. Submit to Fal.ai Seedance 2.0 Fast I2V (async queue)\n// 3. Poll until COMPLETED\n// 4. PATCH scene with video_clip_url + video_status\n\nconst data = $input.first().json;\nconst scenes = data.scenes || [];\nconst topicId = data.topic_id;\nconst projectId = data.project_id;\n\nconst sbUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst falKey = $env.FAL_API_KEY;\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\n// Exponential backoff helper\nasync function fetchWithRetry(url, options, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      if (res.ok) return res;\n      const errText = await res.text();\n      lastErr = new Error(`HTTP ${res.status}: ${errText.slice(0, 300)}`);\n      if (res.status === 429) {\n        await sleep(30000 * attempt);\n        continue;\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n    } catch (e) {\n      lastErr = e;\n    }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  throw lastErr || new Error('fetchWithRetry: all attempts failed');\n}\n\n// Claude motion prompt rewriter\nasync function rewriteToMotionPrompt(imagePrompt) {\n  const systemMsg = `You are a video motion prompt expert. Rewrite the given static image prompt into a motion-enhanced prompt suitable for AI image-to-video generation (Seedance 2.0). Add subtle, cinematic motion descriptions: camera movements (slow dolly, gentle pan, slight push-in), environmental motion (wind, particles, light shifts, smoke, water ripple), and character micro-movements (breathing, blinking, subtle gestures). Keep it under 200 words. Maintain the original subject and composition. Output ONLY the rewritten prompt text, no explanation.`;\n\n  const res = await fetchWithRetry('https://api.anthropic.com/v1/messages', {\n    method: 'POST',\n    headers: {\n      'x-api-key': anthropicKey,\n      'anthropic-version': '2023-06-01',\n      'content-type': 'application/json'\n    },\n    body: JSON.stringify({\n      model: 'claude-haiku-4-5-20251001',\n      max_tokens: 400,\n      system: systemMsg,\n      messages: [{ role: 'user', content: `Rewrite this static image prompt for video motion:\\n\\n${imagePrompt}` }]\n    })\n  });\n\n  const body = await res.json();\n  return (body.content && body.content[0] && body.content[0].text) || imagePrompt;\n}\n\n// Fal.ai Seedance 2.0 Fast I2V — async queue pattern\nasync function generateI2V(imageUrl, motionPrompt) {\n  // Submit to queue\n  const submitRes = await fetchWithRetry('https://queue.fal.run/fal-ai/seedance-2.0-fast/image-to-video', {\n    method: 'POST',\n    headers: {\n      'Authorization': `Key ${falKey}`,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      image_url: imageUrl,\n      prompt: motionPrompt,\n      duration: '10',\n      aspect_ratio: '16:9'\n    })\n  });\n\n  const submitBody = await submitRes.json();\n  const requestId = submitBody.request_id;\n  if (!requestId) throw new Error('Fal.ai did not return request_id: ' + JSON.stringify(submitBody).slice(0, 300));\n\n  // Poll for completion\n  const statusUrl = `https://queue.fal.run/fal-ai/seedance-2.0-fast/requests/${requestId}/status`;\n  const resultUrl = `https://queue.fal.run/fal-ai/seedance-2.0-fast/requests/${requestId}`;\n  const maxPolls = 120; // 10 min max (5s intervals)\n\n  for (let poll = 0; poll < maxPolls; poll++) {\n    await sleep(5000);\n    try {\n      const statusRes = await fetch(statusUrl, {\n        headers: { 'Authorization': `Key ${falKey}` }\n      });\n      const statusBody = await statusRes.json();\n\n      if (statusBody.status === 'COMPLETED') {\n        // Fetch result\n        const resultRes = await fetch(resultUrl, {\n          headers: { 'Authorization': `Key ${falKey}` }\n        });\n        const resultBody = await resultRes.json();\n        const videoUrl = resultBody.video && resultBody.video.url;\n        if (!videoUrl) throw new Error('No video URL in Fal.ai result: ' + JSON.stringify(resultBody).slice(0, 300));\n        return { videoUrl, requestId, durationMs: 10000 };\n      }\n\n      if (statusBody.status === 'FAILED') {\n        throw new Error('Fal.ai Seedance generation FAILED: ' + JSON.stringify(statusBody).slice(0, 300));\n      }\n      // IN_QUEUE or IN_PROGRESS — continue polling\n    } catch (e) {\n      if (poll === maxPolls - 1) throw e;\n      // Transient error — continue polling\n    }\n  }\n  throw new Error(`Fal.ai Seedance timed out after ${maxPolls * 5}s for request ${requestId}`);\n}\n\n// Process each scene sequentially\nconst results = [];\nlet totalCost = 0;\nlet completed = 0;\nlet failed = 0;\n\nfor (const scene of scenes) {\n  const sceneStart = Date.now();\n  try {\n    // 1. Rewrite prompt for motion\n    const motionPrompt = await rewriteToMotionPrompt(scene.image_prompt || '');\n\n    // 2. Generate I2V via Fal.ai Seedance\n    const i2vResult = await generateI2V(scene.image_url, motionPrompt);\n\n    // 3. Calculate cost: Seedance 2.0 Fast ~$0.25 per clip + Haiku ~$0.001\n    const sceneCost = 0.25;\n    totalCost += sceneCost;\n\n    // 4. PATCH scene in Supabase\n    const patchBody = {\n      video_clip_url: i2vResult.videoUrl,\n      video_clip_duration_ms: i2vResult.durationMs,\n      video_status: 'uploaded'\n    };\n\n    await fetch(`${sbUrl}/rest/v1/scenes?id=eq.${scene.id}`, {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify(patchBody)\n    });\n\n    // 5. Log success\n    await fetch(`${sbUrl}/rest/v1/production_logs`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        project_id: projectId,\n        topic_id: topicId,\n        stage: 'i2v_hybrid',\n        scene_number: scene.scene_number,\n        action: 'seedance_i2v',\n        status: 'success',\n        duration_ms: Date.now() - sceneStart,\n        cost_usd: sceneCost,\n        retry_count: 0\n      })\n    });\n\n    completed++;\n    results.push({ scene_id: scene.id, scene_number: scene.scene_number, status: 'uploaded', videoUrl: i2vResult.videoUrl });\n\n    // Rate limit: wait 15s between Seedance submissions\n    if (scenes.indexOf(scene) < scenes.length - 1) {\n      await sleep(15000);\n    }\n  } catch (err) {\n    failed++;\n    // Mark scene as failed\n    try {\n      await fetch(`${sbUrl}/rest/v1/scenes?id=eq.${scene.id}`, {\n        method: 'PATCH',\n        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({ video_status: 'failed' })\n      });\n    } catch (_) { }\n\n    // Log failure\n    try {\n      await fetch(`${sbUrl}/rest/v1/production_logs`, {\n        method: 'POST',\n        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          project_id: projectId,\n          topic_id: topicId,\n          stage: 'i2v_hybrid',\n          scene_number: scene.scene_number,\n          action: 'seedance_i2v',\n          status: 'failed',\n          duration_ms: Date.now() - sceneStart,\n          cost_usd: 0,\n          retry_count: 0\n        })\n      });\n    } catch (_) { }\n\n    results.push({ scene_id: scene.id, scene_number: scene.scene_number, status: 'failed', error: err.message });\n  }\n}\n\nreturn [{ json: {\n  topic_id: topicId,\n  project_id: projectId,\n  total_video_scenes: scenes.length,\n  completed,\n  failed,\n  total_cost: totalCost,\n  results\n} }];"
@@ -132,7 +158,10 @@
       "name": "Advance Pipeline to Ken Burns",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 240],
+      "position": [
+        1540,
+        240
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// After all I2V scenes processed, advance pipeline to ken_burns.\nconst data = $input.first().json;\nconst topicId = data.topic_id;\nconst projectId = data.project_id;\n\nconst sbUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// Update pipeline_stage to ken_burns\ntry {\n  await fetch(`${sbUrl}/rest/v1/topics?id=eq.${topicId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({ pipeline_stage: 'ken_burns' })\n  });\n} catch (_) { }\n\n// Log completion\ntry {\n  await fetch(`${sbUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: topicId,\n      stage: 'i2v_hybrid',\n      scene_number: null,\n      action: 'completed',\n      status: 'success',\n      duration_ms: 0,\n      cost_usd: data.total_cost || 0,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\n// Fire Ken Burns webhook to continue pipeline\ntry {\n  await fetch('http://localhost:5678/webhook/production/ken-burns', {\n    method: 'POST',\n    headers: {\n      'Authorization': `Bearer ${$env.DASHBOARD_API_TOKEN}`,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({ topic_id: topicId, project_id: projectId })\n  });\n} catch (_) { }\n\nreturn [{ json: {\n  success: true,\n  topic_id: topicId,\n  project_id: projectId,\n  completed: data.completed || 0,\n  failed: data.failed || 0,\n  total_cost: data.total_cost || 0,\n  next_stage: 'ken_burns',\n  message: `I2V hybrid complete: ${data.completed || 0} uploaded, ${data.failed || 0} failed. Advancing to Ken Burns.`\n} }];"
@@ -143,7 +172,10 @@
       "name": "Exit No Video Scenes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1300, 500],
+      "position": [
+        1300,
+        500
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// No video scenes to process — pipeline already advanced to ken_burns in Fetch node\nconst data = $input.first().json;\nreturn [{ json: { success: true, topic_id: data.topic_id, project_id: data.project_id, message: data.message || 'No video scenes — skipped I2V, advanced to ken_burns', skipped: true } }];"
@@ -152,39 +184,90 @@
   ],
   "connections": {
     "Webhook Trigger": {
-      "main": [[{ "node": "Check Auth Token", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Auth Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Auth Token": {
       "main": [
-        [{ "node": "Respond Accepted", "type": "main", "index": 0 }],
-        [{ "node": "Respond Unauthorized", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Respond Accepted": {
-      "main": [[{ "node": "Fetch Video Scenes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Fetch Video Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Video Scenes": {
-      "main": [[{ "node": "If Has Video Scenes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "If Has Video Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "If Has Video Scenes": {
       "main": [
-        [{ "node": "Process Video Scenes Sequentially", "type": "main", "index": 0 }],
-        [{ "node": "Exit No Video Scenes", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Process Video Scenes Sequentially",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Exit No Video Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Process Video Scenes Sequentially": {
-      "main": [[{ "node": "Advance Pipeline to Ken Burns", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Advance Pipeline to Ken Burns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
-    "saveDataErrorExecution": "all",
-    "saveDataSuccessExecution": "none",
-    "executionTimeout": 3600,
-    "callerPolicy": "workflowsFromSameOwner"
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "staticData": null,
-  "meta": null,
-  "pinData": {},
-  "tags": []
+  "active": true
 }

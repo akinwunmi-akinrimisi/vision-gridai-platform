@@ -1,0 +1,200 @@
+{
+  "name": "WF_MASTER â€” Orchestrator",
+  "nodes": [
+    {
+      "id": "m-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        400
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "n1",
+      "name": "Set: Global Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        400
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e470473b-fa4d-4322-a2c7-cdc5cfda760a",
+              "name": "sheetId",
+              "value": "1u9mYZ8K5PS8qiRPKoE_Js3i2iLzBqfY9_CK7XU2iglU",
+              "type": "string"
+            },
+            {
+              "id": "998ab58b-1fbd-4d21-b683-af3179c9aa67",
+              "name": "driveRootFolderId",
+              "value": "1QY6rr2kuM_1L777NKs-f63FrRkLAE2rF",
+              "type": "string"
+            },
+            {
+              "id": "34133dda-e29e-49d2-8e42-f2e481d4c94e",
+              "name": "folderRegistryDocId",
+              "value": "see_driveTopicFoldersJson",
+              "type": "string"
+            },
+            {
+              "id": "tf01",
+              "name": "driveTopicFoldersJson",
+              "value": "{\"0\":{\"root\":\"1kYdsJZW7zYnc64TX4vFUBNGFMElJuXCn\",\"name\":\"01_is_the_amex_platinum_worth_695\"},\"1\":{\"root\":\"1yEOIbAJ1KaYsBM1P4lTm3iBM86Jrqzoa\",\"name\":\"02_the_perfect_3card_wallet_setup_how\"},\"2\":{\"root\":\"1efAZp1JgcKlsa9NV2oEoNMmgq6L_ViFz\",\"name\":\"03_chase_sapphire_reserve_vs_preferred_365\"},\"3\":{\"root\":\"1WduLvm_E4HHSeqD9uPUGC3bt5Tz2zV-N\",\"name\":\"04_how_banks_secretly_stole_23_billion\"},\"4\":{\"root\":\"1tAaDvguZMUx3HHJz1bauDDwCh6LoBtc8\",\"name\":\"05_q4_credit_card_strategy_how_to\"},\"5\":{\"root\":\"1jdLlwySa27ATA3DBKbR5QscOvACuvNg5\",\"name\":\"06_cash_back_vs_travel_points_i\"},\"6\":{\"root\":\"17LXDhk3RQNZqVKmYpUh7M9W_qKmtQOgr\",\"name\":\"07_12_premium_cards_worth_the_annual\"},\"7\":{\"root\":\"1AdlX6hMKGfM6O6T27fszZp7qliLVVfYk\",\"name\":\"08_how_to_fly_first_class_for\"},\"8\":{\"root\":\"1JNm3Fbd4sIWM8oLIKJc_STiYS9cdQ1mP\",\"name\":\"09_every_major_us_credit_card_ranked\"},\"9\":{\"root\":\"1reyC8joLAp3l7s0TxruvUisVgPpLjM9r\",\"name\":\"10_best_credit_cards_for_freelancers_the\"},\"10\":{\"root\":\"1XtkFdx5x2Q4I4TIkTGLoG1obYKB1QP1C\",\"name\":\"11_credit_score_from_zero_to_750\"},\"11\":{\"root\":\"1BvyfjYYnPPVixs4TY6tJRg1P9E34F911\",\"name\":\"12_best_credit_cards_for_nurses_how\"},\"12\":{\"root\":\"12QIn9jqNwIlhODX2DHNTZ1hlNLL0VhSd\",\"name\":\"13_free_amex_platinum_for_military_how\"},\"13\":{\"root\":\"1Xy63by06lKwSV9j6q3joVMUD4QfHnOOk\",\"name\":\"14_best_credit_cards_for_uber_and\"},\"14\":{\"root\":\"1MufZxSF1zvrt02zgf1l3t06pKki_9TO2\",\"name\":\"15_best_credit_cards_for_digital_nomads\"},\"15\":{\"root\":\"16aSXAXFYMqPdnjcASG_76_HXFYtc5Gsu\",\"name\":\"16_how_to_rebuild_credit_after_divorce\"},\"16\":{\"root\":\"1eIrEs9uGrwf5jXqx7I3D8ePLVkRQEFB3\",\"name\":\"17_best_credit_cards_for_teachers_how\"},\"17\":{\"root\":\"1fgXBzam4X709cQWWLMagWjInPd9tDD-W\",\"name\":\"18_why_every_youtuber_recommends_the_same\"},\"18\":{\"root\":\"1hPbv3hm0ggvlLcn5XsuPsMUMgxUUev-o\",\"name\":\"19_the_amex_platinum_trap_how_american\"},\"19\":{\"root\":\"1R1SUJYR0NMWH-bfF-TQJpNcIPuKpYsDp\",\"name\":\"20_the_great_points_heist_how_banks\"},\"20\":{\"root\":\"1RmrNbQAycDuTP7h-q-ce97BhD7W04SDK\",\"name\":\"21_dark_psychology_of_credit_cards_7\"},\"21\":{\"root\":\"1n4eDqBarSdAjyxRmYyv7kYv4rCgYQ7cQ\",\"name\":\"22_the_annual_fee_trap_why_you\"},\"22\":{\"root\":\"1tbaUzsyBcDbf5NEwwaxS8BFFgfLrjnP1\",\"name\":\"23_who_really_pays_for_your_credit\"},\"23\":{\"root\":\"1j7oRNc617TAfTMT3fR6uR6B-aKSIc0S3\",\"name\":\"24_i_read_500_pages_of_credit\"},\"24\":{\"root\":\"1OQ3z8Gt0bepJaaE175-Jf-4ZykOsY-E-\",\"name\":\"25_airport_lounge_access_is_dying_how\"}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "m-get-sheet",
+      "name": "HTTP: Get Topics Sheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        850,
+        400
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + $json.sheetId + '/values/Topics!A2:X26' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": null,
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "name": "Code: Find Pending Topic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        400
+      ],
+      "parameters": {
+        "jsCode": "const cfg = $('Set: Global Config').first().json;\nconst rows = $input.first().json.values || [];\nconst pending = rows.findIndex(r => r[8] === 'pending' || r[8] === '');\nif (pending === -1) return [{json:{error:'No pending topics found'}}];\nconst r = rows[pending];\nconst topicId = pending; // 0-based index\nconst topicFolders = JSON.parse(cfg.driveTopicFoldersJson || '{}');\nconst rootFolderId = (topicFolders[topicId+''] || {}).root || cfg.driveRootFolderId;\nconst sd = $getWorkflowStaticData('global');\nsd.context = {\n  topicId,\n  seoTitle: r[3] || '',\n  originalTitle: r[2] || '',\n  angle: r[1] || '',\n  narrativeHook: r[4] || '',\n  keySegments: r[5] || '',\n  estimatedCpm: r[6] || '',\n  viralPotential: r[7] || '',\n  scriptDocId: r[9] || '',\n  scriptDocUrl: r[10] || '',\n  sceneManifestDocId: r[11] || '',\n  audioProgress: r[12] || '',\n  imagesProgress: r[13] || '',\n  i2vProgress: r[14] || '',\n  t2vProgress: r[15] || '',\n  assemblyStatus: r[16] || '',\n  driveVideoUrl: r[17] || '',\n  driveFolderUrl: r[18] || '',\n  youtubeUrl: r[19] || '',\n  config: {\n    sheetId: cfg.sheetId,\n    kieApiKey: cfg.kieApiKey,\n    anthropicApiKey: cfg.anthropicApiKey,\n    driveRootFolderId: cfg.driveRootFolderId,\n    topicRootFolderId: rootFolderId,\n    driveTopicFolders: topicFolders,\n    playlist1Id: cfg.playlist1Id,\n    playlist2Id: cfg.playlist2Id,\n    playlist3Id: cfg.playlist3Id\n  }\n};\nreturn [{json:sd.context}];"
+      }
+    },
+    {
+      "id": "m-set-status",
+      "name": "HTTP: Set Status Scripting",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        400
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + $json.config.sheetId + '/values/Topics!I' + ($json.topicId + 1) + '?valueInputOption=USER_ENTERED' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({values: [['scripting']]}) }}",
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": null,
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "m-exec-wf01",
+      "name": "Execute Workflow: WF01",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        1750,
+        400
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "x0MuFy3pKycc809H",
+          "mode": "id"
+        },
+        "waitForCompletion": false
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set: Global Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Global Config": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Get Topics Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Get Topics Sheet": {
+      "main": [
+        [
+          {
+            "node": "Code: Find Pending Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Find Pending Topic": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Set Status Scripting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Set Status Scripting": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow: WF01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "active": false
+}

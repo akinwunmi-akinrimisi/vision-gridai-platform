@@ -6,25 +6,44 @@
         "httpMethod": "POST",
         "path": "project/update-settings",
         "responseMode": "responseNode",
-        "options": { "allowedOrigins": "*" }
+        "options": {
+          "allowedOrigins": "*"
+        },
+        "authentication": "headerAuth"
       },
       "id": "webhook-update-settings",
       "name": "Webhook Update Settings",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300],
-      "webhookId": "update-settings-webhook"
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "update-settings-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      }
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "auth-check-settings",
               "leftValue": "={{ $json.headers.authorization }}",
               "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -35,19 +54,27 @@
       "name": "Check Auth - Settings",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [470, 300]
+      "position": [
+        470,
+        300
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
-        "options": { "responseCode": 401 }
+        "options": {
+          "responseCode": 401
+        }
       },
       "id": "respond-unauthorized-settings",
       "name": "Respond Unauthorized - Settings",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [690, 500]
+      "position": [
+        690,
+        500
+      ]
     },
     {
       "parameters": {
@@ -57,7 +84,10 @@
       "name": "Parse Settings Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [690, 200]
+      "position": [
+        690,
+        200
+      ]
     },
     {
       "parameters": {
@@ -66,66 +96,109 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "={{ Object.keys($json.fields).join(',') }}", "value": "={{ JSON.stringify($json.fields) }}" }
+            {
+              "name": "={{ Object.keys($json.fields).join(',') }}",
+              "value": "={{ JSON.stringify($json.fields) }}"
+            }
           ]
         },
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.fields) }}",
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "supabase-update-settings",
       "name": "Supabase Update Settings",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [910, 200],
+      "position": [
+        910,
+        200
+      ],
       "continueOnFail": true
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true, data: null, error: null }) }}",
-        "options": { "responseCode": 200 }
+        "options": {
+          "responseCode": 200
+        }
       },
       "id": "respond-success-settings",
       "name": "Respond Success - Settings",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1130, 200]
+      "position": [
+        1130,
+        200
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "prompts/update",
         "responseMode": "responseNode",
-        "options": { "allowedOrigins": "*" }
+        "options": {
+          "allowedOrigins": "*"
+        },
+        "authentication": "headerAuth"
       },
       "id": "webhook-prompt-update",
       "name": "Webhook Prompt Update",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 800],
-      "webhookId": "prompt-update-webhook"
+      "position": [
+        250,
+        800
+      ],
+      "webhookId": "prompt-update-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      }
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "auth-check-prompt-update",
               "leftValue": "={{ $json.headers.authorization }}",
               "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -136,19 +209,27 @@
       "name": "Check Auth - Prompt Update",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [470, 800]
+      "position": [
+        470,
+        800
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
-        "options": { "responseCode": 401 }
+        "options": {
+          "responseCode": 401
+        }
       },
       "id": "respond-unauthorized-prompt-update",
       "name": "Respond Unauthorized - Prompt Update",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [690, 1000]
+      "position": [
+        690,
+        1000
+      ]
     },
     {
       "parameters": {
@@ -158,7 +239,10 @@
       "name": "Parse Prompt Update Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [690, 700]
+      "position": [
+        690,
+        700
+      ]
     },
     {
       "parameters": {
@@ -167,60 +251,100 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ prompt_text: $json.prompt_text }) }}",
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "supabase-update-prompt",
       "name": "Supabase Update Prompt",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [910, 700],
+      "position": [
+        910,
+        700
+      ],
       "continueOnFail": true
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true, data: null, error: null }) }}",
-        "options": { "responseCode": 200 }
+        "options": {
+          "responseCode": 200
+        }
       },
       "id": "respond-success-prompt-update",
       "name": "Respond Success - Prompt Update",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1130, 700]
+      "position": [
+        1130,
+        700
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "prompts/revert",
         "responseMode": "responseNode",
-        "options": { "allowedOrigins": "*" }
+        "options": {
+          "allowedOrigins": "*"
+        },
+        "authentication": "headerAuth"
       },
       "id": "webhook-prompt-revert",
       "name": "Webhook Prompt Revert",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 1300],
-      "webhookId": "prompt-revert-webhook"
+      "position": [
+        250,
+        1300
+      ],
+      "webhookId": "prompt-revert-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      }
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "auth-check-prompt-revert",
               "leftValue": "={{ $json.headers.authorization }}",
               "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -231,19 +355,27 @@
       "name": "Check Auth - Prompt Revert",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [470, 1300]
+      "position": [
+        470,
+        1300
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
-        "options": { "responseCode": 401 }
+        "options": {
+          "responseCode": 401
+        }
       },
       "id": "respond-unauthorized-prompt-revert",
       "name": "Respond Unauthorized - Prompt Revert",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [690, 1500]
+      "position": [
+        690,
+        1500
+      ]
     },
     {
       "parameters": {
@@ -253,7 +385,10 @@
       "name": "Parse Prompt Revert Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [690, 1200]
+      "position": [
+        690,
+        1200
+      ]
     },
     {
       "parameters": {
@@ -262,17 +397,28 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
           ]
         },
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "fetch-prompt-meta",
       "name": "Fetch Prompt Meta",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [910, 1200],
+      "position": [
+        910,
+        1200
+      ],
       "continueOnFail": true
     },
     {
@@ -283,7 +429,10 @@
       "name": "Extract Meta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1130, 1200]
+      "position": [
+        1130,
+        1200
+      ]
     },
     {
       "parameters": {
@@ -292,17 +441,28 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
           ]
         },
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "fetch-historical-version",
       "name": "Fetch Historical Version",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1350, 1200],
+      "position": [
+        1350,
+        1200
+      ],
       "continueOnFail": true
     },
     {
@@ -313,7 +473,10 @@
       "name": "Prepare Revert Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1570, 1200]
+      "position": [
+        1570,
+        1200
+      ]
     },
     {
       "parameters": {
@@ -322,17 +485,28 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
           ]
         },
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "fetch-current-active",
       "name": "Fetch Current Active",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1790, 1200],
+      "position": [
+        1790,
+        1200
+      ],
       "continueOnFail": true
     },
     {
@@ -343,7 +517,10 @@
       "name": "Calculate New Version",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2010, 1200]
+      "position": [
+        2010,
+        1200
+      ]
     },
     {
       "parameters": {
@@ -352,21 +529,38 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ project_id: $json.project_id, prompt_type: $json.prompt_type, prompt_text: $json.prompt_text, version: $json.new_version, is_active: true }) }}",
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "insert-reverted-version",
       "name": "Insert Reverted Version",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2230, 1200],
+      "position": [
+        2230,
+        1200
+      ],
       "continueOnFail": true
     },
     {
@@ -376,60 +570,100 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ is_active: false }) }}",
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "deactivate-old-version",
       "name": "Deactivate Old Version",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2450, 1200],
+      "position": [
+        2450,
+        1200
+      ],
       "continueOnFail": true
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true, data: null, error: null }) }}",
-        "options": { "responseCode": 200 }
+        "options": {
+          "responseCode": 200
+        }
       },
       "id": "respond-success-revert",
       "name": "Respond Success - Revert",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [2670, 1200]
+      "position": [
+        2670,
+        1200
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "prompts/regenerate",
         "responseMode": "responseNode",
-        "options": { "allowedOrigins": "*" }
+        "options": {
+          "allowedOrigins": "*"
+        },
+        "authentication": "headerAuth"
       },
       "id": "webhook-prompt-regenerate",
       "name": "Webhook Prompt Regenerate",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 1800],
-      "webhookId": "prompt-regenerate-webhook"
+      "position": [
+        250,
+        1800
+      ],
+      "webhookId": "prompt-regenerate-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      }
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "auth-check-prompt-regen",
               "leftValue": "={{ $json.headers.authorization }}",
               "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -440,120 +674,311 @@
       "name": "Check Auth - Prompt Regen",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [470, 1800]
+      "position": [
+        470,
+        1800
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
-        "options": { "responseCode": 401 }
+        "options": {
+          "responseCode": 401
+        }
       },
       "id": "respond-unauthorized-prompt-regen",
       "name": "Respond Unauthorized - Prompt Regen",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [690, 2000]
+      "position": [
+        690,
+        2000
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true, data: null, error: null, message: 'Regeneration requires Claude API - implement in Phase 2 niche research workflow' }) }}",
-        "options": { "responseCode": 200 }
+        "options": {
+          "responseCode": 200
+        }
       },
       "id": "respond-regen-stub",
       "name": "Respond Regen Stub",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [690, 1700]
+      "position": [
+        690,
+        1700
+      ]
     }
   ],
   "connections": {
     "Webhook Update Settings": {
-      "main": [[{ "node": "Check Auth - Settings", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Auth - Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Auth - Settings": {
       "main": [
-        [{ "node": "Parse Settings Body", "type": "main", "index": 0 }],
-        [{ "node": "Respond Unauthorized - Settings", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Parse Settings Body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized - Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Parse Settings Body": {
-      "main": [[{ "node": "Supabase Update Settings", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Supabase Update Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Supabase Update Settings": {
-      "main": [[{ "node": "Respond Success - Settings", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond Success - Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-
     "Webhook Prompt Update": {
-      "main": [[{ "node": "Check Auth - Prompt Update", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Auth - Prompt Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Auth - Prompt Update": {
       "main": [
-        [{ "node": "Parse Prompt Update Body", "type": "main", "index": 0 }],
-        [{ "node": "Respond Unauthorized - Prompt Update", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Parse Prompt Update Body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized - Prompt Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Parse Prompt Update Body": {
-      "main": [[{ "node": "Supabase Update Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Supabase Update Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Supabase Update Prompt": {
-      "main": [[{ "node": "Respond Success - Prompt Update", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond Success - Prompt Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-
     "Webhook Prompt Revert": {
-      "main": [[{ "node": "Check Auth - Prompt Revert", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Auth - Prompt Revert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Auth - Prompt Revert": {
       "main": [
-        [{ "node": "Parse Prompt Revert Body", "type": "main", "index": 0 }],
-        [{ "node": "Respond Unauthorized - Prompt Revert", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Parse Prompt Revert Body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized - Prompt Revert",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Parse Prompt Revert Body": {
-      "main": [[{ "node": "Fetch Prompt Meta", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Fetch Prompt Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Prompt Meta": {
-      "main": [[{ "node": "Extract Meta", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Extract Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extract Meta": {
-      "main": [[{ "node": "Fetch Historical Version", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Fetch Historical Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Historical Version": {
-      "main": [[{ "node": "Prepare Revert Data", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Prepare Revert Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Prepare Revert Data": {
-      "main": [[{ "node": "Fetch Current Active", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Fetch Current Active",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Current Active": {
-      "main": [[{ "node": "Calculate New Version", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Calculate New Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Calculate New Version": {
-      "main": [[{ "node": "Insert Reverted Version", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Insert Reverted Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Insert Reverted Version": {
-      "main": [[{ "node": "Deactivate Old Version", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Deactivate Old Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Deactivate Old Version": {
-      "main": [[{ "node": "Respond Success - Revert", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond Success - Revert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-
     "Webhook Prompt Regenerate": {
-      "main": [[{ "node": "Check Auth - Prompt Regen", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Auth - Prompt Regen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Auth - Prompt Regen": {
       "main": [
-        [{ "node": "Respond Regen Stub", "type": "main", "index": 0 }],
-        [{ "node": "Respond Unauthorized - Prompt Regen", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond Regen Stub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized - Prompt Regen",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "staticData": null,
-  "tags": [
-    { "name": "webhook" },
-    { "name": "settings" }
-  ],
-  "triggerCount": 4
+  "active": true
 }

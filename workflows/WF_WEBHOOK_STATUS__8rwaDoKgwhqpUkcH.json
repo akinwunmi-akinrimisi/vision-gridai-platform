@@ -1,0 +1,82 @@
+{
+  "name": "WF_WEBHOOK_STATUS — Health Check",
+  "nodes": [
+    {
+      "id": "webhook-1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "parameters": {
+        "path": "status",
+        "httpMethod": "GET",
+        "responseMode": "lastNode"
+      },
+      "webhookId": "status-health"
+    },
+    {
+      "id": "code-health",
+      "name": "Health Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const checks = { n8n: 'ok', supabase: 'unknown', timestamp: new Date().toISOString() };\n\ntry {\n  const supabaseUrl = $env.SUPABASE_URL;\n  const apikey = $env.SUPABASE_ANON_KEY;\n  const srk = $env.SUPABASE_SERVICE_ROLE_KEY;\n  \n  const resp = await fetch(`${supabaseUrl}/rest/v1/projects?select=id&limit=1`, {\n    headers: { apikey, Authorization: `Bearer ${srk}` }\n  });\n  \n  if (resp.ok) {\n    checks.supabase = 'ok';\n  } else {\n    checks.supabase = `error: HTTP ${resp.status}`;\n  }\n} catch(e) {\n  checks.supabase = `error: ${e.message}`;\n}\n\nchecks.healthy = checks.n8n === 'ok' && checks.supabase === 'ok';\n\nreturn [{ json: checks }];"
+      }
+    },
+    {
+      "id": "respond-1",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        600,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Check": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "active": true
+}

@@ -339,5 +339,6 @@
     "saveExecutionProgress": true,
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
-  }
+  },
+  "active": true
 }

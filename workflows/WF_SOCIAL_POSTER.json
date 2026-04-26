@@ -14,7 +14,10 @@
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 400],
+      "position": [
+        200,
+        400
+      ],
       "webhookId": "social-post-webhook"
     },
     {
@@ -44,7 +47,10 @@
       "name": "Check Auth",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [420, 400]
+      "position": [
+        420,
+        400
+      ]
     },
     {
       "parameters": {
@@ -58,7 +64,10 @@
       "name": "Auth Failed",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [640, 600]
+      "position": [
+        640,
+        600
+      ]
     },
     {
       "parameters": {
@@ -68,7 +77,10 @@
       "name": "Validate Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 300]
+      "position": [
+        640,
+        300
+      ]
     },
     {
       "parameters": {
@@ -82,7 +94,10 @@
       "name": "Respond 202",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [860, 300]
+      "position": [
+        860,
+        300
+      ]
     },
     {
       "parameters": {
@@ -93,14 +108,23 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "id", "value": "=eq.{{ $('Validate Request').first().json.short_id }}" },
-            { "name": "select", "value": "*" }
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Validate Request').first().json.short_id }}"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            }
           ]
         },
         "options": {}
@@ -109,7 +133,10 @@
       "name": "Read Short",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1080, 300],
+      "position": [
+        1080,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -126,15 +153,27 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "topic_id", "value": "=eq.{{ $('Read Short').first().json[0].topic_id }}" },
-            { "name": "platform", "value": "=eq.{{ $('Validate Request').first().json.platform }}" },
-            { "name": "select", "value": "file_url,drive_id" }
+            {
+              "name": "topic_id",
+              "value": "=eq.{{ $('Read Short').first().json[0].topic_id }}"
+            },
+            {
+              "name": "platform",
+              "value": "=eq.{{ $('Validate Request').first().json.platform }}"
+            },
+            {
+              "name": "select",
+              "value": "file_url,drive_id"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            }
           ]
         },
         "options": {}
@@ -143,7 +182,10 @@
       "name": "Read Render",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1300, 300],
+      "position": [
+        1300,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -211,7 +253,10 @@
       "name": "Switch Platform",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [1520, 300]
+      "position": [
+        1520,
+        300
+      ]
     },
     {
       "parameters": {
@@ -221,7 +266,10 @@
       "name": "Post TikTok",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1780, 100]
+      "position": [
+        1780,
+        100
+      ]
     },
     {
       "parameters": {
@@ -231,7 +279,10 @@
       "name": "Post Instagram",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1780, 340]
+      "position": [
+        1780,
+        340
+      ]
     },
     {
       "parameters": {
@@ -242,8 +293,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -257,7 +314,10 @@
       "name": "Post YouTube Shorts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 580],
+      "position": [
+        1780,
+        580
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -274,7 +334,10 @@
       "name": "Merge Results",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [2040, 300]
+      "position": [
+        2040,
+        300
+      ]
     },
     {
       "parameters": {
@@ -284,7 +347,10 @@
       "name": "Update Short Status",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2260, 300]
+      "position": [
+        2260,
+        300
+      ]
     },
     {
       "parameters": {
@@ -295,9 +361,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -309,7 +384,10 @@
       "name": "Log Posted",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2480, 300],
+      "position": [
+        2480,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "QsqqFXtnLakNfVKR",
@@ -325,71 +403,164 @@
       "name": "Handle Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [860, 600]
+      "position": [
+        860,
+        600
+      ]
     }
   ],
   "connections": {
     "Webhook Trigger": {
       "main": [
-        [{ "node": "Check Auth", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Check Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Check Auth": {
       "main": [
-        [{ "node": "Validate Request", "type": "main", "index": 0 }],
-        [{ "node": "Auth Failed", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Auth Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Validate Request": {
       "main": [
-        [{ "node": "Respond 202", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond 202",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Respond 202": {
       "main": [
-        [{ "node": "Read Short", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Read Short",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Read Short": {
       "main": [
-        [{ "node": "Read Render", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Read Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Read Render": {
       "main": [
-        [{ "node": "Switch Platform", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Switch Platform",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Switch Platform": {
       "main": [
-        [{ "node": "Post TikTok", "type": "main", "index": 0 }],
-        [{ "node": "Post Instagram", "type": "main", "index": 0 }],
-        [{ "node": "Post YouTube Shorts", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Post TikTok",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post YouTube Shorts",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Post TikTok": {
       "main": [
-        [{ "node": "Merge Results", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Post Instagram": {
       "main": [
-        [{ "node": "Merge Results", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Post YouTube Shorts": {
       "main": [
-        [{ "node": "Merge Results", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Merge Results": {
       "main": [
-        [{ "node": "Update Short Status", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Update Short Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Update Short Status": {
       "main": [
-        [{ "node": "Log Posted", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Log Posted",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -398,6 +569,5 @@
     "executionTimeout": 300,
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "staticData": null,
-  "tags": []
+  "active": true
 }

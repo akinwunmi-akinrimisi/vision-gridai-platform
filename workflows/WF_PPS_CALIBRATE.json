@@ -1,14 +1,15 @@
 {
   "name": "WF_PPS_CALIBRATE",
-  "active": false,
-  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-cal-cron",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 220],
+      "position": [
+        200,
+        220
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -18,20 +19,30 @@
             }
           ]
         }
-      }
+      },
+      "disabled": true
     },
     {
       "id": "trigger-cal-webhook",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 400],
+      "position": [
+        200,
+        400
+      ],
       "parameters": {
         "path": "pps/calibrate",
         "httpMethod": "POST",
-        "authentication": "headerAuth",
         "responseMode": "responseNode",
-        "options": {}
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
       },
       "webhookId": "pps-calibrate"
     },
@@ -40,7 +51,10 @@
       "name": "Normalize + Scope Projects",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 310],
+      "position": [
+        440,
+        310
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// WF_PPS_CALIBRATE — scope projects, skip if <20 samples. Runs AFTER WF_REVENUE_ATTRIBUTION.\n// Triggers:\n//   - Schedule (1st of month 05:00 UTC): all active projects\n//   - Webhook POST /webhook/pps/calibrate: { project_id?, force? }\n// Pure math — no Claude. Global fetch + $env.\n\nconst raw = $input.first().json;\nconst viaWebhook = !!raw.body;\nconst payload = raw.body || {};\nconst projectIdFilter = payload.project_id || null;\nconst force = payload.force === true;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nlet projUrl = `${supabaseUrl}/rest/v1/projects?select=id&or=(status.is.null,status.not.in.(paused,archived))`;\nif (projectIdFilter) projUrl = `${supabaseUrl}/rest/v1/projects?id=eq.${projectIdFilter}&select=id`;\n\nconst pRes = await fetch(projUrl, { method: 'GET', headers: sbHeaders });\nif (!pRes.ok) throw new Error(`Fetch projects failed: HTTP ${pRes.status}: ${await pRes.text()}`);\nconst projects = await pRes.json();\n\nif (!projects || projects.length === 0) {\n  return [{\n    json: {\n      skipped: true,\n      reason: 'No projects to calibrate',\n      via_webhook: viaWebhook,\n      http_status: 200\n    }\n  }];\n}\n\nreturn projects.map(p => ({\n  json: {\n    project_id: p.id,\n    force,\n    via_webhook: viaWebhook,\n    started_at: new Date().toISOString()\n  }\n}));"
@@ -51,7 +65,10 @@
       "name": "Regress Weights (Per Project)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 310],
+      "position": [
+        720,
+        310
+      ],
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "// Per-project multivariate regression on pps_calibration samples.\n// Features (6): [outlier, seo, script_quality, niche_health, thumbnail_ctr, title_ctr] normalized 0-100.\n// Target: implied_actual_score 0-100.\n// Method: gradient descent 1000 iterations w/ learning rate 1e-5 (tuned for 0-100 scale) + L2 regularization λ=0.5.\n// Prefers GD over normal equations for numerical stability + simpler fallback.\n// Final weights clamped [0.05, 0.50] then normalized so sum=1.0 (matches pps_config CHECK).\n\nconst data = $input.item.json;\nif (data.skipped) return $input.item;\n\nconst projectId = data.project_id;\nconst runStart = Date.now();\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nasync function sbGet(url, label) {\n  const res = await fetch(url, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) throw new Error(`${label} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);\n  return res.json();\n}\n\nconst MIN_SAMPLES = 20;\nconst LAMBDA = 0.5;        // L2 regularization strength\nconst ITERATIONS = 1000;\nconst LR = 1e-5;           // learning rate tuned for features in 0-100 scale\nconst MIN_WEIGHT = 0.05;\nconst MAX_WEIGHT = 0.50;\n\ntry {\n  // 1. Load calibration rows with actuals\n  const calRows = await sbGet(\n    `${supabaseUrl}/rest/v1/pps_calibration?project_id=eq.${projectId}&actual_views_30d=not.is.null&variance_pct=not.is.null&select=id,predicted_pps,pps_breakdown,implied_actual_score,variance_pct&limit=500`,\n    'fetch pps_calibration'\n  );\n\n  if (!calRows || calRows.length < MIN_SAMPLES) {\n    try {\n      await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n        method: 'POST',\n        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          project_id: projectId,\n          topic_id: null,\n          stage: 'pps_calibrate',\n          scene_number: null,\n          action: 'insufficient_samples',\n          status: 'skipped',\n          duration_ms: Date.now() - runStart,\n          cost_usd: 0,\n          retry_count: 0\n        })\n      });\n    } catch (_) { }\n    return {\n      json: {\n        project_id: projectId,\n        skipped: true,\n        reason: `Only ${calRows ? calRows.length : 0} samples; need >=${MIN_SAMPLES}`,\n        sample_size: calRows ? calRows.length : 0,\n        via_webhook: data.via_webhook\n      }\n    };\n  }\n\n  // 2. Extract training matrix X (n×6) and target y (n)\n  const featKeys = ['outlier', 'seo', 'script_quality', 'niche_health', 'thumbnail_ctr', 'title_ctr'];\n  const X = [];\n  const y = [];\n  let skippedMalformed = 0;\n  for (const row of calRows) {\n    const bd = row.pps_breakdown || {};\n    const features = featKeys.map(k => {\n      const f = bd[k];\n      if (f && typeof f.normalized === 'number') return f.normalized;\n      return null;\n    });\n    if (features.some(v => v === null)) { skippedMalformed += 1; continue; }\n    const target = Number(row.implied_actual_score);\n    if (!isFinite(target)) { skippedMalformed += 1; continue; }\n    X.push(features);\n    y.push(target);\n  }\n\n  if (X.length < MIN_SAMPLES) {\n    return {\n      json: {\n        project_id: projectId,\n        skipped: true,\n        reason: `After filtering malformed breakdowns (${skippedMalformed}), only ${X.length} usable samples`,\n        sample_size: X.length,\n        via_webhook: data.via_webhook\n      }\n    };\n  }\n\n  const n = X.length;\n  const p = 6;\n\n  // 3. Load current weights (for comparison + fallback)\n  const cfgArr = await sbGet(\n    `${supabaseUrl}/rest/v1/pps_config?project_id=eq.${projectId}&select=id,outlier_weight,seo_weight,script_quality_weight,niche_health_weight,thumbnail_ctr_weight,title_ctr_weight,calibration_sample_count&limit=1`,\n    'fetch pps_config'\n  );\n  let cfg = cfgArr && cfgArr[0] ? cfgArr[0] : null;\n  const priorWeights = cfg ? [\n    Number(cfg.outlier_weight) || 0.30,\n    Number(cfg.seo_weight) || 0.20,\n    Number(cfg.script_quality_weight) || 0.20,\n    Number(cfg.niche_health_weight) || 0.15,\n    Number(cfg.thumbnail_ctr_weight) || 0.10,\n    Number(cfg.title_ctr_weight) || 0.05\n  ] : [0.30, 0.20, 0.20, 0.15, 0.10, 0.05];\n\n  // 4. Gradient descent with L2 regularization\n  // Model: y_hat = X·w where w initialized to priorWeights scaled up to 0-100 contribution scale\n  // Because features are 0-100 and y is 0-100, and y_hat = sum(w_i * x_i), and if x_i ≈ y_i, w sums to 1.0.\n  // So we keep w on the weight scale (sum≈1) and iterate.\n  let w = priorWeights.slice();\n  let finalRss = Infinity;\n  let converged = false;\n\n  for (let iter = 0; iter < ITERATIONS; iter++) {\n    // Gradient = (2/n) * X^T · (X·w - y) + 2·λ·w\n    const grad = new Array(p).fill(0);\n    let rss = 0;\n    for (let i = 0; i < n; i++) {\n      let pred = 0;\n      for (let j = 0; j < p; j++) pred += X[i][j] * w[j];\n      const err = pred - y[i];\n      rss += err * err;\n      for (let j = 0; j < p; j++) grad[j] += (2 / n) * err * X[i][j];\n    }\n    for (let j = 0; j < p; j++) grad[j] += 2 * LAMBDA * w[j];\n\n    // Check for divergence (NaN/Infinity)\n    let bad = false;\n    for (let j = 0; j < p; j++) { if (!isFinite(grad[j]) || !isFinite(w[j])) { bad = true; break; } }\n    if (bad) { w = priorWeights.slice(); converged = false; break; }\n\n    // Update\n    for (let j = 0; j < p; j++) w[j] -= LR * grad[j];\n    finalRss = rss;\n    // Early stop if gradient tiny\n    const gradMag = Math.sqrt(grad.reduce((s, g) => s + g * g, 0));\n    if (gradMag < 1e-4) { converged = true; break; }\n  }\n\n  // Sanity check: all finite\n  if (!w.every(isFinite)) w = priorWeights.slice();\n\n  // 5. Clamp to [MIN_WEIGHT, MAX_WEIGHT]\n  let clamped = w.map(v => Math.max(MIN_WEIGHT, Math.min(MAX_WEIGHT, v)));\n\n  // 6. Normalize sum=1.0 exactly (scale)\n  let sum = clamped.reduce((s, v) => s + v, 0);\n  if (sum <= 0 || !isFinite(sum)) clamped = priorWeights.slice();\n  else clamped = clamped.map(v => v / sum);\n\n  // After normalization, verify floors — a factor might dip below MIN_WEIGHT after scaling.\n  // If so, pin it to MIN_WEIGHT and redistribute the remainder proportionally across the rest.\n  let needsRedistrib = clamped.some(v => v < MIN_WEIGHT - 1e-9) || clamped.some(v => v > MAX_WEIGHT + 1e-9);\n  let redistributeIterations = 0;\n  while (needsRedistrib && redistributeIterations < 10) {\n    redistributeIterations += 1;\n    const fixedIdx = [];\n    let fixedSum = 0;\n    for (let j = 0; j < p; j++) {\n      if (clamped[j] < MIN_WEIGHT) { clamped[j] = MIN_WEIGHT; fixedIdx.push(j); }\n      else if (clamped[j] > MAX_WEIGHT) { clamped[j] = MAX_WEIGHT; fixedIdx.push(j); }\n    }\n    fixedSum = fixedIdx.reduce((s, j) => s + clamped[j], 0);\n    const remainingBudget = 1.0 - fixedSum;\n    const freeIdx = [];\n    for (let j = 0; j < p; j++) if (!fixedIdx.includes(j)) freeIdx.push(j);\n    if (freeIdx.length === 0) break;\n    const freeSum = freeIdx.reduce((s, j) => s + clamped[j], 0);\n    if (freeSum <= 0) {\n      const each = remainingBudget / freeIdx.length;\n      for (const j of freeIdx) clamped[j] = each;\n    } else {\n      const scale = remainingBudget / freeSum;\n      for (const j of freeIdx) clamped[j] = clamped[j] * scale;\n    }\n    // Re-check\n    needsRedistrib = clamped.some(v => v < MIN_WEIGHT - 1e-9) || clamped.some(v => v > MAX_WEIGHT + 1e-9);\n  }\n\n  // Final safety: if still violates, fall back to priors\n  if (clamped.some(v => v < MIN_WEIGHT - 1e-9 || v > MAX_WEIGHT + 1e-9)) {\n    clamped = priorWeights.slice();\n  }\n\n  // 7. Compute R^2 + mean-abs-diff vs prior\n  const yMean = y.reduce((s, v) => s + v, 0) / n;\n  let ssTot = 0, ssRes = 0;\n  for (let i = 0; i < n; i++) {\n    let pred = 0;\n    for (let j = 0; j < p; j++) pred += X[i][j] * clamped[j];\n    // Scale pred back to 0-100: since w sums to 1 and x in 0-100, pred is already 0-100\n    ssRes += (y[i] - pred) * (y[i] - pred);\n    ssTot += (y[i] - yMean) * (y[i] - yMean);\n  }\n  const r2 = ssTot > 0 ? Math.max(-1, Math.min(1, 1 - ssRes / ssTot)) : 0;\n\n  const weightsDiff = clamped.map((v, i) => Math.abs(v - priorWeights[i]));\n  const maxChangeAbs = Math.max(...weightsDiff);\n  const meanChangeAbs = weightsDiff.reduce((s, v) => s + v, 0) / p;\n  const weightsChangedPct = Math.round(meanChangeAbs * 10000) / 100; // percentage points (mean abs)\n\n  // 8. Build patch\n  const patch = {\n    outlier_weight: Math.round(clamped[0] * 10000) / 10000,\n    seo_weight: Math.round(clamped[1] * 10000) / 10000,\n    script_quality_weight: Math.round(clamped[2] * 10000) / 10000,\n    niche_health_weight: Math.round(clamped[3] * 10000) / 10000,\n    thumbnail_ctr_weight: Math.round(clamped[4] * 10000) / 10000,\n    title_ctr_weight: Math.round(clamped[5] * 10000) / 10000\n  };\n  // Re-normalize after 4-decimal rounding so CHECK (sum=1.0 ± 0.001) passes\n  const rsum = patch.outlier_weight + patch.seo_weight + patch.script_quality_weight + patch.niche_health_weight + patch.thumbnail_ctr_weight + patch.title_ctr_weight;\n  if (Math.abs(rsum - 1.0) > 0.0005) {\n    // Adjust largest factor to absorb rounding drift\n    const keys = ['outlier_weight', 'seo_weight', 'script_quality_weight', 'niche_health_weight', 'thumbnail_ctr_weight', 'title_ctr_weight'];\n    let largestKey = keys[0];\n    for (const k of keys) if (patch[k] > patch[largestKey]) largestKey = k;\n    patch[largestKey] = Math.round((patch[largestKey] + (1.0 - rsum)) * 10000) / 10000;\n  }\n\n  const newSampleCount = (cfg?.calibration_sample_count || 0) + n;\n  patch.calibration_sample_count = newSampleCount;\n  patch.last_calibrated_at = new Date().toISOString();\n  patch.calibration_notes = `samples=${n}, r2=${Math.round(r2 * 1000) / 1000}, max_change=${Math.round(maxChangeAbs * 10000) / 100}pp, mean_change=${weightsChangedPct}pp, converged=${converged}, iters=${ITERATIONS}, lambda=${LAMBDA}`;\n\n  // 9. PATCH pps_config (or INSERT if missing)\n  let patchStatus = 'ok';\n  try {\n    if (cfg && cfg.id) {\n      const pRes = await fetch(`${supabaseUrl}/rest/v1/pps_config?id=eq.${cfg.id}`, {\n        method: 'PATCH',\n        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify(patch)\n      });\n      if (!pRes.ok) patchStatus = `PATCH HTTP ${pRes.status}: ${(await pRes.text()).slice(0, 200)}`;\n    } else {\n      const iRes = await fetch(`${supabaseUrl}/rest/v1/pps_config`, {\n        method: 'POST',\n        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({ project_id: projectId, ...patch })\n      });\n      if (!iRes.ok) patchStatus = `INSERT HTTP ${iRes.status}: ${(await iRes.text()).slice(0, 200)}`;\n    }\n  } catch (e) { patchStatus = `patch threw: ${e.message}`; }\n\n  // 10. production_logs\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        project_id: projectId,\n        topic_id: null,\n        stage: 'pps_calibrate',\n        scene_number: null,\n        action: 'regression',\n        status: patchStatus === 'ok' ? 'success' : 'partial',\n        duration_ms: Date.now() - runStart,\n        cost_usd: 0,\n        retry_count: 0\n      })\n    });\n  } catch (_) { }\n\n  return {\n    json: {\n      project_id: projectId,\n      sample_size: n,\n      skipped_malformed: skippedMalformed,\n      prior_weights: priorWeights,\n      new_weights: [\n        patch.outlier_weight,\n        patch.seo_weight,\n        patch.script_quality_weight,\n        patch.niche_health_weight,\n        patch.thumbnail_ctr_weight,\n        patch.title_ctr_weight\n      ],\n      weights_changed_pct: weightsChangedPct,\n      max_change_pp: Math.round(maxChangeAbs * 10000) / 100,\n      r2,\n      converged,\n      calibration_sample_count: newSampleCount,\n      patch_status: patchStatus,\n      duration_ms: Date.now() - runStart,\n      via_webhook: data.via_webhook\n    }\n  };\n} catch (e) {\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        project_id: projectId,\n        topic_id: null,\n        stage: 'pps_calibrate',\n        scene_number: null,\n        action: 'regression',\n        status: 'error',\n        duration_ms: Date.now() - runStart,\n        cost_usd: 0,\n        retry_count: 0\n      })\n    });\n  } catch (_) { }\n  return {\n    json: {\n      project_id: projectId,\n      error: e.message,\n      via_webhook: data.via_webhook\n    }\n  };\n}"
@@ -62,7 +79,10 @@
       "name": "Run Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [980, 310],
+      "position": [
+        980,
+        310
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// Aggregate across projects.\nconst items = $input.all().map(i => i.json);\nconst meaningful = items.filter(j => !j.skipped && !j.error);\nconst skipped = items.filter(j => j.skipped);\nconst errors = items.filter(j => j.error);\n\nif (meaningful.length === 0) {\n  return [{\n    json: {\n      success: true,\n      projects_calibrated: 0,\n      projects_skipped: skipped.length,\n      projects_errored: errors.length,\n      message: skipped[0]?.reason || errors[0]?.error || 'Nothing to calibrate',\n      http_status: 200,\n      via_webhook: items[0]?.via_webhook || false\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    success: true,\n    projects_calibrated: meaningful.length,\n    projects_skipped: skipped.length,\n    projects_errored: errors.length,\n    total_samples_used: meaningful.reduce((s, m) => s + (m.sample_size || 0), 0),\n    avg_r2: Math.round((meaningful.reduce((s, m) => s + (m.r2 || 0), 0) / meaningful.length) * 1000) / 1000,\n    avg_weights_change_pct: Math.round((meaningful.reduce((s, m) => s + (m.weights_changed_pct || 0), 0) / meaningful.length) * 100) / 100,\n    per_project: meaningful.map(m => ({\n      project_id: m.project_id,\n      sample_size: m.sample_size,\n      r2: m.r2,\n      weights_changed_pct: m.weights_changed_pct,\n      max_change_pp: m.max_change_pp,\n      converged: m.converged,\n      prior_weights: m.prior_weights,\n      new_weights: m.new_weights,\n      patch_status: m.patch_status\n    })),\n    skipped_projects: skipped.map(s => ({ project_id: s.project_id, reason: s.reason, sample_size: s.sample_size })),\n    errored_projects: errors.map(e => ({ project_id: e.project_id, error: e.error })),\n    finished_at: new Date().toISOString(),\n    http_status: 200,\n    via_webhook: meaningful.some(m => m.via_webhook)\n  }\n}];"
@@ -73,7 +93,10 @@
       "name": "Respond To Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1240, 310],
+      "position": [
+        1240,
+        310
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}",
@@ -85,19 +108,59 @@
   ],
   "connections": {
     "Schedule Trigger": {
-      "main": [[{ "node": "Normalize + Scope Projects", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Normalize + Scope Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook Trigger": {
-      "main": [[{ "node": "Normalize + Scope Projects", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Normalize + Scope Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Normalize + Scope Projects": {
-      "main": [[{ "node": "Regress Weights (Per Project)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Regress Weights (Per Project)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Regress Weights (Per Project)": {
-      "main": [[{ "node": "Run Summary", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Run Summary": {
-      "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond To Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -105,10 +168,8 @@
     "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none",
     "executionTimeout": 600,
-    "callerPolicy": "workflowsFromSameOwner"
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "staticData": null,
-  "meta": null,
-  "pinData": {},
-  "tags": []
+  "active": true
 }

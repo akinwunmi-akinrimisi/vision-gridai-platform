@@ -1,0 +1,370 @@
+{
+  "name": "WF_T2V_GENERATION",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/t2v",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-t2v-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "production-t2v-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check-t2v",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auth-t2v",
+      "name": "Check Auth Token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, data: null, error: 'Unauthorized' }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-unauthorized-t2v",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Trigger').item.json.body.topic_id, message: 'T2V generation workflow started' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-t2v-accepted",
+      "name": "Respond Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "topic_id", "value": "=eq.{{ $('Webhook Trigger').item.json.body.topic_id }}" },
+            { "name": "visual_type", "value": "=eq.t2v" },
+            { "name": "video_status", "value": "=eq.pending" },
+            { "name": "order", "value": "scene_number.asc" },
+            { "name": "select", "value": "id,topic_id,project_id,scene_number,scene_id,image_prompt,visual_type,chapter" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "load-pending-scenes",
+      "name": "Load Pending Scenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: Array.isArray($json) && $json[0] ? $json[0].project_id : null, topic_id: $('Webhook Trigger').item.json.body.topic_id, stage: 't2v', action: 'started', details: { pending_scenes: Array.isArray($json) ? $json.length : 0, model: 'kling/v2-1-standard-text-to-video' } }) }}",
+        "options": {}
+      },
+      "id": "log-t2v-started",
+      "name": "Log T2V Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare scene data for sliding window processing\n// T2V does NOT need image_url - generates from text prompt only\nconst scenes = $('Load Pending Scenes').first().json;\nconst topicId = $('Webhook Trigger').item.json.body.topic_id;\n\nif (!Array.isArray(scenes) || scenes.length === 0) {\n  return [{\n    json: {\n      scenes: [],\n      topic_id: topicId,\n      total_scenes: 0,\n      scenes_completed: 0,\n      scenes_failed: 0,\n      total_t2v_cost: 0,\n      skip_processing: true\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    scenes: scenes,\n    topic_id: scenes[0].topic_id,\n    project_id: scenes[0].project_id,\n    total_scenes: scenes.length,\n    scenes_completed: 0,\n    scenes_failed: 0,\n    total_t2v_cost: 0,\n    skip_processing: false\n  }\n}];"
+      },
+      "id": "prepare-t2v-data",
+      "name": "Prepare T2V Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-has-scenes",
+              "leftValue": "={{ $json.skip_processing }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-scenes",
+      "name": "If Has Scenes",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1570, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sliding Window T2V Generation - 5 concurrent slots\n// Uses Kie.ai Kling 2.1 Standard T2V: POST createTask -> poll recordInfo\n// T2V generates video from text prompt only (no image_url required)\n\nconst data = $input.first().json;\nconst scenes = data.scenes;\nconst topicId = data.topic_id;\nconst projectId = data.project_id;\n\nconst SUPABASE_URL = $env.SUPABASE_URL;\nconst SUPABASE_ANON_KEY = $env.SUPABASE_ANON_KEY;\nconst SUPABASE_SERVICE_ROLE_KEY = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst KIE_API_KEY = $env.KIE_API_KEY;\n\nconst MAX_CONCURRENT = 5;\nconst POLL_INTERVAL_MS = 5000; // 5s for video generation\nconst POLL_TIMEOUT_MS = 600000; // 10 minutes per task\nconst MAX_RETRIES = 3;\nconst BACKOFF_MS = [30000, 60000, 120000];\nconst COST_PER_CLIP = 0.125;\n\nconst supabaseHeaders = {\n  'apikey': SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst kieHeaders = {\n  'Authorization': `Bearer ${KIE_API_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nfunction sleep(ms) {\n  return new Promise(resolve => setTimeout(resolve, ms));\n}\n\nasync function isTopicStopped() {\n  try {\n    const resp = await fetch(\n      `${SUPABASE_URL}/rest/v1/topics?id=eq.${topicId}&select=status`,\n      { headers: supabaseHeaders }\n    );\n    const result = await resp.json();\n    return result[0]?.status === 'stopped';\n  } catch (e) {\n    return false;\n  }\n}\n\nasync function submitTask(scene) {\n  const resp = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {\n    method: 'POST',\n    headers: kieHeaders,\n    body: JSON.stringify({\n      model: 'kling/v2-1-standard-text-to-video',\n      input: {\n        prompt: scene.image_prompt,\n        duration: '5',\n        aspect_ratio: '16:9'\n      }\n    })\n  });\n  const result = await resp.json();\n  if (result.code === 200 && result.data?.taskId) {\n    return result.data.taskId;\n  }\n  throw new Error(`Kie.ai T2V createTask failed: ${JSON.stringify(result)}`);\n}\n\nasync function pollTask(taskId) {\n  const resp = await fetch(\n    `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,\n    { headers: kieHeaders }\n  );\n  const result = await resp.json();\n  if (result.code === 200 && result.data) {\n    return result.data;\n  }\n  throw new Error(`Kie.ai T2V pollTask failed: ${JSON.stringify(result)}`);\n}\n\nasync function updateSceneSuccess(sceneId, videoUrl) {\n  await fetch(\n    `${SUPABASE_URL}/rest/v1/scenes?id=eq.${sceneId}`,\n    {\n      method: 'PATCH',\n      headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        video_status: 'uploaded',\n        video_url: videoUrl\n      })\n    }\n  );\n}\n\nasync function updateSceneFailed(sceneId, errorMsg) {\n  await fetch(\n    `${SUPABASE_URL}/rest/v1/scenes?id=eq.${sceneId}`,\n    {\n      method: 'PATCH',\n      headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        video_status: 'failed'\n      })\n    }\n  );\n}\n\nasync function updateTopicCost(costIncrement) {\n  const resp = await fetch(\n    `${SUPABASE_URL}/rest/v1/topics?id=eq.${topicId}&select=cost_breakdown,total_cost`,\n    { headers: supabaseHeaders }\n  );\n  const topics = await resp.json();\n  const current = topics[0] || {};\n  const breakdown = current.cost_breakdown || {};\n  const currentT2vCost = breakdown.t2v || 0;\n  const currentTotal = current.total_cost || 0;\n\n  await fetch(\n    `${SUPABASE_URL}/rest/v1/topics?id=eq.${topicId}`,\n    {\n      method: 'PATCH',\n      headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        cost_breakdown: { ...breakdown, t2v: currentT2vCost + costIncrement },\n        total_cost: currentTotal + costIncrement\n      })\n    }\n  );\n}\n\n// Main sliding window loop\nlet pending = [...scenes];\nlet active = []; // { scene, taskId, retries, submittedAt }\nlet completed = 0;\nlet failed = 0;\nlet totalCost = 0;\nlet stopped = false;\n\nwhile ((pending.length > 0 || active.length > 0) && !stopped) {\n  if (await isTopicStopped()) {\n    stopped = true;\n    break;\n  }\n\n  // Fill slots\n  while (active.length < MAX_CONCURRENT && pending.length > 0) {\n    const scene = pending.shift();\n    try {\n      const taskId = await submitTask(scene);\n      active.push({ scene, taskId, retries: 0, submittedAt: Date.now() });\n    } catch (err) {\n      if ((scene._retries || 0) < MAX_RETRIES) {\n        scene._retries = (scene._retries || 0) + 1;\n        const backoffMs = BACKOFF_MS[scene._retries - 1] || BACKOFF_MS[2];\n        await sleep(backoffMs);\n        pending.unshift(scene);\n      } else {\n        await updateSceneFailed(scene.id, err.message);\n        failed++;\n      }\n    }\n  }\n\n  await sleep(POLL_INTERVAL_MS);\n\n  const stillActive = [];\n  for (const slot of active) {\n    // Check timeout\n    if (Date.now() - slot.submittedAt > POLL_TIMEOUT_MS) {\n      if (slot.retries < MAX_RETRIES) {\n        slot.retries++;\n        try {\n          const newTaskId = await submitTask(slot.scene);\n          stillActive.push({ ...slot, taskId: newTaskId, submittedAt: Date.now() });\n        } catch (retryErr) {\n          await updateSceneFailed(slot.scene.id, `Timeout + retry failed: ${retryErr.message}`);\n          failed++;\n        }\n      } else {\n        await updateSceneFailed(slot.scene.id, `Timed out after ${POLL_TIMEOUT_MS}ms and ${MAX_RETRIES} retries`);\n        failed++;\n      }\n      continue;\n    }\n\n    try {\n      const result = await pollTask(slot.taskId);\n      const state = result.state || result.status;\n\n      if (state === 'success') {\n        let videoUrl = null;\n        if (result.resultJson) {\n          const parsed = typeof result.resultJson === 'string' ? JSON.parse(result.resultJson) : result.resultJson;\n          videoUrl = parsed.resultUrls?.[0] || parsed.url || null;\n        }\n        if (!videoUrl && result.resultUrls) {\n          videoUrl = result.resultUrls[0];\n        }\n\n        if (videoUrl) {\n          await updateSceneSuccess(slot.scene.id, videoUrl);\n          await updateTopicCost(COST_PER_CLIP);\n          completed++;\n          totalCost += COST_PER_CLIP;\n        } else {\n          await updateSceneFailed(slot.scene.id, 'No video URL in success response');\n          failed++;\n        }\n      } else if (state === 'fail' || state === 'failed') {\n        if (slot.retries < MAX_RETRIES) {\n          slot.retries++;\n          const backoffMs = BACKOFF_MS[slot.retries - 1] || BACKOFF_MS[2];\n          await sleep(backoffMs);\n          try {\n            const newTaskId = await submitTask(slot.scene);\n            stillActive.push({ ...slot, taskId: newTaskId, submittedAt: Date.now() });\n          } catch (retryErr) {\n            await updateSceneFailed(slot.scene.id, retryErr.message);\n            failed++;\n          }\n        } else {\n          await updateSceneFailed(slot.scene.id, `Failed after ${MAX_RETRIES} retries`);\n          failed++;\n        }\n      } else {\n        // Still processing\n        stillActive.push(slot);\n      }\n    } catch (pollErr) {\n      stillActive.push(slot);\n    }\n  }\n  active = stillActive;\n}\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    project_id: projectId,\n    completed,\n    failed,\n    total_cost: totalCost,\n    stopped\n  }\n}];"
+      },
+      "id": "sliding-window-t2v",
+      "name": "Sliding Window T2V Generation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1790, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ project_id: $json.project_id, topic_id: $json.topic_id, stage: 't2v', action: $json.stopped ? 'stopped' : 'completed', details: { completed: $json.completed, failed: $json.failed, total_cost: $json.total_cost } }) }}",
+        "options": {}
+      },
+      "id": "log-t2v-completed",
+      "name": "Log T2V Completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2060, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parallel completion sync: check if ALL visual scenes are done\nconst data = $input.first().json;\nconst topicId = data.topic_id;\n\nconst SUPABASE_URL = $env.SUPABASE_URL;\nconst supabaseHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nif (data.stopped) {\n  return [{ json: { ...data, assembly_claimed: false, reason: 'stopped' } }];\n}\n\n// Count completed visual scenes (uploaded or skipped)\nconst completedResp = await fetch(\n  `${SUPABASE_URL}/rest/v1/scenes?topic_id=eq.${topicId}&or=(image_status.eq.uploaded,video_status.eq.uploaded,skipped.eq.true)&select=id`,\n  { headers: supabaseHeaders }\n);\nconst completedScenes = await completedResp.json();\nconst completedCount = Array.isArray(completedScenes) ? completedScenes.length : 0;\n\n// Count total visual scenes\nconst totalResp = await fetch(\n  `${SUPABASE_URL}/rest/v1/scenes?topic_id=eq.${topicId}&visual_type=in.(static_image,i2v,t2v)&select=id`,\n  { headers: supabaseHeaders }\n);\nconst totalScenes = await totalResp.json();\nconst totalCount = Array.isArray(totalScenes) ? totalScenes.length : 0;\n\nlet assemblyClaimed = false;\n\nif (completedCount >= totalCount && totalCount > 0) {\n  const claimResp = await fetch(\n    `${SUPABASE_URL}/rest/v1/topics?id=eq.${topicId}&assembly_status=eq.pending`,\n    {\n      method: 'PATCH',\n      headers: { ...supabaseHeaders, 'Prefer': 'return=representation' },\n      body: JSON.stringify({ assembly_status: 'starting' })\n    }\n  );\n  const claimResult = await claimResp.json();\n  assemblyClaimed = Array.isArray(claimResult) && claimResult.length > 0;\n}\n\nreturn [{\n  json: {\n    ...data,\n    completed_visual_scenes: completedCount,\n    total_visual_scenes: totalCount,\n    assembly_claimed: assemblyClaimed\n  }\n}];"
+      },
+      "id": "completion-sync-t2v",
+      "name": "Parallel Completion Sync",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2280, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-assembly-claimed",
+              "leftValue": "={{ $json.assembly_claimed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-assembly-claimed",
+      "name": "If Assembly Claimed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2500, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/assembly",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $json.topic_id }) }}",
+        "options": {
+          "timeout": 10000,
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "id": "fire-assembly-t2v",
+      "name": "Fire Assembly Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2720, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { message: 'T2V generation complete. Assembly claimed by another workflow or not yet ready.', ...$input.first().json } }];"
+      },
+      "id": "exit-no-assembly-t2v",
+      "name": "Exit No Assembly",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2720, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// No scenes to process - go directly to completion sync\nreturn [{ json: { topic_id: $input.first().json.topic_id, project_id: null, completed: 0, failed: 0, total_cost: 0, stopped: false } }];"
+      },
+      "id": "skip-to-sync-t2v",
+      "name": "Skip To Sync",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1790, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "Check Auth Token", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Auth Token": {
+      "main": [
+        [{ "node": "Respond Accepted", "type": "main", "index": 0 }],
+        [{ "node": "Respond Unauthorized", "type": "main", "index": 0 }]
+      ]
+    },
+    "Respond Accepted": {
+      "main": [
+        [{ "node": "Load Pending Scenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Load Pending Scenes": {
+      "main": [
+        [{ "node": "Log T2V Started", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log T2V Started": {
+      "main": [
+        [{ "node": "Prepare T2V Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare T2V Data": {
+      "main": [
+        [{ "node": "If Has Scenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "If Has Scenes": {
+      "main": [
+        [{ "node": "Sliding Window T2V Generation", "type": "main", "index": 0 }],
+        [{ "node": "Skip To Sync", "type": "main", "index": 0 }]
+      ]
+    },
+    "Sliding Window T2V Generation": {
+      "main": [
+        [{ "node": "Log T2V Completed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log T2V Completed": {
+      "main": [
+        [{ "node": "Parallel Completion Sync", "type": "main", "index": 0 }]
+      ]
+    },
+    "Skip To Sync": {
+      "main": [
+        [{ "node": "Parallel Completion Sync", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parallel Completion Sync": {
+      "main": [
+        [{ "node": "If Assembly Claimed", "type": "main", "index": 0 }]
+      ]
+    },
+    "If Assembly Claimed": {
+      "main": [
+        [{ "node": "Fire Assembly Webhook", "type": "main", "index": 0 }],
+        [{ "node": "Exit No Assembly", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "production" },
+    { "name": "visual-generation" },
+    { "name": "t2v" }
+  ],
+  "pinData": {},
+  "versionId": "t2v-gen-v1"
+}

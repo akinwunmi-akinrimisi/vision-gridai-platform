@@ -1,14 +1,15 @@
 {
   "name": "WF_COMPETITOR_MONITOR",
-  "active": false,
-  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-cm-cron",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 220],
+      "position": [
+        200,
+        220
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -18,20 +19,30 @@
             }
           ]
         }
-      }
+      },
+      "disabled": true
     },
     {
       "id": "trigger-cm-webhook",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 400],
+      "position": [
+        200,
+        400
+      ],
       "parameters": {
         "path": "competitor/monitor/run",
         "httpMethod": "POST",
-        "authentication": "headerAuth",
         "responseMode": "responseNode",
-        "options": {}
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
       },
       "webhookId": "competitor-monitor-run"
     },
@@ -40,7 +51,10 @@
       "name": "Normalize + Scope Projects",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 310],
+      "position": [
+        440,
+        310
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// CF04 WF_COMPETITOR_MONITOR — normalize triggers, scope the project list.\n// Triggers:\n//   - Schedule (daily 06:00 UTC): no payload, scope = all projects with active competitors\n//   - Webhook POST /webhook/competitor/monitor/run: optional { project_id, force }\n// Output: one item per project to process, with context flags.\n// Global fetch + $env per MEMORY.md (n8n 2.8.4 task runner compat).\n\nconst raw = $input.first().json;\nconst viaWebhook = !!raw.body;\nconst payload = raw.body || {};\nconst projectIdFilter = payload.project_id || null;\nconst force = payload.force === true;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// Determine run mode — Sunday = weekly synthesis day (UTC)\nconst now = new Date();\nconst isSunday = now.getUTCDay() === 0;\nconst runWeeklySynthesis = isSunday || payload.run_weekly_synthesis === true;\n\n// Load distinct project_ids from active competitor_channels, filtered if requested\nlet channelUrl = `${supabaseUrl}/rest/v1/competitor_channels?is_active=eq.true&select=project_id`;\nif (projectIdFilter) channelUrl += `&project_id=eq.${projectIdFilter}`;\n\nconst chRes = await fetch(channelUrl, { method: 'GET', headers: sbHeaders });\nif (!chRes.ok) {\n  throw new Error(`Fetch competitor_channels failed: HTTP ${chRes.status}: ${await chRes.text()}`);\n}\nconst channelRows = await chRes.json();\nconst projectIds = Array.from(new Set((channelRows || []).map(r => r.project_id).filter(Boolean)));\n\nif (projectIds.length === 0) {\n  return [{\n    json: {\n      skipped: true,\n      reason: projectIdFilter\n        ? `No active competitor_channels for project ${projectIdFilter}`\n        : 'No active competitor_channels in any project',\n      via_webhook: viaWebhook,\n      run_weekly_synthesis: runWeeklySynthesis\n    }\n  }];\n}\n\n// Emit one item per project; downstream Code node processes sequentially with inter-project batching.\nreturn projectIds.map(pid => ({\n  json: {\n    project_id: pid,\n    force,\n    via_webhook: viaWebhook,\n    run_weekly_synthesis: runWeeklySynthesis,\n    triggered_at: now.toISOString()\n  }\n}));"
@@ -51,7 +65,10 @@
       "name": "Process Project Competitors",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 310],
+      "position": [
+        700,
+        310
+      ],
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "// CF04 per-project processor.\n// For one project: fetch active channels -> per-channel new-video detection ->\n// outlier scoring -> topic-match -> insert competitor_videos + competitor_alerts ->\n// update competitor_channels stats.\n//\n// Inline exponential backoff (1s -> 2s -> 4s -> 8s, max 4 attempts, 30s cap)\n// for YouTube + Supabase calls. YouTube quota exhaustion -> graceful exit.\n// Per-channel failures don't abort the run.\n\nconst data = $input.item.json;\nif (data.skipped) return $input.item;\n\nconst projectId = data.project_id;\nconst runStart = Date.now();\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst ytKey = $env.YOUTUBE_API_KEY;\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\nlet quotaExhausted = false;\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  let lastStatus = 0;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      lastStatus = res.status;\n      if (res.ok) {\n        return { ok: true, json: await res.json(), status: res.status, attempts: attempt };\n      }\n      const body = await res.text();\n      if (res.status === 403 && /quotaExceeded|dailyLimitExceeded/i.test(body)) {\n        return { ok: false, quota: true, status: res.status, error: body, attempts: attempt };\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) {\n      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);\n      await sleep(delay);\n    }\n  }\n  return { ok: false, status: lastStatus, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\n// ISO 8601 duration (PT1H2M3S) -> seconds. Robust against weird inputs.\nfunction parseIsoDuration(s) {\n  if (!s || typeof s !== 'string') return 0;\n  const m = s.match(/^PT(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?$/);\n  if (!m) return 0;\n  const h = parseInt(m[1] || '0', 10);\n  const min = parseInt(m[2] || '0', 10);\n  const sec = parseInt(m[3] || '0', 10);\n  return h * 3600 + min * 60 + sec;\n}\n\nfunction normalizeTitle(s) {\n  return String(s || '').toLowerCase().replace(/[^a-z0-9\\s]/g, ' ').replace(/\\s+/g, ' ').trim();\n}\n\n// 1. Fetch active competitor channels for this project\nconst chUrl = `${supabaseUrl}/rest/v1/competitor_channels?project_id=eq.${projectId}&is_active=eq.true&select=id,channel_id,channel_name,channel_handle,uploads_playlist_id,avg_views_30d,avg_views_90d,total_view_count,total_video_count,consecutive_fetch_failures&order=last_checked_at.asc.nullsfirst`;\nconst chRes = await fetch(chUrl, { method: 'GET', headers: sbHeaders });\nif (!chRes.ok) {\n  return {\n    json: {\n      project_id: projectId,\n      error: `Fetch channels failed: HTTP ${chRes.status}: ${(await chRes.text()).slice(0, 200)}`,\n      via_webhook: data.via_webhook,\n      run_weekly_synthesis: data.run_weekly_synthesis\n    }\n  };\n}\nconst channels = await chRes.json();\n\nif (!channels || channels.length === 0) {\n  return {\n    json: {\n      project_id: projectId,\n      channels_processed: 0,\n      videos_inserted: 0,\n      alerts_created: 0,\n      quota_exhausted: false,\n      skipped_reason: 'No active channels',\n      via_webhook: data.via_webhook,\n      run_weekly_synthesis: data.run_weekly_synthesis\n    }\n  };\n}\n\n// 2. Fetch project topics for topic-match detection (substring check, no Claude in daily path)\nconst topicsRes = await fetch(`${supabaseUrl}/rest/v1/topics?project_id=eq.${projectId}&status=in.(pending,approved,scripting,audio,images,video,assembly,review)&select=id,seo_title,original_title`, { method: 'GET', headers: sbHeaders });\nconst topicCorpus = topicsRes.ok ? (await topicsRes.json()).map(t => ({\n  id: t.id,\n  normalized: normalizeTitle(t.seo_title || t.original_title)\n})).filter(t => t.normalized.length >= 8) : [];\n\nlet totalVideosInserted = 0;\nlet totalAlertsCreated = 0;\nlet channelsProcessed = 0;\nconst channelBatchSize = 5;\n\nfor (let i = 0; i < channels.length; i += channelBatchSize) {\n  if (quotaExhausted) break;\n  const batch = channels.slice(i, i + channelBatchSize);\n\n  for (const ch of batch) {\n    if (quotaExhausted) break;\n    const channelStart = Date.now();\n    let channelFailed = false;\n    let channelError = null;\n\n    try {\n      // 2a. channels.list -> statistics + uploads playlist\n      const chInfoUrl = `https://www.googleapis.com/youtube/v3/channels?part=statistics,contentDetails&id=${ch.channel_id}&key=${ytKey}`;\n      const chInfo = await fetchWithRetry(chInfoUrl, { method: 'GET' }, 'yt_channels');\n      if (chInfo.quota) { quotaExhausted = true; break; }\n      if (!chInfo.ok) { channelFailed = true; channelError = chInfo.error; }\n\n      let uploadsPlaylistId = ch.uploads_playlist_id;\n      let statsPatch = {};\n      if (chInfo.ok) {\n        const item = (chInfo.json?.items || [])[0];\n        if (item) {\n          uploadsPlaylistId = item.contentDetails?.relatedPlaylists?.uploads || uploadsPlaylistId;\n          const subCount = parseInt(item.statistics?.subscriberCount || '0', 10);\n          const totalViews = parseInt(item.statistics?.viewCount || '0', 10);\n          const totalVideos = parseInt(item.statistics?.videoCount || '0', 10);\n          statsPatch = {\n            subscriber_count: subCount || null,\n            total_video_count: totalVideos || null,\n            total_view_count: totalViews || null,\n            uploads_playlist_id: uploadsPlaylistId || null,\n            avg_views_per_video: (totalVideos > 0) ? (totalViews / totalVideos) : null\n          };\n        }\n      }\n\n      if (!uploadsPlaylistId) {\n        channelFailed = true;\n        channelError = channelError || 'No uploads_playlist_id available';\n      }\n\n      // 2b. playlistItems.list -> 5 latest uploads\n      let latestVideoIds = [];\n      if (!channelFailed) {\n        const plUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=5&key=${ytKey}`;\n        const plRes = await fetchWithRetry(plUrl, { method: 'GET' }, 'yt_playlistItems');\n        if (plRes.quota) { quotaExhausted = true; break; }\n        if (!plRes.ok) {\n          channelFailed = true;\n          channelError = plRes.error;\n        } else {\n          latestVideoIds = (plRes.json?.items || []).map(it => it.contentDetails?.videoId || it.snippet?.resourceId?.videoId).filter(Boolean);\n        }\n      }\n\n      // 2c. Which videoIds are NEW?\n      let newVideoIds = [];\n      if (!channelFailed && latestVideoIds.length > 0) {\n        const csv = latestVideoIds.map(v => `\"${v}\"`).join(',');\n        const existUrl = `${supabaseUrl}/rest/v1/competitor_videos?competitor_channel_id=eq.${ch.id}&select=youtube_video_id&youtube_video_id=in.(${csv})`;\n        const existRes = await fetch(existUrl, { method: 'GET', headers: sbHeaders });\n        if (existRes.ok) {\n          const existArr = await existRes.json();\n          const existing = new Set((existArr || []).map(r => r.youtube_video_id));\n          newVideoIds = latestVideoIds.filter(v => !existing.has(v));\n        } else {\n          // Safer to skip insert than risk duplicates\n          newVideoIds = [];\n          channelError = `existence check failed: HTTP ${existRes.status}`;\n        }\n      }\n\n      // 2d. videos.list for new video details (1 call)\n      let videoDetails = [];\n      if (!channelFailed && newVideoIds.length > 0) {\n        const vUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet,contentDetails&id=${newVideoIds.join(',')}&key=${ytKey}`;\n        const vRes = await fetchWithRetry(vUrl, { method: 'GET' }, 'yt_videos');\n        if (vRes.quota) { quotaExhausted = true; break; }\n        if (vRes.ok) videoDetails = vRes.json?.items || [];\n      }\n\n      // 2e. Outlier denominator: avg_views_30d (refreshed stats) or fallback\n      const avg30 = ch.avg_views_30d\n        || statsPatch.avg_views_per_video\n        || (ch.total_view_count && ch.total_video_count ? (ch.total_view_count / ch.total_video_count) : null);\n      const denominator = (avg30 && avg30 > 0) ? avg30 : 1;\n\n      // 2f. For each new video: compute metrics, insert competitor_videos, maybe alert\n      for (const v of videoDetails) {\n        const videoId = v.id;\n        if (!videoId) continue;\n        const title = (v.snippet?.title || '').slice(0, 500);\n        const descSnippet = (v.snippet?.description || '').slice(0, 500);\n        const thumb = v.snippet?.thumbnails?.high?.url || v.snippet?.thumbnails?.medium?.url || null;\n        const publishedAt = v.snippet?.publishedAt || null;\n        const durationSec = parseIsoDuration(v.contentDetails?.duration);\n        const isShorts = durationSec > 0 && durationSec <= 60;\n        const views = parseInt(v.statistics?.viewCount || '0', 10);\n        const likes = parseInt(v.statistics?.likeCount || '0', 10);\n        const comments = parseInt(v.statistics?.commentCount || '0', 10);\n        const outlierRatio = Math.round((views / denominator) * 1000) / 1000;\n        const isOutlier = outlierRatio >= 3.0 && views >= 1000;\n\n        // Topic match: substring check against project topics\n        let matchedTopicId = null;\n        let topicMatch = false;\n        const titleNorm = normalizeTitle(title);\n        for (const t of topicCorpus) {\n          if (!t.normalized) continue;\n          if (titleNorm.includes(t.normalized) || t.normalized.includes(titleNorm)) {\n            matchedTopicId = t.id;\n            topicMatch = true;\n            break;\n          }\n        }\n\n        const row = {\n          competitor_channel_id: ch.id,\n          project_id: projectId,\n          youtube_video_id: videoId,\n          title,\n          description_snippet: descSnippet,\n          thumbnail_url: thumb,\n          published_at: publishedAt,\n          duration_seconds: durationSec || null,\n          is_shorts: isShorts,\n          views_at_discovery: views,\n          views_7d: views,\n          likes_count: likes,\n          comments_count: comments,\n          is_outlier: isOutlier,\n          outlier_ratio: outlierRatio,\n          topic_pattern_match: topicMatch,\n          matched_topic_id: matchedTopicId\n        };\n\n        // Insert with return=representation so we get the id back for the alert FK\n        let insertedVideoId = null;\n        try {\n          const insRes = await fetch(`${supabaseUrl}/rest/v1/competitor_videos`, {\n            method: 'POST',\n            headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n            body: JSON.stringify(row)\n          });\n          if (insRes.ok) {\n            const arr = await insRes.json();\n            insertedVideoId = Array.isArray(arr) && arr[0] ? arr[0].id : null;\n            totalVideosInserted += 1;\n          }\n        } catch (_) { /* continue */ }\n\n        // Outlier alert\n        if (isOutlier) {\n          try {\n            const alertTitle = `🔥 ${ch.channel_name || 'Competitor'}: ${outlierRatio.toFixed(1)}x breakout`;\n            const alertMsg = `\"${title}\" has ${views.toLocaleString()} views, ${outlierRatio.toFixed(1)}x this channel's 30-day average (${Math.round(denominator).toLocaleString()}).`;\n            const alertRes = await fetch(`${supabaseUrl}/rest/v1/competitor_alerts`, {\n              method: 'POST',\n              headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n              body: JSON.stringify({\n                project_id: projectId,\n                competitor_channel_id: ch.id,\n                competitor_video_id: insertedVideoId,\n                alert_type: 'outlier_breakout',\n                severity: outlierRatio >= 6.0 ? 'critical' : 'high',\n                title: alertTitle.slice(0, 200),\n                message: alertMsg,\n                metadata: {\n                  youtube_video_id: videoId,\n                  channel_name: ch.channel_name,\n                  outlier_ratio: outlierRatio,\n                  views,\n                  avg_views_30d: denominator,\n                  is_shorts: isShorts\n                }\n              })\n            });\n            if (alertRes.ok) totalAlertsCreated += 1;\n          } catch (_) { /* continue */ }\n        }\n\n        // Topic-match alert (separate, normal severity)\n        if (topicMatch && !isOutlier) {\n          try {\n            const alertRes = await fetch(`${supabaseUrl}/rest/v1/competitor_alerts`, {\n              method: 'POST',\n              headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n              body: JSON.stringify({\n                project_id: projectId,\n                competitor_channel_id: ch.id,\n                competitor_video_id: insertedVideoId,\n                alert_type: 'topic_match',\n                severity: 'normal',\n                title: `🎯 ${ch.channel_name || 'Competitor'} covered your topic`,\n                message: `\"${title}\" overlaps with one of your pipeline topics.`,\n                metadata: {\n                  youtube_video_id: videoId,\n                  channel_name: ch.channel_name,\n                  matched_topic_id: matchedTopicId,\n                  views\n                }\n              })\n            });\n            if (alertRes.ok) totalAlertsCreated += 1;\n          } catch (_) { /* continue */ }\n        }\n      }\n\n      // 2g. Update channel stats (success path)\n      if (!channelFailed) {\n        try {\n          await fetch(`${supabaseUrl}/rest/v1/competitor_channels?id=eq.${ch.id}`, {\n            method: 'PATCH',\n            headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n            body: JSON.stringify({\n              ...statsPatch,\n              last_checked_at: new Date().toISOString(),\n              last_video_fetched_at: videoDetails.length > 0 ? new Date().toISOString() : ch.last_video_fetched_at,\n              consecutive_fetch_failures: 0\n            })\n          });\n        } catch (_) { /* continue */ }\n        channelsProcessed += 1;\n      } else {\n        // Failure path: increment consecutive_fetch_failures, maybe deactivate\n        const newFails = (ch.consecutive_fetch_failures || 0) + 1;\n        const shouldDeactivate = newFails >= 5;\n        try {\n          await fetch(`${supabaseUrl}/rest/v1/competitor_channels?id=eq.${ch.id}`, {\n            method: 'PATCH',\n            headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n            body: JSON.stringify({\n              consecutive_fetch_failures: newFails,\n              is_active: shouldDeactivate ? false : true,\n              last_checked_at: new Date().toISOString()\n            })\n          });\n        } catch (_) { /* continue */ }\n\n        // Log channel failure\n        try {\n          await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n            method: 'POST',\n            headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n            body: JSON.stringify({\n              project_id: projectId,\n              topic_id: null,\n              stage: 'competitor_monitor',\n              scene_number: null,\n              action: shouldDeactivate ? 'channel_deactivated' : 'channel_fetch_failed',\n              status: 'error',\n              duration_ms: Date.now() - channelStart,\n              cost_usd: 0,\n              retry_count: 0\n            })\n          });\n        } catch (_) { }\n      }\n    } catch (e) {\n      // Swallow per-channel errors so we don't abort the whole project\n      try {\n        await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n          method: 'POST',\n          headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n          body: JSON.stringify({\n            project_id: projectId,\n            topic_id: null,\n            stage: 'competitor_monitor',\n            scene_number: null,\n            action: 'channel_exception',\n            status: 'error',\n            duration_ms: Date.now() - channelStart,\n            cost_usd: 0,\n            retry_count: 0\n          })\n        });\n      } catch (_) { }\n    }\n  }\n\n  // Inter-batch delay\n  if (i + channelBatchSize < channels.length && !quotaExhausted) {\n    await sleep(1000);\n  }\n}\n\n// 3. Summary log row for this project (daily run)\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: null,\n      stage: 'competitor_monitor',\n      scene_number: null,\n      action: 'daily_summary',\n      status: quotaExhausted ? 'partial_quota_exhausted' : 'success',\n      duration_ms: Date.now() - runStart,\n      cost_usd: 0,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\nreturn {\n  json: {\n    project_id: projectId,\n    channels_total: channels.length,\n    channels_processed: channelsProcessed,\n    videos_inserted: totalVideosInserted,\n    alerts_created: totalAlertsCreated,\n    quota_exhausted: quotaExhausted,\n    run_weekly_synthesis: data.run_weekly_synthesis,\n    via_webhook: data.via_webhook,\n    finished_at: new Date().toISOString()\n  }\n};"
@@ -62,7 +79,10 @@
       "name": "Weekly Synthesis (Sunday Only)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 310],
+      "position": [
+        960,
+        310
+      ],
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "// Weekly synthesis: on Sunday UTC (or when forced), summarize the project's\n// last 7 days of competitor activity via Claude Haiku 4.5 and UPSERT to\n// competitor_intelligence. Skip otherwise.\n\nconst data = $input.item.json;\nif (data.skipped || !data.run_weekly_synthesis || !data.project_id) {\n  return $input.item;\n}\n\nconst projectId = data.project_id;\nconst synthStart = Date.now();\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\n// Compute this week's Sunday (the Sunday that just passed or today if Sunday UTC)\nconst now = new Date();\nconst dow = now.getUTCDay();\nconst weekOf = new Date(now);\nweekOf.setUTCDate(now.getUTCDate() - dow);\nconst weekOfDate = weekOf.toISOString().slice(0, 10);\nconst sevenDaysAgo = new Date(now.getTime() - 7 * 86400000).toISOString();\n\n// 1. Load last 7 days of competitor_videos for this project, join channel name\nconst vUrl = `${supabaseUrl}/rest/v1/competitor_videos?project_id=eq.${projectId}&first_seen_at=gte.${encodeURIComponent(sevenDaysAgo)}&select=title,published_at,views_at_discovery,outlier_ratio,is_outlier,is_shorts,competitor_channel_id,competitor_channels(channel_name)&order=views_at_discovery.desc&limit=100`;\nconst vRes = await fetch(vUrl, { method: 'GET', headers: sbHeaders });\nif (!vRes.ok) {\n  return {\n    json: {\n      ...data,\n      weekly_synthesis_status: 'error',\n      weekly_synthesis_error: `Fetch videos failed: HTTP ${vRes.status}`\n    }\n  };\n}\nconst videos = await vRes.json();\n\nif (!videos || videos.length === 0) {\n  return {\n    json: {\n      ...data,\n      weekly_synthesis_status: 'skipped_empty',\n      week_of: weekOfDate\n    }\n  };\n}\n\nconst outlierCount = videos.filter(v => v.is_outlier).length;\nconst uniqueChannels = new Set(videos.map(v => v.competitor_channel_id).filter(Boolean)).size;\n\n// 2. Build Claude Haiku prompt\nconst videoList = videos.slice(0, 60).map(v => {\n  const chName = v.competitor_channels?.channel_name || 'Unknown';\n  const views = (v.views_at_discovery || 0).toLocaleString();\n  const ratio = v.outlier_ratio ? `${v.outlier_ratio.toFixed(1)}x` : '';\n  return `- [${chName}] \"${(v.title || '').slice(0, 120)}\" | ${views} views${ratio ? ' | ' + ratio : ''}${v.is_shorts ? ' | SHORT' : ''}`;\n}).join('\\n');\n\nconst prompt = `You are a competitive intelligence analyst for a YouTube creator. Analyze last week's competitor activity.\n\nWEEK OF: ${weekOfDate}\nCHANNELS ACTIVE: ${uniqueChannels}\nVIDEOS PUBLISHED: ${videos.length}\nOUTLIER BREAKOUTS (≥3x channel avg): ${outlierCount}\n\nTOP VIDEOS (by views, up to 60):\n${videoList}\n\nTASK: Produce a weekly digest.\n1. Group videos into 3-5 topic clusters by subject matter. For each: {cluster_name, video_count, avg_views}.\n2. Identify 2-3 emerging patterns (new formats, breakthrough topics, aesthetic shifts). For each: {pattern, evidence, recommendation}.\n3. Write a markdown digest under 400 words summarizing what this creator should pay attention to this week.\n\nReturn ONLY this JSON (no code fences, no other text):\n{\n  \"top_topic_clusters\": [{\"cluster_name\": \"...\", \"video_count\": 0, \"avg_views\": 0}],\n  \"emerging_patterns\": [{\"pattern\": \"...\", \"evidence\": \"...\", \"recommendation\": \"...\"}],\n  \"summary_markdown\": \"...\"\n}`;\n\n// 3. Claude Haiku 4.5 with inline backoff\nconst MAX_RETRIES = 4;\nlet retryCount = 0;\nlet parsed = null;\nlet claudeErr = null;\n\nfor (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {\n  try {\n    const res = await fetch('https://api.anthropic.com/v1/messages', {\n      method: 'POST',\n      headers: {\n        'x-api-key': anthropicKey,\n        'anthropic-version': '2023-06-01',\n        'content-type': 'application/json'\n      },\n      body: JSON.stringify({\n        model: 'claude-haiku-4-5-20251001',\n        max_tokens: 2000,\n        messages: [{ role: 'user', content: prompt }]\n      })\n    });\n    if (res.ok) {\n      const body = await res.json();\n      const text = body.content?.[0]?.text || '';\n      const clean = text.replace(/```json|```/g, '').trim();\n      try { parsed = JSON.parse(clean); }\n      catch {\n        const m = clean.match(/\\{[\\s\\S]*\\}/);\n        if (m) { try { parsed = JSON.parse(m[0]); } catch {} }\n      }\n      if (parsed) break;\n      claudeErr = 'parse_failed';\n      break;\n    }\n    const errBody = await res.text();\n    claudeErr = `HTTP ${res.status}: ${errBody.slice(0, 200)}`;\n    if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n  } catch (e) { claudeErr = e.message; }\n  if (attempt < MAX_RETRIES) {\n    retryCount += 1;\n    await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n}\n\nif (!parsed) {\n  return {\n    json: {\n      ...data,\n      weekly_synthesis_status: 'claude_failed',\n      weekly_synthesis_error: claudeErr,\n      week_of: weekOfDate\n    }\n  };\n}\n\n// 4. UPSERT competitor_intelligence on conflict (project_id, week_of)\nconst upsertRow = {\n  project_id: projectId,\n  week_of: weekOfDate,\n  channels_analyzed: uniqueChannels,\n  videos_analyzed: videos.length,\n  outlier_breakouts_count: outlierCount,\n  top_topic_clusters: parsed.top_topic_clusters || [],\n  emerging_patterns: parsed.emerging_patterns || [],\n  summary_markdown: String(parsed.summary_markdown || '').slice(0, 8000),\n  generated_by: 'claude-haiku-4-5-20251001'\n};\n\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/competitor_intelligence?on_conflict=project_id,week_of`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },\n    body: JSON.stringify(upsertRow)\n  });\n} catch (_) { }\n\n// 5. Log synthesis completion (Haiku 4.5 weekly synthesis ~ $0.005)\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: null,\n      stage: 'competitor_monitor',\n      scene_number: null,\n      action: 'weekly_synthesis',\n      status: 'success',\n      duration_ms: Date.now() - synthStart,\n      cost_usd: 0.005,\n      retry_count: retryCount\n    })\n  });\n} catch (_) { }\n\nreturn {\n  json: {\n    ...data,\n    weekly_synthesis_status: 'success',\n    week_of: weekOfDate,\n    clusters_found: (parsed.top_topic_clusters || []).length,\n    patterns_found: (parsed.emerging_patterns || []).length\n  }\n};"
@@ -73,7 +93,10 @@
       "name": "Run Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1220, 310],
+      "position": [
+        1220,
+        310
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// Aggregate across all processed projects.\nconst items = $input.all().map(i => i.json);\nconst meaningful = items.filter(j => !j.skipped);\n\nif (meaningful.length === 0) {\n  return [{\n    json: {\n      success: true,\n      projects_processed: 0,\n      message: items[0]?.reason || 'No projects to process'\n    }\n  }];\n}\n\nconst totalVideos = meaningful.reduce((s, b) => s + (b.videos_inserted || 0), 0);\nconst totalAlerts = meaningful.reduce((s, b) => s + (b.alerts_created || 0), 0);\nconst totalChannels = meaningful.reduce((s, b) => s + (b.channels_processed || 0), 0);\nconst quota = meaningful.some(b => b.quota_exhausted);\nconst weeklySynths = meaningful.filter(b => b.weekly_synthesis_status === 'success').length;\nconst viaWebhook = meaningful.some(b => b.via_webhook);\n\nreturn [{\n  json: {\n    success: true,\n    projects_processed: meaningful.length,\n    channels_processed: totalChannels,\n    videos_inserted: totalVideos,\n    alerts_created: totalAlerts,\n    weekly_syntheses_generated: weeklySynths,\n    quota_exhausted: quota,\n    via_webhook: viaWebhook,\n    finished_at: new Date().toISOString(),\n    per_project: meaningful.map(b => ({\n      project_id: b.project_id,\n      channels_processed: b.channels_processed || 0,\n      videos_inserted: b.videos_inserted || 0,\n      alerts_created: b.alerts_created || 0,\n      weekly_synthesis_status: b.weekly_synthesis_status || 'not_run',\n      quota_exhausted: b.quota_exhausted || false\n    }))\n  }\n}];"
@@ -84,7 +107,10 @@
       "name": "Respond To Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1480, 310],
+      "position": [
+        1480,
+        310
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}",
@@ -94,33 +120,78 @@
   ],
   "connections": {
     "Schedule Trigger": {
-      "main": [[{ "node": "Normalize + Scope Projects", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Normalize + Scope Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook Trigger": {
-      "main": [[{ "node": "Normalize + Scope Projects", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Normalize + Scope Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Normalize + Scope Projects": {
-      "main": [[{ "node": "Process Project Competitors", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Process Project Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Process Project Competitors": {
-      "main": [[{ "node": "Weekly Synthesis (Sunday Only)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Weekly Synthesis (Sunday Only)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Weekly Synthesis (Sunday Only)": {
-      "main": [[{ "node": "Run Summary", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Run Summary": {
-      "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond To Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
     "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none",
-    "executionTimeout": 3600,
-    "callerPolicy": "workflowsFromSameOwner"
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "staticData": null,
-  "meta": null,
-  "pinData": {},
-  "tags": []
+  "active": true
 }

@@ -1,1 +1,50 @@
-{"updatedAt":"2026-03-28T18:22:17.433Z","createdAt":"2026-03-28T18:22:17.433Z","id":"XYszOEUQ1uv4DFp2","name":"WF_RESEARCH_GOOGLE_TRENDS","description":null,"active":false,"isArchived":false,"nodes":[{"id":"trigger-1","name":"Execute Workflow Trigger","type":"n8n-nodes-base.executeWorkflowTrigger","typeVersion":1.1,"position":[250,300],"parameters":{}},{"id":"code-1","name":"Scrape Trends + PAA","type":"n8n-nodes-base.code","typeVersion":2,"position":[500,300],"parameters":{"mode":"runOnceForAllItems","jsCode":"// Google Trends + People Also Ask via SerpAPI\nconst input = $input.first().json;\nconst keywords = input.keywords || [];\nconst runId = input.run_id;\nconst projectId = input.project_id;\nconst limit = 10;\nconst results = [];\n\n// SerpAPI for People Also Ask\ntry {\n  for (const kw of keywords.slice(0, 3)) {\n    const resp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: `https://serpapi.com/search.json?q=${encodeURIComponent(kw)}&api_key=${process.env.SERPAPI_KEY}&engine=google`,\n    });\n\n    // People Also Ask\n    const paa = resp?.related_questions || [];\n    for (const q of paa.slice(0, 3)) {\n      results.push({\n        run_id: runId,\n        project_id: projectId,\n        source: 'google_trends',\n        raw_text: q.question || '',\n        source_url: q.link || `https://google.com/search?q=${encodeURIComponent(q.question || kw)}`,\n        engagement_score: 100, // PAA questions have high implicit interest\n        metadata: { type: 'people_also_ask', keyword: kw, snippet: q.snippet?.substring(0, 200) },\n      });\n    }\n\n    // Related searches\n    const related = resp?.related_searches || [];\n    for (const r of related.slice(0, 2)) {\n      results.push({\n        run_id: runId,\n        project_id: projectId,\n        source: 'google_trends',\n        raw_text: r.query || '',\n        source_url: r.link || `https://google.com/search?q=${encodeURIComponent(r.query || '')}`,\n        engagement_score: 50, // Related searches = moderate interest\n        metadata: { type: 'related_search', keyword: kw },\n      });\n    }\n  }\n} catch (e) {\n  return [{ json: { source: 'google_trends', success: false, error: e.message, count: 0 } }];\n}\n\nconst top10 = results.slice(0, limit);\nif (top10.length > 0) {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${process.env.SUPABASE_URL}/rest/v1/research_results`,\n    headers: { 'apikey': process.env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },\n    body: JSON.stringify(top10),\n  });\n}\n\nreturn [{ json: { source: 'google_trends', success: true, count: top10.length } }];"}}],"connections":{"Execute Workflow Trigger":{"main":[[{"node":"Scrape Trends + PAA","type":"main","index":0}]]}},"settings":{"executionOrder":"v1","executionTimeout":120,"callerPolicy":"workflowsFromSameOwner","availableInMCP":false},"staticData":null,"meta":null,"pinData":null,"versionId":"a1b0b5d9-bdc6-487a-87f0-f01b524bf94f","activeVersionId":null,"versionCounter":1,"triggerCount":0,"shared":[{"updatedAt":"2026-03-28T18:22:17.434Z","createdAt":"2026-03-28T18:22:17.434Z","role":"workflow:owner","workflowId":"XYszOEUQ1uv4DFp2","projectId":"ccWn1Q4giuKzXIbJ","project":{"updatedAt":"2026-01-26T11:09:31.107Z","createdAt":"2026-01-26T03:51:33.410Z","id":"ccWn1Q4giuKzXIbJ","name":"Akinwunmi Akinrimisi <akinolacrypto@gmail.com>","type":"personal","icon":null,"description":null,"creatorId":"ab010feb-355c-4130-b354-4e929908258e"}}],"tags":[],"activeVersion":null}
+{
+  "name": "WF_RESEARCH_GOOGLE_TRENDS",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "code-1",
+      "name": "Scrape Trends + PAA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Google Trends + People Also Ask via SerpAPI\nconst input = $input.first().json;\nconst keywords = input.keywords || [];\nconst runId = input.run_id;\nconst projectId = input.project_id;\nconst limit = 10;\nconst results = [];\n\n// SerpAPI for People Also Ask\ntry {\n  for (const kw of keywords.slice(0, 3)) {\n    const resp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: `https://serpapi.com/search.json?q=${encodeURIComponent(kw)}&api_key=${process.env.SERPAPI_KEY}&engine=google`,\n    });\n\n    // People Also Ask\n    const paa = resp?.related_questions || [];\n    for (const q of paa.slice(0, 3)) {\n      results.push({\n        run_id: runId,\n        project_id: projectId,\n        source: 'google_trends',\n        raw_text: q.question || '',\n        source_url: q.link || `https://google.com/search?q=${encodeURIComponent(q.question || kw)}`,\n        engagement_score: 100, // PAA questions have high implicit interest\n        metadata: { type: 'people_also_ask', keyword: kw, snippet: q.snippet?.substring(0, 200) },\n      });\n    }\n\n    // Related searches\n    const related = resp?.related_searches || [];\n    for (const r of related.slice(0, 2)) {\n      results.push({\n        run_id: runId,\n        project_id: projectId,\n        source: 'google_trends',\n        raw_text: r.query || '',\n        source_url: r.link || `https://google.com/search?q=${encodeURIComponent(r.query || '')}`,\n        engagement_score: 50, // Related searches = moderate interest\n        metadata: { type: 'related_search', keyword: kw },\n      });\n    }\n  }\n} catch (e) {\n  return [{ json: { source: 'google_trends', success: false, error: e.message, count: 0 } }];\n}\n\nconst top10 = results.slice(0, limit);\nif (top10.length > 0) {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${process.env.SUPABASE_URL}/rest/v1/research_results`,\n    headers: { 'apikey': process.env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },\n    body: JSON.stringify(top10),\n  });\n}\n\nreturn [{ json: { source: 'google_trends', success: true, count: top10.length } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scrape Trends + PAA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 120,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "active": false
+}
