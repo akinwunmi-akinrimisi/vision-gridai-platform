@@ -47,6 +47,7 @@ import {
   Sheet,
   SheetContent,
   SheetTitle,
+  SheetDescription,
 } from '@/components/ui/sheet';
 import useMediaQuery from '@/hooks/useMediaQuery';
 import { useQuotaStatus } from '@/hooks/useQuotaStatus';
@@ -280,12 +281,22 @@ function usePendingTopicsCount(projectId) {
 
 // ── Sidebar Main Component ───────────────────────────
 
-export default function Sidebar({ onLogout, collapsed, setCollapsed }) {
+export default function Sidebar({
+  onLogout,
+  collapsed,
+  setCollapsed,
+  mobileOpen: mobileOpenProp,
+  setMobileOpen: setMobileOpenProp,
+}) {
   const location = useLocation();
   const projectIdMatch = location.pathname.match(/^\/project\/([^/]+)/);
   const projectId = projectIdMatch?.[1] || null;
   const isMobile = useMediaQuery('(max-width: 767px)');
-  const [mobileOpen, setMobileOpen] = useState(false);
+  // Fall back to a local state if AppLayout didn't pass one in (e.g. tests
+  // that render Sidebar in isolation).
+  const [localMobileOpen, setLocalMobileOpen] = useState(false);
+  const mobileOpen = mobileOpenProp ?? localMobileOpen;
+  const setMobileOpen = setMobileOpenProp ?? setLocalMobileOpen;
   const { isAU } = useCountryTab();
 
   // Filter nav items: drop auOnly items when AU tab is not active.
@@ -531,6 +542,9 @@ export default function Sidebar({ onLogout, collapsed, setCollapsed }) {
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetContent side="left" className="w-[240px] p-0 bg-background border-r border-border">
             <SheetTitle className="sr-only">Navigation</SheetTitle>
+            <SheetDescription className="sr-only">
+              Site navigation and country tab toggle.
+            </SheetDescription>
             {sidebarContent}
           </SheetContent>
         </Sheet>

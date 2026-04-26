@@ -208,7 +208,7 @@ function NotificationDropdown({ items, onClose, onDismissAll }) {
 
 // ── TopBar ───────────────────────────────────────────
 
-export default function TopBar({ sidebarCollapsed, setSidebarCollapsed }) {
+export default function TopBar({ sidebarCollapsed, setSidebarCollapsed, setMobileOpen }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [dismissedAt, setDismissedAt] = useState(() => {
     try {
@@ -249,12 +249,13 @@ export default function TopBar({ sidebarCollapsed, setSidebarCollapsed }) {
       className="fixed top-0 right-0 z-30 h-12 border-b border-border bg-background/80 backdrop-blur-xl flex items-center justify-between px-6 transition-[left] duration-300"
       style={{ left: sidebarCollapsed ? '56px' : '240px' }}
     >
-      {/* Mobile menu button */}
+      {/* Mobile menu button — opens the mobile drawer (lg:hidden) */}
       <Button
         variant="ghost"
         size="icon"
         className="lg:hidden mr-2"
-        onClick={() => setSidebarCollapsed((c) => !c)}
+        onClick={() => setMobileOpen?.((o) => !o)}
+        aria-label="Open navigation menu"
       >
         <Menu className="w-5 h-5" />
       </Button>
