@@ -1,5 +1,5 @@
 # Security Remediation Status — 2026-04-21 Audit
-_Last updated: 2026-04-23 — Batch 4 complete + post-ship UX hotfixes + JWT-rotation credential-sweep followup._
+_Last updated: 2026-04-26 — Credential value-drift defect from the 2026-04-23 sweep located + fixed; rotation runbook updated to require decrypted value comparison, not just metadata._
 _Audit source: `docs/SECURITY_AUDIT_2026_04_21.md`_
 _Current HEAD: `792c23b` on `origin/main` (synced)._
 
@@ -199,6 +199,73 @@ $ jq '.[] | .parameters.headerParameters.parameters[] |
         select(((.value//""|tostring)|contains("{{"))
            and ((.value//""|tostring)|startswith("=") | not))'
    ```
+
+## 2026-04-26 followup — credential value-drift defect from the Apr-23 sweep
+
+### Symptom
+
+For ~3 days after 2026-04-23, every dashboard read returned empty `[]`. Pages that used to list previously-analysed channels, projects, niches, etc. all showed nothing. Surfaced when an operator opened the dashboard on 2026-04-26 and asked "why aren't previous data showing?"
+
+### Diagnosis chain
+
+1. **Migration 030** (Apr-21) deliberately denied anon SELECT on 49 VG tables — every direct-anon read from the SPA returns `[]` by design.
+2. **The remediation shim** (`dashboard/src/lib/supabase.js` → `WF_DASHBOARD_READ.sb_query` → service_role) was already in place and verified in commit `792c23b`. nginx injects `Bearer 4543f08fae…` on every `/webhook/*` proxy.
+3. **The actual breakage** was a value-drift inside the Apr-23 sweep itself: when Family A creds were decrypted-exported → jq-patched → re-imported, the credential `KtMyWD7uJJBZYLjt` (named "Authorization", type `httpHeaderAuth`, used by 30+ webhooks) ended up holding the **SUPABASE_SERVICE_ROLE_KEY** JWT instead of the intended `Bearer 4543f08fae…` DASHBOARD_API_TOKEN. The credential's `name` field still said "Authorization" so audits looked clean.
+4. **Effect:** nginx kept injecting the correct token, but n8n's `headerAuth` validator compared incoming `Authorization` to the credential's stored `data.value` (a service-role JWT) — never matched — returned 403 with body `Authorization data is wrong!` — nginx's `@webhook_internal_error` handler converted that into the generic `{"success":false,"error":"Internal error"}`. Dashboard hooks therefore saw `success:false` and bailed to empty state. Silent for 3 days.
+
+### Fix applied (2026-04-26)
+
+```bash
+# 1. Decrypt-export the offending credential
+docker exec n8n-n8n-1 n8n export:credentials --decrypted --id=KtMyWD7uJJBZYLjt --output=/tmp/cred.json
+docker cp n8n-n8n-1:/tmp/cred.json /root/backups/cred_KtMyWD_pre_fix_2026_04_26.json
+docker cp n8n-n8n-1:/tmp/cred.json /tmp/cred.json
+
+# 2. Patch on host (jq lives on host, not in n8n container)
+jq '.[].data.value = "Bearer 4543f08fae9268a70d09fb0e6160b25ce76f9a2db9b977f48e113ccdb3fb47d7"' \
+  /tmp/cred.json > /tmp/cred_fixed.json
+
+# 3. Re-import
+docker cp /tmp/cred_fixed.json n8n-n8n-1:/tmp/
+docker exec n8n-n8n-1 n8n import:credentials --input=/tmp/cred_fixed.json
+
+# 4. Verify end-to-end through nginx
+curl -s -X POST https://dashboard.operscale.cloud/webhook/dashboard/read \
+  -H 'Content-Type: application/json' -H 'Origin: https://dashboard.operscale.cloud' \
+  -d '{"query":"projects_list","params":{}}' | head -c 80
+# Expect: {"success":true,"data":[...
+```
+
+Live confirmed: `sb_query` returns analysis_groups (Felune Research, Ask selby, True Crime, …); `projects_list` returns the project list; counts work; the dashboard renders.
+
+### Rotation runbook — REVISION (required for every future rotation)
+
+The Apr-23 runbook addition told us **what** to enumerate but didn't enforce **value-comparison after re-import**. Updated requirement:
+
+For every credential id touched by a rotation, the operator (or automation) **MUST** decrypted-export it and confirm the stored `data.value` matches the new env-var verbatim before declaring the rotation done. Metadata-only checks (updatedAt timestamp, name field, type) are insufficient — this defect class produces a credential that looks correct in `n8n_lint` and in the credentials sqlite query but fails every webhook auth.
+
+Per-credential value-compare snippet:
+
+```bash
+docker exec n8n-n8n-1 n8n export:credentials --decrypted --id=<ID> --output=/tmp/cred.json
+docker cp n8n-n8n-1:/tmp/cred.json /tmp/cred.json
+echo "stored:        $(jq -r '.[].data.value' /tmp/cred.json | head -c 24)..."
+echo "expected env:  $(echo $EXPECTED | head -c 24)..."
+# They MUST match. If they don't, repeat the import with the correct value.
+```
+
+Smoke-test snippet (post-rotation, before declaring done):
+
+```bash
+curl -sS -X POST https://dashboard.operscale.cloud/webhook/dashboard/read \
+  -H 'Content-Type: application/json' -H 'Origin: https://dashboard.operscale.cloud' \
+  -d '{"query":"projects_list","params":{}}' | head -c 60
+# MUST start with {"success":true. If it returns "Internal error", auth is broken.
+```
+
+### Backup material
+
+`/root/backups/cred_KtMyWD_pre_fix_2026_04_26.json` — pre-fix decrypted credential JSON (Bearer + Supabase service-role JWT value, the wrong one). Useful for forensic comparison only; do not re-import.
 
 ## Re-verification commands (on-demand)
 
