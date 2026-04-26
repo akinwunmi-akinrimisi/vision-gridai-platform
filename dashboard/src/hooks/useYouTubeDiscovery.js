@@ -208,14 +208,19 @@ export function useAnalyzeVideo() {
         .single();
       if (error) throw error;
 
-      // Trigger the analysis workflow
+      // Trigger the analysis workflow. Look up the human-readable label
+      // across BOTH taxonomies (General + AU) so AU video analyses send a
+      // proper label instead of falling back to the raw key.
+      const allKnownNiches = [...GENERAL_NICHES, ...AU_NICHES];
+      const nicheLabel = allKnownNiches.find((n) => n.key === video.niche_category)?.label
+        || video.niche_category;
       const result = await webhookCall('youtube/analyze', {
         analysis_id: data.id,
         video_id: video.video_id,
         video_url: video.video_url,
         video_title: video.title,
         channel_name: video.channel_name,
-        niche_category: NICHES.find((n) => n.key === video.niche_category)?.label || video.niche_category,
+        niche_category: nicheLabel,
       });
 
       return { analysisId: data.id, ...result };
