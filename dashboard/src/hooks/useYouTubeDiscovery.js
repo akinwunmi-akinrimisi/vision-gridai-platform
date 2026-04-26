@@ -36,21 +36,37 @@ const GENERAL_NICHE_GROUPS = [
 ];
 
 // Mirrors the niche_variants table for country_target='AU' (migration 033).
-// Hub: Australian personal finance. The 5 spokes match CreateProjectModal's
-// AU sub-niche checkboxes and the niche_variants.value column.
+// Per AU Strategy §10.1 / §11.1: v1 launch is Hub + 1 priority spoke
+// (super_au). The other 4 spokes are staged for later — they launch after
+// the hub clears 30 days of CPM signal. The selector reflects that split
+// so the user can run discovery on the v1 spoke today and research the
+// future spokes proactively.
 const AU_NICHE_GROUPS = [
   {
-    key: 'au_personal_finance',
-    label: 'Personal Finance (AU)',
+    key: 'au_v1_launch',
+    label: 'v1 Launch Spoke',
+    children: [
+      { key: 'super_au', label: 'Superannuation', v1Focus: true },
+    ],
+  },
+  {
+    key: 'au_future_spokes',
+    label: 'Future Spokes (staged)',
     children: [
       { key: 'credit_cards_au',     label: 'Credit Cards & Points' },
-      { key: 'super_au',            label: 'Superannuation' },
       { key: 'property_mortgage_au', label: 'Property & Mortgages' },
       { key: 'tax_au',              label: 'Tax Strategy' },
       { key: 'etf_investing_au',    label: 'ETF & Share Investing' },
     ],
   },
 ];
+
+// The v1 launch keys — used to seed the default selection on the AU tab so
+// the discovery search defaults to "just super_au" instead of all 5.
+const AU_V1_LAUNCH_KEYS = AU_NICHE_GROUPS
+  .flatMap((g) => g.children)
+  .filter((c) => c.v1Focus)
+  .map((c) => c.key);
 
 // Flat list helper — workflow compat + filtering.
 function flatten(groups) {
@@ -74,20 +90,34 @@ export {
   GENERAL_NICHE_GROUPS,
   AU_NICHES,
   AU_NICHE_GROUPS,
+  AU_V1_LAUNCH_KEYS,
 };
 
 /**
- * Returns the niche taxonomy for the active country tab. AU shows the 5
- * AU-specific sub-niches (Credit Cards & Points, Superannuation, Property &
- * Mortgages, Tax Strategy, ETF & Share Investing). General shows the
- * Betrayal/Legal/True-Crime grouping.
+ * Returns the niche taxonomy for the active country tab. AU shows the
+ * v1-launch spoke (super_au) split out from the future spokes per Strategy
+ * §10.1 staged approach. General shows the Betrayal/Legal/True-Crime
+ * grouping.
+ *
+ * `defaultSelectedKeys` is the set the discovery search box should default
+ * to. For General that's every key. For AU we default to just the v1 spoke
+ * so the user doesn't accidentally burn API quota on niches that aren't
+ * launching this cycle.
  */
 export function useNicheTaxonomy() {
   const { country } = useCountryTab();
   if (country === 'AU') {
-    return { niches: AU_NICHES, nicheGroups: AU_NICHE_GROUPS };
+    return {
+      niches: AU_NICHES,
+      nicheGroups: AU_NICHE_GROUPS,
+      defaultSelectedKeys: AU_V1_LAUNCH_KEYS,
+    };
   }
-  return { niches: GENERAL_NICHES, nicheGroups: GENERAL_NICHE_GROUPS };
+  return {
+    niches: GENERAL_NICHES,
+    nicheGroups: GENERAL_NICHE_GROUPS,
+    defaultSelectedKeys: GENERAL_NICHES.map((n) => n.key),
+  };
 }
 
 export function useLatestDiscoveryRun() {

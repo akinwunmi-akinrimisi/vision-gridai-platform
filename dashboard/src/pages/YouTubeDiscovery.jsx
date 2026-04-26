@@ -151,18 +151,18 @@ function VideoCard({ video, onUseForProject, onAnalyze, isAnalyzing, existingAna
 export default function YouTubeDiscovery() {
   const navigate = useNavigate();
   const { country } = useCountryTab();
-  const { niches: NICHES, nicheGroups: NICHE_GROUPS } = useNicheTaxonomy();
+  const { niches: NICHES, nicheGroups: NICHE_GROUPS, defaultSelectedKeys } = useNicheTaxonomy();
   const [selectedTimeRange, setSelectedTimeRange] = useState('1y');
   const [selectedNiche, setSelectedNiche] = useState('all');
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [justStarted, setJustStarted] = useState(false);
-  const [searchNiches, setSearchNiches] = useState(() => new Set(NICHES.map(n => n.key)));
+  const [searchNiches, setSearchNiches] = useState(() => new Set(defaultSelectedKeys));
 
   // Re-seed the search-niche selection when the country tab toggles.
-  // Without this, switching from General to Australia leaves stale General
-  // niche keys selected (which the AU runner won't match).
+  // For AU this defaults to just the v1 launch spoke (super_au) per
+  // Strategy §10.1 — researching future spokes is opt-in.
   useEffect(() => {
-    setSearchNiches(new Set(NICHES.map((n) => n.key)));
+    setSearchNiches(new Set(defaultSelectedKeys));
     setSelectedNiche('all');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [country]);
@@ -369,13 +369,19 @@ export default function YouTubeDiscovery() {
                   <button
                     key={child.key}
                     onClick={() => toggleSearchNiche(child.key)}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer ${
+                    title={child.v1Focus ? 'v1 launch spoke (Strategy §10.1)' : undefined}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer inline-flex items-center gap-1 ${
                       searchNiches.has(child.key)
                         ? 'bg-primary/15 text-primary border-primary/30'
                         : 'bg-transparent text-muted-foreground border-border hover:border-border-hover'
-                    }`}
+                    } ${child.v1Focus ? 'ring-1 ring-accent/40' : ''}`}
                   >
                     {child.label}
+                    {child.v1Focus && (
+                      <span className="px-1 py-px rounded text-[9px] font-bold bg-accent/20 text-accent uppercase tracking-wider">
+                        v1
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
