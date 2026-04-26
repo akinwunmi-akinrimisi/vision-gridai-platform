@@ -5,7 +5,7 @@ import { webhookCall } from '../lib/api';
 import { toast } from 'sonner';
 import { useCountryTab } from './useCountryTab';
 
-const NICHE_GROUPS = [
+const GENERAL_NICHE_GROUPS = [
   {
     key: 'betrayal_revenge',
     label: 'Betrayal & Revenge Stories',
@@ -35,12 +35,60 @@ const NICHE_GROUPS = [
   },
 ];
 
-// Flat list for workflow compatibility + filtering
-const NICHES = NICHE_GROUPS.flatMap((g) =>
-  g.children.map((c) => ({ ...c, group: g.key, groupLabel: g.label }))
-);
+// Mirrors the niche_variants table for country_target='AU' (migration 033).
+// Hub: Australian personal finance. The 5 spokes match CreateProjectModal's
+// AU sub-niche checkboxes and the niche_variants.value column.
+const AU_NICHE_GROUPS = [
+  {
+    key: 'au_personal_finance',
+    label: 'Personal Finance (AU)',
+    children: [
+      { key: 'credit_cards_au',     label: 'Credit Cards & Points' },
+      { key: 'super_au',            label: 'Superannuation' },
+      { key: 'property_mortgage_au', label: 'Property & Mortgages' },
+      { key: 'tax_au',              label: 'Tax Strategy' },
+      { key: 'etf_investing_au',    label: 'ETF & Share Investing' },
+    ],
+  },
+];
 
-export { NICHES, NICHE_GROUPS };
+// Flat list helper — workflow compat + filtering.
+function flatten(groups) {
+  return groups.flatMap((g) =>
+    g.children.map((c) => ({ ...c, group: g.key, groupLabel: g.label }))
+  );
+}
+
+const GENERAL_NICHES = flatten(GENERAL_NICHE_GROUPS);
+const AU_NICHES = flatten(AU_NICHE_GROUPS);
+
+// Default exports keep backward compat — code that imports NICHES /
+// NICHE_GROUPS without country awareness will see the General set.
+const NICHE_GROUPS = GENERAL_NICHE_GROUPS;
+const NICHES = GENERAL_NICHES;
+
+export {
+  NICHES,
+  NICHE_GROUPS,
+  GENERAL_NICHES,
+  GENERAL_NICHE_GROUPS,
+  AU_NICHES,
+  AU_NICHE_GROUPS,
+};
+
+/**
+ * Returns the niche taxonomy for the active country tab. AU shows the 5
+ * AU-specific sub-niches (Credit Cards & Points, Superannuation, Property &
+ * Mortgages, Tax Strategy, ETF & Share Investing). General shows the
+ * Betrayal/Legal/True-Crime grouping.
+ */
+export function useNicheTaxonomy() {
+  const { country } = useCountryTab();
+  if (country === 'AU') {
+    return { niches: AU_NICHES, nicheGroups: AU_NICHE_GROUPS };
+  }
+  return { niches: GENERAL_NICHES, nicheGroups: GENERAL_NICHE_GROUPS };
+}
 
 export function useLatestDiscoveryRun() {
   const { country } = useCountryTab();

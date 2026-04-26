@@ -14,8 +14,7 @@ import {
   Microscope,
 } from 'lucide-react';
 import {
-  NICHES,
-  NICHE_GROUPS,
+  useNicheTaxonomy,
   useLatestDiscoveryRun,
   useDiscoveryResults,
   useAllDiscoveryRuns,
@@ -24,6 +23,7 @@ import {
   useAnalyzeVideo,
   useAllAnalyses,
 } from '../hooks/useYouTubeDiscovery';
+import { useCountryTab } from '../hooks/useCountryTab';
 import PageHeader from '../components/shared/PageHeader';
 import EmptyState from '../components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -150,11 +150,22 @@ function VideoCard({ video, onUseForProject, onAnalyze, isAnalyzing, existingAna
 
 export default function YouTubeDiscovery() {
   const navigate = useNavigate();
+  const { country } = useCountryTab();
+  const { niches: NICHES, nicheGroups: NICHE_GROUPS } = useNicheTaxonomy();
   const [selectedTimeRange, setSelectedTimeRange] = useState('1y');
   const [selectedNiche, setSelectedNiche] = useState('all');
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [justStarted, setJustStarted] = useState(false);
-  const [searchNiches, setSearchNiches] = useState(new Set(NICHES.map(n => n.key)));
+  const [searchNiches, setSearchNiches] = useState(() => new Set(NICHES.map(n => n.key)));
+
+  // Re-seed the search-niche selection when the country tab toggles.
+  // Without this, switching from General to Australia leaves stale General
+  // niche keys selected (which the AU runner won't match).
+  useEffect(() => {
+    setSearchNiches(new Set(NICHES.map((n) => n.key)));
+    setSelectedNiche('all');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country]);
 
   const { data: latestRun, isLoading: runLoading } = useLatestDiscoveryRun();
   const { data: allRuns } = useAllDiscoveryRuns();
