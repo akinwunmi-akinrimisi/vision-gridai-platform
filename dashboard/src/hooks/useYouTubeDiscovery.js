@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useRealtimeSubscription } from './useRealtimeSubscription';
 import { webhookCall } from '../lib/api';
 import { toast } from 'sonner';
+import { useCountryTab } from './useCountryTab';
 
 const NICHE_GROUPS = [
   {
@@ -42,17 +43,19 @@ const NICHES = NICHE_GROUPS.flatMap((g) =>
 export { NICHES, NICHE_GROUPS };
 
 export function useLatestDiscoveryRun() {
-  useRealtimeSubscription('yt_discovery_runs', null, [['yt-discovery-run']]);
+  const { country } = useCountryTab();
+  useRealtimeSubscription('yt_discovery_runs', null, [['yt-discovery-run', country]]);
 
   return useQuery({
-    queryKey: ['yt-discovery-run'],
+    queryKey: ['yt-discovery-run', country],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('yt_discovery_runs')
         .select('*')
+        .eq('country_target', country)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       if (error && error.code === 'PGRST116') return null;
       if (error) throw error;
       return data;
@@ -83,12 +86,14 @@ export function useDiscoveryResults(runId, nicheKey) {
 }
 
 export function useAllDiscoveryRuns() {
+  const { country } = useCountryTab();
   return useQuery({
-    queryKey: ['yt-discovery-runs-all'],
+    queryKey: ['yt-discovery-runs-all', country],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('yt_discovery_runs')
         .select('*')
+        .eq('country_target', country)
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -99,10 +104,11 @@ export function useAllDiscoveryRuns() {
 
 export function useRunDiscovery() {
   const queryClient = useQueryClient();
+  const { country } = useCountryTab();
 
   return useMutation({
     mutationFn: async ({ timeRange, niches }) => {
-      const result = await webhookCall('youtube/discover', { time_range: timeRange, niches: niches || null });
+      const result = await webhookCall('youtube/discover', { time_range: timeRange, niches: niches || null, country_target: country });
       if (result.success === false) throw new Error(result.error || 'Webhook failed');
       return result;
     },
@@ -126,10 +132,13 @@ export function useRunDiscovery() {
 
 export function useAnalyzeVideo() {
   const queryClient = useQueryClient();
+  const { country } = useCountryTab();
 
   return useMutation({
     mutationFn: async (video) => {
-      // Create the analysis row first
+      // Create the analysis row first. country_target denormalized from
+      // the active dashboard tab so /youtube-discovery's analysis history
+      // tab-filters correctly (migration 036).
       const { data, error } = await supabase
         .from('yt_video_analyses')
         .insert({
@@ -145,6 +154,7 @@ export function useAnalyzeVideo() {
           comments: video.comments,
           duration_seconds: video.duration_seconds,
           status: 'pending',
+          country_target: country,
         })
         .select('id')
         .single();
@@ -201,12 +211,14 @@ export function useVideoAnalysis(analysisId) {
 }
 
 export function useAllAnalyses() {
+  const { country } = useCountryTab();
   return useQuery({
-    queryKey: ['yt-video-analyses'],
+    queryKey: ['yt-video-analyses', country],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('yt_video_analyses')
         .select('*')
+        .eq('country_target', country)
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;

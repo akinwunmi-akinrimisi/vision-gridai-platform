@@ -3,27 +3,31 @@ import { supabase } from '../lib/supabase';
 import { useRealtimeSubscription } from './useRealtimeSubscription';
 import { webhookCall } from '../lib/api';
 import { toast } from 'sonner';
+import { useCountryTab } from './useCountryTab';
 
 /**
- * Fetch the latest research run (globally, not project-scoped).
- * Subscribes to Realtime for live progress updates.
+ * Fetch the latest research run scoped to the active country tab. Migration
+ * 036 added research_runs.country_target with backfill from project. Sub-
+ * scribes to Realtime for live progress updates.
  */
 export function useLatestRun() {
+  const { country } = useCountryTab();
   useRealtimeSubscription(
     'research_runs',
     null,
-    [['research-run-latest']],
+    [['research-run-latest', country]],
   );
 
   return useQuery({
-    queryKey: ['research-run-latest'],
+    queryKey: ['research-run-latest', country],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('research_runs')
         .select('*')
+        .eq('country_target', country)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       if (error && error.code === 'PGRST116') return null;
       if (error) throw error;
       return data;
@@ -81,6 +85,7 @@ export function useResults(runId, source) {
  */
 export function useRunResearch() {
   const queryClient = useQueryClient();
+  const { country } = useCountryTab();
 
   return useMutation({
     mutationFn: async ({ niche, projectId, platforms, timeRange }) => {
@@ -89,6 +94,7 @@ export function useRunResearch() {
         project_id: projectId || null,
         platforms,
         time_range: timeRange,
+        country_target: country,
       });
       if (result.success === false) throw new Error(result.error || 'Webhook failed');
       return result;
@@ -141,12 +147,14 @@ export function useCancelResearch() {
  * Limited to most recent 20 runs.
  */
 export function useAllRuns() {
+  const { country } = useCountryTab();
   return useQuery({
-    queryKey: ['research-runs-all'],
+    queryKey: ['research-runs-all', country],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('research_runs')
         .select('*, projects(name, niche)')
+        .eq('country_target', country)
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
