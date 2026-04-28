@@ -1,5 +1,7 @@
 {
+  "id": "7GqpEAug8hxxU7f6",
   "name": "WF_THUMBNAIL_GENERATE",
+  "active": true,
   "nodes": [
     {
       "id": "webhook-thumbnail-trigger",
@@ -340,5 +342,8 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "pinData": null,
+  "versionId": "1ff998a8-29a3-45c4-bc51-5cccf20ccd38",
+  "tags": []
 }

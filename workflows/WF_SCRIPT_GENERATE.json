@@ -1,5 +1,7 @@
 {
-  "name": "WF_SCRIPT_GENERATE \u2014 3-Pass Script Generation",
+  "id": "DzugaN9GtVpTznvs",
+  "name": "WF_SCRIPT_GENERATE — 3-Pass Script Generation",
+  "active": true,
   "nodes": [
     {
       "id": "wf-sg-webhook",
@@ -77,6 +79,10 @@
             {
               "name": "apikey",
               "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -108,6 +114,10 @@
             {
               "name": "apikey",
               "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -144,6 +154,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -187,6 +201,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -212,7 +230,7 @@
         592
       ],
       "parameters": {
-        "jsCode": "const assembled = $('Assemble Script').first().json;\nconst combined_text = assembled.combined_text;\nconst topic = assembled.topic;\nconst project = assembled.project;\n\n// === MECHANICAL SPLIT: Split text at sentence boundaries into ~110-word chunks ===\n// Claude NEVER sees narration text. 100% preservation guaranteed.\n\nfunction splitIntoSentences(text) {\n  const cleaned = text.replace(/^#+\\s*/gm, '').replace(/\\[.*?\\]/g, '').replace(/\\*\\*/g, '').trim();\n  const raw = cleaned.split(/(?<=[.!?])\\s+(?=[A-Z\"\\u201C])|\\n\\n+/);\n  return raw.map(s => s.trim()).filter(s => s.length > 0);\n}\n\nfunction groupIntoChunks(sentences, targetWords) {\n  const chunks = [];\n  let current = [];\n  let currentWords = 0;\n  for (const sentence of sentences) {\n    const words = sentence.split(/\\s+/).length;\n    if (currentWords > 0 && currentWords + words > targetWords + 20) {\n      chunks.push(current.join(' '));\n      current = [sentence];\n      currentWords = words;\n    } else {\n      current.push(sentence);\n      currentWords += words;\n    }\n  }\n  if (current.length > 0) chunks.push(current.join(' '));\n  return chunks;\n}\n\nconst sentences = splitIntoSentences(combined_text);\nconst chunks = groupIntoChunks(sentences, 110);\n\nconst originalWords = combined_text.replace(/^#+\\s*/gm, '').replace(/\\[.*?\\]/g, '').replace(/\\*\\*/g, '').trim().split(/\\s+/).length;\nconst chunkWords = chunks.reduce((sum, c) => sum + c.split(/\\s+/).length, 0);\n\nconsole.log('Mechanical split: ' + chunks.length + ' chunks, ' + chunkWords + ' words (original: ' + originalWords + ')');\n\n// Build metadata-only prompt for Claude \u2014 send FULL narration for context\nconst chunkList = chunks.map((c, i) => 'CHUNK ' + (i+1) + ': ' + c).join('\\n\\n');\n\nconst metadataPrompt = 'Below are ' + chunks.length + ' text chunks from a documentary script about \"' + (topic.seo_title || topic.original_title) + '\".\\n\\nFor EACH chunk, generate ONLY:\\n1. image_prompt: 40-80 words, cinematic. Structure: [SUBJECT] + [ENVIRONMENT] + [LIGHTING] + [COMPOSITION] + [MOOD] + [DETAILS]. Be hyper-specific. People as silhouettes/hands/figures from behind. Include lighting direction. No text/words/signs in images.\\n2. emotional_beat: one of hook, tension, revelation, data, story, resolution, transition\\n3. chapter: a short chapter name grouping related scenes\\n\\nReturn ONLY a JSON array: [{\"scene_number\": 1, \"image_prompt\": \"...\", \"emotional_beat\": \"...\", \"chapter\": \"...\"}]\\n\\nDo NOT return or modify any narration text. I only need image_prompt, emotional_beat, and chapter for each chunk number.\\n\\n' + chunkList;\n\nreturn [{ json: {\n  chunks,\n  chunk_count: chunks.length,\n  original_words: originalWords,\n  chunk_words: chunkWords,\n  metadata_prompt: metadataPrompt,\n  topic_id: topic.id,\n  project_id: project.id,\n  combined_score: assembled.combined_score,\n  force_passed: assembled.force_passed,\n  attempt: assembled.attempt\n} }];",
+        "jsCode": "const assembled = $('Assemble Script').first().json;\nconst combined_text = assembled.combined_text;\nconst topic = assembled.topic;\nconst project = assembled.project;\n\n// === MECHANICAL SPLIT: Split text at sentence boundaries into ~110-word chunks ===\n// Claude NEVER sees narration text. 100% preservation guaranteed.\n\nfunction splitIntoSentences(text) {\n  const cleaned = text.replace(/^#+\\s*/gm, '').replace(/\\[.*?\\]/g, '').replace(/\\*\\*/g, '').trim();\n  const raw = cleaned.split(/(?<=[.!?])\\s+(?=[A-Z\"\\u201C])|\\n\\n+/);\n  return raw.map(s => s.trim()).filter(s => s.length > 0);\n}\n\nfunction groupIntoChunks(sentences, targetWords) {\n  const chunks = [];\n  let current = [];\n  let currentWords = 0;\n  for (const sentence of sentences) {\n    const words = sentence.split(/\\s+/).length;\n    if (currentWords > 0 && currentWords + words > targetWords + 20) {\n      chunks.push(current.join(' '));\n      current = [sentence];\n      currentWords = words;\n    } else {\n      current.push(sentence);\n      currentWords += words;\n    }\n  }\n  if (current.length > 0) chunks.push(current.join(' '));\n  return chunks;\n}\n\nconst sentences = splitIntoSentences(combined_text);\nconst chunks = groupIntoChunks(sentences, 110);\n\nconst originalWords = combined_text.replace(/^#+\\s*/gm, '').replace(/\\[.*?\\]/g, '').replace(/\\*\\*/g, '').trim().split(/\\s+/).length;\nconst chunkWords = chunks.reduce((sum, c) => sum + c.split(/\\s+/).length, 0);\n\nconsole.log('Mechanical split: ' + chunks.length + ' chunks, ' + chunkWords + ' words (original: ' + originalWords + ')');\n\n// Build metadata-only prompt for Claude — send FULL narration for context\nconst chunkList = chunks.map((c, i) => 'CHUNK ' + (i+1) + ': ' + c).join('\\n\\n');\n\n// === Phase 3 §4.6: register-aware metadata prompt ===\nconst USE_REGISTER_METADATA_PROMPT = true; // feature flag for rollback\n\nlet register = null;\nlet registerSource = 'none';\nif (USE_REGISTER_METADATA_PROMPT && topic.production_register) {\n  try {\n    const resp = await fetch(\n      `${$env.SUPABASE_URL}/rest/v1/production_registers?register_id=eq.${topic.production_register}&select=config`,\n      { headers: {\n          apikey: $env.SUPABASE_ANON_KEY,\n          Authorization: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`\n      }}\n    );\n    const rows = await resp.json();\n    register = rows[0] || null;\n    if (register && register.config && register.config.metadata_prompt) registerSource = topic.production_register;\n  } catch (e) {\n    console.log('Register config fetch failed, falling back to generic: ' + e.message);\n  }\n}\n\nlet metadataPrompt;\nif (USE_REGISTER_METADATA_PROMPT && register && register.config && register.config.metadata_prompt) {\n  metadataPrompt = register.config.metadata_prompt\n    .replace(/\\{N\\}/g, chunks.length)\n    .replace(/\\{SEO_TITLE\\}/g, topic.seo_title || topic.original_title || '')\n    .replace(/\\{CHUNK_LIST\\}/g, chunkList);\n} else {\n  // Generic fallback — preserves existing behavior when register not selected\n  metadataPrompt = 'Below are ' + chunks.length + ' text chunks from a documentary script about \"' + (topic.seo_title || topic.original_title) + '\".\\n\\nFor EACH chunk, generate ONLY:\\n1. image_prompt: 40-80 words, cinematic. Structure: [SUBJECT] + [ENVIRONMENT] + [LIGHTING] + [COMPOSITION] + [MOOD] + [DETAILS]. Be hyper-specific. People as silhouettes/hands/figures from behind. Include lighting direction. No text/words/signs in images.\\n2. emotional_beat: one of hook, tension, revelation, data, story, resolution, transition\\n3. chapter: a short chapter name grouping related scenes\\n\\nReturn ONLY a JSON array: [{\"scene_number\": 1, \"image_prompt\": \"...\", \"emotional_beat\": \"...\", \"chapter\": \"...\"}]\\n\\nDo NOT return or modify any narration text. I only need image_prompt, emotional_beat, and chapter for each chunk number.\\n\\n' + chunkList;\n}\nconsole.log('metadata_prompt source: ' + registerSource);\n\nreturn [{ json: {\n  chunks,\n  chunk_count: chunks.length,\n  original_words: originalWords,\n  chunk_words: chunkWords,\n  metadata_prompt: metadataPrompt,\n  metadata_prompt_source: registerSource,\n  topic_id: topic.id,\n  project_id: project.id,\n  combined_score: assembled.combined_score,\n  force_passed: assembled.force_passed,\n  attempt: assembled.attempt\n} }];",
         "mode": "runOnceForAllItems"
       }
     },
@@ -248,12 +266,12 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "string",
+        "contentType": "json",
+        "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: 'You are a scene segmentation and visual direction expert for YouTube documentaries. Always return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.metadata_prompt }] }) }}",
         "options": {
           "timeout": 900000
-        },
-        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: 'You are a scene segmentation and visual direction expert for YouTube documentaries. Always return valid JSON arrays only. No markdown, no explanation.', messages: [{ role: 'user', content: $json.metadata_prompt }] }) }}"
+        }
       },
       "credentials": {
         "httpHeaderAuth": {
@@ -301,6 +319,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -340,6 +362,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -380,6 +406,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -419,6 +449,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -462,6 +496,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -516,6 +554,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -560,6 +602,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -587,7 +633,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst topicRaw = $('Read Topic').first().json;\nconst projRaw = $('Read Project').first().json;\nconst topic = Array.isArray(topicRaw) ? topicRaw[0] : topicRaw;\nconst project = Array.isArray(projRaw) ? projRaw[0] : projRaw;\nconst hdr = {'apikey': SRK, 'Authorization': 'Bearer ' + SRK};\n\nvar avResp = await fetch(SB + '/rest/v1/avatars?topic_id=eq.' + topic.id + '&select=*&limit=1', {headers: hdr});\nvar avatars = await avResp.json();\nvar avatar = (avatars && avatars[0]) || {};\n\nvar researchBrief = '';\ntry {\n  var npResp = await fetch(SB + '/rest/v1/niche_profiles?project_id=eq.' + project.id + '&select=blue_ocean_opportunities,audience_pain_points,competitor_analysis&limit=1', {headers: hdr});\n  var np = (await npResp.json())[0] || null;\n  var yaResp = await fetch(SB + '/rest/v1/yt_video_analyses?project_id=eq.' + project.id + '&select=ten_x_strategy,blue_ocean_analysis,comment_insights,verdict&limit=10', {headers: hdr});\n  var analyses = await yaResp.json();\n  var rcResp = await fetch(SB + '/rest/v1/research_categories?project_id=eq.' + project.id + '&select=category_name,video_title_suggestion,ranking_score&order=ranking_score.desc&limit=10', {headers: hdr});\n  var categories = await rcResp.json();\n  var sections = [];\n  if (np) {\n    if (np.blue_ocean_opportunities) { sections.push('BLUE OCEAN OPPORTUNITIES:\\n' + (typeof np.blue_ocean_opportunities === 'string' ? np.blue_ocean_opportunities : JSON.stringify(np.blue_ocean_opportunities)).substring(0,1500)); }\n    if (np.audience_pain_points) { sections.push('AUDIENCE PAIN POINTS:\\n' + (typeof np.audience_pain_points === 'string' ? np.audience_pain_points : JSON.stringify(np.audience_pain_points)).substring(0,1500)); }\n    if (np.competitor_analysis) { sections.push('COMPETITOR GAPS:\\n' + (typeof np.competitor_analysis === 'string' ? np.competitor_analysis : JSON.stringify(np.competitor_analysis)).substring(0,1000)); }\n  }\n  if (analyses && analyses.length > 0) {\n    var strategies = analyses.filter(function(a){return a.ten_x_strategy;}).map(function(a){var s=a.ten_x_strategy; return '- '+(s.recommended_angle||s.description||JSON.stringify(s).substring(0,200));}).join('\\n');\n    if (strategies) sections.push('10x STRATEGIES:\\n' + strategies.substring(0,1500));\n    var comments = analyses.filter(function(a){return a.comment_insights;}).map(function(a){var ci=a.comment_insights; var d=ci.audience_demands||ci.top_demands||ci.key_themes||[]; return Array.isArray(d)?d.join(', '):String(d).substring(0,300);}).filter(function(c){return c;}).join('; ');\n    if (comments) sections.push('AUDIENCE DEMANDS:\\n' + comments.substring(0,1000));\n    var boA = analyses.filter(function(a){return a.blue_ocean_analysis;}).map(function(a){var b=a.blue_ocean_analysis; return (b.gaps_and_opportunities||b.untapped||JSON.stringify(b)).substring(0,300);}).join('; ');\n    if (boA) sections.push('BLUE OCEAN GAPS FROM VIDEO ANALYSIS:\\n' + boA.substring(0,1000));\n  }\n  if (categories && categories.length > 0) {\n    var cats = categories.slice(0,5).map(function(c){return '- '+(c.category_name||'')+': '+(c.video_title_suggestion||'');}).join('\\n');\n    sections.push('TOP RESEARCH CATEGORIES:\\n' + cats);\n  }\n  try {\n    var aiResp = await fetch(SB + '/rest/v1/audience_insights?project_id=eq.' + project.id + '&select=audience_context_block&order=week_of.desc&limit=1', {headers: hdr});\n    var aiRows = await aiResp.json();\n    if (aiRows && aiRows[0] && aiRows[0].audience_context_block) { sections.push('AUDIENCE CONTEXT:\\n' + aiRows[0].audience_context_block); }\n  } catch (e2) {}\n  if (sections.length > 0) {\n    researchBrief = '=== RESEARCH BRIEF ===\\n\\n' + sections.join('\\n\\n') + '\\n\\n=== END RESEARCH BRIEF ===';\n  }\n} catch (e) {}\n\nvar ctx = project.channel_analysis_context || {};\nvar scriptTargets = project.script_depth_targets;\nvar topicsToAvoid = project.topics_to_avoid || [];\nvar recAngle = project.recommended_angle || '';\n\nvar intelligence_block = '';\nif (Object.keys(ctx).length > 0 || topicsToAvoid.length > 0 || recAngle) {\n  intelligence_block += '\\n\\n=== COMPETITIVE INTELLIGENCE FOR SCRIPTING ===\\n';\n  if (recAngle) { intelligence_block += '\\nCHANNEL POSITIONING: ' + recAngle + '\\nWrite from this angle.\\n'; }\n  if (scriptTargets) { intelligence_block += '\\nSCRIPT DEPTH TARGETS: ' + JSON.stringify(scriptTargets) + '\\nOur 3-pass system should EXCEED these.\\n'; }\n  if (ctx.comment_pain_points && ctx.comment_pain_points.length > 0) { intelligence_block += '\\nAUDIENCE PAIN POINTS TO ADDRESS:\\n'; ctx.comment_pain_points.forEach(function(p) { intelligence_block += '- ' + p + '\\n'; }); }\n  if (ctx.comment_content_gaps && ctx.comment_content_gaps.length > 0) { intelligence_block += '\\nCONTENT GAPS TO FILL:\\n'; ctx.comment_content_gaps.forEach(function(g) { intelligence_block += '- ' + g + '\\n'; }); }\n  if (ctx.comment_top_questions && ctx.comment_top_questions.length > 0) { intelligence_block += '\\nTOP VIEWER QUESTIONS TO ANSWER:\\n'; ctx.comment_top_questions.forEach(function(q) { intelligence_block += '- ' + q + '\\n'; }); }\n  if (topicsToAvoid.length > 0) { intelligence_block += '\\nANGLES TO AVOID (saturated):\\n'; topicsToAvoid.forEach(function(t) { intelligence_block += '- ' + t + '\\n'; }); }\n  if (ctx.differentiation_strategy) { intelligence_block += '\\nDIFFERENTIATION: ' + (typeof ctx.differentiation_strategy === 'string' ? ctx.differentiation_strategy : JSON.stringify(ctx.differentiation_strategy)) + '\\n'; }\n}\n\nvar scriptRef = project.script_reference_data;\nif (scriptRef) { intelligence_block += '\\nCOMPETITOR SCRIPTING STYLES:\\n' + JSON.stringify(scriptRef) + '\\n'; }\nvar revProj = project.revenue_projections;\nif (revProj) { intelligence_block += '\\nREVENUE CONTEXT: ' + JSON.stringify(revProj) + '\\n'; }\nvar viabScore = project.niche_viability_score;\nvar viabVerdict = project.niche_viability_verdict;\nif (viabScore || viabVerdict) { intelligence_block += '\\nVIABILITY: ' + (viabScore || 'N/A') + '/100 - ' + (viabVerdict || 'N/A') + '\\n'; }\nvar titleDna = project.title_dna_patterns;\nif (titleDna) { intelligence_block += '\\nTITLE DNA: ' + JSON.stringify(titleDna) + '\\n'; }\nvar thumbDna = project.thumbnail_dna_patterns;\nif (thumbDna) { intelligence_block += '\\nTHUMBNAIL DNA: ' + JSON.stringify(thumbDna) + '\\n'; }\nif (ctx.blue_ocean_gaps && ctx.blue_ocean_gaps.length > 0) { intelligence_block += '\\nBLUE-OCEAN GAPS:\\n'; ctx.blue_ocean_gaps.forEach(function(g) { var l = typeof g === 'string' ? g : (g.topic || g.opportunity || JSON.stringify(g)); intelligence_block += '- ' + l + '\\n'; }); }\nif (ctx.content_pillars && ctx.content_pillars.length > 0) { intelligence_block += '\\nPILLARS: ' + ctx.content_pillars.join(', ') + '\\n'; }\nif (ctx.moat_indicators) { intelligence_block += '\\nMOAT: ' + JSON.stringify(ctx.moat_indicators) + '\\n'; }\nif (ctx.comment_requested_topics && ctx.comment_requested_topics.length > 0) { intelligence_block += '\\nVIEWER REQUESTS:\\n'; ctx.comment_requested_topics.forEach(function(t) { intelligence_block += '- ' + t + '\\n'; }); }\n\nreturn [{json: {topic: topic, project: project, avatar: avatar, pass_number: 1, research_brief: researchBrief, intelligence_block: intelligence_block}}];"
+        "jsCode": "const SB = $env.SUPABASE_URL, SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst topicRaw = $('Read Topic').first().json;\nconst projRaw = $('Read Project').first().json;\nconst topic = Array.isArray(topicRaw) ? topicRaw[0] : topicRaw;\nconst project = Array.isArray(projRaw) ? projRaw[0] : projRaw;\nconst hdr = {'apikey': SRK, 'Authorization': 'Bearer ' + SRK};\n\nvar avResp = await fetch(SB + '/rest/v1/avatars?topic_id=eq.' + topic.id + '&select=*&limit=1', {headers: hdr});\nvar avatars = await avResp.json();\nvar avatar = (avatars && avatars[0]) || {};\n\n// NOTE: research_brief assembly removed per migration 029.\n// WF_SCRIPT_PASS.Generate With Retry now fetches render_project_intelligence\n// (stage='script') which covers all 4 tables this node used to query:\n//   - niche_profiles (blue_ocean_opportunities, audience_pain_points, etc.)\n//   - yt_video_analyses (ten_x_strategy, comment_insights, content_quality)\n//   - research_categories (ranked clusters + suggested titles)\n//   - audience_insights (persona, vocabulary, objections, recurring questions)\n// Plus research_runs + research_results that weren't previously in this node.\n// The renderer's coverage check in migration 029 guarantees no future drops.\n//\n// research_brief returned empty for back-compat with WF_SCRIPT_PASS which\n// still reads the field (it gracefully handles empty via `length > 50` guard).\n\nreturn [{json: {topic: topic, project: project, avatar: avatar, pass_number: 1, research_brief: ''}}];"
       }
     },
     {
@@ -957,5 +1003,16 @@
         ]
       ]
     }
-  }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "versionId": "b78672c1-2d1e-42f9-a84f-3095c514fbe0",
+  "tags": []
 }

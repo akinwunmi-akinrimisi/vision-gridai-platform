@@ -214,7 +214,7 @@ export default function CreateProjectModal({ open, onOpenChange, prefillNiche, p
       setShowSuccess(true);
       setTimeout(() => {
         onOpenChange(false);
-      }, 1500);
+      }, 2500);
     } catch (err) {
       toast.error(err?.message || 'Failed to create project. Please try again.');
     }
@@ -242,8 +242,8 @@ export default function CreateProjectModal({ open, onOpenChange, prefillNiche, p
               <CheckCircle2 className="w-8 h-8 text-success" />
             </div>
             <p className="text-base font-semibold">Project created!</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Research is starting automatically...
+            <p className="text-sm text-muted-foreground mt-1 max-w-xs text-center">
+              Watch your project card for live research progress.
             </p>
           </div>
         ) : (

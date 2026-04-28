@@ -1,5 +1,7 @@
 {
+  "id": "74QqHrOOXJyu35Ng",
   "name": "WF_DEMONETIZATION_AUDIT",
+  "active": true,
   "nodes": [
     {
       "id": "webhook-1",
@@ -453,5 +455,8 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "pinData": null,
+  "versionId": "ee87f405-3e92-4edc-85d9-d0c495e3b8ec",
+  "tags": []
 }

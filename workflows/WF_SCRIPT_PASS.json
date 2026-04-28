@@ -1,5 +1,7 @@
 {
+  "id": "CRC9USwaGgk7x6xN",
   "name": "WF_SCRIPT_PASS — Execute & Evaluate With Retry",
+  "active": true,
   "nodes": [
     {
       "id": "trigger",
@@ -47,5 +49,8 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "pinData": null,
+  "versionId": "6bf5649e-b9a1-42d5-846f-e29282842ee8",
+  "tags": []
 }

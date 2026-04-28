@@ -2,9 +2,6 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Folder,
-  CheckCircle2,
-  Circle,
-  Loader2,
   RotateCcw,
   ArrowRight,
   Trash2,
@@ -17,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import StatusBadge from '../shared/StatusBadge';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import ProjectProgressIndicator, { shouldShowProjectProgress } from './ProjectProgressIndicator';
 import { useRunNicheHealth } from '../../hooks/useAnalyticsIntelligence';
 import { Button } from '@/components/ui/button';
 
@@ -54,29 +52,6 @@ const STATUS_LABEL = {
   research_failed: 'Research Failed',
 };
 
-const RESEARCH_STEPS = [
-  { key: 'created', label: 'Creating project' },
-  { key: 'researching_competitors', label: 'Auditing competitors' },
-  { key: 'researching_pain_points', label: 'Mining pain points' },
-  { key: 'researching_blue_ocean', label: 'Blue-ocean analysis' },
-  { key: 'researching_prompts', label: 'Generating prompts' },
-];
-
-const STEP_ORDER = RESEARCH_STEPS.map((s) => s.key);
-
-function getStepStatus(currentStatus, stepKey) {
-  const currentIdx = STEP_ORDER.indexOf(currentStatus);
-  const stepIdx = STEP_ORDER.indexOf(stepKey);
-
-  if (['ready_for_topics', 'topics_pending_review', 'active', 'in_production'].includes(currentStatus)) {
-    return 'done';
-  }
-
-  if (stepIdx < currentIdx) return 'done';
-  if (stepIdx === currentIdx) return 'active';
-  return 'pending';
-}
-
 function getSmartRoute(status, projectId) {
   if (!status) return `/project/${projectId}`;
   if (status.startsWith('researching')) return `/project/${projectId}/research`;
@@ -85,10 +60,6 @@ function getSmartRoute(status, projectId) {
   if (status === 'active' || status === 'in_production') return `/project/${projectId}`;
   if (status === 'research_failed') return `/project/${projectId}/research`;
   return `/project/${projectId}`;
-}
-
-function isResearching(status) {
-  return status && (status.startsWith('researching') || status === 'created');
 }
 
 function formatRelativeTime(dateStr) {
@@ -314,7 +285,10 @@ export default function ProjectCard({ project, onRetry, onDelete, isDeleting, he
   };
 
   const route = getSmartRoute(status, id);
-  const showResearchProgress = isResearching(status);
+  // The new ProjectProgressIndicator decides what to render; we mirror its
+  // visibility check here so the metrics row stays hidden whenever the
+  // indicator is showing meaningful content.
+  const showResearchProgress = shouldShowProjectProgress(status);
   const emoji = getNicheEmoji(niche);
 
   // Auto-refresh relative time every 60s
@@ -383,34 +357,10 @@ export default function ProjectCard({ project, onRetry, onDelete, isDeleting, he
         <p className="text-xs text-muted-foreground mb-3">{computedStatus.detail}</p>
       )}
 
-      {/* Research progress stepper */}
-      {showResearchProgress && (
-        <div className="space-y-1.5 mb-4" data-testid="research-progress">
-          {RESEARCH_STEPS.map((step) => {
-            const stepStatus = getStepStatus(status, step.key);
-            return (
-              <div key={step.key} className="flex items-center gap-2.5 text-xs">
-                {stepStatus === 'done' && (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                )}
-                {stepStatus === 'active' && (
-                  <Loader2 className="w-3.5 h-3.5 text-accent flex-shrink-0 animate-spin" />
-                )}
-                {stepStatus === 'pending' && (
-                  <Circle className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
-                )}
-                <span className={
-                  stepStatus === 'done' ? 'text-success' :
-                  stepStatus === 'active' ? 'text-accent font-medium' :
-                  'text-muted-foreground/60'
-                }>
-                  {step.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Live progress indicator — replaces the broken substage-based stepper.
+          Renders elapsed time + simulated breakdown while research/topic-gen is
+          running, a calm confirmation when complete, or null otherwise. */}
+      <ProjectProgressIndicator project={project} />
 
       {/* Metrics row + progress bar (only when not researching) */}
       {!showResearchProgress && (

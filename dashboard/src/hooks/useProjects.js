@@ -13,12 +13,44 @@ import { useCountryTab } from './useCountryTab';
  * Projects without country_target (legacy rows) are read as 'GENERAL'. Use
  * `allData` for the unfiltered list (e.g. cross-tab summaries).
  */
+// Statuses that mean the orchestrator is doing something visible — while
+// any project is in one of these, we poll faster (3s) so the user sees the
+// click-to-result feedback loop. Otherwise we stay at the slow 10s cadence.
+//
+// IMPORTANT: WF_PROJECT_CREATE actually emits 'researching_competitors'
+// (not 'researching') as its single in-flight status. The other four
+// 'researching_*' slugs are reserved for future fine-grained PATCHes
+// added by the orchestrator. List them all so adaptive polling stays
+// fast across any future granularity bump.
+const ACTIVE_PIPELINE_STATUSES = new Set([
+  'created',
+  'researching',
+  'researching_competitors',
+  'researching_pain_points',
+  'researching_keywords',
+  'researching_blue_ocean',
+  'researching_prompts',
+  'generating_topics',
+]);
+
 export function useProjects() {
   const { country } = useCountryTab();
   const query = useQuery({
     queryKey: ['projects'],
     queryFn: () => dashboardRead('projects_list'),
-    refetchInterval: 10_000,
+    refetchInterval: (data) => {
+      // react-query v5 passes a Query object whose `.state.data` is the
+      // current cached result; v4 passes the raw data. Support both.
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.state?.data)
+          ? data.state.data
+          : null;
+      if (Array.isArray(list) && list.some((p) => ACTIVE_PIPELINE_STATUSES.has(p?.status))) {
+        return 3_000;
+      }
+      return 10_000;
+    },
   });
 
   const filtered = useMemo(() => {

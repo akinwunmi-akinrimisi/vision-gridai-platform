@@ -1,5 +1,7 @@
 {
-  "name": "WF_PROJECT_CREATE — Niche Research + Prompt Generation",
+  "id": "8KW1hiRklamduMzO",
+  "name": "WF_PROJECT_CREATE â€” Niche Research + Prompt Generation",
+  "active": true,
   "nodes": [
     {
       "id": "wf-pc-webhook",
@@ -30,7 +32,7 @@
         424
       ],
       "parameters": {
-        "jsCode": "// Validate input — handle both new project and retry\nconst body = $input.first().json.body || $input.first().json;\nlet niche = body.niche?.trim();\nconst projectId = body.project_id;\n\n// If retrying (project_id but no niche), fetch niche from existing project\nif (!niche && projectId) {\n  const SB = $env.SUPABASE_URL;\n  const SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\n  const resp = await fetch(SB + '/rest/v1/projects?id=eq.' + projectId + '&select=niche,niche_description', {\n    headers: { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK }\n  });\n  const text = await resp.text();\n  try {\n    const rows = JSON.parse(text);\n    if (rows?.[0]?.niche) {\n      niche = rows[0].niche;\n    }\n  } catch (e) {}\n}\n\nif (!niche || niche.length < 2) {\n  throw new Error('Niche name is required (min 2 characters)');\n}\n\nreturn [{\n  json: {\n    niche,\n    description: body.description?.trim() || body.niche_description?.trim() || '',\n    target_video_count: parseInt(body.target_video_count, 10) || 25,\n    channel_style: body.channel_style || '2hr_documentary',\n    reference_analyses: Array.isArray(body.reference_analyses) ? body.reference_analyses : [],\n    project_id: projectId || null\n  }\n}];",
+        "jsCode": "// Validate input â€” handle both new project and retry\nconst body = $input.first().json.body || $input.first().json;\nlet niche = body.niche?.trim();\nconst projectId = body.project_id;\n\n// If retrying (project_id but no niche), fetch niche from existing project\nif (!niche && projectId) {\n  const SB = $env.SUPABASE_URL;\n  const SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\n  const resp = await fetch(SB + '/rest/v1/projects?id=eq.' + projectId + '&select=niche,niche_description', {\n    headers: { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK }\n  });\n  const text = await resp.text();\n  try {\n    const rows = JSON.parse(text);\n    if (rows?.[0]?.niche) {\n      niche = rows[0].niche;\n    }\n  } catch (e) {}\n}\n\nif (!niche || niche.length < 2) {\n  throw new Error('Niche name is required (min 2 characters)');\n}\n\nreturn [{\n  json: {\n    niche,\n    description: body.description?.trim() || body.niche_description?.trim() || '',\n    target_video_count: parseInt(body.target_video_count, 10) || 25,\n    channel_style: body.channel_style || '2hr_documentary',\n    reference_analyses: Array.isArray(body.reference_analyses) ? body.reference_analyses : [],\n    project_id: projectId || null\n  }\n}];",
         "mode": "runOnceForAllItems"
       }
     },
@@ -58,6 +60,10 @@
             {
               "name": "Prefer",
               "value": "return=representation"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -87,7 +93,7 @@
         424
       ],
       "parameters": {
-        "jsCode": "// Extract project from Supabase response (returns array)\nconst response = $input.first().json;\nconst project = Array.isArray(response) ? response[0] : response;\nif (!project?.id) {\n  throw new Error('Failed to create project — no ID returned');\n}\n// Pass reference_analyses from upstream\nconst upstream = $('Validate Input').first().json;\nreturn [{ json: { project_id: project.id, niche: project.niche, description: project.niche_description || '', reference_analyses: upstream.reference_analyses || [] } }];",
+        "jsCode": "// Extract project from Supabase response (returns array)\nconst response = $input.first().json;\nconst project = Array.isArray(response) ? response[0] : response;\nif (!project?.id) {\n  throw new Error('Failed to create project â€” no ID returned');\n}\n// Pass reference_analyses from upstream\nconst upstream = $('Validate Input').first().json;\nreturn [{ json: { project_id: project.id, niche: project.niche, description: project.niche_description || '', reference_analyses: upstream.reference_analyses || [] } }];",
         "mode": "runOnceForAllItems"
       }
     },
@@ -132,6 +138,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -166,6 +176,10 @@
             {
               "name": "apikey",
               "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -227,7 +241,7 @@
     },
     {
       "id": "wf-pc-status-researching",
-      "name": "Status → Researching",
+      "name": "Status â†’ Researching",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -249,6 +263,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -316,7 +334,7 @@
         328
       ],
       "parameters": {
-        "jsCode": "// Detect if Claude research returned an error response\nconst response = $input.first().json;\n\nif (response.error || response.type === 'error') {\n  const errorMsg = response.error?.message || JSON.stringify(response.error || response);\n  return [{ json: {\n    isError: true,\n    error_message: 'Anthropic API error during research: ' + errorMsg,\n    project_id: $('Extract Project ID').first().json.project_id,\n    niche: $('Extract Project ID').first().json.niche,\n    description: $('Extract Project ID').first().json.description,\n    skip_research: false\n  }}];\n}\n\n// Success — pass through response\nreturn [{ json: { ...response, isError: false } }];",
+        "jsCode": "// Detect if Claude research returned an error response\nconst response = $input.first().json;\n\nif (response.error || response.type === 'error') {\n  const errorMsg = response.error?.message || JSON.stringify(response.error || response);\n  return [{ json: {\n    isError: true,\n    error_message: 'Anthropic API error during research: ' + errorMsg,\n    project_id: $('Extract Project ID').first().json.project_id,\n    niche: $('Extract Project ID').first().json.niche,\n    description: $('Extract Project ID').first().json.description,\n    skip_research: false\n  }}];\n}\n\n// Success â€” pass through response\nreturn [{ json: { ...response, isError: false } }];",
         "mode": "runOnceForAllItems"
       }
     },
@@ -390,6 +408,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -429,6 +451,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -463,6 +489,10 @@
             {
               "name": "apikey",
               "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -499,6 +529,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -547,6 +581,10 @@
             {
               "name": "apikey",
               "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -628,7 +666,7 @@
         352
       ],
       "parameters": {
-        "jsCode": "// Detect if Claude prompts generation returned an error or truncated response\nconst response = $input.first().json;\n\nif (response.error || response.type === 'error') {\n  const errorMsg = response.error?.message || JSON.stringify(response.error || response);\n  return [{ json: {\n    isError: true,\n    error_message: 'Anthropic API error during prompt generation: ' + errorMsg,\n    project_id: $('Extract Project ID').first().json.project_id\n  }}];\n}\n\n// Check for truncated response (max_tokens hit)\nif (response.stop_reason === 'max_tokens') {\n  return [{ json: {\n    isError: true,\n    error_message: 'Claude response truncated (stop_reason=max_tokens, output_tokens=' + (response.usage?.output_tokens || 'unknown') + '). Prompt templates too long — reduce verbosity.',\n    project_id: $('Extract Project ID').first().json.project_id\n  }}];\n}\n\n// Success — pass through\nreturn [{ json: { ...response, isError: false } }];",
+        "jsCode": "// Detect if Claude prompts generation returned an error or truncated response\nconst response = $input.first().json;\n\nif (response.error || response.type === 'error') {\n  const errorMsg = response.error?.message || JSON.stringify(response.error || response);\n  return [{ json: {\n    isError: true,\n    error_message: 'Anthropic API error during prompt generation: ' + errorMsg,\n    project_id: $('Extract Project ID').first().json.project_id\n  }}];\n}\n\n// Check for truncated response (max_tokens hit)\nif (response.stop_reason === 'max_tokens') {\n  return [{ json: {\n    isError: true,\n    error_message: 'Claude response truncated (stop_reason=max_tokens, output_tokens=' + (response.usage?.output_tokens || 'unknown') + '). Prompt templates too long â€” reduce verbosity.',\n    project_id: $('Extract Project ID').first().json.project_id\n  }}];\n}\n\n// Success â€” pass through\nreturn [{ json: { ...response, isError: false } }];",
         "mode": "runOnceForAllItems"
       }
     },
@@ -674,7 +712,7 @@
         304
       ],
       "parameters": {
-        "jsCode": "// Parse Claude's prompt generation response\nconst response = $input.first().json;\n\nif (response.error) {\n  throw new Error('Anthropic API error: ' + (response.error.message || JSON.stringify(response.error)));\n}\n\nconst textBlocks = (response.content || []).filter(c => c.type === 'text');\nconst rawText = textBlocks.map(c => c.text).join('');\n\n// Strip markdown fences\nlet jsonText = rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst jsonStart = jsonText.indexOf('[');\nconst jsonEnd = jsonText.lastIndexOf(']');\nif (jsonStart === -1 || jsonEnd === -1) {\n  throw new Error('No JSON array found in prompt generation response');\n}\njsonText = jsonText.substring(jsonStart, jsonEnd + 1);\n\nlet prompts;\ntry {\n  prompts = JSON.parse(jsonText);\n} catch (e) {\n  throw new Error('Failed to parse prompts JSON: ' + e.message);\n}\n\nif (!Array.isArray(prompts) || prompts.length < 2) {\n  throw new Error('Expected 2 prompts, got ' + (prompts?.length || 0));\n}\n\n// Verify we have visual_director and scene_segmenter\nconst requiredTypes = ['visual_director', 'scene_segmenter'];\nconst receivedTypes = prompts.map(p => p.prompt_type);\nconst missingTypes = requiredTypes.filter(t => !receivedTypes.includes(t));\nif (missingTypes.length > 0) {\n  throw new Error('Missing required prompt types: ' + missingTypes.join(', '));\n}\n\nconst project_id = $('Extract Project ID').first().json.project_id;\n\n// Determine version: use next_version if re-trigger, else 1\nlet version = 1;\ntry {\n  const mergeData = $('Merge Re-trigger Data').first().json;\n  if (mergeData && mergeData.next_version) {\n    version = mergeData.next_version;\n  }\n} catch(e) {\n  // Not a re-trigger — version stays 1\n}\n\n// Build prompt_configs rows\nconst rows = prompts.map(p => ({\n  project_id,\n  prompt_type: p.prompt_type,\n  prompt_text: p.prompt_text,\n  version,\n  is_active: true\n}));\n\nreturn [{ json: { project_id, prompt_configs: rows } }];",
+        "jsCode": "// Parse Claude's prompt generation response\nconst response = $input.first().json;\n\nif (response.error) {\n  throw new Error('Anthropic API error: ' + (response.error.message || JSON.stringify(response.error)));\n}\n\nconst textBlocks = (response.content || []).filter(c => c.type === 'text');\nconst rawText = textBlocks.map(c => c.text).join('');\n\n// Strip markdown fences\nlet jsonText = rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst jsonStart = jsonText.indexOf('[');\nconst jsonEnd = jsonText.lastIndexOf(']');\nif (jsonStart === -1 || jsonEnd === -1) {\n  throw new Error('No JSON array found in prompt generation response');\n}\njsonText = jsonText.substring(jsonStart, jsonEnd + 1);\n\nlet prompts;\ntry {\n  prompts = JSON.parse(jsonText);\n} catch (e) {\n  throw new Error('Failed to parse prompts JSON: ' + e.message);\n}\n\nif (!Array.isArray(prompts) || prompts.length < 2) {\n  throw new Error('Expected 2 prompts, got ' + (prompts?.length || 0));\n}\n\n// Verify we have visual_director and scene_segmenter\nconst requiredTypes = ['visual_director', 'scene_segmenter'];\nconst receivedTypes = prompts.map(p => p.prompt_type);\nconst missingTypes = requiredTypes.filter(t => !receivedTypes.includes(t));\nif (missingTypes.length > 0) {\n  throw new Error('Missing required prompt types: ' + missingTypes.join(', '));\n}\n\nconst project_id = $('Extract Project ID').first().json.project_id;\n\n// Determine version: use next_version if re-trigger, else 1\nlet version = 1;\ntry {\n  const mergeData = $('Merge Re-trigger Data').first().json;\n  if (mergeData && mergeData.next_version) {\n    version = mergeData.next_version;\n  }\n} catch(e) {\n  // Not a re-trigger â€” version stays 1\n}\n\n// Build prompt_configs rows\nconst rows = prompts.map(p => ({\n  project_id,\n  prompt_type: p.prompt_type,\n  prompt_text: p.prompt_text,\n  version,\n  is_active: true\n}));\n\nreturn [{ json: { project_id, prompt_configs: rows } }];",
         "mode": "runOnceForAllItems"
       }
     },
@@ -702,6 +740,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -719,7 +761,7 @@
     },
     {
       "id": "wf-pc-status-ready",
-      "name": "Status → Ready for Topics",
+      "name": "Status â†’ Ready for Topics",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -741,6 +783,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -780,6 +826,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -797,7 +847,7 @@
     },
     {
       "id": "wf-pc-error-handler",
-      "name": "Error → Research Failed",
+      "name": "Error â†’ Research Failed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -819,6 +869,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -858,6 +912,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -1042,14 +1100,14 @@
         ],
         [
           {
-            "node": "Status → Researching",
+            "node": "Status â†’ Researching",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Status → Researching": {
+    "Status â†’ Researching": {
       "main": [
         [
           {
@@ -1086,7 +1144,7 @@
       "main": [
         [
           {
-            "node": "Error → Research Failed",
+            "node": "Error â†’ Research Failed",
             "type": "main",
             "index": 0
           }
@@ -1191,7 +1249,7 @@
       "main": [
         [
           {
-            "node": "Error → Research Failed",
+            "node": "Error â†’ Research Failed",
             "type": "main",
             "index": 0
           }
@@ -1220,14 +1278,14 @@
       "main": [
         [
           {
-            "node": "Status → Ready for Topics",
+            "node": "Status â†’ Ready for Topics",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Status → Ready for Topics": {
+    "Status â†’ Ready for Topics": {
       "main": [
         [
           {
@@ -1238,7 +1296,7 @@
         ]
       ]
     },
-    "Error → Research Failed": {
+    "Error â†’ Research Failed": {
       "main": [
         [
           {
@@ -1332,5 +1390,15 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "pinData": {},
+  "versionId": "eafcd30b-9359-4f97-9949-861f948fc405",
+  "tags": [
+    {
+      "updatedAt": "2026-03-09T22:09:21.352Z",
+      "createdAt": "2026-03-09T22:09:21.352Z",
+      "id": "AThibo2wxLpjDbNa",
+      "name": "vision-gridai"
+    }
+  ]
 }

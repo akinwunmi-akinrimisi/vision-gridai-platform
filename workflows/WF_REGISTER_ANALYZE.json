@@ -1,5 +1,7 @@
 {
+  "id": "Miy5h5O7ncIIrnRg",
   "name": "WF_REGISTER_ANALYZE",
+  "active": true,
   "nodes": [
     {
       "id": "wf-ra-webhook",
@@ -107,5 +109,8 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "pinData": null,
+  "versionId": "cb9a710c-2ad1-4f27-b621-cb8f5ce86d86",
+  "tags": []
 }

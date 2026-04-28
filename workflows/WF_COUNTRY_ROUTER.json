@@ -1,5 +1,7 @@
 {
+  "id": "T6fGAX9dPIAMc7kD",
   "name": "WF_COUNTRY_ROUTER",
+  "active": true,
   "nodes": [
     {
       "id": "trigger-1",
@@ -132,5 +134,8 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "pinData": null,
+  "versionId": "49a6b05b-9be2-4dc5-9e3f-0c8fd10dcd11",
+  "tags": []
 }

@@ -1,5 +1,7 @@
 {
+  "id": "J5NTvfweZRiKJ9fG",
   "name": "WF_TOPICS_GENERATE — Generate 25 Topics + Avatars",
+  "active": true,
   "nodes": [
     {
       "id": "wf-tg-webhook",
@@ -65,6 +67,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -100,6 +106,10 @@
             {
               "name": "apikey",
               "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -133,6 +143,10 @@
             {
               "name": "apikey",
               "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -166,6 +180,10 @@
             {
               "name": "apikey",
               "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -282,6 +300,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -307,7 +329,7 @@
         520
       ],
       "parameters": {
-        "jsCode": "const project = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst masterPrompt = $('Read Prompt Config').first().json[0]?.prompt_text || $('Read Prompt Config').first().json?.prompt_text;\nconst idempotency = $('Idempotency Guard').first().json;\nconst project_id = idempotency.project_id;\nconst topicsNeeded = idempotency.topicsNeeded || 25;\nconst existingTitles = idempotency.existingTitles || [];\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst hdr = { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK };\n\n// CENTRAL INTELLIGENCE RENDERER v2 (migration 029)\n// Now covers niche_profiles + yt_video_analyses + research_runs +\n// research_categories + research_results + audience_insights in addition\n// to projects/nvr/channel_analyses. The coverage check in migration 029\n// makes it impossible to add a new column to any of those 9 tables without\n// it landing in this rendered output.\nlet renderedIntelligence = '';\ntry {\n  const intelRes = await fetch(SB + '/rest/v1/rpc/render_project_intelligence', {\n    method: 'POST',\n    headers: {\n      apikey: $env.SUPABASE_ANON_KEY,\n      Authorization: 'Bearer ' + SRK,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({ p_project_id: project_id, p_stage: 'topics' })\n  });\n  if (intelRes.ok) renderedIntelligence = await intelRes.json();\n} catch (_) {}\n\n// analysisPayload preserved: it serves Grand_Master_Prompt_Topic_Generator_v3 §2\n// input contract (structured JSON payload). Primary source is project.competitive_analysis\n// (cached from bridge workflow). niche_profiles fallback kept as a safety net —\n// harmless duplication with the RPC's markdown rendering, but preserves the\n// structural JSON contract the Grand Master prompt was written against.\nconst ca = project.competitive_analysis || {};\nconst analyses = ca.analyses || [];\n\nlet analysisPayload = '';\nif (analyses.length > 0) {\n  analysisPayload = JSON.stringify({ primary_analysis: analyses[0], additional_analyses: analyses.slice(1), project_niche: project.niche, project_description: project.niche_description }, null, 2);\n} else {\n  try {\n    const resp = await fetch(SB + '/rest/v1/niche_profiles?project_id=eq.' + project_id + '&order=created_at.desc&limit=1', { headers: hdr });\n    const profiles = await resp.json();\n    const profile = profiles && profiles[0];\n    if (profile) {\n      analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 8 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' }, blue_ocean_analysis: { gaps_and_opportunities: (profile.blue_ocean_opportunities || {}).unoccupied_angles || [] }, comment_insights: { top_questions: ((profile.audience_pain_points || {}).reddit || []).slice(0, 10), complaints: ((profile.audience_pain_points || {}).forums || []).slice(0, 5) } }, null, 2);\n    }\n  } catch (e) {}\n  if (!analysisPayload) {\n    analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 7 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' } }, null, 2);\n  }\n}\n\n// researchEnrichment DELETED per migration 029 — research_runs +\n// research_categories + research_results are now fully rendered by the RPC\n// with richer per-result metadata (subreddit, author, upvotes/comments/shares,\n// AI-suggested titles) than the hand-built summary provided.\n\n// === BEGIN AU OVERLAY (migration 034) — substitute country-slot placeholders\n// Master prompts gained {country_compliance_block} / {country_terminology_block} /\n// {country_calendar_context} / {country_demonetization_constraints} via 033 §K.\n// render_country_blocks RPC returns the 4 sections per country_target\n// (empty strings for GENERAL — substitution becomes a no-op). RPC failure\n// leaves placeholders intact rather than silently stripping content.\nlet resolvedMaster = masterPrompt || '';\nconst __PLACEHOLDER_RE = /\\{country_(?:compliance_block|terminology_block|calendar_context|demonetization_constraints)\\}/;\nif (resolvedMaster && __PLACEHOLDER_RE.test(resolvedMaster)) {\n  try {\n    const __blocksRes = await fetch(SB + '/rest/v1/rpc/render_country_blocks', {\n      method: 'POST',\n      headers: { apikey: $env.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SRK, 'Content-Type': 'application/json' },\n      body: JSON.stringify({ p_country_target: (project.country_target || 'GENERAL') })\n    });\n    if (__blocksRes.ok) {\n      const __b = await __blocksRes.json();\n      resolvedMaster = resolvedMaster\n        .replace(/\\{country_compliance_block\\}/g, (__b.country_compliance_block || ''))\n        .replace(/\\{country_terminology_block\\}/g, (__b.country_terminology_block || ''))\n        .replace(/\\{country_calendar_context\\}/g, (__b.country_calendar_context || ''))\n        .replace(/\\{country_demonetization_constraints\\}/g, (__b.country_demonetization_constraints || ''));\n    }\n  } catch (_) { /* leave placeholders intact */ }\n}\n// === END AU OVERLAY ===\n\nvar prompt = renderedIntelligence ? renderedIntelligence + '\\n\\n---\\n\\n' : '';\nprompt += resolvedMaster;\nprompt += '\\n\\n=== RESEARCH ANALYSIS PAYLOAD ===\\n' + analysisPayload;\nif (existingTitles.length > 0) { prompt += '\\n\\nEXISTING TOPICS - avoid overlap:\\n' + JSON.stringify(existingTitles); }\n\nreturn [{ json: { project_id: project_id, niche: project.niche, prompt: prompt } }];\n",
+        "jsCode": "const project = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst masterPrompt = $('Read Prompt Config').first().json[0]?.prompt_text || $('Read Prompt Config').first().json?.prompt_text;\nconst idempotency = $('Idempotency Guard').first().json;\nconst project_id = idempotency.project_id;\nconst topicsNeeded = idempotency.topicsNeeded || 25;\nconst existingTitles = idempotency.existingTitles || [];\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst hdr = { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK };\n\n// CENTRAL INTELLIGENCE RENDERER v2 (migration 029)\n// Now covers niche_profiles + yt_video_analyses + research_runs +\n// research_categories + research_results + audience_insights in addition\n// to projects/nvr/channel_analyses. The coverage check in migration 029\n// makes it impossible to add a new column to any of those 9 tables without\n// it landing in this rendered output.\nlet renderedIntelligence = '';\ntry {\n  const intelRes = await fetch(SB + '/rest/v1/rpc/render_project_intelligence', {\n    method: 'POST',\n    headers: {\n      apikey: $env.SUPABASE_ANON_KEY,\n      Authorization: 'Bearer ' + SRK,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({ p_project_id: project_id, p_stage: 'topics' })\n  });\n  if (intelRes.ok) renderedIntelligence = await intelRes.json();\n} catch (_) {}\n\n// analysisPayload preserved: it serves Grand_Master_Prompt_Topic_Generator_v3 §2\n// input contract (structured JSON payload). Primary source is project.competitive_analysis\n// (cached from bridge workflow). niche_profiles fallback kept as a safety net —\n// harmless duplication with the RPC's markdown rendering, but preserves the\n// structural JSON contract the Grand Master prompt was written against.\nconst ca = project.competitive_analysis || {};\nconst analyses = ca.analyses || [];\n\nlet analysisPayload = '';\nif (analyses.length > 0) {\n  analysisPayload = JSON.stringify({ primary_analysis: analyses[0], additional_analyses: analyses.slice(1), project_niche: project.niche, project_description: project.niche_description }, null, 2);\n} else {\n  try {\n    const resp = await fetch(SB + '/rest/v1/niche_profiles?project_id=eq.' + project_id + '&order=created_at.desc&limit=1', { headers: hdr });\n    const profiles = await resp.json();\n    const profile = profiles && profiles[0];\n    if (profile) {\n      analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 8 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' }, blue_ocean_analysis: { gaps_and_opportunities: (profile.blue_ocean_opportunities || {}).unoccupied_angles || [] }, comment_insights: { top_questions: ((profile.audience_pain_points || {}).reddit || []).slice(0, 10), complaints: ((profile.audience_pain_points || {}).forums || []).slice(0, 5) } }, null, 2);\n    }\n  } catch (e) {}\n  if (!analysisPayload) {\n    analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 7 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' } }, null, 2);\n  }\n}\n\n// researchEnrichment DELETED per migration 029 — research_runs +\n// research_categories + research_results are now fully rendered by the RPC\n// with richer per-result metadata (subreddit, author, upvotes/comments/shares,\n// AI-suggested titles) than the hand-built summary provided.\n\n// === BEGIN AU OVERLAY (migration 034) — substitute country-slot placeholders\n// Master prompts gained {country_compliance_block} / {country_terminology_block} /\n// {country_calendar_context} / {country_demonetization_constraints} via 033 §K.\n// render_country_blocks RPC returns the 4 sections per country_target\n// (empty strings for GENERAL — substitution becomes a no-op). RPC failure\n// leaves placeholders intact rather than silently stripping content.\nlet resolvedMaster = masterPrompt || '';\nconst __PLACEHOLDER_RE = /\\{country_(?:compliance_block|terminology_block|calendar_context|demonetization_constraints)\\}/;\nif (resolvedMaster && __PLACEHOLDER_RE.test(resolvedMaster)) {\n  try {\n    const __blocksRes = await fetch(SB + '/rest/v1/rpc/render_country_blocks', {\n      method: 'POST',\n      headers: { apikey: $env.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SRK, 'Content-Type': 'application/json' },\n      body: JSON.stringify({ p_country_target: await (async () => {\n        try {\n          const __ct_resp = await fetch(SB + '/rest/v1/projects?id=eq.' + project_id + '&select=country_target', { headers: hdr });\n          if (__ct_resp.ok) {\n            const __rows = await __ct_resp.json();\n            if (Array.isArray(__rows) && __rows[0] && __rows[0].country_target) return __rows[0].country_target;\n          }\n        } catch(_) {}\n        return (project.country_target || 'GENERAL');\n      })() })\n    });\n    if (__blocksRes.ok) {\n      const __b = await __blocksRes.json();\n      resolvedMaster = resolvedMaster\n        .replace(/\\{country_compliance_block\\}/g, (__b.country_compliance_block || ''))\n        .replace(/\\{country_terminology_block\\}/g, (__b.country_terminology_block || ''))\n        .replace(/\\{country_calendar_context\\}/g, (__b.country_calendar_context || ''))\n        .replace(/\\{country_demonetization_constraints\\}/g, (__b.country_demonetization_constraints || ''));\n    }\n  } catch (_) { /* leave placeholders intact */ }\n}\n// === END AU OVERLAY ===\n\nvar prompt = renderedIntelligence ? renderedIntelligence + '\\n\\n---\\n\\n' : '';\nprompt += resolvedMaster;\nprompt += '\\n\\n=== RESEARCH ANALYSIS PAYLOAD ===\\n' + analysisPayload;\nif (existingTitles.length > 0) { prompt += '\\n\\nEXISTING TOPICS - avoid overlap:\\n' + JSON.stringify(existingTitles); }\n\nreturn [{ json: { project_id: project_id, niche: project.niche, prompt: prompt } }];\n",
         "mode": "runOnceForAllItems"
       }
     },
@@ -426,6 +448,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -465,6 +491,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -490,7 +520,7 @@
         660
       ],
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nif (response.error) throw new Error('Anthropic error: ' + (response.error.message || JSON.stringify(response.error)));\n\nconst text = (response.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\nlet jsonText = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst s = jsonText.indexOf('{'), e = jsonText.lastIndexOf('}');\nif (s === -1 || e === -1) throw new Error('No JSON object in response');\nconst parsed = JSON.parse(jsonText.substring(s, e + 1));\n\nconst project_id = $('Validate').first().json.project_id;\n// === BEGIN AU OVERLAY (migration 034) — denormalize project.country_target onto each topic row\nconst __projForCountry = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst __country_target = (__projForCountry && __projForCountry.country_target) || 'GENERAL';\n// === END AU OVERLAY ===\nconst startTopicNumber = $('Idempotency Guard').first().json.startTopicNumber || 1;\n\nconst playlists = parsed.playlists || [];\nconst topicRows = [];\nconst avatarData = [];\nconst playlistMeta = [];\n\nlet globalTopicNum = startTopicNumber;\n\nfor (let pi = 0; pi < playlists.length; pi++) {\n  const pl = playlists[pi];\n  playlistMeta.push({ name: pl.playlist_title, theme: pl.playlist_theme });\n\n  for (const t of (pl.topics || [])) {\n    topicRows.push({\n      project_id,\n      topic_number: t.topic_number || globalTopicNum,\n      playlist_group: pi + 1,\n      playlist_angle: pl.playlist_title || '',\n      original_title: t.subtopic || '',\n      seo_title: t.subtopic || '',\n      narrative_hook: t.primary_problem_trigger || '',\n      key_segments: t.video_style_structure || '',\n      estimated_cpm: null,\n      viral_potential: null,\n      core_domain_framework: t.core_domain_framework || '',\n      primary_problem_trigger: t.primary_problem_trigger || '',\n      target_audience_segment: t.target_audience_segment || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      video_style_structure: t.video_style_structure || '',\n      content_angle_blue_ocean: t.content_angle_blue_ocean || '',\n      viewer_search_intent: t.viewer_search_intent || '',\n      practical_takeaways: t.practical_takeaways || '',\n      country_target: __country_target,\n      review_status: 'pending',\n      status: 'pending'\n    });\n\n    avatarData.push({\n      audience_avatar: t.audience_avatar || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      target_audience_segment: t.target_audience_segment || '',\n      viewer_search_intent: t.viewer_search_intent || ''\n    });\n\n    globalTopicNum++;\n  }\n}\n\nreturn [{ json: { project_id, topicRows, avatarData, playlistMeta } }];",
+        "jsCode": "const response = $input.first().json;\nif (response.error) throw new Error('Anthropic error: ' + (response.error.message || JSON.stringify(response.error)));\n\nconst text = (response.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\nlet jsonText = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst s = jsonText.indexOf('{'), e = jsonText.lastIndexOf('}');\nif (s === -1 || e === -1) throw new Error('No JSON object in response');\nconst parsed = JSON.parse(jsonText.substring(s, e + 1));\n\nconst project_id = $('Validate').first().json.project_id;\n// === BEGIN AU OVERLAY (migration 034 + 2026-04-28 fresh-fetch fix) — denormalize project.country_target onto each topic row\n// Fetch country_target FRESH from DB at parse time. Previous code used $('Read Project').first().json[0]\n// but n8n's HTTP Request node response shape made country_target unreachable in some cases — topics\n// landed with the column DEFAULT ('GENERAL') even when the project was AU. Fresh fetch is bulletproof.\nconst __SB_URL = $env.SUPABASE_URL;\nconst __SB_SVC = $env.SUPABASE_SERVICE_ROLE_KEY;\nlet __country_target = 'GENERAL';\ntry {\n  const __resp = await fetch(__SB_URL + '/rest/v1/projects?id=eq.' + project_id + '&select=country_target', {\n    headers: { 'apikey': __SB_SVC, 'Authorization': 'Bearer ' + __SB_SVC }\n  });\n  if (__resp.ok) {\n    const __rows = await __resp.json();\n    if (Array.isArray(__rows) && __rows[0] && __rows[0].country_target) {\n      __country_target = __rows[0].country_target;\n    }\n  }\n} catch (__e) { /* keep GENERAL fallback */ }\n// === END AU OVERLAY ===\nconst startTopicNumber = $('Idempotency Guard').first().json.startTopicNumber || 1;\n\nconst playlists = parsed.playlists || [];\nconst topicRows = [];\nconst avatarData = [];\nconst playlistMeta = [];\n\nlet globalTopicNum = startTopicNumber;\n\nfor (let pi = 0; pi < playlists.length; pi++) {\n  const pl = playlists[pi];\n  playlistMeta.push({ name: pl.playlist_title, theme: pl.playlist_theme });\n\n  for (const t of (pl.topics || [])) {\n    topicRows.push({\n      project_id,\n      topic_number: t.topic_number || globalTopicNum,\n      playlist_group: pi + 1,\n      playlist_angle: pl.playlist_title || '',\n      original_title: t.subtopic || '',\n      seo_title: t.subtopic || '',\n      narrative_hook: t.primary_problem_trigger || '',\n      key_segments: t.video_style_structure || '',\n      estimated_cpm: null,\n      viral_potential: null,\n      core_domain_framework: t.core_domain_framework || '',\n      primary_problem_trigger: t.primary_problem_trigger || '',\n      target_audience_segment: t.target_audience_segment || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      video_style_structure: t.video_style_structure || '',\n      content_angle_blue_ocean: t.content_angle_blue_ocean || '',\n      viewer_search_intent: t.viewer_search_intent || '',\n      practical_takeaways: t.practical_takeaways || '',\n      country_target: __country_target,\n      review_status: 'pending',\n      status: 'pending'\n    });\n\n    avatarData.push({\n      audience_avatar: t.audience_avatar || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      target_audience_segment: t.target_audience_segment || '',\n      viewer_search_intent: t.viewer_search_intent || ''\n    });\n\n    globalTopicNum++;\n  }\n}\n\nreturn [{ json: { project_id, topicRows, avatarData, playlistMeta } }];",
         "mode": "runOnceForAllItems"
       }
     },
@@ -518,6 +548,10 @@
             {
               "name": "Prefer",
               "value": "return=representation"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -571,6 +605,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -610,6 +648,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -649,6 +691,10 @@
             {
               "name": "Prefer",
               "value": "return=minimal"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
         },
@@ -674,7 +720,7 @@
         520
       ],
       "parameters": {
-        "jsCode": "const project = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst buildPrompt = $('Build Prompt').first().json;\n\nconst systemPrompt = 'You are a Senior Content Strategist and Niche Domain Researcher operating as the topic generation engine inside a YouTube content pipeline. Your expertise: blue-ocean market strategy, deep niche authority positioning, YouTube algorithm mechanics, high-converting copywriting, and audience psychographic profiling. Your mandate: consume the research analysis, extract every exploitable signal, and engineer 25 video topics that occupy uncontested market space within the identified niche.';\n\nconst body = {\n  model: 'claude-sonnet-4-20250514',\n  max_tokens: 64000,\n  system: systemPrompt,\n  messages: [{ role: 'user', content: buildPrompt.prompt }]\n};\n\nreturn [{ json: { anthropicBody: JSON.stringify(body) } }];",
+        "jsCode": "const project = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst buildPrompt = $('Build Prompt').first().json;\n\nconst systemPrompt = 'You are a Senior Content Strategist and Niche Domain Researcher operating as the topic generation engine inside a YouTube content pipeline. Expertise: blue-ocean market strategy, deep niche authority positioning, YouTube algorithm mechanics, high-converting copywriting, audience psychographic profiling. Mandate: consume the research analysis, extract every exploitable signal, and engineer 25 video topics that occupy uncontested market space within the identified niche. CRITICAL OUTPUT CONTRACT: respond with EXACTLY ONE valid JSON object and nothing else. Start with the open brace and end with the close brace. No markdown, no code fences, no commentary, no explanatory headers. Follow the EXACT schema in the user message tail.';\n\nconst schemaExample = '{\"playlists\":[{\"playlist_title\":\"\",\"playlist_theme\":\"\",\"topics\":[{\"topic_number\":1,\"subtopic\":\"\",\"core_domain_framework\":\"\",\"primary_problem_trigger\":\"\",\"target_audience_segment\":\"\",\"audience_avatar\":\"\",\"psychographics\":\"\",\"key_emotional_drivers\":\"\",\"video_style_structure\":\"\",\"content_angle_blue_ocean\":\"\",\"viewer_search_intent\":\"\",\"practical_takeaways\":\"\"}]}]}';\n\nconst tail = ' OUTPUT FORMAT (CRITICAL READ LAST): return EXACTLY ONE JSON object matching this exact schema (every key present, empty string for unknowns, NEVER omit a key): ' + schemaExample + ' . Total topics across all playlists: 25. Distribute across 3-5 playlists with thematic coherence per playlist. No markdown. No code fences. No prose. Start your response with the open brace and end with the close brace.';\n\nconst body = { model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: systemPrompt, messages: [{ role: 'user', content: buildPrompt.prompt + tail }] };\n\nreturn [{ json: { anthropicBody: JSON.stringify(body) } }];\n",
         "mode": "runOnceForAllItems"
       }
     },
@@ -1020,5 +1066,15 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "pinData": null,
+  "versionId": "979c2acc-6b09-4bfe-8c3a-4d9cdf5c3f46",
+  "tags": [
+    {
+      "updatedAt": "2026-03-09T22:09:21.352Z",
+      "createdAt": "2026-03-09T22:09:21.352Z",
+      "id": "AThibo2wxLpjDbNa",
+      "name": "vision-gridai"
+    }
+  ]
 }

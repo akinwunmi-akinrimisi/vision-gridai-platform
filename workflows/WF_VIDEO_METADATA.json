@@ -1,5 +1,7 @@
 {
+  "id": "k0F6KAtkn74PEIDl",
   "name": "WF_VIDEO_METADATA",
+  "active": true,
   "nodes": [
     {
       "id": "webhook-metadata-trigger",
@@ -352,5 +354,9 @@
     "saveExecutionProgress": true,
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
-  }
+  },
+  "staticData": null,
+  "pinData": null,
+  "versionId": "706e2b0f-f456-40bd-bd72-ad9ca8c551e4",
+  "tags": []
 }
