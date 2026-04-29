@@ -257,7 +257,7 @@
         "authentication": "none",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"pipeline_stage\": \"ken_burns\", \"ken_burns_progress\": \"complete\"}",
+        "jsonBody": "={\"pipeline_stage\": \"ken_burns\"}",
         "options": {
           "response": {
             "response": {
@@ -454,7 +454,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "d1d2b4c1-0483-4300-8ec5-ae615ba4259d",
+  "versionId": "2fed6d94-b5f2-4ed3-89ca-e9cb236bcdac",
   "meta": null,
   "id": "OYahvKcydMrUxK8j",
   "tags": []
