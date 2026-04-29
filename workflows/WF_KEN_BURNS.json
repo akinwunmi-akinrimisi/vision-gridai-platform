@@ -80,7 +80,7 @@
           "combinator": "and",
           "conditions": [
             {
-              "leftValue": "={{ $json.length }}",
+              "leftValue": "={{ $items().length }}",
               "rightValue": 0,
               "operator": {
                 "type": "number",
@@ -168,7 +168,7 @@
         "authentication": "none",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"clip_status\": \"generated\", \"video_url\": \"file:///tmp/production/kb_\" + $json.scene_id + \".mp4\"}",
+        "jsonBody": "={{ JSON.stringify({ clip_status: \"uploaded\", video_url: \"file://\" + $json.clip_path }) }}",
         "options": {
           "response": {
             "response": {
@@ -207,7 +207,7 @@
         "authentication": "none",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"topic_id\": \"\" + $('Webhook Trigger').first().json.body.topic_id + \"\", \"stage\": \"ken_burns\", \"scene_number\": \" + $json.scene_number + \", \"action\": \"ken_burns_generate\", \"status\": \"failed\", \"error_message\": \"\" + $json.error + \"\"}",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $(\"Webhook Trigger\").first().json.body.topic_id, stage: \"ken_burns\", scene_number: $json.scene_number, action: \"ken_burns_generate\", status: \"failed\", error_message: $json.error }) }}",
         "options": {
           "response": {
             "response": {
@@ -454,7 +454,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "2fed6d94-b5f2-4ed3-89ca-e9cb236bcdac",
+  "versionId": "ed2b6853-9243-411b-8bcd-2b86bf27b17d",
   "meta": null,
   "id": "OYahvKcydMrUxK8j",
   "tags": []
