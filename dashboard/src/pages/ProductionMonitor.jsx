@@ -21,6 +21,7 @@ import SceneDetailPanel from '../components/production/SceneDetailPanel';
 import ErrorLogModal from '../components/production/ErrorLogModal';
 import CostEstimateDialog from '../components/production/CostEstimateDialog';
 import CostCalculator from '../components/production/CostCalculator';
+import StyleDnaSelector from '../components/production/StyleDnaSelector';
 import RegisterSelector from '../components/production/RegisterSelector';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
@@ -244,13 +245,18 @@ export default function ProductionMonitor() {
         <SupervisorAlert visible={true} onDismiss={() => setSupervisorDismissed(true)} />
       )}
 
-      {/* COST CALCULATOR GATE — shown when pipeline is waiting for cost selection */}
+      {/* STYLE DNA + COST CALCULATOR GATES — both must clear before production starts.
+          StyleDnaSelector locks an image style for the entire project (one-time per
+          project). CostCalculator picks the per-topic image/video ratio. */}
       {costGateTopic && (
-        <CostCalculator
-          topicId={costGateTopic.id}
-          projectId={projectId}
-          sceneCount={costGateTopic.scene_count}
-        />
+        <>
+          <StyleDnaSelector projectId={projectId} />
+          <CostCalculator
+            topicId={costGateTopic.id}
+            projectId={projectId}
+            sceneCount={costGateTopic.scene_count}
+          />
+        </>
       )}
 
       {/* REGISTER SELECTOR GATE — shown after mode picked, before scene classification */}

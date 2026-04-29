@@ -79,6 +79,20 @@ export function useCostCalculator(topicId, projectId) {
       const option = options[selectedIndex];
       if (!option) throw new Error('Invalid option selected');
 
+      // GATE: Style DNA must be locked before production can begin. Reading the
+      // single project row is cheap (one indexed lookup); refusing here is much
+      // safer than letting the pipeline start with an empty style and producing
+      // 155 inconsistent images.
+      const { data: projRow, error: projErr } = await supabase
+        .from('projects')
+        .select('style_dna')
+        .eq('id', projectId)
+        .single();
+      if (projErr) throw projErr;
+      if (!projRow?.style_dna) {
+        throw new Error('Pick an image style first — production needs it locked before scenes generate.');
+      }
+
       // 1. PATCH topics with cost selection fields
       // NOTE: pipeline_stage='register_selection' hands off to RegisterSelector next.
       // Scene classification no longer fires here — it runs after register pick.
