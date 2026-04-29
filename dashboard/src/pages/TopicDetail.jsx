@@ -35,6 +35,7 @@ import { useProductionProgress } from '../hooks/useProductionProgress';
 import { useProductionLog } from '../hooks/useProductionLog';
 import { useProductionMutations } from '../hooks/useProductionMutations';
 import ActivityLog from '../components/production/ActivityLog';
+import ScriptGenerationProgress from '../components/production/ScriptGenerationProgress';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -889,6 +890,17 @@ export default function TopicDetail() {
             );
           })}
         </div>
+      ) : topic.status === 'scripting' || (topic.review_status === 'approved' && (topic.script_attempts > 0 || topic.script_quality_score == null)) ? (
+        <div
+          className="bg-card border border-border rounded-xl p-6 mb-6 animate-slide-up"
+          style={{ opacity: 0, animationDelay: '450ms' }}
+        >
+          <ScriptGenerationProgress
+            topicId={topic.id}
+            topic={topic}
+            active={topic.status === 'scripting'}
+          />
+        </div>
       ) : (
         <div
           className="bg-card border border-border rounded-xl p-8 text-center mb-6 animate-slide-up"
@@ -901,9 +913,7 @@ export default function TopicDetail() {
           <p className="text-xs text-muted-foreground max-w-md mx-auto">
             {topic.status === 'pending' || topic.status === 'approved'
               ? 'Scenes will appear after script generation and approval.'
-              : topic.status === 'scripting'
-                ? 'Script is being generated. Scenes will appear when complete.'
-                : 'Scene data is not yet available for this topic.'}
+              : 'Scene data is not yet available for this topic.'}
           </p>
         </div>
       )}
