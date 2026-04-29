@@ -32,41 +32,55 @@ if [ ! -f "$INPUT" ]; then
   exit 1
 fi
 
-# Zoom direction → zoompan Z/X/Y expressions
+# Smooth long-form-friendly Ken Burns:
+# Targets a subtle 1.0 → 1.10 zoom (or 1.10 → 1.0) spread evenly across the
+# scene's full duration. Increment per frame = (1.10 - 1.0) / FRAMES, so the
+# zoom ends exactly when the audio ends — no abrupt freeze, no fast jolt.
+# Pan amount is also scaled to FRAMES so motion is uniform regardless of
+# scene length. 8% pan is chosen to be visible but not jittery.
+ZOOM_TARGET=1.10
+ZOOM_DELTA=$(awk "BEGIN {printf \"%.6f\", ($ZOOM_TARGET - 1.0) / $FRAMES}")
+PAN_FRACTION=0.08
+
 case "$ZOOM_DIR" in
   in)
-    Z="min(zoom+0.0015,1.5)"
+    # Smoothly zoom from 1.0 → 1.10 over the full scene
+    Z="min(zoom+${ZOOM_DELTA},${ZOOM_TARGET})"
     X="iw/2-(iw/zoom/2)"
     Y="ih/2-(ih/zoom/2)"
     ;;
   out)
-    Z="if(lte(zoom\,1.0)\,1.5\,max(1.001\,zoom-0.0015))"
+    # Smoothly zoom from 1.10 → 1.0 — start at target, decrement to 1.0
+    Z="if(eq(on,0),${ZOOM_TARGET},max(1.0,zoom-${ZOOM_DELTA}))"
     X="iw/2-(iw/zoom/2)"
     Y="ih/2-(ih/zoom/2)"
     ;;
   pan_left)
-    Z="1.2"
-    X="iw*0.3-on*iw*0.25/${FRAMES}"
+    # Hold zoom at target, pan left by 8% over full duration
+    Z="${ZOOM_TARGET}"
+    X="iw*(0.5+${PAN_FRACTION}/2)-iw/zoom/2-on*iw*${PAN_FRACTION}/${FRAMES}"
     Y="ih/2-(ih/zoom/2)"
     ;;
   pan_right)
-    Z="1.2"
-    X="iw*0.05+on*iw*0.25/${FRAMES}"
+    Z="${ZOOM_TARGET}"
+    X="iw*(0.5-${PAN_FRACTION}/2)-iw/zoom/2+on*iw*${PAN_FRACTION}/${FRAMES}"
     Y="ih/2-(ih/zoom/2)"
     ;;
   pan_up)
-    Z="1.2"
+    Z="${ZOOM_TARGET}"
     X="iw/2-(iw/zoom/2)"
-    Y="ih*0.35-on*ih*0.25/${FRAMES}"
+    Y="ih*(0.5+${PAN_FRACTION}/2)-ih/zoom/2-on*ih*${PAN_FRACTION}/${FRAMES}"
     ;;
   static_slight_zoom)
-    Z="min(zoom+0.0005,1.15)"
+    # Even more subtle: 1.0 → 1.05 over full duration
+    SUBTLE_DELTA=$(awk "BEGIN {printf \"%.6f\", 0.05 / $FRAMES}")
+    Z="min(zoom+${SUBTLE_DELTA},1.05)"
     X="iw/2-(iw/zoom/2)"
     Y="ih/2-(ih/zoom/2)"
     ;;
   *)
     echo "WARNING: Unknown zoom_direction '$ZOOM_DIR', defaulting to 'in'" >&2
-    Z="min(zoom+0.0015,1.5)"
+    Z="min(zoom+${ZOOM_DELTA},${ZOOM_TARGET})"
     X="iw/2-(iw/zoom/2)"
     Y="ih/2-(ih/zoom/2)"
     ;;

@@ -292,7 +292,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://localhost:5678/webhook/production/captions-assembly",
+        "url": "http://localhost:5678/webhook/production/assembly",
         "authentication": "none",
         "sendBody": true,
         "contentType": "json",
@@ -454,7 +454,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "ed2b6853-9243-411b-8bcd-2b86bf27b17d",
+  "versionId": "702daedb-a816-4209-9103-79b35e808701",
   "meta": null,
   "id": "OYahvKcydMrUxK8j",
   "tags": []
