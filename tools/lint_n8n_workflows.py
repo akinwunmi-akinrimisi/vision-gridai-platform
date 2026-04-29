@@ -439,7 +439,116 @@ def rule_auth_read_01(wf_id: str, wf_name: str, nodes: list, conns: dict) -> lis
     return findings
 
 
-RULES = [rule_cred_01, rule_chain_01, rule_auth_01, rule_auth_write_01, rule_auth_read_01]
+# Substrings that indicate $json is being used to read a value the previous
+# HTTP node never returns. n8n HTTP Request output replaces $json with the
+# response body; any reference to $json.<field> needs to be reframed as
+# $('UpstreamCodeOrSetNode').first().json.<field>.
+_JSON_DRIFT_PATTERN = "$json."
+
+# Drift in any of these parameters has caused production blockers; flag them.
+_DRIFT_FIELDS = ("url", "jsonBody", "bodyParametersJson")
+
+# Headers that are routine pass-throughs and never indicate drift even when
+# they reference $json (e.g. forwarding webhook headers verbatim).
+_DRIFT_HEADER_NOISE = {"authorization", "apikey", "content-type", "user-agent"}
+
+
+def _references_json_drift(value) -> bool:
+    """True if a string parameter references $json.X (anything but $json.body)."""
+    if not isinstance(value, str):
+        return False
+    if _JSON_DRIFT_PATTERN not in value:
+        return False
+    # $json.body and $json.headers are webhook-input passthroughs; safe.
+    # We only want to flag references to fields that an upstream Code node
+    # would have produced. Crude but fast: ignore body/headers/params/query.
+    safe = ("$json.body", "$json.headers", "$json.params", "$json.query", "$json[")
+    if any(s in value for s in safe):
+        # Still drift if the expression also references a non-safe $json.X
+        # outside the safe substrings — rare, fall through to simple regex.
+        import re
+        bare_refs = re.findall(r"\$json\.[a-zA-Z_][a-zA-Z0-9_]*", value)
+        for ref in bare_refs:
+            tail = ref.replace("$json.", "")
+            if tail not in {"body", "headers", "params", "query"}:
+                return True
+        return False
+    return True
+
+
+def rule_json_drift_01(wf_id: str, wf_name: str, nodes: list, conns: dict) -> list[Finding]:
+    """ERROR: HTTP Request node references $json.X immediately after another
+    HTTP Request — $json drifts to the previous response body, not upstream.
+
+    Background: 2026-04-29 production-trigger blocker. WF_WEBHOOK_PRODUCTION's
+    "Fire First Topic" had `$json.first_topic_id` while sourced from
+    "Set Queued Status" (a Supabase PATCH). $json was the Supabase response
+    (empty under return=minimal) → topic_id sent as undefined → /webhook/
+    production/trigger received {} → Fetch Topic 400 invalid uuid.
+
+    Fix: reference the upstream named node explicitly:
+        $('Prepare Batch').first().json.first_topic_id
+    """
+    findings = []
+    node_by_name = {n.get("name"): n for n in nodes if n.get("name")}
+
+    # Build reverse adjacency: target_name -> [src_name, ...]
+    reverse: dict[str, list[str]] = {}
+    for src_name, src_conns in conns.items():
+        for conn_list in (src_conns.get("main") or []):
+            for conn in conn_list or []:
+                target = conn.get("node")
+                if not target:
+                    continue
+                reverse.setdefault(target, []).append(src_name)
+
+    for node in nodes:
+        if node.get("type") != "n8n-nodes-base.httpRequest":
+            continue
+        sources = reverse.get(node.get("name") or "", [])
+        # Only relevant when at least one upstream is also an HTTP Request
+        upstream_http = any(
+            (node_by_name.get(s) or {}).get("type") == "n8n-nodes-base.httpRequest"
+            for s in sources
+        )
+        if not upstream_http:
+            continue
+
+        params = node.get("parameters") or {}
+        drift_locations: list[str] = []
+        for fld in _DRIFT_FIELDS:
+            if _references_json_drift(params.get(fld)):
+                drift_locations.append(fld)
+        # Also scan query/header parameter values
+        for kind in ("queryParameters", "headerParameters"):
+            for entry in (params.get(kind) or {}).get("parameters") or []:
+                name = (entry.get("name") or "").strip().lower()
+                if kind == "headerParameters" and name in _DRIFT_HEADER_NOISE:
+                    continue
+                if _references_json_drift(entry.get("value")):
+                    drift_locations.append(f"{kind}[{entry.get('name')}]")
+
+        if not drift_locations:
+            continue
+
+        findings.append(Finding(
+            rule="JSON-DRIFT-01",
+            severity="ERROR",
+            workflow_id=wf_id,
+            workflow_name=wf_name,
+            node=node.get("name", "<unnamed>"),
+            detail=(
+                f"References $json.<field> in [{', '.join(drift_locations)}] "
+                f"while upstream is an HTTP Request node "
+                f"(sources: {', '.join(sources) or '?'}). $json is the "
+                f"previous HTTP response body, not upstream data. Use "
+                f"$('UpstreamCodeOrSetNode').first().json.<field> instead."
+            ),
+        ))
+    return findings
+
+
+RULES = [rule_cred_01, rule_chain_01, rule_auth_01, rule_auth_write_01, rule_auth_read_01, rule_json_drift_01]
 
 
 # ---------- Main ----------
