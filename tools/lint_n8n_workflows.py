@@ -32,6 +32,23 @@ RULES ENFORCED (one-per-rule exit reason on stdout)
            task runner requires mode='runOnceForAllItems' for jsCode to be
            executable. Silent no-op at runtime.
 
+  AUTH-WRITE-01
+           HTTP Request node performing a write (POST/PATCH/PUT/DELETE) against
+           SUPABASE_URL or /rest/v1/* lacks an explicit `Authorization` header
+           in headerParameters. After migration 030 RLS lockdown, anonymous
+           writes are denied with `permission denied for table <X>`. The
+           legacy `apikey: ANON_KEY` pattern silently runs as the anon role.
+           Fix: add `Authorization: =Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}`.
+
+  AUTH-READ-01
+           HTTP Request node performing a GET against SUPABASE_URL or
+           /rest/v1/* lacks an explicit `Authorization` header. While reads
+           generally succeed under permissive RLS, several internal tables
+           (system_prompts, prompt_templates, audience_insights) are RLS-locked
+           and return 0 rows under anon — the canonical 2026-04-28 failure
+           where Read Prompt Config returned 0 chars and Claude generated topics
+           without seeing the master prompt. Fix: add explicit Authorization.
+
 USAGE
     # Default: scan live n8n via sqlite dump
     python tools/lint_n8n_workflows.py
@@ -76,6 +93,15 @@ SENSITIVE_PATH_PATTERNS = (
 # Words in HTTP Request parameters that indicate "return=minimal" behaviour.
 # When present and the node feeds an executeWorkflow, we raise CHAIN-01.
 RETURN_MINIMAL_MARKERS = ("return=minimal",)
+
+# URL substrings that indicate the request targets Supabase REST.
+SUPABASE_URL_MARKERS = (
+    "SUPABASE_URL",                  # n8n env expression
+    "supabase.operscale.cloud",      # production host
+    "/rest/v1/",                     # PostgREST path (catches non-env hardcoded URLs)
+)
+
+WRITE_METHODS = {"POST", "PATCH", "PUT", "DELETE"}
 
 
 class Finding:
@@ -320,7 +346,100 @@ def rule_mode_01(wf_id: str, wf_name: str, nodes: list, conns: dict) -> list[Fin
 # `jsCode` field regardless of mode, so "jsCode set with mode=runOnceForEachItem"
 # is a legitimate configuration. The only genuine mode mismatches would be
 # caught at runtime with a clearer error than a linter can provide.
-RULES = [rule_cred_01, rule_chain_01, rule_auth_01]
+
+def _http_request_targets_supabase(node: dict) -> bool:
+    if node.get("type") != "n8n-nodes-base.httpRequest":
+        return False
+    url = (node.get("parameters") or {}).get("url", "") or ""
+    return any(marker in url for marker in SUPABASE_URL_MARKERS)
+
+
+def _has_explicit_authorization_header(node: dict) -> bool:
+    """True iff headerParameters.parameters has a name=='Authorization' entry."""
+    params = node.get("parameters") or {}
+    hp = (params.get("headerParameters") or {}).get("parameters") or []
+    for h in hp:
+        nm = (h.get("name") or "").strip().lower()
+        if nm == "authorization":
+            return True
+    return False
+
+
+def _http_method_of(node: dict) -> str:
+    return ((node.get("parameters") or {}).get("method") or "GET").upper()
+
+
+def rule_auth_write_01(wf_id: str, wf_name: str, nodes: list, conns: dict) -> list[Finding]:
+    """ERROR: write to Supabase REST without explicit Authorization header.
+
+    Background: post migration 030_lock_down_rls.sql, anonymous role cannot
+    INSERT/UPDATE/DELETE on any table. n8n's apikey-only credential pattern
+    runs as anon and fails silently from the workflow's perspective (HTTP 200
+    on 0-row PATCH, or 4xx that gets swallowed by upstream If-nodes). 44 nodes
+    were patched 2026-04-28 (see feedback_supabase_writes_need_authorization.md).
+    """
+    findings = []
+    for node in nodes:
+        if not _http_request_targets_supabase(node):
+            continue
+        method = _http_method_of(node)
+        if method not in WRITE_METHODS:
+            continue
+        if _has_explicit_authorization_header(node):
+            continue
+        findings.append(Finding(
+            rule="AUTH-WRITE-01",
+            severity="ERROR",
+            workflow_id=wf_id,
+            workflow_name=wf_name,
+            node=node.get("name", "<unnamed>"),
+            detail=(
+                f"HTTP {method} to SUPABASE_URL with no explicit Authorization "
+                f"header. Under RLS lockdown (migration 030) this runs as anon "
+                f"and the write will be denied. Add header 'Authorization' = "
+                f"'=Bearer {{{{ $env.SUPABASE_SERVICE_ROLE_KEY }}}}' in "
+                f"headerParameters.parameters."
+            ),
+        ))
+    return findings
+
+
+def rule_auth_read_01(wf_id: str, wf_name: str, nodes: list, conns: dict) -> list[Finding]:
+    """ERROR: GET to Supabase REST without explicit Authorization header.
+
+    Background: while many tables permit anon SELECT, RLS-locked internal
+    tables (system_prompts, prompt_templates, audience_insights, etc.) silently
+    return 0 rows under anon. The 2026-04-28 'topics generated without master
+    prompt' incident was traced to a Read Prompt Config GET that returned 0
+    chars under anon. Defensive rule: every Supabase GET must send Authorization.
+    """
+    findings = []
+    for node in nodes:
+        if not _http_request_targets_supabase(node):
+            continue
+        method = _http_method_of(node)
+        if method != "GET":
+            continue
+        if _has_explicit_authorization_header(node):
+            continue
+        findings.append(Finding(
+            rule="AUTH-READ-01",
+            severity="ERROR",
+            workflow_id=wf_id,
+            workflow_name=wf_name,
+            node=node.get("name", "<unnamed>"),
+            detail=(
+                f"HTTP GET to SUPABASE_URL with no explicit Authorization "
+                f"header. RLS-locked tables return 0 rows under anon (silent "
+                f"data loss). Add header 'Authorization' = "
+                f"'=Bearer {{{{ $env.SUPABASE_SERVICE_ROLE_KEY }}}}' in "
+                f"headerParameters.parameters."
+            ),
+        ))
+    return findings
+
+
+RULES = [rule_cred_01, rule_chain_01, rule_auth_01, rule_auth_write_01, rule_auth_read_01]
 
 
 # ---------- Main ----------

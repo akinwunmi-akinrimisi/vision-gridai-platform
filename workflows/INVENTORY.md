@@ -30,6 +30,7 @@ Each JSON file contains workflow name, nodes, connections, settings, active flag
 | WF_IMAGE_GENERATION | `ScP3yoaeuK7BwpUo` | [`WF_IMAGE_GENERATION.json`](./WF_IMAGE_GENERATION.json) |
 | WF_KEN_BURNS | `OYahvKcydMrUxK8j` | [`WF_KEN_BURNS__OYahvKcydMrUxK8j.json`](./WF_KEN_BURNS__OYahvKcydMrUxK8j.json) |
 | WF_KEYWORD_SCAN | `6g01H1UhuMvKaRyI` | [`WF_KEYWORD_SCAN.json`](./WF_KEYWORD_SCAN.json) |
+| OPS_MASTER | `c90QWN48172ckqNP` | [`OPS_MASTER__c90QWN48172ckqNP.json`](./OPS_MASTER__c90QWN48172ckqNP.json) |
 | WF_MASTER | `LPKmxClo0VjDxIO2` | [`WF_MASTER__LPKmxClo0VjDxIO2.json`](./WF_MASTER__LPKmxClo0VjDxIO2.json) |
 | WF_MUSIC_GENERATE | `9L7LukuLWdnjH9x8` | [`WF_MUSIC_GENERATE.json`](./WF_MUSIC_GENERATE.json) |
 | WF_NICHE_HEALTH | `XiF1S32cI2NmwefG` | [`WF_NICHE_HEALTH.json`](./WF_NICHE_HEALTH.json) |

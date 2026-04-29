@@ -1,7 +1,11 @@
 {
+  "updatedAt": "2026-04-29T08:41:30.188Z",
+  "createdAt": "2026-03-09T17:51:50.933Z",
   "id": "J5NTvfweZRiKJ9fG",
   "name": "WF_TOPICS_GENERATE — Generate 25 Topics + Avatars",
+  "description": null,
   "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "wf-tg-webhook",
@@ -786,6 +790,19 @@
         },
         "includeOtherFields": false
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dispatch WF_PREDICT_PERFORMANCE for each topic in this project.\n// Runs AFTER WF_OUTLIER_SCORE + WF_SEO_SCORE; PPS depends on both outputs being persisted.\n// Mirrors the 'Fire Register Analyze' pattern but waits for all completions\n// (per-call AbortController timeout) since PPS has no respond-early pattern.\n\nconst projectId =\n  ($('Validate').first()?.json?.project_id) ||\n  ($('Idempotency Guard').first()?.json?.project_id) ||\n  ($input.first()?.json?.project_id);\n\nif (!projectId) {\n  console.log('Fire PPS: no project_id resolvable upstream; skipping');\n  return $input.all();\n}\n\nconst DASHBOARD_TOKEN = $env.DASHBOARD_API_TOKEN;\nconst WEBHOOK_BASE = $env.N8N_WEBHOOK_BASE || 'http://localhost:5678/webhook';\nconst SUPABASE_URL = $env.SUPABASE_URL;\n\nconst sbHeaders = {\n  apikey: $env.SUPABASE_ANON_KEY,\n  Authorization: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  Accept: 'application/json',\n};\n\n// Re-fetch topic IDs fresh (the upstream items may not have all 25 if Map Avatars filtered).\nconst topicsRes = await fetch(\n  `${SUPABASE_URL}/rest/v1/topics?project_id=eq.${projectId}&select=id&order=topic_number.asc`,\n  { method: 'GET', headers: sbHeaders }\n);\nif (!topicsRes.ok) {\n  console.log(`Fire PPS: topic fetch HTTP ${topicsRes.status}`);\n  return $input.all();\n}\nconst topics = await topicsRes.json();\nconsole.log(`Fire PPS: dispatching for ${topics.length} topics`);\n\nasync function callPps(topicId) {\n  const ctl = new AbortController();\n  const t = setTimeout(() => ctl.abort(), 60000); // 60s per-call ceiling\n  try {\n    const r = await fetch(`${WEBHOOK_BASE}/pps/calculate`, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DASHBOARD_TOKEN}` },\n      body: JSON.stringify({ topic_id: topicId, force: true }),\n      signal: ctl.signal,\n    });\n    return { topic_id: topicId, http: r.status };\n  } catch (e) {\n    return { topic_id: topicId, error: e.name === 'AbortError' ? 'timeout-60s' : e.message };\n  } finally {\n    clearTimeout(t);\n  }\n}\n\nconst results = await Promise.all(topics.map(t => callPps(t.id)));\nconst ok = results.filter(r => r.http === 200).length;\nconst fail = results.length - ok;\nconsole.log(`Fire PPS: ${ok} ok, ${fail} fail/timeout (sample: ${JSON.stringify(results.slice(0, 3))})`);\n\nreturn $input.all();\n"
+      },
+      "id": "fire-pps-per-topic",
+      "name": "Fire PPS Per Topic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4400,
+        820
+      ]
     }
   ],
   "connections": {
@@ -1059,6 +1076,17 @@
           }
         ]
       ]
+    },
+    "Trigger WF_SEO_SCORE": {
+      "main": [
+        [
+          {
+            "node": "Fire PPS Per Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -1067,8 +1095,31 @@
     "availableInMCP": false
   },
   "staticData": null,
+  "meta": null,
   "pinData": null,
-  "versionId": "979c2acc-6b09-4bfe-8c3a-4d9cdf5c3f46",
+  "versionId": "f409c466-5225-4d57-874d-43c2f9d6be50",
+  "activeVersionId": "f409c466-5225-4d57-874d-43c2f9d6be50",
+  "versionCounter": 305,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-09T17:51:50.935Z",
+      "createdAt": "2026-03-09T17:51:50.935Z",
+      "role": "workflow:owner",
+      "workflowId": "J5NTvfweZRiKJ9fG",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
   "tags": [
     {
       "updatedAt": "2026-03-09T22:09:21.352Z",
@@ -1076,5 +1127,1116 @@
       "id": "AThibo2wxLpjDbNa",
       "name": "vision-gridai"
     }
-  ]
+  ],
+  "activeVersion": {
+    "updatedAt": "2026-04-29T08:41:30.190Z",
+    "createdAt": "2026-04-29T08:41:30.190Z",
+    "versionId": "f409c466-5225-4d57-874d-43c2f9d6be50",
+    "workflowId": "J5NTvfweZRiKJ9fG",
+    "nodes": [
+      {
+        "id": "wf-tg-webhook",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          300
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "topics/generate",
+          "responseMode": "responseNode",
+          "options": {
+            "allowedOrigins": "*"
+          },
+          "authentication": "headerAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        },
+        "webhookId": "wf-topics-generate-prod"
+      },
+      {
+        "id": "wf-tg-validate",
+        "name": "Validate",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          400,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst project_id = body.project_id;\nif (!project_id) throw new Error('project_id required');\nconst force = body.force === true || body.force === 'true';\nreturn [{ json: { project_id, force } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-tg-log-started",
+        "name": "Log Started",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          600,
+          160
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $json.project_id, topic_id: null, stage: 'topic_generation', action: 'started', details: { force: $json.force } }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-read-project",
+        "name": "Read Project",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          600,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Validate').first().json.project_id }}&select=*",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "id": "wf-tg-read-prompt",
+        "name": "Read Prompt Config",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          600,
+          440
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/system_prompts?prompt_type=eq.topic_generator_master&is_active=eq.true&select=prompt_text",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "id": "wf-tg-check-existing",
+        "name": "Check Existing Topics",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          820,
+          370
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?project_id=eq.{{ $('Validate').first().json.project_id }}&select=topic_number,seo_title,narrative_hook&order=topic_number.asc",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "id": "wf-tg-idempotency",
+        "name": "Idempotency Guard",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1040,
+          370
+        ],
+        "parameters": {
+          "jsCode": "const body = $('Validate').first().json;\nconst project_id = body.project_id;\nconst force = body.force === true || body.force === 'true';\n\nconst topicsResult = $input.first().json;\nconst existingTopics = Array.isArray(topicsResult) ? topicsResult : [];\nconst existingCount = existingTopics.length;\n\nconst project = $('Read Project').first().json[0] || {};\nconst isCrashResume = force && project.status === 'generating_topics';\n\nif (existingCount > 0 && !force) {\n  return [{ json: { topics_exist: true, count: existingCount, project_id, __early_return: true } }];\n}\n\nlet startTopicNumber, topicsNeeded;\nif (isCrashResume && existingCount % 25 !== 0) {\n  startTopicNumber = existingCount + 1;\n  topicsNeeded = 25 - (existingCount % 25);\n} else {\n  startTopicNumber = existingCount + 1;\n  topicsNeeded = 25;\n}\n\nconst existingTitles = existingTopics.map(t => ({\n  topic_number: t.topic_number,\n  seo_title: t.seo_title,\n  narrative_hook: t.narrative_hook\n}));\n\nreturn [{ json: { project_id, force, isCrashResume, existingCount, startTopicNumber, topicsNeeded, existingTitles, __early_return: false } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-tg-if-early-return",
+        "name": "IF Early Return",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1260,
+          370
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "early-return-check",
+                "leftValue": "={{ $json.__early_return }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-respond-topics-exist",
+        "name": "Respond Topics Exist",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1480,
+          220
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ topics_exist: true, count: $json.count }) }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "wf-tg-respond",
+        "name": "Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1480,
+          80
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ success: true }) }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "wf-tg-status-generating",
+        "name": "Status → Generating",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1480,
+          520
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Idempotency Guard').first().json.project_id }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ status: 'generating_topics' }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-build-prompt",
+        "name": "Build Prompt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1700,
+          520
+        ],
+        "parameters": {
+          "jsCode": "const project = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst masterPrompt = $('Read Prompt Config').first().json[0]?.prompt_text || $('Read Prompt Config').first().json?.prompt_text;\nconst idempotency = $('Idempotency Guard').first().json;\nconst project_id = idempotency.project_id;\nconst topicsNeeded = idempotency.topicsNeeded || 25;\nconst existingTitles = idempotency.existingTitles || [];\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst hdr = { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK };\n\n// CENTRAL INTELLIGENCE RENDERER v2 (migration 029)\n// Now covers niche_profiles + yt_video_analyses + research_runs +\n// research_categories + research_results + audience_insights in addition\n// to projects/nvr/channel_analyses. The coverage check in migration 029\n// makes it impossible to add a new column to any of those 9 tables without\n// it landing in this rendered output.\nlet renderedIntelligence = '';\ntry {\n  const intelRes = await fetch(SB + '/rest/v1/rpc/render_project_intelligence', {\n    method: 'POST',\n    headers: {\n      apikey: $env.SUPABASE_ANON_KEY,\n      Authorization: 'Bearer ' + SRK,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({ p_project_id: project_id, p_stage: 'topics' })\n  });\n  if (intelRes.ok) renderedIntelligence = await intelRes.json();\n} catch (_) {}\n\n// analysisPayload preserved: it serves Grand_Master_Prompt_Topic_Generator_v3 §2\n// input contract (structured JSON payload). Primary source is project.competitive_analysis\n// (cached from bridge workflow). niche_profiles fallback kept as a safety net —\n// harmless duplication with the RPC's markdown rendering, but preserves the\n// structural JSON contract the Grand Master prompt was written against.\nconst ca = project.competitive_analysis || {};\nconst analyses = ca.analyses || [];\n\nlet analysisPayload = '';\nif (analyses.length > 0) {\n  analysisPayload = JSON.stringify({ primary_analysis: analyses[0], additional_analyses: analyses.slice(1), project_niche: project.niche, project_description: project.niche_description }, null, 2);\n} else {\n  try {\n    const resp = await fetch(SB + '/rest/v1/niche_profiles?project_id=eq.' + project_id + '&order=created_at.desc&limit=1', { headers: hdr });\n    const profiles = await resp.json();\n    const profile = profiles && profiles[0];\n    if (profile) {\n      analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 8 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' }, blue_ocean_analysis: { gaps_and_opportunities: (profile.blue_ocean_opportunities || {}).unoccupied_angles || [] }, comment_insights: { top_questions: ((profile.audience_pain_points || {}).reddit || []).slice(0, 10), complaints: ((profile.audience_pain_points || {}).forums || []).slice(0, 5) } }, null, 2);\n    }\n  } catch (e) {}\n  if (!analysisPayload) {\n    analysisPayload = JSON.stringify({ niche_category: project.niche, project_niche: project.niche, project_description: project.niche_description || '', opportunity_scorecard: { verdict: 'STRONG_GO', composite_score: 7 }, ten_x_strategy: { recommended_angle: project.niche_blue_ocean_strategy || '' } }, null, 2);\n  }\n}\n\n// researchEnrichment DELETED per migration 029 — research_runs +\n// research_categories + research_results are now fully rendered by the RPC\n// with richer per-result metadata (subreddit, author, upvotes/comments/shares,\n// AI-suggested titles) than the hand-built summary provided.\n\n// === BEGIN AU OVERLAY (migration 034) — substitute country-slot placeholders\n// Master prompts gained {country_compliance_block} / {country_terminology_block} /\n// {country_calendar_context} / {country_demonetization_constraints} via 033 §K.\n// render_country_blocks RPC returns the 4 sections per country_target\n// (empty strings for GENERAL — substitution becomes a no-op). RPC failure\n// leaves placeholders intact rather than silently stripping content.\nlet resolvedMaster = masterPrompt || '';\nconst __PLACEHOLDER_RE = /\\{country_(?:compliance_block|terminology_block|calendar_context|demonetization_constraints)\\}/;\nif (resolvedMaster && __PLACEHOLDER_RE.test(resolvedMaster)) {\n  try {\n    const __blocksRes = await fetch(SB + '/rest/v1/rpc/render_country_blocks', {\n      method: 'POST',\n      headers: { apikey: $env.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SRK, 'Content-Type': 'application/json' },\n      body: JSON.stringify({ p_country_target: await (async () => {\n        try {\n          const __ct_resp = await fetch(SB + '/rest/v1/projects?id=eq.' + project_id + '&select=country_target', { headers: hdr });\n          if (__ct_resp.ok) {\n            const __rows = await __ct_resp.json();\n            if (Array.isArray(__rows) && __rows[0] && __rows[0].country_target) return __rows[0].country_target;\n          }\n        } catch(_) {}\n        return (project.country_target || 'GENERAL');\n      })() })\n    });\n    if (__blocksRes.ok) {\n      const __b = await __blocksRes.json();\n      resolvedMaster = resolvedMaster\n        .replace(/\\{country_compliance_block\\}/g, (__b.country_compliance_block || ''))\n        .replace(/\\{country_terminology_block\\}/g, (__b.country_terminology_block || ''))\n        .replace(/\\{country_calendar_context\\}/g, (__b.country_calendar_context || ''))\n        .replace(/\\{country_demonetization_constraints\\}/g, (__b.country_demonetization_constraints || ''));\n    }\n  } catch (_) { /* leave placeholders intact */ }\n}\n// === END AU OVERLAY ===\n\nvar prompt = renderedIntelligence ? renderedIntelligence + '\\n\\n---\\n\\n' : '';\nprompt += resolvedMaster;\nprompt += '\\n\\n=== RESEARCH ANALYSIS PAYLOAD ===\\n' + analysisPayload;\nif (existingTitles.length > 0) { prompt += '\\n\\nEXISTING TOPICS - avoid overlap:\\n' + JSON.stringify(existingTitles); }\n\nreturn [{ json: { project_id: project_id, niche: project.niche, prompt: prompt } }];\n",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-tg-anthropic",
+        "name": "Claude: Generate Topics",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2030,
+          520
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.anthropic.com/v1/messages",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "anthropic-version",
+                "value": "2023-06-01"
+              },
+              {
+                "name": "content-type",
+                "value": "application/json"
+              },
+              {
+                "name": "anthropic-beta",
+                "value": "output-128k-2025-02-19"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json.anthropicBody }}",
+          "options": {
+            "timeout": 600000
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "vlfOXwvIUlRYnr41",
+            "name": "Anthropic API Key"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "wf-tg-check-claude-error",
+        "name": "Check Claude Error",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2250,
+          520
+        ],
+        "parameters": {
+          "jsCode": "const response = $input.first().json;\nif (response.error || response.type === 'error') {\n  return [{ json: {\n    isError: true,\n    error_message: response.error?.message || JSON.stringify(response.error || response),\n    project_id: $('Validate').first().json.project_id\n  }}];\n}\nif (response.stop_reason === 'max_tokens') {\n  return [{ json: {\n    isError: true,\n    error_message: 'Claude response truncated (stop_reason=max_tokens, output_tokens=' + (response.usage?.output_tokens || 'unknown') + '). Topics JSON incomplete.',\n    project_id: $('Validate').first().json.project_id\n  }}];\n}\nreturn [{ json: { ...response, isError: false } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-tg-if-gen-error",
+        "name": "IF Generation Error",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2360,
+          520
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "is-error-check",
+                "leftValue": "={{ $json.isError }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-patch-failed",
+        "name": "PATCH Generation Failed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2580,
+          380
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $json.project_id }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ status: 'generating_failed', error_log: $json.error_message }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-log-gen-failed",
+        "name": "Log Generation Failed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2580,
+          520
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('Validate').first().json.project_id, topic_id: null, stage: 'topic_generation', action: 'failed', details: { error: $('Check Claude Error').first().json.error_message } }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-parse",
+        "name": "Parse Topics",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2580,
+          660
+        ],
+        "parameters": {
+          "jsCode": "const response = $input.first().json;\nif (response.error) throw new Error('Anthropic error: ' + (response.error.message || JSON.stringify(response.error)));\n\nconst text = (response.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\nlet jsonText = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst s = jsonText.indexOf('{'), e = jsonText.lastIndexOf('}');\nif (s === -1 || e === -1) throw new Error('No JSON object in response');\nconst parsed = JSON.parse(jsonText.substring(s, e + 1));\n\nconst project_id = $('Validate').first().json.project_id;\n// === BEGIN AU OVERLAY (migration 034 + 2026-04-28 fresh-fetch fix) — denormalize project.country_target onto each topic row\n// Fetch country_target FRESH from DB at parse time. Previous code used $('Read Project').first().json[0]\n// but n8n's HTTP Request node response shape made country_target unreachable in some cases — topics\n// landed with the column DEFAULT ('GENERAL') even when the project was AU. Fresh fetch is bulletproof.\nconst __SB_URL = $env.SUPABASE_URL;\nconst __SB_SVC = $env.SUPABASE_SERVICE_ROLE_KEY;\nlet __country_target = 'GENERAL';\ntry {\n  const __resp = await fetch(__SB_URL + '/rest/v1/projects?id=eq.' + project_id + '&select=country_target', {\n    headers: { 'apikey': __SB_SVC, 'Authorization': 'Bearer ' + __SB_SVC }\n  });\n  if (__resp.ok) {\n    const __rows = await __resp.json();\n    if (Array.isArray(__rows) && __rows[0] && __rows[0].country_target) {\n      __country_target = __rows[0].country_target;\n    }\n  }\n} catch (__e) { /* keep GENERAL fallback */ }\n// === END AU OVERLAY ===\nconst startTopicNumber = $('Idempotency Guard').first().json.startTopicNumber || 1;\n\nconst playlists = parsed.playlists || [];\nconst topicRows = [];\nconst avatarData = [];\nconst playlistMeta = [];\n\nlet globalTopicNum = startTopicNumber;\n\nfor (let pi = 0; pi < playlists.length; pi++) {\n  const pl = playlists[pi];\n  playlistMeta.push({ name: pl.playlist_title, theme: pl.playlist_theme });\n\n  for (const t of (pl.topics || [])) {\n    topicRows.push({\n      project_id,\n      topic_number: t.topic_number || globalTopicNum,\n      playlist_group: pi + 1,\n      playlist_angle: pl.playlist_title || '',\n      original_title: t.subtopic || '',\n      seo_title: t.subtopic || '',\n      narrative_hook: t.primary_problem_trigger || '',\n      key_segments: t.video_style_structure || '',\n      estimated_cpm: null,\n      viral_potential: null,\n      core_domain_framework: t.core_domain_framework || '',\n      primary_problem_trigger: t.primary_problem_trigger || '',\n      target_audience_segment: t.target_audience_segment || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      video_style_structure: t.video_style_structure || '',\n      content_angle_blue_ocean: t.content_angle_blue_ocean || '',\n      viewer_search_intent: t.viewer_search_intent || '',\n      practical_takeaways: t.practical_takeaways || '',\n      country_target: __country_target,\n      review_status: 'pending',\n      status: 'pending'\n    });\n\n    avatarData.push({\n      audience_avatar: t.audience_avatar || '',\n      psychographics: t.psychographics || '',\n      key_emotional_drivers: t.key_emotional_drivers || '',\n      target_audience_segment: t.target_audience_segment || '',\n      viewer_search_intent: t.viewer_search_intent || ''\n    });\n\n    globalTopicNum++;\n  }\n}\n\nreturn [{ json: { project_id, topicRows, avatarData, playlistMeta } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-tg-insert-topics",
+        "name": "INSERT Topics",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2800,
+          660
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=representation"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.topicRows) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-map-avatars",
+        "name": "Map Avatars",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3020,
+          660
+        ],
+        "parameters": {
+          "jsCode": "// INSERT Topics returns 25 separate items — use $input.all()\nconst topics = $input.all().map(item => item.json);\nconst avatarData = $('Parse Topics').first().json.avatarData;\nconst topicRows = $('Parse Topics').first().json.topicRows;\nconst project_id = $('Validate').first().json.project_id;\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst AK = $env.ANTHROPIC_API_KEY;\n\n// Build avatar list text for Claude extraction\nconst avatarDescs = topics.map((t, i) => {\n  const a = avatarData[i] || {};\n  const tr = topicRows[i] || {};\n  return `Avatar ${i+1}:\\n- Name: ${(a.audience_avatar || '').substring(0, 100)}\\n- Topic: ${t.seo_title || t.original_title}\\n- Audience: ${a.target_audience_segment || ''}\\n- Psycho: ${(a.psychographics || '').substring(0, 200)}\\n- Pain: ${(tr.primary_problem_trigger || '').substring(0, 150)}`;\n}).join('\\n\\n');\n\n// Call Claude to extract 4 missing fields for all avatars in one batch\nconst prompt = `For each avatar below, extract/infer these 4 fields (1-2 sentences each):\\n1. occupation_income — job/role and income bracket\\n2. spending_profile — spending behavior relevant to topic\\n3. knowledge_level — beginner/intermediate/advanced + brief note\\n4. objection — #1 reason they would NOT act on this video\\n\\n${avatarDescs}\\n\\nReturn ONLY valid JSON array:\\n[{\"avatar_index\":1,\"occupation_income\":\"...\",\"spending_profile\":\"...\",\"knowledge_level\":\"...\",\"objection\":\"...\"}, ...]\\nNo markdown. Valid JSON only.`;\n\nlet extracted = [];\ntry {\n  const resp = await fetch('https://api.anthropic.com/v1/messages', {\n    method: 'POST',\n    headers: {'Content-Type': 'application/json', 'x-api-key': AK, 'anthropic-version': '2023-06-01'},\n    body: JSON.stringify({model: 'claude-sonnet-4-20250514', max_tokens: 16000, messages: [{role: 'user', content: prompt}]})\n  });\n  const d = await resp.json();\n  const txt = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  const clean = txt.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\n  extracted = JSON.parse(clean.substring(clean.indexOf('['), clean.lastIndexOf(']') + 1));\n} catch (e) {\n  // Non-fatal — avatars will have partial data\n}\n\n// Build avatar rows with all fields\nconst avatarRows = topics.map((t, i) => {\n  const a = avatarData[i] || {};\n  const tr = topicRows[i] || {};\n  const ext = extracted.find(e => e.avatar_index === i + 1) || {};\n  const avatarText = a.audience_avatar || '';\n\n  return {\n    topic_id: t.id,\n    project_id,\n    video_title_short: t.seo_title || t.original_title,\n    avatar_name_age: avatarText.split('.')[0]?.trim()?.substring(0, 100) || null,\n    occupation_income: ext.occupation_income || null,\n    life_stage: a.target_audience_segment || null,\n    pain_point: tr.primary_problem_trigger || null,\n    spending_profile: ext.spending_profile || null,\n    knowledge_level: ext.knowledge_level || null,\n    emotional_driver: a.key_emotional_drivers || null,\n    online_hangouts: (a.viewer_search_intent || '').substring(0, 200) || null,\n    objection: ext.objection || null,\n    dream_outcome: (tr.practical_takeaways || '').substring(0, 200) || null,\n    psychographics: a.psychographics || null,\n    key_emotional_drivers: a.key_emotional_drivers || null,\n    target_audience_segment: a.target_audience_segment || null,\n    viewer_search_intent: a.viewer_search_intent || null,\n    review_status: 'pending'\n  };\n});\n\n// Update playlist metadata on project (non-fatal)\nconst playlistMeta = $('Parse Topics').first().json.playlistMeta || [];\nconst patch = {};\nfor (let i = 0; i < Math.min(playlistMeta.length, 5); i++) {\n  patch['playlist' + (i+1) + '_name'] = playlistMeta[i].name || '';\n  patch['playlist' + (i+1) + '_theme'] = playlistMeta[i].theme || '';\n}\nif (Object.keys(patch).length > 0) {\n  try {\n    await fetch(SB + '/rest/v1/projects?id=eq.' + project_id, {\n      method: 'PATCH',\n      headers: { 'apikey': SRK, 'Authorization': 'Bearer ' + SRK, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },\n      body: JSON.stringify(patch)\n    });\n  } catch (e) { /* non-fatal */ }\n}\n\nreturn [{ json: { project_id, avatarRows, topicsInserted: topics.length } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-tg-insert-avatars",
+        "name": "INSERT Avatars",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3240,
+          660
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/avatars",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.avatarRows) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-status-ready",
+        "name": "Status → Topics Pending",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3460,
+          660
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/projects?id=eq.{{ $('Validate').first().json.project_id }}&status=eq.generating_topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ status: 'topics_pending_review' }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-log-completed",
+        "name": "Log Completed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3680,
+          660
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('Validate').first().json.project_id, topic_id: null, stage: 'topic_generation', action: 'completed', details: { topics_inserted: $('Map Avatars').first().json.topicsInserted, avatars_inserted: $('Map Avatars').first().json.topicsInserted } }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-tg-build-claude-body",
+        "name": "Build Claude Body",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1810,
+          520
+        ],
+        "parameters": {
+          "jsCode": "const project = $('Read Project').first().json[0] || $('Read Project').first().json;\nconst buildPrompt = $('Build Prompt').first().json;\n\nconst systemPrompt = 'You are a Senior Content Strategist and Niche Domain Researcher operating as the topic generation engine inside a YouTube content pipeline. Expertise: blue-ocean market strategy, deep niche authority positioning, YouTube algorithm mechanics, high-converting copywriting, audience psychographic profiling. Mandate: consume the research analysis, extract every exploitable signal, and engineer 25 video topics that occupy uncontested market space within the identified niche. CRITICAL OUTPUT CONTRACT: respond with EXACTLY ONE valid JSON object and nothing else. Start with the open brace and end with the close brace. No markdown, no code fences, no commentary, no explanatory headers. Follow the EXACT schema in the user message tail.';\n\nconst schemaExample = '{\"playlists\":[{\"playlist_title\":\"\",\"playlist_theme\":\"\",\"topics\":[{\"topic_number\":1,\"subtopic\":\"\",\"core_domain_framework\":\"\",\"primary_problem_trigger\":\"\",\"target_audience_segment\":\"\",\"audience_avatar\":\"\",\"psychographics\":\"\",\"key_emotional_drivers\":\"\",\"video_style_structure\":\"\",\"content_angle_blue_ocean\":\"\",\"viewer_search_intent\":\"\",\"practical_takeaways\":\"\"}]}]}';\n\nconst tail = ' OUTPUT FORMAT (CRITICAL READ LAST): return EXACTLY ONE JSON object matching this exact schema (every key present, empty string for unknowns, NEVER omit a key): ' + schemaExample + ' . Total topics across all playlists: 25. Distribute across 3-5 playlists with thematic coherence per playlist. No markdown. No code fences. No prose. Start your response with the open brace and end with the close brace.';\n\nconst body = { model: 'claude-sonnet-4-20250514', max_tokens: 64000, system: systemPrompt, messages: [{ role: 'user', content: buildPrompt.prompt + tail }] };\n\nreturn [{ json: { anthropicBody: JSON.stringify(body) } }];\n",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "chain-oW9h7z0s",
+        "name": "Trigger WF_OUTLIER_SCORE",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1,
+        "position": [
+          3930,
+          740
+        ],
+        "parameters": {
+          "workflowId": "oW9h7z0sfvi3j64s"
+        }
+      },
+      {
+        "id": "chain-HirXQlJK",
+        "name": "Trigger WF_SEO_SCORE",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1,
+        "position": [
+          4180,
+          820
+        ],
+        "parameters": {
+          "workflowId": "HirXQlJKumfBOhq0"
+        }
+      },
+      {
+        "id": "a80e6aef-8b67-46e6-819c-2be834c72445",
+        "name": "Fire Register Analyze",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2910,
+          660
+        ],
+        "parameters": {
+          "jsCode": "// Dispatch register-analyze for each topic (fire-and-forget POST to local webhook)\n// WF_REGISTER_ANALYZE responds immediately from Validate Request; Analyze & Write runs async in background.\nconst topics = $input.all().map(item => item.json);\nconst parseTopics = $('Parse Topics').first().json.topicRows || [];\nconst DASHBOARD_TOKEN = $env.DASHBOARD_API_TOKEN;\nconst WEBHOOK_BASE = $env.N8N_WEBHOOK_BASE || 'http://localhost:5678/webhook';\n\nconst promises = topics.map((t, i) => {\n  const parsed = parseTopics[i] || {};\n  const payload = {\n    input_mode: 'topic',\n    topic_id: t.id,\n    topic_research_brief: [parsed.primary_problem_trigger, parsed.content_angle_blue_ocean, parsed.psychographics].filter(Boolean).join(' | '),\n    topic_angle: parsed.playlist_angle || '',\n    seo_title: t.seo_title || t.original_title || ''\n  };\n  return fetch(`${WEBHOOK_BASE}/register/analyze`, {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'Authorization': `Bearer ${DASHBOARD_TOKEN}`\n    },\n    body: JSON.stringify(payload)\n  })\n    .then(r => ({ topic_id: t.id, http: r.status }))\n    .catch(e => ({ topic_id: t.id, error: e.message }));\n});\n\ntry {\n  const results = await Promise.race([\n    Promise.all(promises),\n    new Promise((res) => setTimeout(() => res([{ warning: 'dispatch-timeout-5s' }]), 5000))\n  ]);\n  console.log('Register analyze dispatch:', JSON.stringify(results).slice(0, 800));\n} catch (e) {\n  console.log('Register analyze dispatch error (non-fatal): ' + e.message);\n}\n\n// Pass INSERT Topics output through unchanged so Map Avatars sees the same 25 items\nreturn $input.all();"
+        }
+      },
+      {
+        "id": "1e82289d-ef01-491e-bae4-92e08c56a8f6",
+        "name": "Prep Scoring Input",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          3840,
+          700
+        ],
+        "parameters": {
+          "mode": "manual",
+          "assignments": {
+            "assignments": [
+              {
+                "id": "a-projectid",
+                "name": "project_id",
+                "value": "={{ $('Validate').first().json.project_id }}",
+                "type": "string"
+              }
+            ]
+          },
+          "includeOtherFields": false
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Dispatch WF_PREDICT_PERFORMANCE for each topic in this project.\n// Runs AFTER WF_OUTLIER_SCORE + WF_SEO_SCORE; PPS depends on both outputs being persisted.\n// Mirrors the 'Fire Register Analyze' pattern but waits for all completions\n// (per-call AbortController timeout) since PPS has no respond-early pattern.\n\nconst projectId =\n  ($('Validate').first()?.json?.project_id) ||\n  ($('Idempotency Guard').first()?.json?.project_id) ||\n  ($input.first()?.json?.project_id);\n\nif (!projectId) {\n  console.log('Fire PPS: no project_id resolvable upstream; skipping');\n  return $input.all();\n}\n\nconst DASHBOARD_TOKEN = $env.DASHBOARD_API_TOKEN;\nconst WEBHOOK_BASE = $env.N8N_WEBHOOK_BASE || 'http://localhost:5678/webhook';\nconst SUPABASE_URL = $env.SUPABASE_URL;\n\nconst sbHeaders = {\n  apikey: $env.SUPABASE_ANON_KEY,\n  Authorization: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  Accept: 'application/json',\n};\n\n// Re-fetch topic IDs fresh (the upstream items may not have all 25 if Map Avatars filtered).\nconst topicsRes = await fetch(\n  `${SUPABASE_URL}/rest/v1/topics?project_id=eq.${projectId}&select=id&order=topic_number.asc`,\n  { method: 'GET', headers: sbHeaders }\n);\nif (!topicsRes.ok) {\n  console.log(`Fire PPS: topic fetch HTTP ${topicsRes.status}`);\n  return $input.all();\n}\nconst topics = await topicsRes.json();\nconsole.log(`Fire PPS: dispatching for ${topics.length} topics`);\n\nasync function callPps(topicId) {\n  const ctl = new AbortController();\n  const t = setTimeout(() => ctl.abort(), 60000); // 60s per-call ceiling\n  try {\n    const r = await fetch(`${WEBHOOK_BASE}/pps/calculate`, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DASHBOARD_TOKEN}` },\n      body: JSON.stringify({ topic_id: topicId, force: true }),\n      signal: ctl.signal,\n    });\n    return { topic_id: topicId, http: r.status };\n  } catch (e) {\n    return { topic_id: topicId, error: e.name === 'AbortError' ? 'timeout-60s' : e.message };\n  } finally {\n    clearTimeout(t);\n  }\n}\n\nconst results = await Promise.all(topics.map(t => callPps(t.id)));\nconst ok = results.filter(r => r.http === 200).length;\nconst fail = results.length - ok;\nconsole.log(`Fire PPS: ${ok} ok, ${fail} fail/timeout (sample: ${JSON.stringify(results.slice(0, 3))})`);\n\nreturn $input.all();\n"
+        },
+        "id": "fire-pps-per-topic",
+        "name": "Fire PPS Per Topic",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4400,
+          820
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Validate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate": {
+        "main": [
+          [
+            {
+              "node": "Log Started",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Read Project",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Project": {
+        "main": [
+          [
+            {
+              "node": "Check Existing Topics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Existing Topics": {
+        "main": [
+          [
+            {
+              "node": "Idempotency Guard",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Idempotency Guard": {
+        "main": [
+          [
+            {
+              "node": "IF Early Return",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Early Return": {
+        "main": [
+          [
+            {
+              "node": "Respond Topics Exist",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Status → Generating",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Status → Generating": {
+        "main": [
+          [
+            {
+              "node": "Read Prompt Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude: Generate Topics": {
+        "main": [
+          [
+            {
+              "node": "Check Claude Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Claude Error": {
+        "main": [
+          [
+            {
+              "node": "IF Generation Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Generation Error": {
+        "main": [
+          [
+            {
+              "node": "PATCH Generation Failed",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Log Generation Failed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Parse Topics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Topics": {
+        "main": [
+          [
+            {
+              "node": "INSERT Topics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "INSERT Topics": {
+        "main": [
+          [
+            {
+              "node": "Fire Register Analyze",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Map Avatars": {
+        "main": [
+          [
+            {
+              "node": "INSERT Avatars",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "INSERT Avatars": {
+        "main": [
+          [
+            {
+              "node": "Status → Topics Pending",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Status → Topics Pending": {
+        "main": [
+          [
+            {
+              "node": "Log Completed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Prompt Config": {
+        "main": [
+          [
+            {
+              "node": "Build Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Prompt": {
+        "main": [
+          [
+            {
+              "node": "Build Claude Body",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Claude Body": {
+        "main": [
+          [
+            {
+              "node": "Claude: Generate Topics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Trigger WF_OUTLIER_SCORE": {
+        "main": [
+          [
+            {
+              "node": "Trigger WF_SEO_SCORE",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fire Register Analyze": {
+        "main": [
+          [
+            {
+              "node": "Map Avatars",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Completed": {
+        "main": [
+          [
+            {
+              "node": "Prep Scoring Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prep Scoring Input": {
+        "main": [
+          [
+            {
+              "node": "Trigger WF_OUTLIER_SCORE",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Trigger WF_SEO_SCORE": {
+        "main": [
+          [
+            {
+              "node": "Fire PPS Per Topic",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-29T08:41:30.250Z",
+        "id": 3704,
+        "workflowId": "J5NTvfweZRiKJ9fG",
+        "versionId": "f409c466-5225-4d57-874d-43c2f9d6be50",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-29T08:41:30.233Z",
+        "id": 3703,
+        "workflowId": "J5NTvfweZRiKJ9fG",
+        "versionId": "f409c466-5225-4d57-874d-43c2f9d6be50",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }
