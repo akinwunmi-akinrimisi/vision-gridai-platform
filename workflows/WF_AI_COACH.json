@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-20T21:43:26.440Z",
+  "createdAt": "2026-04-15T19:01:28.352Z",
+  "id": "ViSdNhOjWbhcXASS",
   "name": "WF_AI_COACH",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-coach-webhook",
@@ -139,5 +145,190 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "33e062a3-142a-4203-a55b-d4868bc7c6ba",
+  "activeVersionId": "33e062a3-142a-4203-a55b-d4868bc7c6ba",
+  "versionCounter": 16,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-15T19:01:28.355Z",
+      "createdAt": "2026-04-15T19:01:28.355Z",
+      "role": "workflow:owner",
+      "workflowId": "ViSdNhOjWbhcXASS",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-20T21:43:26.441Z",
+    "createdAt": "2026-04-20T21:43:26.441Z",
+    "versionId": "33e062a3-142a-4203-a55b-d4868bc7c6ba",
+    "workflowId": "ViSdNhOjWbhcXASS",
+    "nodes": [
+      {
+        "id": "trigger-coach-webhook",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          310
+        ],
+        "parameters": {
+          "path": "coach/message",
+          "httpMethod": "POST",
+          "responseMode": "responseNode",
+          "options": {},
+          "authentication": "headerAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        },
+        "webhookId": "coach-message"
+      },
+      {
+        "id": "code-coach-normalize",
+        "name": "Normalize + Ensure Session",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          440,
+          310
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// CF09 WF_AI_COACH — validate payload, ensure a coach_sessions row exists,\n// load session history + fresh context for the prompt.\n// Global fetch + $env per MEMORY.md.\n\nconst raw = $input.first().json;\nconst viaWebhook = !!raw.body;\nconst payload = raw.body || raw;\n\nconst projectId = payload.project_id;\nconst userMessage = typeof payload.user_message === 'string' ? payload.user_message.trim() : '';\nlet sessionId = payload.session_id || null;\nlet focusArea = payload.focus_area || null;\n\nif (!projectId) {\n  return [{ json: { success: false, error: 'project_id is required', http_status: 400, via_webhook: viaWebhook } }];\n}\nif (!userMessage) {\n  return [{ json: { success: false, error: 'user_message is required (non-empty string)', http_status: 400, via_webhook: viaWebhook } }];\n}\nif (userMessage.length > 8000) {\n  return [{ json: { success: false, error: 'user_message exceeds 8000 chars', http_status: 400, via_webhook: viaWebhook } }];\n}\n\nconst VALID_FOCUS = ['growth', 'monetization', 'competitors', 'content', 'general'];\nif (focusArea && !VALID_FOCUS.includes(focusArea)) focusArea = null;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nasync function sbGet(url) {\n  const res = await fetch(url, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);\n  return res.json();\n}\n\n// 1. Verify project exists + load project context\nlet project = null;\ntry {\n  const arr = await sbGet(`${supabaseUrl}/rest/v1/projects?id=eq.${projectId}&select=id,name,niche,niche_description,niche_rpm_category,estimated_rpm_mid,niche_health_score`);\n  project = (arr && arr[0]) || null;\n} catch (e) {\n  return [{ json: { success: false, error: `Failed to load project: ${e.message}`, http_status: 500, via_webhook: viaWebhook } }];\n}\nif (!project) {\n  return [{ json: { success: false, error: `Project ${projectId} not found`, http_status: 404, via_webhook: viaWebhook } }];\n}\n\n// 2. Ensure session exists (create if session_id missing)\nlet session = null;\nlet isNewSession = false;\n\nif (sessionId) {\n  try {\n    const arr = await sbGet(`${supabaseUrl}/rest/v1/coach_sessions?id=eq.${sessionId}&select=id,project_id,title,focus_area,message_count,total_input_tokens,total_output_tokens,estimated_cost_usd,is_archived`);\n    session = (arr && arr[0]) || null;\n  } catch (e) {\n    return [{ json: { success: false, error: `Failed to load session: ${e.message}`, http_status: 500, via_webhook: viaWebhook } }];\n  }\n  if (!session) {\n    return [{ json: { success: false, error: `Session ${sessionId} not found`, http_status: 404, via_webhook: viaWebhook } }];\n  }\n  if (session.project_id !== projectId) {\n    return [{ json: { success: false, error: 'Session belongs to a different project', http_status: 403, via_webhook: viaWebhook } }];\n  }\n  if (session.is_archived) {\n    return [{ json: { success: false, error: 'Session is archived', http_status: 409, via_webhook: viaWebhook } }];\n  }\n} else {\n  // Create new session\n  try {\n    const insertRes = await fetch(`${supabaseUrl}/rest/v1/coach_sessions`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n      body: JSON.stringify({\n        project_id: projectId,\n        focus_area: focusArea || 'general',\n        title: null,\n        message_count: 0,\n        total_input_tokens: 0,\n        total_output_tokens: 0,\n        estimated_cost_usd: 0,\n        is_archived: false\n      })\n    });\n    if (!insertRes.ok) {\n      return [{ json: { success: false, error: `Create session failed: HTTP ${insertRes.status}: ${(await insertRes.text()).slice(0, 200)}`, http_status: 500, via_webhook: viaWebhook } }];\n    }\n    const arr = await insertRes.json();\n    session = Array.isArray(arr) && arr[0] ? arr[0] : null;\n    if (!session) {\n      return [{ json: { success: false, error: 'Create session returned empty body', http_status: 500, via_webhook: viaWebhook } }];\n    }\n    sessionId = session.id;\n    isNewSession = true;\n  } catch (e) {\n    return [{ json: { success: false, error: `Create session exception: ${e.message}`, http_status: 500, via_webhook: viaWebhook } }];\n  }\n}\n\nconst effectiveFocusArea = session.focus_area || 'general';\n\n// 3. Load history (existing turns) ordered by turn_index ascending\nlet history = [];\nlet prevMaxTurnIndex = -1;\nif (!isNewSession) {\n  try {\n    history = await sbGet(`${supabaseUrl}/rest/v1/coach_messages?session_id=eq.${sessionId}&select=turn_index,role,content&order=turn_index.asc&limit=200`);\n    if (Array.isArray(history) && history.length > 0) {\n      prevMaxTurnIndex = history.reduce((mx, h) => Math.max(mx, Number(h.turn_index) || 0), -1);\n    }\n  } catch (_) { /* non-fatal — treat as empty history */ }\n}\n\n// 4. Load live context (best-effort, parallel)\nconst sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();\nconst urls = {\n  topics: `${supabaseUrl}/rest/v1/topics?project_id=eq.${projectId}&select=seo_title,selected_title,predicted_performance_score,yt_views,yt_ctr,status&order=created_at.desc&limit=10`,\n  alerts: `${supabaseUrl}/rest/v1/competitor_alerts?project_id=eq.${projectId}&is_read=eq.false&select=title,severity,alert_type,created_at&order=created_at.desc&limit=5`,\n  ideas: `${supabaseUrl}/rest/v1/daily_ideas?project_id=eq.${projectId}&status=eq.pending&select=idea_title,combined_score&order=created_at.desc&limit=5`\n};\n\nlet recentTopics = [];\nlet unreadAlerts = [];\nlet pendingIdeas = [];\ntry { recentTopics = await sbGet(urls.topics); } catch (_) {}\ntry { unreadAlerts = await sbGet(urls.alerts); } catch (_) {}\ntry { pendingIdeas = await sbGet(urls.ideas); } catch (_) {}\n\nreturn [{\n  json: {\n    project_id: projectId,\n    session_id: sessionId,\n    is_new_session: isNewSession,\n    session,\n    project,\n    focus_area: effectiveFocusArea,\n    user_message: userMessage,\n    history: Array.isArray(history) ? history : [],\n    prev_max_turn_index: prevMaxTurnIndex,\n    context: {\n      recent_topics: recentTopics || [],\n      unread_alerts: unreadAlerts || [],\n      pending_ideas: pendingIdeas || []\n    },\n    via_webhook: viaWebhook,\n    started_at: new Date().toISOString()\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-coach-opus",
+        "name": "Build Prompt + Opus Turn",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          310
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Assemble messages + inline system prompt, call Claude Opus 4.6 with backoff.\nconst data = $input.first().json;\nif (data.success === false) return $input.item;\n\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nconst project = data.project || {};\nconst ctx = data.context || {};\nconst history = Array.isArray(data.history) ? data.history : [];\nconst userMessage = data.user_message;\nconst focusArea = data.focus_area || 'general';\n\n// Derive context stats\nconst ppsValues = (ctx.recent_topics || []).map(t => Number(t.predicted_performance_score)).filter(v => Number.isFinite(v));\nconst minPps = ppsValues.length ? Math.min(...ppsValues) : null;\nconst maxPps = ppsValues.length ? Math.max(...ppsValues) : null;\n\nconst ctrValues = (ctx.recent_topics || []).map(t => Number(t.yt_ctr)).filter(v => Number.isFinite(v) && v > 0);\nconst avgCtr = ctrValues.length ? (ctrValues.reduce((a, b) => a + b, 0) / ctrValues.length).toFixed(2) : null;\n\nconst alertCount = (ctx.unread_alerts || []).length;\nconst topAlert = alertCount > 0 ? String(ctx.unread_alerts[0].title || '').slice(0, 160) : '';\nconst ideaCount = (ctx.pending_ideas || []).length;\n\nconst nicheHealth = project.niche_health_score != null ? project.niche_health_score : 'n/a';\nconst rpmCat = project.niche_rpm_category || 'uncategorized';\nconst rpmMid = project.estimated_rpm_mid != null ? Number(project.estimated_rpm_mid) : 0;\nconst name = project.name || '(unnamed)';\nconst niche = project.niche || 'general';\n\nconst systemPrompt = `You are Vision GridAI's growth coach for project \"${name}\" (${niche}). You know this channel's recent performance, competitor activity, and pending idea backlog. Give SHORT, SPECIFIC, DATA-BACKED advice. No hedging. No generic tips. When recommending action, cite the exact number or competitor. If the user asks something you can't answer from context, say so and suggest what data to gather.\n\nFocus area: ${focusArea}.\n\nContext:\n- Niche: ${niche} (${rpmCat}, ~$${rpmMid}/1K RPM)\n- Niche health: ${nicheHealth}/100\n- Recent topic PPS range: ${minPps != null ? `${minPps}-${maxPps}` : 'n/a'}\n- Last 10 topics avg CTR: ${avgCtr != null ? avgCtr + '%' : 'n/a'}\n- Unread competitor alerts: ${alertCount}${topAlert ? ` (${topAlert})` : ''}\n- Pending ideas ready: ${ideaCount}\n\nKeep responses under 200 words unless the question demands more. Format with bullets when listing concrete actions.`;\n\n// Build messages array — past turns + new user message\nconst messages = [];\nfor (const h of history) {\n  if (!h || !h.role || !h.content) continue;\n  if (h.role !== 'user' && h.role !== 'assistant') continue; // skip system rows\n  messages.push({ role: h.role, content: String(h.content) });\n}\nmessages.push({ role: 'user', content: userMessage });\n\n// Trim history if it runs long: keep the last 20 turns + the new user turn.\nlet trimmedMessages = messages;\nif (messages.length > 21) {\n  trimmedMessages = messages.slice(messages.length - 21);\n}\n\nasync function callClaude(maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch('https://api.anthropic.com/v1/messages', {\n        method: 'POST',\n        headers: {\n          'x-api-key': anthropicKey,\n          'anthropic-version': '2023-06-01',\n          'content-type': 'application/json'\n        },\n        body: JSON.stringify({\n          model: 'claude-opus-4-6',\n          max_tokens: 1200,\n          system: systemPrompt,\n          messages: trimmedMessages\n        })\n      });\n      if (res.ok) {\n        const body = await res.json();\n        return {\n          ok: true,\n          text: body.content?.[0]?.text || '',\n          stop_reason: body.stop_reason || null,\n          input_tokens: body.usage?.input_tokens || 0,\n          output_tokens: body.usage?.output_tokens || 0,\n          attempts: attempt\n        };\n      }\n      const errBody = await res.text();\n      if (res.status === 429) await sleep(30000);\n      lastErr = new Error(`HTTP ${res.status}: ${errBody.slice(0, 300)}`);\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || 'opus_coach failed', attempts: maxRetries };\n}\n\nconst claudeStart = Date.now();\nconst claudeRes = await callClaude(4);\nconst claudeDuration = Date.now() - claudeStart;\n\nconst inputTokens = claudeRes.input_tokens || 0;\nconst outputTokens = claudeRes.output_tokens || 0;\n// Opus 4.6 pricing: $15/M input, $75/M output\nconst costUsd = ((inputTokens * 15) + (outputTokens * 75)) / 1_000_000;\nconst costRounded = Math.round(costUsd * 10000) / 10000;\n\n// Build context snapshot to persist alongside the user turn (for future audits)\nconst contextSnapshot = {\n  project_id: data.project_id,\n  niche_health_score: project.niche_health_score != null ? project.niche_health_score : null,\n  niche_rpm_category: rpmCat,\n  estimated_rpm_mid: rpmMid,\n  recent_topics_count: (ctx.recent_topics || []).length,\n  pps_range: ppsValues.length ? { min: minPps, max: maxPps } : null,\n  avg_ctr_pct: avgCtr,\n  unread_alert_count: alertCount,\n  top_alert: topAlert || null,\n  pending_ideas_count: ideaCount,\n  focus_area: focusArea,\n  system_prompt_char_len: systemPrompt.length,\n  message_count_in_request: trimmedMessages.length\n};\n\nreturn [{\n  json: {\n    ...data,\n    claude_ok: claudeRes.ok,\n    claude_error: claudeRes.ok ? null : (claudeRes.error || 'unknown'),\n    assistant_content: claudeRes.ok ? (claudeRes.text || '').trim() : '',\n    stop_reason: claudeRes.stop_reason || null,\n    input_tokens: inputTokens,\n    output_tokens: outputTokens,\n    cost_usd: costRounded,\n    duration_ms: claudeDuration,\n    context_snapshot: contextSnapshot,\n    system_prompt: systemPrompt\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-coach-persist",
+        "name": "Persist Turn Pair + Update Session",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          960,
+          310
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Persist user + assistant turns, update session counters, log production_logs.\n// On Claude failure: still persist the user turn + a system row so history is preserved,\n// then respond success=false.\n\nconst data = $input.first().json;\nif (data.success === false) return [{ json: data }];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst projectId = data.project_id;\nconst sessionId = data.session_id;\nconst prevMax = Number.isInteger(data.prev_max_turn_index) ? data.prev_max_turn_index : -1;\nconst userTurnIndex = prevMax + 1;\nconst assistantTurnIndex = prevMax + 2;\nconst nowIso = new Date().toISOString();\nconst claudeOk = data.claude_ok === true;\nconst userMessage = data.user_message;\nconst assistantContent = data.assistant_content || '';\nconst session = data.session || {};\nconst isNewSession = data.is_new_session === true;\n\nasync function sbPost(path, body, preferRepr) {\n  return fetch(`${supabaseUrl}/rest/v1/${path}`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': preferRepr ? 'return=representation' : 'return=minimal' },\n    body: JSON.stringify(body)\n  });\n}\n\nasync function sbPatch(path, body) {\n  return fetch(`${supabaseUrl}/rest/v1/${path}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify(body)\n  });\n}\n\nasync function logProduction(action, status, durationMs, costUsd) {\n  try {\n    await sbPost('production_logs', {\n      project_id: projectId,\n      topic_id: null,\n      stage: 'ai_coach',\n      scene_number: null,\n      action,\n      status,\n      duration_ms: durationMs,\n      cost_usd: costUsd,\n      retry_count: 0\n    }, false);\n  } catch (_) { /* best-effort */ }\n}\n\n// 1. INSERT user turn (always — preserves history even if Claude failed)\nlet userTurnInserted = false;\nlet userInsertError = null;\nlet userRowId = null;\ntry {\n  const res = await sbPost('coach_messages', {\n    session_id: sessionId,\n    project_id: projectId,\n    turn_index: userTurnIndex,\n    role: 'user',\n    content: userMessage,\n    context_snapshot: data.context_snapshot || null,\n    input_tokens: null,\n    output_tokens: null,\n    cost_usd: null,\n    claude_model: 'claude-opus-4-6',\n    stop_reason: null\n  }, true);\n  if (res.ok) {\n    const arr = await res.json();\n    userTurnInserted = true;\n    userRowId = Array.isArray(arr) && arr[0] ? arr[0].id : null;\n  } else {\n    userInsertError = `HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;\n  }\n} catch (e) {\n  userInsertError = e.message;\n}\n\n// 2. INSERT assistant turn — success path\n// If Claude failed, insert a system row marker instead so the UI can show the state.\nlet assistantRowId = null;\nlet assistantInsertError = null;\nlet assistantRole = 'assistant';\nlet assistantContentPersisted = assistantContent;\n\nif (!claudeOk || !assistantContent) {\n  assistantRole = 'system';\n  assistantContentPersisted = `[coach unavailable] ${data.claude_error || 'no response'}`.slice(0, 1000);\n}\n\ntry {\n  const res = await sbPost('coach_messages', {\n    session_id: sessionId,\n    project_id: projectId,\n    turn_index: assistantTurnIndex,\n    role: assistantRole,\n    content: assistantContentPersisted,\n    context_snapshot: null,\n    input_tokens: claudeOk ? (data.input_tokens || 0) : null,\n    output_tokens: claudeOk ? (data.output_tokens || 0) : null,\n    cost_usd: claudeOk ? (data.cost_usd || 0) : null,\n    claude_model: 'claude-opus-4-6',\n    stop_reason: data.stop_reason || (claudeOk ? null : 'error')\n  }, true);\n  if (res.ok) {\n    const arr = await res.json();\n    assistantRowId = Array.isArray(arr) && arr[0] ? arr[0].id : null;\n  } else {\n    assistantInsertError = `HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;\n  }\n} catch (e) {\n  assistantInsertError = e.message;\n}\n\n// 3. UPDATE coach_sessions counters\n// Compute new totals. turns_added = 2 if both turns actually wrote, else 1 (or 0 if neither).\nconst addedUser = userTurnInserted ? 1 : 0;\nconst addedAssistant = assistantRowId ? 1 : 0;\nconst addedTotal = addedUser + addedAssistant;\n\nconst newMessageCount = (Number(session.message_count) || 0) + addedTotal;\nconst newInputTokens = (Number(session.total_input_tokens) || 0) + (claudeOk ? (data.input_tokens || 0) : 0);\nconst newOutputTokens = (Number(session.total_output_tokens) || 0) + (claudeOk ? (data.output_tokens || 0) : 0);\nconst newEstCostUsd = Math.round(((Number(session.estimated_cost_usd) || 0) + (claudeOk ? (data.cost_usd || 0) : 0)) * 10000) / 10000;\n\n// Auto-derive title from first user message if session.title is null AND this was the first turn.\nconst patch = {\n  message_count: newMessageCount,\n  total_input_tokens: newInputTokens,\n  total_output_tokens: newOutputTokens,\n  estimated_cost_usd: newEstCostUsd,\n  last_message_at: nowIso,\n  updated_at: nowIso\n};\n\nlet derivedTitle = null;\nif ((isNewSession || prevMax === -1) && !session.title) {\n  derivedTitle = userMessage.slice(0, 60).replace(/\\s+/g, ' ').trim() || null;\n  if (derivedTitle) patch.title = derivedTitle;\n}\n\nlet sessionPatchError = null;\ntry {\n  const res = await sbPatch(`coach_sessions?id=eq.${sessionId}`, patch);\n  if (!res.ok) sessionPatchError = `HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;\n} catch (e) {\n  sessionPatchError = e.message;\n}\n\n// 4. production_logs\nconst logStatus = claudeOk && assistantRowId && userTurnInserted && !sessionPatchError\n  ? 'success'\n  : (claudeOk ? 'partial' : 'error');\nawait logProduction('turn_pair', logStatus, data.duration_ms || 0, data.cost_usd || 0);\n\n// 5. Build response\nconst httpStatus = claudeOk ? 200 : 502;\n\nreturn [{\n  json: {\n    success: claudeOk && !!assistantRowId && !sessionPatchError,\n    session_id: sessionId,\n    is_new_session: isNewSession,\n    assistant_message: claudeOk ? {\n      id: assistantRowId,\n      content: assistantContent,\n      cost_usd: data.cost_usd || 0,\n      turn_index: assistantTurnIndex,\n      input_tokens: data.input_tokens || 0,\n      output_tokens: data.output_tokens || 0,\n      stop_reason: data.stop_reason || null\n    } : null,\n    user_message: claudeOk ? null : {\n      id: userRowId,\n      turn_index: userTurnIndex,\n      content: userMessage\n    },\n    session: {\n      id: sessionId,\n      message_count: newMessageCount,\n      estimated_cost_usd: newEstCostUsd,\n      title: derivedTitle || session.title || null,\n      focus_area: session.focus_area || 'general'\n    },\n    error: claudeOk ? null : (data.claude_error || 'coach_call_failed'),\n    user_insert_error: userInsertError,\n    assistant_insert_error: assistantInsertError,\n    session_patch_error: sessionPatchError,\n    duration_ms: data.duration_ms || 0,\n    http_status: httpStatus,\n    via_webhook: data.via_webhook\n  }\n}];"
+        }
+      },
+      {
+        "id": "respond-coach",
+        "name": "Respond To Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1220,
+          310
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {
+            "responseCode": "={{ $json.http_status || 200 }}"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Normalize + Ensure Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize + Ensure Session": {
+        "main": [
+          [
+            {
+              "node": "Build Prompt + Opus Turn",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Prompt + Opus Turn": {
+        "main": [
+          [
+            {
+              "node": "Persist Turn Pair + Update Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Persist Turn Pair + Update Session": {
+        "main": [
+          [
+            {
+              "node": "Respond To Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-20T21:43:26.505Z",
+        "id": 3331,
+        "workflowId": "ViSdNhOjWbhcXASS",
+        "versionId": "33e062a3-142a-4203-a55b-d4868bc7c6ba",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-20T21:43:26.478Z",
+        "id": 3330,
+        "workflowId": "ViSdNhOjWbhcXASS",
+        "versionId": "33e062a3-142a-4203-a55b-d4868bc7c6ba",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

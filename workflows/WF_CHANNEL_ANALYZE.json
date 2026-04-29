@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-17T14:51:44.944Z",
+  "createdAt": "2026-04-17T00:14:36.731Z",
+  "id": "ERkpYV8lBwViCj9L",
   "name": "WF_CHANNEL_ANALYZE",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-ca-webhook",
@@ -275,5 +281,328 @@
     "executionTimeout": 600,
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "3409c5b4-79e6-43ad-a993-4bdcc53e3ac8",
+  "activeVersionId": "3409c5b4-79e6-43ad-a993-4bdcc53e3ac8",
+  "versionCounter": 44,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-17T00:14:36.734Z",
+      "createdAt": "2026-04-17T00:14:36.734Z",
+      "role": "workflow:owner",
+      "workflowId": "ERkpYV8lBwViCj9L",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-17T14:51:44.946Z",
+    "createdAt": "2026-04-17T14:51:44.946Z",
+    "versionId": "3409c5b4-79e6-43ad-a993-4bdcc53e3ac8",
+    "workflowId": "ERkpYV8lBwViCj9L",
+    "nodes": [
+      {
+        "id": "trigger-ca-webhook",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          300
+        ],
+        "parameters": {
+          "path": "channel-analyze",
+          "httpMethod": "POST",
+          "authentication": "none",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "channel-analyze"
+      },
+      {
+        "id": "code-ca-validate",
+        "name": "Validate & Auth",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          440,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// WF_CHANNEL_ANALYZE — Validate payload, auth check, INSERT pending row.\n// Global fetch + $env per MEMORY.md (n8n 2.8.4 task runner compat).\n\nconst raw = $input.first().json;\nconst payload = raw.body || raw;\n\nconst channelUrl = (payload.channel_url || '').trim();\nlet analysisGroupId = payload.analysis_group_id || null;\n\nif (!channelUrl) {\n  return [{ json: { success: false, error: 'channel_url is required', http_status: 400 } }];\n}\n\n// Generate analysis_group_id if not provided\nif (!analysisGroupId) {\n  analysisGroupId = crypto.randomUUID();\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// INSERT pending row into channel_analyses\ntry {\n  const insertRes = await fetch(`${supabaseUrl}/rest/v1/channel_analyses`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n    body: JSON.stringify({\n      youtube_channel_id: 'pending',\n      channel_name: 'Resolving...',\n      channel_url: channelUrl,\n      analysis_group_id: analysisGroupId,\n      status: 'pending'\n    })\n  });\n  if (!insertRes.ok) {\n    const errText = await insertRes.text();\n    return [{ json: { success: false, error: `Insert failed: HTTP ${insertRes.status}: ${errText.slice(0, 200)}`, http_status: 500 } }];\n  }\n  const arr = await insertRes.json();\n  const row = Array.isArray(arr) && arr[0] ? arr[0] : null;\n  if (!row || !row.id) {\n    return [{ json: { success: false, error: 'Insert returned empty body', http_status: 500 } }];\n  }\n\n  return [{ json: {\n    success: true,\n    analysis_id: row.id,\n    analysis_group_id: analysisGroupId,\n    channel_url: channelUrl,\n    http_status: 202\n  } }];\n} catch (e) {\n  return [{ json: { success: false, error: `Exception: ${e.message}`, http_status: 500 } }];\n}"
+        }
+      },
+      {
+        "id": "respond-ca",
+        "name": "Respond To Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          660,
+          160
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {
+            "responseCode": "={{ $json.http_status || 200 }}"
+          }
+        }
+      },
+      {
+        "id": "code-ca-gate",
+        "name": "Check Success Gate",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          440
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Gate: only continue if the insert succeeded.\nconst data = $input.first().json;\nif (!data.success) {\n  return []; // empty = stop execution on this branch\n}\nreturn [{ json: data }];"
+        }
+      },
+      {
+        "id": "code-ca-resolve",
+        "name": "Resolve Channel",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          900,
+          440
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Resolve YouTube channel ID from URL or handle.\n// Supports: @handle, /channel/UCXXX, /c/name, /@handle\n\nconst data = $input.first().json;\nconst channelUrl = data.channel_url;\nconst analysisId = data.analysis_id;\nconst ytKey = $env.YOUTUBE_API_KEY;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      if (res.ok) return { ok: true, json: await res.json(), status: res.status, attempts: attempt };\n      const body = await res.text();\n      if (res.status === 403 && /quotaExceeded|dailyLimitExceeded/i.test(body)) {\n        return { ok: false, quota: true, status: res.status, error: body, attempts: attempt };\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, status: 0, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\nasync function failAnalysis(msg) {\n  await fetch(`${supabaseUrl}/rest/v1/channel_analyses?id=eq.${analysisId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({ status: 'failed', error_message: msg })\n  });\n}\n\n// Update status to analyzing\nawait fetch(`${supabaseUrl}/rest/v1/channel_analyses?id=eq.${analysisId}`, {\n  method: 'PATCH',\n  headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n  body: JSON.stringify({ status: 'analyzing' })\n});\n\n// Parse URL to extract handle or channel ID\nlet channelId = null;\nlet handle = null;\n\n// Direct channel ID: /channel/UCXXX or bare UCXXX\nconst ucMatch = channelUrl.match(/\\/channel\\/(UC[\\w-]+)/) || channelUrl.match(/^(UC[\\w-]{20,})$/);\nif (ucMatch) {\n  channelId = ucMatch[1];\n}\n\n// Handle: @handle in URL or plain @handle\nif (!channelId) {\n  const handleMatch = channelUrl.match(/@([\\w.-]+)/) || channelUrl.match(/\\/c\\/([\\w.-]+)/);\n  if (handleMatch) {\n    handle = handleMatch[1];\n  }\n}\n\n// If we have a handle, resolve via channels.list?forHandle\nif (!channelId && handle) {\n  const resolveUrl = `https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(handle)}&key=${ytKey}`;\n  const resolveRes = await fetchWithRetry(resolveUrl, { method: 'GET' }, 'yt_resolve_handle');\n  if (resolveRes.quota) {\n    await failAnalysis('YouTube API quota exhausted during handle resolution');\n    return [{ json: { ...data, failed: true, error: 'quota_exhausted' } }];\n  }\n  if (resolveRes.ok) {\n    const items = resolveRes.json?.items || [];\n    if (items.length > 0) {\n      channelId = items[0].id;\n    }\n  }\n}\n\n// Fallback: try search.list as last resort\nif (!channelId) {\n  const searchTerm = handle || channelUrl.replace(/https?:\\/\\//, '').replace(/www\\.youtube\\.com\\//, '').replace(/\\//g, '');\n  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchTerm)}&type=channel&maxResults=1&key=${ytKey}`;\n  const searchRes = await fetchWithRetry(searchUrl, { method: 'GET' }, 'yt_search_channel');\n  if (searchRes.ok) {\n    const items = searchRes.json?.items || [];\n    if (items.length > 0) {\n      channelId = items[0].snippet?.channelId || items[0].id?.channelId;\n    }\n  }\n}\n\nif (!channelId) {\n  await failAnalysis(`Could not resolve YouTube channel from URL: ${channelUrl}`);\n  return [{ json: { ...data, failed: true, error: 'channel_not_found' } }];\n}\n\n// Log resolution\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: null,\n      topic_id: null,\n      stage: 'channel_analyze',\n      scene_number: null,\n      action: 'resolve_channel',\n      status: 'success',\n      duration_ms: 0,\n      cost_usd: 0,\n      retry_count: 0\n    })\n  });\n} catch (_) {}\n\nreturn [{ json: { ...data, youtube_channel_id: channelId, handle: handle || null, failed: false } }];"
+        }
+      },
+      {
+        "id": "code-ca-metadata",
+        "name": "Fetch Channel Metadata",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1140,
+          440
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Fetch full channel metadata: snippet, statistics, contentDetails, brandingSettings.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst channelId = data.youtube_channel_id;\nconst analysisId = data.analysis_id;\nconst ytKey = $env.YOUTUBE_API_KEY;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      if (res.ok) return { ok: true, json: await res.json(), status: res.status, attempts: attempt };\n      const body = await res.text();\n      if (res.status === 403 && /quotaExceeded|dailyLimitExceeded/i.test(body)) {\n        return { ok: false, quota: true, status: res.status, error: body, attempts: attempt };\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, status: 0, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\nasync function failAnalysis(msg) {\n  await fetch(`${supabaseUrl}/rest/v1/channel_analyses?id=eq.${analysisId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({ status: 'failed', error_message: msg })\n  });\n}\n\nconst metaStart = Date.now();\nconst metaUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails,brandingSettings&id=${channelId}&key=${ytKey}`;\nconst metaRes = await fetchWithRetry(metaUrl, { method: 'GET' }, 'yt_channel_metadata');\n\nif (metaRes.quota) {\n  await failAnalysis('YouTube API quota exhausted during metadata fetch');\n  return [{ json: { ...data, failed: true, error: 'quota_exhausted' } }];\n}\nif (!metaRes.ok || !metaRes.json?.items?.length) {\n  await failAnalysis(`Channel metadata fetch failed: ${metaRes.error || 'no items returned'}`);\n  return [{ json: { ...data, failed: true, error: 'metadata_fetch_failed' } }];\n}\n\nconst ch = metaRes.json.items[0];\nconst snippet = ch.snippet || {};\nconst stats = ch.statistics || {};\nconst content = ch.contentDetails || {};\nconst branding = ch.brandingSettings || {};\n\nconst channelMeta = {\n  channel_name: snippet.title || 'Unknown',\n  channel_description: (snippet.description || '').slice(0, 5000),\n  channel_avatar_url: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || null,\n  channel_banner_url: branding.image?.bannerExternalUrl || null,\n  country: snippet.country || null,\n  custom_url: snippet.customUrl || null,\n  channel_created_at: snippet.publishedAt || null,\n  subscriber_count: parseInt(stats.subscriberCount || '0', 10),\n  total_view_count: parseInt(stats.viewCount || '0', 10),\n  video_count: parseInt(stats.videoCount || '0', 10),\n  uploads_playlist_id: content.relatedPlaylists?.uploads || null\n};\n\n// Log\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: null, topic_id: null, stage: 'channel_analyze',\n      scene_number: null, action: 'fetch_channel_metadata', status: 'success',\n      duration_ms: Date.now() - metaStart, cost_usd: 0, retry_count: (metaRes.attempts || 1) - 1\n    })\n  });\n} catch (_) {}\n\nreturn [{ json: { ...data, channel_meta: channelMeta, failed: false } }];"
+        }
+      },
+      {
+        "id": "code-ca-videos",
+        "name": "Fetch Videos & Calculate Metrics",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1380,
+          440
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Fetch uploads playlist (50 videos), get stats, rank top 20, calculate metrics.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst channelId = data.youtube_channel_id;\nconst analysisId = data.analysis_id;\nconst uploadsPlaylist = data.channel_meta.uploads_playlist_id;\nconst ytKey = $env.YOUTUBE_API_KEY;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      if (res.ok) return { ok: true, json: await res.json(), status: res.status, attempts: attempt };\n      const body = await res.text();\n      if (res.status === 403 && /quotaExceeded|dailyLimitExceeded/i.test(body)) {\n        return { ok: false, quota: true, status: res.status, error: body, attempts: attempt };\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, status: 0, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\nasync function failAnalysis(msg) {\n  await fetch(`${supabaseUrl}/rest/v1/channel_analyses?id=eq.${analysisId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({ status: 'failed', error_message: msg })\n  });\n}\n\nfunction parseIsoDuration(s) {\n  if (!s || typeof s !== 'string') return 0;\n  const m = s.match(/^PT(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?$/);\n  if (!m) return 0;\n  return parseInt(m[1] || '0', 10) * 3600 + parseInt(m[2] || '0', 10) * 60 + parseInt(m[3] || '0', 10);\n}\n\nfunction median(arr) {\n  if (!arr.length) return 0;\n  const s = [...arr].sort((a, b) => a - b);\n  const m = Math.floor(s.length / 2);\n  return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);\n}\n\nif (!uploadsPlaylist) {\n  await failAnalysis('No uploads playlist found for channel');\n  return [{ json: { ...data, failed: true, error: 'no_uploads_playlist' } }];\n}\n\nconst videosStart = Date.now();\n\n// Fetch up to 50 video IDs from uploads playlist\nlet allVideoIds = [];\nlet nextPageToken = null;\n\nfor (let page = 0; page < 2; page++) {\n  let plUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=${uploadsPlaylist}&maxResults=50&key=${ytKey}`;\n  if (nextPageToken) plUrl += `&pageToken=${nextPageToken}`;\n  \n  const plRes = await fetchWithRetry(plUrl, { method: 'GET' }, 'yt_playlist_items');\n  if (plRes.quota) {\n    await failAnalysis('YouTube API quota exhausted during video fetch');\n    return [{ json: { ...data, failed: true, error: 'quota_exhausted' } }];\n  }\n  if (!plRes.ok) break;\n  \n  const items = plRes.json?.items || [];\n  allVideoIds.push(...items.map(i => i.contentDetails?.videoId).filter(Boolean));\n  nextPageToken = plRes.json?.nextPageToken;\n  if (!nextPageToken || allVideoIds.length >= 50) break;\n}\n\nallVideoIds = allVideoIds.slice(0, 50);\n\nif (allVideoIds.length === 0) {\n  await failAnalysis('No videos found in uploads playlist');\n  return [{ json: { ...data, failed: true, error: 'no_videos' } }];\n}\n\n// Fetch video stats in batches of 50\nlet allVideos = [];\nfor (let i = 0; i < allVideoIds.length; i += 50) {\n  const batch = allVideoIds.slice(i, i + 50);\n  const vUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet,contentDetails&id=${batch.join(',')}&key=${ytKey}`;\n  const vRes = await fetchWithRetry(vUrl, { method: 'GET' }, 'yt_video_stats');\n  if (vRes.quota) {\n    await failAnalysis('YouTube API quota exhausted during video stats fetch');\n    return [{ json: { ...data, failed: true, error: 'quota_exhausted' } }];\n  }\n  if (vRes.ok) allVideos.push(...(vRes.json?.items || []));\n}\n\n// Parse all videos\nconst parsed = allVideos.map(v => {\n  const views = parseInt(v.statistics?.viewCount || '0', 10);\n  const likes = parseInt(v.statistics?.likeCount || '0', 10);\n  const comments = parseInt(v.statistics?.commentCount || '0', 10);\n  const durationSec = parseIsoDuration(v.contentDetails?.duration);\n  return {\n    video_id: v.id,\n    title: (v.snippet?.title || '').slice(0, 300),\n    published_at: v.snippet?.publishedAt || null,\n    thumbnail_url: v.snippet?.thumbnails?.high?.url || v.snippet?.thumbnails?.medium?.url || null,\n    views, likes, comments,\n    duration_seconds: durationSec,\n    is_shorts: durationSec > 0 && durationSec <= 60\n  };\n});\n\n// Filter to long-form (>60s) for analysis, keep shorts separate\nconst longForm = parsed.filter(v => !v.is_shorts);\nconst shorts = parsed.filter(v => v.is_shorts);\n\nconst viewsArr = longForm.map(v => v.views);\nconst avgViews = viewsArr.length ? Math.round(viewsArr.reduce((a, b) => a + b, 0) / viewsArr.length) : 0;\nconst medianViews = median(viewsArr);\n\n// Top 20 by views (long-form)\nconst top20 = [...longForm].sort((a, b) => b.views - a.views).slice(0, 20);\n\n// Calculate outlier_score for each top video\nconst denominator = medianViews || 1;\ntop20.forEach(v => {\n  v.outlier_score = Math.round((v.views / denominator) * 100) / 100;\n});\n\n// Upload frequency: days between uploads (long-form only)\nconst pubDates = longForm\n  .map(v => v.published_at ? new Date(v.published_at).getTime() : 0)\n  .filter(t => t > 0)\n  .sort((a, b) => b - a);\n\nlet uploadFreqDays = null;\nif (pubDates.length >= 2) {\n  const gaps = [];\n  for (let i = 0; i < pubDates.length - 1; i++) {\n    gaps.push((pubDates[i] - pubDates[i + 1]) / 86400000);\n  }\n  uploadFreqDays = Math.round(median(gaps) * 10) / 10;\n}\n\n// Average video duration (long-form)\nconst avgDurationSec = longForm.length\n  ? Math.round(longForm.reduce((s, v) => s + v.duration_seconds, 0) / longForm.length)\n  : 0;\n\n// Growth trajectory: compare avg views of newest 10 vs oldest 10\nconst byDate = [...longForm].sort((a, b) => {\n  const da = a.published_at ? new Date(a.published_at).getTime() : 0;\n  const db = b.published_at ? new Date(b.published_at).getTime() : 0;\n  return db - da;\n});\nconst newest10 = byDate.slice(0, Math.min(10, byDate.length));\nconst oldest10 = byDate.slice(Math.max(0, byDate.length - 10));\nconst newestAvg = newest10.length ? newest10.reduce((s, v) => s + v.views, 0) / newest10.length : 0;\nconst oldestAvg = oldest10.length ? oldest10.reduce((s, v) => s + v.views, 0) / oldest10.length : 0;\n\nlet growthTrajectory = 'stable';\nif (oldestAvg > 0) {\n  const ratio = newestAvg / oldestAvg;\n  if (ratio > 1.5) growthTrajectory = 'accelerating';\n  else if (ratio < 0.5) growthTrajectory = 'decelerating';\n  else if (longForm.length < 5 && pubDates.length >= 2 && (Date.now() - pubDates[0]) > 90 * 86400000) growthTrajectory = 'dormant';\n}\n\n// Estimated monthly views\nconst totalViews = data.channel_meta.total_view_count || 0;\nconst channelAgeDays = data.channel_meta.channel_created_at\n  ? Math.max(1, (Date.now() - new Date(data.channel_meta.channel_created_at).getTime()) / 86400000)\n  : 365;\nconst estimatedMonthlyViews = Math.round(totalViews / (channelAgeDays / 30));\n\n// All 50 titles for Claude\nconst allTitles = parsed.map(v => v.title);\n\n// Log\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: null, topic_id: null, stage: 'channel_analyze',\n      scene_number: null, action: 'fetch_videos', status: 'success',\n      duration_ms: Date.now() - videosStart, cost_usd: 0, retry_count: 0\n    })\n  });\n} catch (_) {}\n\nreturn [{ json: {\n  ...data,\n  top_videos: top20,\n  all_titles: allTitles,\n  all_videos_count: parsed.length,\n  long_form_count: longForm.length,\n  shorts_count: shorts.length,\n  metrics: {\n    avg_views_per_video: avgViews,\n    median_views_per_video: medianViews,\n    upload_frequency_days: uploadFreqDays,\n    avg_video_duration_seconds: avgDurationSec,\n    estimated_monthly_views: estimatedMonthlyViews,\n    growth_trajectory: growthTrajectory\n  },\n  failed: false\n} }];"
+        }
+      },
+      {
+        "id": "code-ca-claude",
+        "name": "Claude Deep Analysis",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1680,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst analysisId = data.analysis_id;\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY,\n  'Content-Type': 'application/json'\n};\n\nconst sleep = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };\n\nasync function failAnalysis(msg) {\n  await fetch(supabaseUrl + '/rest/v1/channel_analyses?id=eq.' + analysisId, {\n    method: 'PATCH',\n    headers: Object.assign({}, sbHeaders, { 'Prefer': 'return=minimal' }),\n    body: JSON.stringify({ status: 'failed', error_message: msg })\n  });\n}\n\nconst meta = data.channel_meta;\nconst metrics = data.metrics;\nconst top20 = data.top_videos || [];\nconst allTitles = data.all_titles || [];\n\nvar top20Lines = [];\nfor (var i = 0; i < top20.length; i++) {\n  var v = top20[i];\n  top20Lines.push((i + 1) + '. \"' + v.title + '\" - ' + v.views + ' views, ' + v.likes + ' likes, ' + v.comments + ' comments, ' + Math.round(v.duration_seconds / 60) + 'min, outlier: ' + v.outlier_score + 'x median');\n}\nvar top20Block = top20Lines.join('\\n');\n\nvar titleLines = [];\nfor (var ti = 0; ti < allTitles.length; ti++) {\n  titleLines.push((ti + 1) + '. ' + allTitles[ti]);\n}\nvar allTitlesBlock = titleLines.join('\\n');\n\nvar systemPrompt = 'You are an elite YouTube channel strategist and competitive intelligence analyst.\\n\\n'\n  + 'CORE RULES:\\n'\n  + '1. Every claim you make MUST cite specific evidence from the data provided. When you say \"this channel is strong at X,\" reference the specific video(s) or metric(s) that prove it. No unsupported assertions.\\n'\n  + '2. You can ONLY analyze what is in the data. Do not infer revenue, CTR, audience retention, or any metric not explicitly provided. If you need data you do not have, say \"insufficient data\" for that field.\\n'\n  + '3. Thumbnail analysis is INFERENCE ONLY based on content type, titles, and niche conventions. You have not seen the actual thumbnails. Label this section clearly as inferred.\\n'\n  + '4. Scores must follow the rubric provided. Do not inflate or deflate. A score of 80+ should be rare and reserved for genuinely exceptional signals.\\n'\n  + '5. Blue-ocean opportunities must be SPECIFIC and ACTIONABLE - not \"make better content\" but \"cover [specific topic] from [specific angle] because [specific evidence from the data].\"\\n'\n  + '6. Return ONLY valid JSON. No markdown, no backticks wrapping the JSON, no commentary before or after. The first character of your response must be {.';\n\nvar userPrompt = 'Analyze this YouTube channel in depth. Ground every finding in the data below.\\n\\n'\n  + 'CHANNEL INFO:\\n'\n  + '- Name: ' + (meta.channel_name || '') + '\\n'\n  + '- Description: ' + ((meta.channel_description || '').slice(0, 1500)) + '\\n'\n  + '- Country: ' + (meta.country || 'Unknown') + '\\n'\n  + '- Created: ' + (meta.channel_created_at || 'Unknown') + '\\n'\n  + '- Subscribers: ' + (meta.subscriber_count || 0) + '\\n'\n  + '- Total views: ' + (meta.total_view_count || 0) + '\\n'\n  + '- Video count: ' + (meta.video_count || 0) + '\\n\\n'\n  + 'METRICS:\\n'\n  + '- Avg views/video: ' + (metrics.avg_views_per_video || 0) + '\\n'\n  + '- Median views/video: ' + (metrics.median_views_per_video || 0) + '\\n'\n  + '- Upload frequency: every ' + (metrics.upload_frequency_days || '?') + ' days\\n'\n  + '- Avg video duration: ' + Math.round((metrics.avg_video_duration_seconds || 0) / 60) + ' minutes\\n'\n  + '- Growth trajectory: ' + (metrics.growth_trajectory || 'stable') + '\\n'\n  + '- Est. monthly views: ' + (metrics.estimated_monthly_views || 0) + '\\n\\n'\n  + 'TOP 20 VIDEOS BY VIEWS:\\n'\n  + top20Block + '\\n\\n'\n  + 'ALL ' + allTitles.length + ' RECENT VIDEO TITLES:\\n'\n  + allTitlesBlock + '\\n\\n'\n  + 'ANALYSIS INSTRUCTIONS:\\n\\n'\n  + 'For primary_topics: Cluster the video titles into 5-10 distinct topic groups. Name each group specifically (not \"general finance\" but \"credit card annual fee comparisons\").\\n\\n'\n  + 'For title_patterns: Analyze ALL ' + allTitles.length + ' titles, not just the top 20. Count actual percentages.\\n\\n'\n  + 'For content_saturation_map: A topic is \"oversaturated\" if 4+ of the top 20 videos cover it. \"moderate\" if 2-3 cover it. \"underserved\" if 0-1 cover it.\\n\\n'\n  + 'For blue_ocean_opportunities: Identify at least 5. Each must reference a specific gap visible in the data.\\n\\n'\n  + 'For strengths and weaknesses: Provide 3-5 of each. Every strength must cite a specific video or metric as evidence.\\n\\n'\n  + 'VERDICT SCORING RUBRIC:\\n'\n  + '- 80-100: Exceptional opportunity. Multiple underserved high-demand topics. Weak competition.\\n'\n  + '- 60-79: Good opportunity. Several gaps exist. Competition is present but beatable.\\n'\n  + '- 40-59: Moderate opportunity. Some gaps but competition is strong.\\n'\n  + '- 20-39: Weak opportunity. Few gaps. Strong entrenched competition.\\n'\n  + '- 0-19: Avoid. No meaningful gaps. Dominant incumbents.\\n\\n'\n  + 'EDGE CASES:\\n'\n  + '- If the channel has fewer than 20 videos, note \"limited data\" in verdict_reasoning.\\n'\n  + '- If growth_trajectory is \"dormant,\" factor this heavily into the verdict.\\n\\n'\n  + 'Return ONLY valid JSON with these exact fields:\\n'\n  + '{\\n'\n  + '  \"primary_topics\": [\"specific topic 1\", \"specific topic 2\"],\\n'\n  + '  \"content_style\": \"description of their style\",\\n'\n  + '  \"target_audience_description\": \"who watches this channel\",\\n'\n  + '  \"title_patterns\": {\\n'\n  + '    \"common_formulas\": [\"formula1\", \"formula2\"],\\n'\n  + '    \"uses_numbers_pct\": 45,\\n'\n  + '    \"uses_questions_pct\": 30,\\n'\n  + '    \"avg_title_length\": 55,\\n'\n  + '    \"emotional_triggers\": [\"curiosity\", \"fear\"],\\n'\n  + '    \"common_opening_words\": [\"Why\", \"How\", \"The\"],\\n'\n  + '    \"power_words_observed\": [\"secret\", \"actually\", \"never\"]\\n'\n  + '  },\\n'\n  + '  \"thumbnail_patterns\": {\\n'\n  + '    \"inferred_style\": \"inferred from content type only\",\\n'\n  + '    \"text_usage\": \"heavy|moderate|minimal\",\\n'\n  + '    \"face_likely\": true,\\n'\n  + '    \"brand_consistency\": \"high|medium|low\",\\n'\n  + '    \"analysis_note\": \"Inferred from content type and titles only\"\\n'\n  + '  },\\n'\n  + '  \"scripting_depth\": {\\n'\n  + '    \"estimated_research_level\": \"surface|moderate|deep|expert\",\\n'\n  + '    \"narrative_structure\": \"how videos are structured\",\\n'\n  + '    \"engagement_hooks\": [\"hook type 1\"],\\n'\n  + '    \"production_quality\": \"low|medium|high|premium\",\\n'\n  + '    \"avg_video_length_minutes\": 0,\\n'\n  + '    \"estimated_words_per_video\": 0\\n'\n  + '  },\\n'\n  + '  \"strengths\": [\"strength with evidence\"],\\n'\n  + '  \"weaknesses\": [\"weakness with evidence\"],\\n'\n  + '  \"blue_ocean_opportunities\": [{\\n'\n  + '    \"opportunity\": \"specific topic\",\\n'\n  + '    \"rationale\": \"evidence from data\",\\n'\n  + '    \"difficulty\": \"easy|medium|hard\",\\n'\n  + '    \"estimated_demand\": \"high|medium|low\",\\n'\n  + '    \"confidence\": \"high|medium|low\",\\n'\n  + '    \"suggested_first_video\": \"concrete title idea\"\\n'\n  + '  }],\\n'\n  + '  \"content_saturation_map\": [{\\n'\n  + '    \"topic\": \"topic name\",\\n'\n  + '    \"saturation\": \"oversaturated|moderate|underserved\",\\n'\n  + '    \"video_count_seen\": 5,\\n'\n  + '    \"evidence\": \"which videos cover this\"\\n'\n  + '  }],\\n'\n  + '  \"posting_schedule\": \"inferred posting pattern\",\\n'\n  + '  \"verdict\": \"strong_opportunity|moderate_opportunity|weak_opportunity|avoid\",\\n'\n  + '  \"verdict_reasoning\": \"2-3 sentences grounded in data\",\\n'\n  + '  \"verdict_score\": 72\\n'\n  + '}';\n\nvar claudeStart = Date.now();\nvar claudeResult = null;\nvar lastErr = null;\n\nfor (var attempt = 1; attempt <= 4; attempt++) {\n  try {\n    var res = await fetch('https://api.anthropic.com/v1/messages', {\n      method: 'POST',\n      headers: {\n        'x-api-key': anthropicKey,\n        'anthropic-version': '2023-06-01',\n        'content-type': 'application/json'\n      },\n      body: JSON.stringify({\n        model: 'claude-opus-4-6',\n        max_tokens: 8192,\n        system: systemPrompt,\n        messages: [{ role: 'user', content: userPrompt }]\n      })\n    });\n    if (res.ok) {\n      var body = await res.json();\n      var respText = (body.content && body.content[0] && body.content[0].text) || '';\n      claudeResult = {\n        text: respText,\n        input_tokens: (body.usage && body.usage.input_tokens) || 0,\n        output_tokens: (body.usage && body.usage.output_tokens) || 0,\n        attempts: attempt\n      };\n      break;\n    }\n    var errBody = await res.text();\n    if (res.status === 429) await sleep(30000);\n    lastErr = 'HTTP ' + res.status + ': ' + errBody.slice(0, 300);\n    if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n  } catch (e) { lastErr = e.message; }\n  if (attempt < 4) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n}\n\nvar claudeDuration = Date.now() - claudeStart;\n\nif (!claudeResult) {\n  await failAnalysis('Claude analysis failed: ' + lastErr);\n  try {\n    await fetch(supabaseUrl + '/rest/v1/production_logs', {\n      method: 'POST',\n      headers: Object.assign({}, sbHeaders, { 'Prefer': 'return=minimal' }),\n      body: JSON.stringify({\n        project_id: null, topic_id: null, stage: 'channel_analyze',\n        scene_number: null, action: 'claude_deep_analysis', status: 'error',\n        duration_ms: claudeDuration, cost_usd: 0, retry_count: 3\n      })\n    });\n  } catch (_) {}\n  return [{ json: { ...data, failed: true, error: 'claude_analysis_failed' } }];\n}\n\nvar parsed = null;\ntry {\n  var clean = claudeResult.text.replace(/```json/g, '').replace(/```/g, '').trim();\n  parsed = JSON.parse(clean);\n} catch (e1) {\n  var m = claudeResult.text.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { parsed = JSON.parse(m[0]); } catch (e2) {} }\n}\n\nif (!parsed) {\n  await failAnalysis('Claude response could not be parsed as JSON. First 500 chars: ' + claudeResult.text.slice(0, 500));\n  return [{ json: { ...data, failed: true, error: 'claude_parse_failed', raw_text_preview: claudeResult.text.slice(0, 1000) } }];\n}\n\nvar costUsd = Math.round(((claudeResult.input_tokens * 15 + claudeResult.output_tokens * 75) / 1000000) * 10000) / 10000;\n\ntry {\n  await fetch(supabaseUrl + '/rest/v1/production_logs', {\n    method: 'POST',\n    headers: Object.assign({}, sbHeaders, { 'Prefer': 'return=minimal' }),\n    body: JSON.stringify({\n      project_id: null, topic_id: null, stage: 'channel_analyze',\n      scene_number: null, action: 'claude_deep_analysis', status: 'success',\n      duration_ms: claudeDuration, cost_usd: costUsd, retry_count: (claudeResult.attempts || 1) - 1\n    })\n  });\n} catch (_) {}\n\nreturn [{ json: {\n  ...data,\n  claude_analysis: parsed,\n  analysis_cost_usd: costUsd,\n  analysis_duration_seconds: Math.round(claudeDuration / 1000),\n  input_tokens: claudeResult.input_tokens,\n  output_tokens: claudeResult.output_tokens,\n  failed: false\n} }];"
+        }
+      },
+      {
+        "id": "code-ca-write",
+        "name": "Write Results",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1980,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Write all analysis results to channel_analyses, then check group completion.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst analysisId = data.analysis_id;\nconst analysisGroupId = data.analysis_group_id;\nconst meta = data.channel_meta;\nconst metrics = data.metrics;\nconst claude = data.claude_analysis;\nconst top20 = data.top_videos || [];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// Validate verdict\nconst validVerdicts = ['strong_opportunity', 'moderate_opportunity', 'weak_opportunity', 'avoid'];\nconst verdict = validVerdicts.includes(claude.verdict) ? claude.verdict : 'moderate_opportunity';\nconst verdictScore = typeof claude.verdict_score === 'number'\n  ? Math.max(0, Math.min(100, Math.round(claude.verdict_score)))\n  : 50;\n\n// Validate growth_trajectory\nconst validGrowth = ['accelerating', 'stable', 'decelerating', 'dormant'];\nconst growth = validGrowth.includes(metrics.growth_trajectory) ? metrics.growth_trajectory : 'stable';\n\nconst patch = {\n  youtube_channel_id: data.youtube_channel_id,\n  channel_name: meta.channel_name,\n  channel_url: data.channel_url,\n  channel_description: meta.channel_description,\n  channel_avatar_url: meta.channel_avatar_url,\n  channel_banner_url: meta.channel_banner_url,\n  country: meta.country,\n  custom_url: meta.custom_url,\n  channel_created_at: meta.channel_created_at,\n  subscriber_count: meta.subscriber_count,\n  total_view_count: meta.total_view_count,\n  video_count: meta.video_count,\n  avg_views_per_video: metrics.avg_views_per_video,\n  median_views_per_video: metrics.median_views_per_video,\n  upload_frequency_days: metrics.upload_frequency_days,\n  avg_video_duration_seconds: metrics.avg_video_duration_seconds,\n  estimated_monthly_views: metrics.estimated_monthly_views,\n  growth_trajectory: growth,\n  primary_topics: claude.primary_topics || [],\n  content_style: claude.content_style || null,\n  target_audience_description: claude.target_audience_description || null,\n  title_patterns: claude.title_patterns || {},\n  thumbnail_patterns: claude.thumbnail_patterns || {},\n  scripting_depth: claude.scripting_depth || {},\n  posting_schedule: claude.posting_schedule || null,\n  top_videos: top20.map(v => ({\n    video_id: v.video_id,\n    title: v.title,\n    views: v.views,\n    likes: v.likes,\n    comments: v.comments,\n    duration_seconds: v.duration_seconds,\n    outlier_score: v.outlier_score,\n    published_at: v.published_at,\n    thumbnail_url: v.thumbnail_url\n  })),\n  strengths: claude.strengths || [],\n  weaknesses: claude.weaknesses || [],\n  blue_ocean_opportunities: claude.blue_ocean_opportunities || [],\n  content_saturation_map: claude.content_saturation_map || [],\n  verdict,\n  verdict_reasoning: (claude.verdict_reasoning || '').slice(0, 2000),\n  verdict_score: verdictScore,\n  analyzed_at: new Date().toISOString(),\n  comment_insights: data.comment_insights || null,\n    analysis_duration_seconds: data.analysis_duration_seconds || null,\n  analysis_cost_usd: data.analysis_cost_usd || 0,\n  status: 'completed',\n  error_message: null\n};\n\ntry {\n  const patchRes = await fetch(`${supabaseUrl}/rest/v1/channel_analyses?id=eq.${analysisId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify(patch)\n  });\n  if (!patchRes.ok) {\n    const errText = await patchRes.text();\n    return [{ json: { ...data, write_error: `PATCH failed: HTTP ${patchRes.status}: ${errText.slice(0, 200)}` } }];\n  }\n} catch (e) {\n  return [{ json: { ...data, write_error: e.message } }];\n}\n\n// Check if group has >= 2 completed analyses\nlet groupComplete = false;\nlet completedCount = 0;\ntry {\n  const groupUrl = `${supabaseUrl}/rest/v1/channel_analyses?analysis_group_id=eq.${analysisGroupId}&status=eq.completed&select=id`;\n  const groupRes = await fetch(groupUrl, { method: 'GET', headers: sbHeaders });\n  if (groupRes.ok) {\n    const rows = await groupRes.json();\n    completedCount = Array.isArray(rows) ? rows.length : 0;\n    groupComplete = completedCount >= 2;\n  }\n} catch (_) {}\n\n// Log completion\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: null, topic_id: null, stage: 'channel_analyze',\n      scene_number: null, action: 'analysis_completed', status: 'success',\n      duration_ms: (data.analysis_duration_seconds || 0) * 1000,\n      cost_usd: data.analysis_cost_usd || 0, retry_count: 0\n    })\n  });\n} catch (_) {}\n\nreturn [{ json: {\n  success: true,\n  analysis_id: analysisId,\n  analysis_group_id: analysisGroupId,\n  channel_name: meta.channel_name,\n  verdict,\n  verdict_score: verdictScore,\n  group_completed_count: completedCount,\n  should_trigger_compare: groupComplete,\n  failed: false\n} }];"
+        }
+      },
+      {
+        "id": "code-ca-trigger-compare",
+        "name": "Fire Discovery + Compare",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2280,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// After analysis: trigger discovery ONLY for the first channel in a group.\n// Subsequent analyses (competitor deep-dives) skip discovery to prevent infinite loops.\n\nconst data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst webhookBase = $env.N8N_WEBHOOK_BASE || $env.WEBHOOK_URL || 'https://n8n.srv1297445.hstgr.cloud/webhook';\nconst dashboardToken = $env.DASHBOARD_API_TOKEN;\nconst headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${dashboardToken}` };\nconst SUPABASE_URL = $env.SUPABASE_URL || 'https://supabase.operscale.cloud';\nconst SUPABASE_KEY = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nconst results = {};\n\n// Check how many completed analyses exist in this group\nconst countResp = await fetch(\n  `${SUPABASE_URL}/rest/v1/channel_analyses?analysis_group_id=eq.${data.analysis_group_id}&status=eq.completed&select=id`,\n  { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }\n);\nconst completedAnalyses = await countResp.json();\nconst completedCount = Array.isArray(completedAnalyses) ? completedAnalyses.length : 0;\n\n// Only trigger discovery if this is the FIRST completed analysis (prevents infinite loop)\nif (completedCount <= 1) {\n  try {\n    const res = await fetch(`${webhookBase}/discover-competitors`, {\n      method: 'POST', headers,\n      body: JSON.stringify({ analysis_group_id: data.analysis_group_id, source_channel_analysis_id: data.analysis_id })\n    });\n    results.discovery_triggered = true;\n  } catch (e) {\n    results.discovery_triggered = false;\n    results.discovery_error = e.message;\n  }\n} else {\n  results.discovery_skipped = true;\n  results.discovery_reason = `${completedCount} analyses already completed, skipping discovery`;\n}\n\n// Trigger comparison if >= 2 completed\nif (completedCount >= 2) {\n  try {\n    const res = await fetch(`${webhookBase}/channel-compare`, {\n      method: 'POST', headers,\n      body: JSON.stringify({ analysis_group_id: data.analysis_group_id })\n    });\n    results.compare_triggered = true;\n  } catch (e) {\n    results.compare_triggered = false;\n  }\n}\n\nreturn [{ json: { ...data, ...results, completed_count: completedCount } }];"
+        }
+      },
+      {
+        "id": "code-ca-comments",
+        "name": "Fetch & Analyze Comments",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1380,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const data = $input.first().json;\nif (data.failed) return [{ json: data }];\n\nconst ytKey = $env.YOUTUBE_API_KEY;\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst topVideos = (data.top_videos || []).slice(0, 10);\n\nif (!topVideos.length || !ytKey) {\n  return [{ json: { ...data, comment_insights: null, comments_fetched: 0, comment_error: 'no videos or no YT key' } }];\n}\n\nasync function fetchRetry(url, opts, retries) {\n  if (!retries) retries = 3;\n  for (let i = 0; i < retries; i++) {\n    try {\n      const r = await fetch(url, opts);\n      if (r.ok) return r;\n      if (r.status === 403) return { ok: false, status: 403, statusText: 'Forbidden' };\n      if (r.status >= 400 && r.status < 500) return { ok: false, status: r.status, statusText: await r.text() };\n    } catch (e) { if (i === retries - 1) throw e; }\n    await new Promise(function(res) { setTimeout(res, 1000 * Math.pow(2, i)); });\n  }\n  return null;\n}\n\nconst allComments = [];\nfor (let vi = 0; vi < topVideos.length; vi++) {\n  const video = topVideos[vi];\n  try {\n    const resp = await fetchRetry(\n      'https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=' + video.video_id + '&maxResults=20&order=relevance&textFormat=plainText&key=' + ytKey\n    );\n    if (resp && resp.ok) {\n      const d = await resp.json();\n      const items = d.items || [];\n      for (let ci = 0; ci < items.length; ci++) {\n        const sn = items[ci].snippet;\n        const c = sn && sn.topLevelComment && sn.topLevelComment.snippet;\n        if (c) {\n          allComments.push({\n            video_title: video.title,\n            video_views: video.views,\n            author: c.authorDisplayName,\n            text: (c.textDisplay || '').substring(0, 500),\n            likes: c.likeCount || 0\n          });\n        }\n      }\n    }\n  } catch (e) { /* skip video */ }\n  await new Promise(function(res) { setTimeout(res, 200); });\n}\n\nif (allComments.length === 0) {\n  return [{ json: { ...data, comment_insights: null, comments_fetched: 0, comment_error: 'no comments found across ' + topVideos.length + ' videos' } }];\n}\n\nconst commentLines = [];\nfor (let li = 0; li < allComments.length; li++) {\n  const cm = allComments[li];\n  commentLines.push('[Video: \"' + cm.video_title + '\" | ' + cm.likes + ' likes] ' + cm.author + ': \"' + cm.text.replace(/\"/g, \"'\") + '\"');\n}\nconst commentBlock = commentLines.join('\\n');\nconst topicStr = (data.primary_topics || []).join(', ');\n\nconst systemPrompt = 'You are a YouTube audience analyst. You extract actionable intelligence from comment sections — not sentiment fluff, but specific content gaps, unmet needs, and demand signals. Deduplicate similar comments into single insights. Prioritize comments with high like counts as stronger signals of audience-wide sentiment. Return ONLY valid JSON. No markdown, no backticks. First character must be {.';\n\nconst userPrompt = 'Analyze these ' + allComments.length + ' YouTube comments from a channel about \"' + topicStr + '\".\\n\\n'\n  + 'COMMENTS (sorted by like count within each video):\\n'\n  + commentBlock + '\\n\\n'\n  + 'INSTRUCTIONS:\\n'\n  + '- Deduplicate: if 5 comments ask for the same topic, report it ONCE with a count (\"requested by ~5 commenters across 3 videos\").\\n'\n  + '- Prioritize high-like comments as stronger demand signals.\\n'\n  + '- content_gaps: topics viewers explicitly ask for that this channel has NOT covered. Minimum 3, maximum 10.\\n'\n  + '- pain_points: specific frustrations, NOT vague complaints.\\n'\n  + '- requested_topics: deduplicated list of video ideas viewers suggest. Minimum 3.\\n'\n  + '- top_questions: the most common genuine questions (not rhetorical). Minimum 3.\\n'\n  + '- competitor_mentions: other channels or creators mentioned BY NAME.\\n'\n  + '- viral_comment_themes: themes in comments with the highest like counts (10+ likes).\\n'\n  + '- If comments are sparse or mostly generic, say so in audience_sentiment.\\n\\n'\n  + 'Return JSON:\\n'\n  + '{\\n'\n  + '  \"content_gaps\": [{\"gap\": \"specific topic\", \"signal_strength\": \"strong|moderate|weak\", \"evidence\": \"~N commenters across M videos\"}],\\n'\n  + '  \"pain_points\": [{\"pain_point\": \"specific frustration\", \"frequency\": \"how often\", \"severity\": \"high|medium|low\"}],\\n'\n  + '  \"competitor_mentions\": [{\"name\": \"channel name\", \"context\": \"why mentioned\", \"mention_count\": 1}],\\n'\n  + '  \"requested_topics\": [{\"topic\": \"specific idea\", \"demand_evidence\": \"how many requested\"}],\\n'\n  + '  \"audience_sentiment\": \"positive|mixed|negative\",\\n'\n  + '  \"audience_sophistication\": \"beginner|intermediate|advanced\",\\n'\n  + '  \"audience_sophistication_evidence\": \"what indicates this level\",\\n'\n  + '  \"top_questions\": [{\"question\": \"the question\", \"frequency\": \"how often\", \"video_context\": \"which videos\"}],\\n'\n  + '  \"viral_comment_themes\": [{\"theme\": \"what resonates\", \"example_comment\": \"example\", \"like_count\": 0}],\\n'\n  + '  \"data_quality_note\": \"assessment of comment quality\"\\n'\n  + '}';\n\nlet commentError = null;\ntry {\n  const claudeResp = await fetch('https://api.anthropic.com/v1/messages', {\n    method: 'POST',\n    headers: {\n      'x-api-key': anthropicKey,\n      'anthropic-version': '2023-06-01',\n      'content-type': 'application/json'\n    },\n    body: JSON.stringify({\n      model: 'claude-haiku-4-5-20251001',\n      max_tokens: 4096,\n      system: systemPrompt,\n      messages: [{ role: 'user', content: userPrompt }]\n    })\n  });\n\n  if (!claudeResp.ok) {\n    const errBody = await claudeResp.text();\n    commentError = 'Haiku HTTP ' + claudeResp.status + ': ' + errBody.slice(0, 500);\n  } else {\n    const claudeData = await claudeResp.json();\n    const text = (claudeData.content && claudeData.content[0] && claudeData.content[0].text) || '';\n    if (!text) {\n      commentError = 'Haiku returned empty text. Stop reason: ' + (claudeData.stop_reason || 'unknown');\n    } else {\n      const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n      if (jsonMatch) {\n        try {\n          const insights = JSON.parse(jsonMatch[0]);\n          return [{ json: { ...data, comment_insights: insights, comments_fetched: allComments.length, comment_error: null } }];\n        } catch (parseErr) {\n          commentError = 'JSON parse failed: ' + parseErr.message + '. First 300 chars: ' + text.slice(0, 300);\n        }\n      } else {\n        commentError = 'No JSON found in Haiku response. First 300 chars: ' + text.slice(0, 300);\n      }\n    }\n  }\n} catch (e) {\n  commentError = 'Haiku fetch exception: ' + e.message;\n}\n\nreturn [{ json: { ...data, comment_insights: null, comments_fetched: allComments.length, comment_error: commentError } }];"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Validate & Auth",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate & Auth": {
+        "main": [
+          [
+            {
+              "node": "Respond To Webhook",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Check Success Gate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Success Gate": {
+        "main": [
+          [
+            {
+              "node": "Resolve Channel",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resolve Channel": {
+        "main": [
+          [
+            {
+              "node": "Fetch Channel Metadata",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Channel Metadata": {
+        "main": [
+          [
+            {
+              "node": "Fetch Videos & Calculate Metrics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Videos & Calculate Metrics": {
+        "main": [
+          [
+            {
+              "node": "Fetch & Analyze Comments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude Deep Analysis": {
+        "main": [
+          [
+            {
+              "node": "Write Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Write Results": {
+        "main": [
+          [
+            {
+              "node": "Fire Discovery + Compare",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch & Analyze Comments": {
+        "main": [
+          [
+            {
+              "node": "Claude Deep Analysis",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-17T14:51:45.020Z",
+        "id": 3159,
+        "workflowId": "ERkpYV8lBwViCj9L",
+        "versionId": "3409c5b4-79e6-43ad-a993-4bdcc53e3ac8",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-17T14:51:44.992Z",
+        "id": 3158,
+        "workflowId": "ERkpYV8lBwViCj9L",
+        "versionId": "3409c5b4-79e6-43ad-a993-4bdcc53e3ac8",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

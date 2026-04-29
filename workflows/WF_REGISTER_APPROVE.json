@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-18T20:59:30.116Z",
+  "createdAt": "2026-04-18T13:17:05.344Z",
+  "id": "2OnmKDOt6M0OFetD",
   "name": "WF_REGISTER_APPROVE",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "wf-rapr-webhook",
@@ -88,5 +94,142 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "ac2f1018-2539-41ea-9a67-c354401d7877",
+  "activeVersionId": "ac2f1018-2539-41ea-9a67-c354401d7877",
+  "versionCounter": 13,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-18T13:17:05.345Z",
+      "createdAt": "2026-04-18T13:17:05.345Z",
+      "role": "workflow:owner",
+      "workflowId": "2OnmKDOt6M0OFetD",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-18T20:59:30.117Z",
+    "createdAt": "2026-04-18T20:59:30.117Z",
+    "versionId": "ac2f1018-2539-41ea-9a67-c354401d7877",
+    "workflowId": "2OnmKDOt6M0OFetD",
+    "nodes": [
+      {
+        "id": "wf-rapr-webhook",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "register/approve",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {
+            "allowedOrigins": "*"
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        },
+        "webhookId": "wf-register-approve-prod"
+      },
+      {
+        "id": "wf-rapr-handle",
+        "name": "Validate, PATCH & Fire Classify",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const raw = $input.first().json;\nconst payload = raw.body || raw;\nconst headers = raw.headers || {};\n\nconst authHeader = headers.authorization || headers.Authorization || '';\nif (authHeader !== 'Bearer ' + $env.DASHBOARD_API_TOKEN) {\n  return [{ json: { success: false, http_status: 401, error: 'Unauthorized' } }];\n}\n\nconst topic_id = payload.topic_id;\nconst production_register = payload.production_register;\nconst compat_status = payload.compat_status || null;\nconst VALID = ['REGISTER_01_ECONOMIST','REGISTER_02_PREMIUM','REGISTER_03_NOIR','REGISTER_04_SIGNAL','REGISTER_05_ARCHIVE'];\n\nif (!topic_id) return [{ json: { success: false, http_status: 400, error: 'topic_id required' } }];\nif (!VALID.includes(production_register)) {\n  return [{ json: { success: false, http_status: 400, error: 'Invalid production_register. Must be one of ' + VALID.join(', ') } }];\n}\n\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst sbHeaders = { 'apikey': SRK, 'Authorization': `Bearer ${SRK}`, 'Content-Type': 'application/json' };\n\n// 1. Read topic to ensure we have video_ratio + scene_count for scene-classify call\nconst topicRes = await fetch(`${SB}/rest/v1/topics?id=eq.${topic_id}&select=id,video_ratio,production_mode,scene_count,pipeline_stage`, { headers: sbHeaders });\nconst topicArr = await topicRes.json();\nconst topic = topicArr[0];\nif (!topic) return [{ json: { success: false, http_status: 404, error: 'Topic not found' } }];\n\n// 2. PATCH topic with register selection\n//    Topic-stage (Gate 1): scene_count === 0 → only record register, do NOT set pipeline_stage\n//    Script-stage (ProductionMonitor): scene_count > 0 → advance pipeline_stage to 'classifying'\nconst now = new Date().toISOString();\nconst isTopicStage = (topic.scene_count || 0) === 0;\nconst patchPayload = isTopicStage\n  ? { production_register, register_selected_at: now, updated_at: now }\n  : { production_register, register_selected_at: now, pipeline_stage: 'classifying', updated_at: now };\nconst patchRes = await fetch(`${SB}/rest/v1/topics?id=eq.${topic_id}`, {\n  method: 'PATCH',\n  headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n  body: JSON.stringify(patchPayload)\n});\nif (!patchRes.ok) {\n  const err = await patchRes.text();\n  return [{ json: { success: false, http_status: patchRes.status, error: 'PATCH failed: ' + err.slice(0, 400) } }];\n}\n\n// 3. Log\nawait fetch(`${SB}/rest/v1/production_logs`, {\n  method: 'POST',\n  headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n  body: JSON.stringify({\n    topic_id,\n    stage: 'register_approve',\n    action: 'completed',\n    status: 'success',\n    metadata: { production_register, production_mode: topic.production_mode, compat_status }\n  })\n}).catch(e => console.warn('Log failed: ' + e.message));\n\n// 4. Fire scene-classify (downstream pipeline continuation) — ONLY at script-stage\nlet classifyTriggered = false;\nlet classifyError = null;\nif (isTopicStage) {\n  classifyError = 'skipped_topic_stage';\n} else try {\n  const base = $env.N8N_WEBHOOK_BASE;\n  const token = $env.DASHBOARD_API_TOKEN;\n  const cRes = await fetch(`${base}/scene-classify`, {\n    method: 'POST',\n    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },\n    body: JSON.stringify({\n      topic_id,\n      video_ratio: topic.video_ratio || '100_0',\n      scene_count: topic.scene_count || 0,\n      production_register\n    })\n  });\n  classifyTriggered = cRes.ok;\n  if (!cRes.ok) {\n    const err = await cRes.text();\n    classifyError = `HTTP ${cRes.status}: ${err.slice(0, 200)}`;\n  }\n} catch (e) {\n  classifyError = e.message;\n}\n\nreturn [{ json: { success: true, http_status: 200, topic_id, production_register, stage: isTopicStage ? 'topic' : 'script', classify_triggered: classifyTriggered, classify_error: classifyError } }];"
+        }
+      },
+      {
+        "id": "wf-rapr-respond",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          680,
+          300
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify($json) }}",
+          "options": {
+            "responseCode": "={{ $json.http_status || 200 }}"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Validate, PATCH & Fire Classify",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate, PATCH & Fire Classify": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-18T20:59:30.162Z",
+        "id": 3259,
+        "workflowId": "2OnmKDOt6M0OFetD",
+        "versionId": "ac2f1018-2539-41ea-9a67-c354401d7877",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-18T20:59:30.150Z",
+        "id": 3258,
+        "workflowId": "2OnmKDOt6M0OFetD",
+        "versionId": "ac2f1018-2539-41ea-9a67-c354401d7877",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

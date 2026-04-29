@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-26T02:58:02.778Z",
+  "createdAt": "2026-03-28T19:10:17.157Z",
+  "id": "PDxK7Nm7SswpJT80",
   "name": "WF_COMMENTS_SYNC",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-1",
@@ -55,5 +61,130 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        0
+      ]
+    }
+  },
+  "meta": null,
+  "pinData": null,
+  "versionId": "a626e557-7947-4461-a59c-348115afcbc9",
+  "activeVersionId": "a626e557-7947-4461-a59c-348115afcbc9",
+  "versionCounter": 75,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-28T19:10:17.162Z",
+      "createdAt": "2026-03-28T19:10:17.162Z",
+      "role": "workflow:owner",
+      "workflowId": "PDxK7Nm7SswpJT80",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-26T02:58:02.781Z",
+    "createdAt": "2026-04-26T02:58:02.781Z",
+    "versionId": "a626e557-7947-4461-a59c-348115afcbc9",
+    "workflowId": "PDxK7Nm7SswpJT80",
+    "nodes": [
+      {
+        "id": "trigger-1",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "hoursInterval": 24
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "code-1",
+        "name": "Sync Comments",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Pull comments from YouTube for all published videos.\n// Rewritten 2026-04-26 — pre-existing bug used this.helpers.httpRequest +\n// process.env, both broken under n8n 2.8.4 task runner (6 consecutive cron\n// failures since 2026-04-20, zero successes). Now uses fetch() + $env.\n\nconst SB = $env.SUPABASE_URL;\nconst ANON = $env.SUPABASE_ANON_KEY;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst YT = $env.YOUTUBE_API_KEY;\n\nconst sbHeaders = (extra = {}) => ({\n  apikey: ANON,\n  Authorization: `Bearer ${SRK}`,\n  'Content-Type': 'application/json',\n  ...extra\n});\n\nasync function getJson(url, headers) {\n  const r = await fetch(url, { method: 'GET', headers });\n  if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);\n  return r.json();\n}\n\nconst topics = await getJson(\n  `${SB}/rest/v1/topics?status=eq.published&youtube_video_id=not.is.null&select=id,project_id,youtube_video_id,seo_title`,\n  sbHeaders()\n);\n\nlet synced = 0;\nlet topicsChecked = 0;\n\nfor (const topic of (Array.isArray(topics) ? topics : [])) {\n  topicsChecked++;\n  if (!topic.youtube_video_id || !YT) continue;\n\n  try {\n    const resp = await getJson(\n      `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${topic.youtube_video_id}&order=time&maxResults=20&key=${YT}`,\n      { 'Content-Type': 'application/json' }\n    );\n\n    for (const item of (resp && Array.isArray(resp.items) ? resp.items : [])) {\n      const c = item.snippet && item.snippet.topLevelComment && item.snippet.topLevelComment.snippet;\n      const commentId = item.snippet && item.snippet.topLevelComment && item.snippet.topLevelComment.id;\n      if (!c || !commentId) continue;\n\n      // Idempotency: skip if comment already stored\n      const existing = await getJson(\n        `${SB}/rest/v1/comments?platform_comment_id=eq.${commentId}&select=id`,\n        sbHeaders()\n      );\n      if (Array.isArray(existing) && existing.length > 0) continue;\n\n      const insertRes = await fetch(`${SB}/rest/v1/comments`, {\n        method: 'POST',\n        headers: sbHeaders({ Prefer: 'return=minimal' }),\n        body: JSON.stringify({\n          topic_id: topic.id,\n          project_id: topic.project_id,\n          platform: 'youtube',\n          platform_comment_id: commentId,\n          author: c.authorDisplayName,\n          author_avatar_url: c.authorProfileImageUrl,\n          text: c.textOriginal || c.textDisplay,\n          like_count: c.likeCount || 0\n        })\n      });\n      if (insertRes.ok) synced++;\n    }\n  } catch (e) {\n    // Continue with next topic. Per-topic failure is non-fatal so one\n    // dead video does not break the whole nightly sync.\n  }\n}\n\nreturn [{ json: { synced, topics_checked: topicsChecked } }];\n"
+        }
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Sync Comments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-26T02:58:02.853Z",
+        "id": 3608,
+        "workflowId": "PDxK7Nm7SswpJT80",
+        "versionId": "a626e557-7947-4461-a59c-348115afcbc9",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-26T02:58:02.979Z",
+        "id": 3610,
+        "workflowId": "PDxK7Nm7SswpJT80",
+        "versionId": "a626e557-7947-4461-a59c-348115afcbc9",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-26T02:58:02.821Z",
+        "id": 3607,
+        "workflowId": "PDxK7Nm7SswpJT80",
+        "versionId": "a626e557-7947-4461-a59c-348115afcbc9",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-26T02:58:02.957Z",
+        "id": 3609,
+        "workflowId": "PDxK7Nm7SswpJT80",
+        "versionId": "a626e557-7947-4461-a59c-348115afcbc9",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-20T21:43:21.992Z",
+  "createdAt": "2026-04-15T19:01:23.659Z",
+  "id": "NLaW9dm86PfTq3Yo",
   "name": "WF_AB_TEST_ROTATE",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-ab-cron",
@@ -236,5 +242,291 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": null,
+  "versionId": "9e2cf2a0-1a95-4aae-9e58-500550be2807",
+  "activeVersionId": "9e2cf2a0-1a95-4aae-9e58-500550be2807",
+  "versionCounter": 22,
+  "triggerCount": 2,
+  "shared": [
+    {
+      "updatedAt": "2026-04-15T19:01:23.661Z",
+      "createdAt": "2026-04-15T19:01:23.661Z",
+      "role": "workflow:owner",
+      "workflowId": "NLaW9dm86PfTq3Yo",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-20T21:43:21.993Z",
+    "createdAt": "2026-04-20T21:43:21.993Z",
+    "versionId": "9e2cf2a0-1a95-4aae-9e58-500550be2807",
+    "workflowId": "NLaW9dm86PfTq3Yo",
+    "nodes": [
+      {
+        "id": "trigger-ab-cron",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          160
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 */6 * * *"
+              }
+            ]
+          }
+        },
+        "disabled": true
+      },
+      {
+        "id": "trigger-ab-rotate",
+        "name": "Webhook Rotate",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          340
+        ],
+        "parameters": {
+          "path": "ab-test/rotate",
+          "httpMethod": "POST",
+          "responseMode": "responseNode",
+          "options": {},
+          "authentication": "headerAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        },
+        "webhookId": "ab-test-rotate"
+      },
+      {
+        "id": "trigger-ab-start",
+        "name": "Webhook Start",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          540
+        ],
+        "parameters": {
+          "path": "ab-test/start",
+          "httpMethod": "POST",
+          "responseMode": "responseNode",
+          "options": {},
+          "authentication": "headerAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        },
+        "webhookId": "ab-test-start"
+      },
+      {
+        "id": "code-ab-router",
+        "name": "Route Mode",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          340
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Classify incoming trigger:\n//   - Schedule cron: mode='rotate', no filter\n//   - /webhook/ab-test/rotate: mode='rotate', optional ab_test_id\n//   - /webhook/ab-test/start: mode='start', needs { topic_id, test_type, variants[] }\n// Global fetch + $env per MEMORY.md (n8n 2.8.4 task runner compat).\n\nconst raw = $input.first().json;\nconst hasBody = !!raw.body;\nconst payload = raw.body || {};\n\n// Distinguish between /ab-test/rotate and /ab-test/start via webhookUrl (n8n exposes this on raw)\nconst webhookPath = raw.webhookUrl || raw.headers?.['x-webhook-path'] || '';\nconst isStart = hasBody && (payload.test_type || payload.topic_id && Array.isArray(payload.variants));\nconst isRotate = hasBody && !isStart;\nconst isCron = !hasBody;\n\nconst mode = isStart ? 'start' : 'rotate';\n\nreturn [{\n  json: {\n    mode,\n    via_webhook: hasBody,\n    via_cron: isCron,\n    payload,\n    triggered_at: new Date().toISOString()\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-ab-start",
+        "name": "Start Test",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          720,
+          200
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// CF17 — start path. Insert ab_tests + ab_test_variants, apply variant 0 to YouTube.\n// YouTube OAuth via $env.YOUTUBE_OAUTH_TOKEN (pre-obtained bearer; TODO: full refresh-token flow).\n// If OAuth missing, skip videos.update and return — test rows still created for DB-only tracking.\n\nconst data = $input.first().json;\nif (data.mode !== 'start') return $input.item;\nconst p = data.payload || {};\n\nconst topicId = p.topic_id;\nconst testType = p.test_type; // 'title' | 'thumbnail' | 'combined'\nconst variants = Array.isArray(p.variants) ? p.variants : [];\n\nif (!topicId || !testType || variants.length < 2) {\n  return [{ json: { success: false, error: 'Provide { topic_id, test_type, variants: [>=2] }', http_status: 400, via_webhook: true } }];\n}\nif (!['title', 'thumbnail', 'combined'].includes(testType)) {\n  return [{ json: { success: false, error: 'test_type must be title|thumbnail|combined', http_status: 400, via_webhook: true } }];\n}\nif (variants.length > 5) {\n  return [{ json: { success: false, error: 'Max 5 variants per test', http_status: 400, via_webhook: true } }];\n}\n\nconst minImp = Number(p.min_impressions_per_variant) || 1000;\nconst minDays = Number(p.min_days_per_variant) || 2;\nconst rotationHours = Number(p.rotation_interval_hours) || 48;\nconst confThresh = Number(p.confidence_threshold) || 0.95;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst ytOauth = $env.YOUTUBE_OAUTH_TOKEN; // TODO: wire full OAuth2 credential refresh\n\n// 1. Fetch topic for project_id + youtube_video_id\nconst topicRes = await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${topicId}&select=id,project_id,youtube_video_id,seo_title,selected_title,thumbnail_url`, {\n  method: 'GET', headers: sbHeaders\n});\nif (!topicRes.ok) return [{ json: { success: false, error: `Topic fetch failed: ${topicRes.status}`, http_status: 500, via_webhook: true } }];\nconst tArr = await topicRes.json();\nconst topic = Array.isArray(tArr) && tArr[0] ? tArr[0] : null;\nif (!topic) return [{ json: { success: false, error: `Topic ${topicId} not found`, http_status: 404, via_webhook: true } }];\nif (!topic.youtube_video_id) return [{ json: { success: false, error: 'Topic has no youtube_video_id — publish to YouTube before starting A/B test', http_status: 400, via_webhook: true } }];\n\nconst projectId = topic.project_id;\nconst youtubeVideoId = topic.youtube_video_id;\nconst nowIso = new Date().toISOString();\n\n// 2. Insert ab_tests row\nlet abTestId = null;\ntry {\n  const insRes = await fetch(`${supabaseUrl}/rest/v1/ab_tests`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n    body: JSON.stringify({\n      topic_id: topicId,\n      project_id: projectId,\n      youtube_video_id: youtubeVideoId,\n      test_type: testType,\n      status: 'running',\n      min_impressions_per_variant: minImp,\n      min_days_per_variant: minDays,\n      rotation_interval_hours: rotationHours,\n      confidence_threshold: confThresh,\n      started_at: nowIso,\n      last_rotated_at: nowIso\n    })\n  });\n  if (!insRes.ok) return [{ json: { success: false, error: `ab_tests insert: ${insRes.status}: ${(await insRes.text()).slice(0, 200)}`, http_status: 500, via_webhook: true } }];\n  const arr = await insRes.json();\n  abTestId = arr[0]?.id;\n} catch (e) {\n  return [{ json: { success: false, error: `ab_tests insert threw: ${e.message}`, http_status: 500, via_webhook: true } }];\n}\n\n// 3. Insert variants\nconst labels = ['A', 'B', 'C', 'D', 'E'];\nconst variantRows = variants.map((v, idx) => ({\n  ab_test_id: abTestId,\n  variant_label: labels[idx],\n  variant_order: idx,\n  title: v.title || null,\n  thumbnail_url: v.thumbnail_url || null,\n  thumbnail_drive_id: v.thumbnail_drive_id || null,\n  predicted_ctr_score: v.predicted_ctr_score || null\n}));\n\nlet variantIds = [];\ntry {\n  const vRes = await fetch(`${supabaseUrl}/rest/v1/ab_test_variants`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n    body: JSON.stringify(variantRows)\n  });\n  if (!vRes.ok) return [{ json: { success: false, error: `variants insert: ${vRes.status}: ${(await vRes.text()).slice(0, 200)}`, http_status: 500, ab_test_id: abTestId, via_webhook: true } }];\n  variantIds = (await vRes.json()).map(r => r.id);\n} catch (e) {\n  return [{ json: { success: false, error: `variants insert threw: ${e.message}`, http_status: 500, ab_test_id: abTestId, via_webhook: true } }];\n}\n\n// 4. Pick variant 0 as current, PATCH ab_tests.current_variant_id\nconst currentVariantId = variantIds[0];\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/ab_tests?id=eq.${abTestId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({ current_variant_id: currentVariantId })\n  });\n  // Mark variant 0 as live\n  await fetch(`${supabaseUrl}/rest/v1/ab_test_variants?id=eq.${currentVariantId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({ last_live_at: nowIso, rotation_count: 1 })\n  });\n} catch (_) { }\n\n// 5. Apply variant 0 to YouTube (videos.update)\nlet applyError = null;\nlet youtubeApplied = false;\nif (ytOauth) {\n  try {\n    // Fetch current video metadata first (to preserve snippet fields we don't change)\n    const getRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${youtubeVideoId}`, {\n      method: 'GET',\n      headers: { 'Authorization': `Bearer ${ytOauth}` }\n    });\n    if (getRes.ok) {\n      const body = await getRes.json();\n      const snippet = body.items?.[0]?.snippet || {};\n      const firstVariant = variants[0] || {};\n      if ((testType === 'title' || testType === 'combined') && firstVariant.title) {\n        snippet.title = firstVariant.title.slice(0, 100);\n      }\n      // categoryId is required by YouTube API on snippet update; preserve if present, else default to '22' (People & Blogs)\n      if (!snippet.categoryId) snippet.categoryId = '22';\n\n      const updRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet`, {\n        method: 'PUT',\n        headers: {\n          'Authorization': `Bearer ${ytOauth}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify({ id: youtubeVideoId, snippet })\n      });\n      if (!updRes.ok) applyError = `videos.update: HTTP ${updRes.status}: ${(await updRes.text()).slice(0, 200)}`;\n      else youtubeApplied = true;\n\n      // Thumbnail upload requires videos/thumbnails endpoint with binary — TODO: implement when OAuth refresh is wired.\n      if (youtubeApplied && (testType === 'thumbnail' || testType === 'combined') && firstVariant.thumbnail_url) {\n        // TODO: POST binary to https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={id}\n        // Needs fetching thumbnail_url -> binary body -> upload with correct content-type.\n      }\n    } else {\n      applyError = `videos.list: HTTP ${getRes.status}`;\n    }\n  } catch (e) {\n    applyError = e.message;\n  }\n} else {\n  applyError = 'YOUTUBE_OAUTH_TOKEN not set — recorded in DB only. TODO: operator configures OAuth refresh flow.';\n}\n\nreturn [{\n  json: {\n    success: true,\n    mode: 'start',\n    ab_test_id: abTestId,\n    topic_id: topicId,\n    project_id: projectId,\n    youtube_video_id: youtubeVideoId,\n    test_type: testType,\n    status: 'running',\n    current_variant_id: currentVariantId,\n    variant_count: variantIds.length,\n    youtube_applied: youtubeApplied,\n    apply_error: applyError,\n    http_status: 200,\n    via_webhook: true\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-ab-rotate",
+        "name": "Rotate Running Tests",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          720,
+          440
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// CF17 — rotate path. Cron + manual. For each running ab_test:\n//   1. Pull YouTube Analytics for current variant window\n//   2. Update cumulative totals on ab_test_variants\n//   3. Insert ab_test_impressions snapshot\n//   4. Pick next variant, apply to YouTube, patch ab_tests\n//   5. Check winner: if all variants meet min_impressions+min_days, run two-proportion z-test\n// Inline backoff. Batch 3 tests per run.\n\nconst data = $input.first().json;\nif (data.mode !== 'rotate') return $input.item;\nconst p = data.payload || {};\nconst specificTestId = p.ab_test_id || null;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst ytOauth = $env.YOUTUBE_OAUTH_TOKEN; // TODO: full OAuth2 refresh\nconst ytChannelId = $env.YOUTUBE_CHANNEL_ID; // required for analytics ids=channel==X\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      if (res.ok) return { ok: true, json: await res.json(), attempts: attempt };\n      const body = await res.text();\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\n// Two-proportion z-test for winner determination\nfunction twoPropZ(x1, n1, x2, n2) {\n  if (n1 <= 0 || n2 <= 0) return 0;\n  const p1 = x1 / n1, p2 = x2 / n2;\n  const pPool = (x1 + x2) / (n1 + n2);\n  const se = Math.sqrt(pPool * (1 - pPool) * (1 / n1 + 1 / n2));\n  if (se === 0) return 0;\n  return (p1 - p2) / se;\n}\n\n// Approximate normal CDF -> confidence\nfunction normalCdf(z) {\n  // Abramowitz & Stegun 26.2.17 approximation\n  const b1 = 0.319381530, b2 = -0.356563782, b3 = 1.781477937, b4 = -1.821255978, b5 = 1.330274429;\n  const p = 0.2316419, c = 0.39894228;\n  const absZ = Math.abs(z);\n  const t = 1 / (1 + p * absZ);\n  const val = c * Math.exp(-absZ * absZ / 2) * (t * (b1 + t * (b2 + t * (b3 + t * (b4 + t * b5)))));\n  return z >= 0 ? 1 - val : val;\n}\n\n// 1. Load running tests\nlet testUrl = `${supabaseUrl}/rest/v1/ab_tests?status=eq.running&select=*&order=last_rotated_at.asc.nullsfirst&limit=3`;\nif (specificTestId) testUrl = `${supabaseUrl}/rest/v1/ab_tests?id=eq.${specificTestId}&status=eq.running&select=*`;\n\nconst testsRes = await fetch(testUrl, { method: 'GET', headers: sbHeaders });\nif (!testsRes.ok) return [{ json: { success: false, error: `fetch ab_tests: ${testsRes.status}`, http_status: 500, via_webhook: data.via_webhook } }];\nconst tests = await testsRes.json();\n\nif (tests.length === 0) {\n  return [{ json: { success: true, mode: 'rotate', message: 'No running tests need rotation', rotated: 0, http_status: 200, via_webhook: data.via_webhook } }];\n}\n\nconst results = [];\nconst nowMs = Date.now();\nconst nowIso = new Date().toISOString();\n\nfor (const test of tests) {\n  const testResult = { ab_test_id: test.id, rotated: false, winner_found: false, errors: [] };\n\n  // Check rotation interval\n  const lastRot = test.last_rotated_at ? new Date(test.last_rotated_at).getTime() : 0;\n  const hoursSinceRot = (nowMs - lastRot) / 3600000;\n  const intervalHrs = test.rotation_interval_hours || 48;\n  const forceRotate = !!p.force || !!specificTestId;\n  if (!forceRotate && hoursSinceRot < intervalHrs) {\n    testResult.skipped = `Only ${hoursSinceRot.toFixed(1)}h since last rotation (interval=${intervalHrs}h)`;\n    results.push(testResult);\n    continue;\n  }\n\n  // 2. Load variants for this test\n  const vRes = await fetch(`${supabaseUrl}/rest/v1/ab_test_variants?ab_test_id=eq.${test.id}&select=*&order=variant_order.asc`, {\n    method: 'GET', headers: sbHeaders\n  });\n  if (!vRes.ok) { testResult.errors.push(`fetch variants: ${vRes.status}`); results.push(testResult); continue; }\n  const variants = await vRes.json();\n  if (variants.length < 2) { testResult.errors.push('fewer than 2 variants'); results.push(testResult); continue; }\n\n  const currentVariant = variants.find(v => v.id === test.current_variant_id) || variants[0];\n\n  // 3. Pull YouTube Analytics for current variant's window\n  let deltaImp = 0, deltaViews = 0, windowStart = null, windowEnd = nowIso, analyticsOk = false;\n  if (ytOauth && ytChannelId && test.youtube_video_id) {\n    const windowStartMs = currentVariant.last_live_at ? new Date(currentVariant.last_live_at).getTime() : lastRot || nowMs - (intervalHrs * 3600000);\n    const startDate = new Date(windowStartMs).toISOString().slice(0, 10);\n    const endDate = nowIso.slice(0, 10);\n    windowStart = new Date(windowStartMs).toISOString();\n\n    // TODO: YouTube Analytics API requires full OAuth2 scope 'https://www.googleapis.com/auth/yt-analytics.readonly'\n    const analyticsUrl = `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==${encodeURIComponent(ytChannelId)}&metrics=views,impressions,estimatedMinutesWatched&filters=video==${test.youtube_video_id}&startDate=${startDate}&endDate=${endDate}`;\n    const aRes = await fetchWithRetry(analyticsUrl, {\n      method: 'GET',\n      headers: { 'Authorization': `Bearer ${ytOauth}` }\n    }, 'yt_analytics');\n    if (aRes.ok) {\n      const rows = aRes.json?.rows || [];\n      if (rows.length > 0) {\n        const [views, impressions /* , minutes */] = rows[0];\n        deltaViews = Number(views) || 0;\n        deltaImp = Number(impressions) || 0;\n        analyticsOk = true;\n      } else {\n        testResult.errors.push('analytics returned 0 rows — no data yet');\n      }\n    } else {\n      testResult.errors.push(`analytics ${aRes.status || ''}: ${(aRes.error || '').slice(0, 100)}`);\n    }\n  } else {\n    testResult.errors.push('YOUTUBE_OAUTH_TOKEN or YOUTUBE_CHANNEL_ID missing — rotating blind. TODO: wire OAuth refresh.');\n  }\n\n  // 4. Insert impressions snapshot + update variant cumulatives (even if analytics failed — keeps timeline)\n  if (analyticsOk) {\n    try {\n      await fetch(`${supabaseUrl}/rest/v1/ab_test_impressions`, {\n        method: 'POST', headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          ab_test_variant_id: currentVariant.id,\n          ab_test_id: test.id,\n          snapshot_at: nowIso,\n          window_start: windowStart,\n          window_end: windowEnd,\n          impressions: deltaImp,\n          views: deltaViews,\n          ctr: deltaImp > 0 ? deltaViews / deltaImp : null,\n          source: 'youtube_analytics_api'\n        })\n      });\n    } catch (_) { }\n\n    const newImp = (currentVariant.total_impressions || 0) + deltaImp;\n    const newViews = (currentVariant.total_views || 0) + deltaViews;\n    const newCtr = newImp > 0 ? newViews / newImp : null;\n    const hoursLive = Math.round(((nowMs - (currentVariant.last_live_at ? new Date(currentVariant.last_live_at).getTime() : nowMs)) / 3600000) + (currentVariant.total_hours_live || 0));\n    try {\n      await fetch(`${supabaseUrl}/rest/v1/ab_test_variants?id=eq.${currentVariant.id}`, {\n        method: 'PATCH', headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          total_impressions: newImp,\n          total_views: newViews,\n          total_ctr: newCtr,\n          total_hours_live: hoursLive\n        })\n      });\n      // Mutate locally for winner check below\n      currentVariant.total_impressions = newImp;\n      currentVariant.total_views = newViews;\n      currentVariant.total_ctr = newCtr;\n      currentVariant.total_hours_live = hoursLive;\n    } catch (_) { }\n  }\n\n  // 5. Check winner condition: all variants meet min_impressions + min_days_live\n  const minImp = test.min_impressions_per_variant || 1000;\n  const minHrs = (test.min_days_per_variant || 2) * 24;\n  const allReady = variants.every(v => (v.total_impressions || 0) >= minImp && (v.total_hours_live || 0) >= minHrs);\n\n  let winnerVariantId = null;\n  let winnerConfidence = null;\n  if (allReady) {\n    // Sort by CTR desc, compare top 2\n    const sorted = [...variants].sort((a, b) => (b.total_ctr || 0) - (a.total_ctr || 0));\n    const a = sorted[0], b = sorted[1];\n    const z = twoPropZ(a.total_views || 0, a.total_impressions || 0, b.total_views || 0, b.total_impressions || 0);\n    const confidence = normalCdf(Math.abs(z));\n    winnerConfidence = confidence;\n    if (confidence >= (test.confidence_threshold || 0.95)) {\n      winnerVariantId = a.id;\n      // Mark winner\n      try {\n        await fetch(`${supabaseUrl}/rest/v1/ab_test_variants?id=eq.${a.id}`, {\n          method: 'PATCH', headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n          body: JSON.stringify({ is_winner: true, confidence_score: confidence })\n        });\n      } catch (_) { }\n    }\n  }\n\n  // Abort-if-stuck safety: exceeded 7x min_days without significance -> completed_inconclusive\n  const maxHours = (test.min_days_per_variant || 2) * 24 * 7;\n  const totalHoursAllVariants = variants.reduce((s, v) => s + (v.total_hours_live || 0), 0);\n  const shouldAbort = !winnerVariantId && totalHoursAllVariants > maxHours * variants.length;\n\n  if (winnerVariantId) {\n    // Test completed — apply winner permanently\n    const winnerVariant = variants.find(v => v.id === winnerVariantId);\n    let winnerApplied = false;\n    let winnerApplyError = null;\n    if (ytOauth && winnerVariant) {\n      try {\n        const getRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${test.youtube_video_id}`, {\n          method: 'GET', headers: { 'Authorization': `Bearer ${ytOauth}` }\n        });\n        if (getRes.ok) {\n          const body = await getRes.json();\n          const snippet = body.items?.[0]?.snippet || {};\n          if (winnerVariant.title && (test.test_type === 'title' || test.test_type === 'combined')) {\n            snippet.title = winnerVariant.title.slice(0, 100);\n          }\n          if (!snippet.categoryId) snippet.categoryId = '22';\n          const updRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet`, {\n            method: 'PUT',\n            headers: { 'Authorization': `Bearer ${ytOauth}`, 'Content-Type': 'application/json' },\n            body: JSON.stringify({ id: test.youtube_video_id, snippet })\n          });\n          winnerApplied = updRes.ok;\n          if (!updRes.ok) winnerApplyError = `winner apply: HTTP ${updRes.status}`;\n          // TODO: thumbnails/set for thumbnail/combined winners\n        }\n      } catch (e) { winnerApplyError = e.message; }\n    }\n\n    // PATCH ab_tests — completed\n    try {\n      await fetch(`${supabaseUrl}/rest/v1/ab_tests?id=eq.${test.id}`, {\n        method: 'PATCH', headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          status: 'completed',\n          winning_variant_id: winnerVariantId,\n          winner_applied: winnerApplied,\n          completed_at: nowIso,\n          last_rotated_at: nowIso\n        })\n      });\n    } catch (_) { }\n\n    // Optionally promote winner onto topic\n    if (winnerApplied && winnerVariant.title) {\n      try {\n        await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${test.topic_id}`, {\n          method: 'PATCH', headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n          body: JSON.stringify({ selected_title: winnerVariant.title })\n        });\n      } catch (_) { }\n    }\n\n    testResult.winner_found = true;\n    testResult.winner_variant_id = winnerVariantId;\n    testResult.winner_confidence = winnerConfidence;\n    testResult.winner_applied = winnerApplied;\n    if (winnerApplyError) testResult.errors.push(winnerApplyError);\n  } else if (shouldAbort) {\n    try {\n      await fetch(`${supabaseUrl}/rest/v1/ab_tests?id=eq.${test.id}`, {\n        method: 'PATCH', headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          status: 'completed',\n          completed_at: nowIso,\n          last_rotated_at: nowIso,\n          test_notes: `Inconclusive — exceeded ${maxHours}h without significance (confidence=${(winnerConfidence || 0).toFixed(3)})`\n        })\n      });\n    } catch (_) { }\n    testResult.aborted = true;\n    testResult.winner_confidence = winnerConfidence;\n  } else {\n    // 6. Pick next variant — round-robin by variant_order. Prefer untested variants.\n    const unlive = variants.filter(v => !v.last_live_at);\n    let nextVariant;\n    if (unlive.length > 0) {\n      nextVariant = unlive.sort((a, b) => a.variant_order - b.variant_order)[0];\n    } else {\n      const currentOrder = currentVariant.variant_order;\n      nextVariant = variants.find(v => v.variant_order === (currentOrder + 1) % variants.length);\n    }\n    if (!nextVariant || nextVariant.id === currentVariant.id) {\n      testResult.errors.push('Could not pick next variant');\n      results.push(testResult);\n      continue;\n    }\n\n    // 7. Apply next variant to YouTube\n    let nextApplied = false;\n    let applyError = null;\n    if (ytOauth) {\n      try {\n        const getRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${test.youtube_video_id}`, {\n          method: 'GET', headers: { 'Authorization': `Bearer ${ytOauth}` }\n        });\n        if (getRes.ok) {\n          const body = await getRes.json();\n          const snippet = body.items?.[0]?.snippet || {};\n          if (nextVariant.title && (test.test_type === 'title' || test.test_type === 'combined')) {\n            snippet.title = nextVariant.title.slice(0, 100);\n          }\n          if (!snippet.categoryId) snippet.categoryId = '22';\n          const updRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet`, {\n            method: 'PUT',\n            headers: { 'Authorization': `Bearer ${ytOauth}`, 'Content-Type': 'application/json' },\n            body: JSON.stringify({ id: test.youtube_video_id, snippet })\n          });\n          nextApplied = updRes.ok;\n          if (!updRes.ok) applyError = `rotation apply: HTTP ${updRes.status}`;\n          // TODO: thumbnails/set for thumbnail/combined rotations\n        } else { applyError = `videos.list: ${getRes.status}`; }\n      } catch (e) { applyError = e.message; }\n    } else {\n      applyError = 'OAuth missing — rotation recorded in DB only';\n    }\n\n    // 8. PATCH ab_tests + variant\n    try {\n      await fetch(`${supabaseUrl}/rest/v1/ab_tests?id=eq.${test.id}`, {\n        method: 'PATCH', headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({ current_variant_id: nextVariant.id, last_rotated_at: nowIso })\n      });\n      await fetch(`${supabaseUrl}/rest/v1/ab_test_variants?id=eq.${nextVariant.id}`, {\n        method: 'PATCH', headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n        body: JSON.stringify({\n          last_live_at: nowIso,\n          rotation_count: (nextVariant.rotation_count || 0) + 1\n        })\n      });\n    } catch (_) { }\n\n    testResult.rotated = true;\n    testResult.from_variant_id = currentVariant.id;\n    testResult.to_variant_id = nextVariant.id;\n    testResult.youtube_applied = nextApplied;\n    if (applyError) testResult.errors.push(applyError);\n  }\n\n  // production_logs per test\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n      method: 'POST', headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        project_id: test.project_id,\n        topic_id: test.topic_id,\n        stage: 'ab_test_rotate',\n        scene_number: null,\n        action: testResult.winner_found ? 'winner_found' : (testResult.aborted ? 'aborted_inconclusive' : 'rotated'),\n        status: testResult.errors.length ? 'partial' : 'success',\n        duration_ms: 0,\n        cost_usd: 0,\n        retry_count: 0\n      })\n    });\n  } catch (_) { }\n\n  results.push(testResult);\n}\n\nreturn [{\n  json: {\n    success: true,\n    mode: 'rotate',\n    tests_processed: tests.length,\n    results,\n    http_status: 200,\n    via_webhook: data.via_webhook\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-ab-merge",
+        "name": "Merge Branches",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          980,
+          340
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Passes through whichever branch fired. Used as a common-tail before webhook respond.\nreturn $input.all();"
+        }
+      },
+      {
+        "id": "respond-ab",
+        "name": "Respond To Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1240,
+          340
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {
+            "responseCode": "={{ $json.http_status || 200 }}"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Route Mode",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook Rotate": {
+        "main": [
+          [
+            {
+              "node": "Route Mode",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook Start": {
+        "main": [
+          [
+            {
+              "node": "Route Mode",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Route Mode": {
+        "main": [
+          [
+            {
+              "node": "Start Test",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Rotate Running Tests",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Start Test": {
+        "main": [
+          [
+            {
+              "node": "Merge Branches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Rotate Running Tests": {
+        "main": [
+          [
+            {
+              "node": "Merge Branches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge Branches": {
+        "main": [
+          [
+            {
+              "node": "Respond To Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-20T21:43:22.049Z",
+        "id": 3321,
+        "workflowId": "NLaW9dm86PfTq3Yo",
+        "versionId": "9e2cf2a0-1a95-4aae-9e58-500550be2807",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-20T21:43:22.022Z",
+        "id": 3320,
+        "workflowId": "NLaW9dm86PfTq3Yo",
+        "versionId": "9e2cf2a0-1a95-4aae-9e58-500550be2807",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

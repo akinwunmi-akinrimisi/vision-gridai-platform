@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-25T14:27:58.007Z",
+  "createdAt": "2026-04-25T14:27:58.007Z",
+  "id": "8Bt81fwQOd7KOLeu",
   "name": "WF_COACH_REPORT",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "cron-1",
@@ -427,5 +433,477 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": {
+    "node:Cron: 1st of Month 06:00 UTC": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": null,
+  "versionId": "7aef8f3b-2115-4493-aaaf-6feba736c406",
+  "activeVersionId": "7aef8f3b-2115-4493-aaaf-6feba736c406",
+  "versionCounter": 5,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-25T14:27:58.010Z",
+      "createdAt": "2026-04-25T14:27:58.010Z",
+      "role": "workflow:owner",
+      "workflowId": "8Bt81fwQOd7KOLeu",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-25T14:27:58.015Z",
+    "createdAt": "2026-04-25T14:27:58.015Z",
+    "versionId": "7aef8f3b-2115-4493-aaaf-6feba736c406",
+    "workflowId": "8Bt81fwQOd7KOLeu",
+    "nodes": [
+      {
+        "id": "cron-1",
+        "name": "Cron: 1st of Month 06:00 UTC",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 6 1 * *"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "http-projects",
+        "name": "List Projects (AU + GENERAL)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          470,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "https://supabase.operscale.cloud/rest/v1/projects?country_target=in.(AU,GENERAL)&select=id,name,country_target,niche",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "split-1",
+        "name": "Split Per Project",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          700,
+          300
+        ],
+        "parameters": {
+          "batchSize": 1
+        }
+      },
+      {
+        "id": "http-perf",
+        "name": "Fetch Prior Month Topics",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          930,
+          220
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://supabase.operscale.cloud/rest/v1/topics?project_id=eq.{{ $('Split Per Project').first().json.id }}&published_at=gte.{{ $now.minus({months:1}).startOf('month').toISO() }}&published_at=lt.{{ $now.startOf('month').toISO() }}&select=id,seo_title,niche_variant,yt_views,yt_watch_hours,yt_avg_view_pct,yt_estimated_revenue,yt_actual_cpm,script_quality_score",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "if-has-data",
+        "name": "Has Published Last Month?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1160,
+          220
+        ],
+        "parameters": {
+          "conditions": {
+            "conditions": [
+              {
+                "leftValue": "={{ $json.length }}",
+                "rightValue": 1,
+                "operator": {
+                  "type": "number",
+                  "operation": "gte"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "http-cal",
+        "name": "Fetch Next Month Calendar",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1390,
+          140
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://supabase.operscale.cloud/rest/v1/country_calendar_events?country_target=eq.{{ $('Split Per Project').first().json.country_target }}&scheduled_at=gte.{{ $now.startOf('month').toISO() }}&scheduled_at=lt.{{ $now.plus({months:2}).startOf('month').toISO() }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "http-comp",
+        "name": "Fetch Competitor Activity",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1390,
+          280
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://supabase.operscale.cloud/rest/v1/channel_analyses?project_id=eq.{{ $('Split Per Project').first().json.id }}&analyzed_at=gte.{{ $now.minus({months:1}).startOf('month').toISO() }}&order=analyzed_at.desc&limit=20",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "exec-router",
+        "name": "Resolve coach_monthly Prompt",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          1620,
+          220
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": {
+            "value": "={{ $env.WF_COUNTRY_ROUTER_ID }}",
+            "mode": "id"
+          },
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "workflow_name",
+                "value": "WF_COACH_REPORT"
+              },
+              {
+                "name": "country_target",
+                "value": "={{ $('Split Per Project').first().json.country_target }}"
+              },
+              {
+                "name": "prompt_stage",
+                "value": "monthly"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "code-payload",
+        "name": "Build Coach Payload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1850,
+          220
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const project = $('Split Per Project').first().json;\nconst topics = $('Fetch Prior Month Topics').first().json;\nconst calendar = $('Fetch Next Month Calendar').first().json;\nconst competitors = $('Fetch Competitor Activity').first().json;\nconst promptResolved = $input.first().json;\n\nconst userInput = {\n  cardmath_monthly_performance: { videos: topics, count: topics.length },\n  competitor_moves: competitors,\n  au_calendar_next_month: calendar,\n  cardmath_topic_backlog: []\n};\n\nreturn [{ json: {\n  project_id: project.id,\n  country_target: project.country_target,\n  prompt_text: promptResolved.prompt_text,\n  user_input: userInput\n} }];"
+        }
+      },
+      {
+        "id": "http-anthropic",
+        "name": "Call Claude (Coach Report)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2080,
+          220
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.anthropic.com/v1/messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-api-key",
+                "value": "={{ $env.ANTHROPIC_API_KEY }}"
+              },
+              {
+                "name": "anthropic-version",
+                "value": "2023-06-01"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "model",
+                "value": "claude-sonnet-4-20250514"
+              },
+              {
+                "name": "max_tokens",
+                "value": "10000"
+              },
+              {
+                "name": "system",
+                "value": "={{ $json.prompt_text }}"
+              },
+              {
+                "name": "messages",
+                "value": "=[{\"role\":\"user\",\"content\":\"Generate this month's coach report. Input: {{ JSON.stringify($json.user_input) }}\"}]"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "http-insert",
+        "name": "Insert coach_reports Row",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2310,
+          220
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://supabase.operscale.cloud/rest/v1/coach_reports",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyContentType": "json",
+          "jsonBody": "={ \"project_id\": \"{{ $('Build Coach Payload').first().json.project_id }}\", \"country_target\": \"{{ $('Build Coach Payload').first().json.country_target }}\", \"report_period_start\": \"{{ $now.minus({months:1}).startOf('month').toISODate() }}\", \"report_period_end\": \"{{ $now.minus({months:1}).endOf('month').toISODate() }}\", \"report_jsonb\": {{ JSON.stringify($input.first().json.content?.[0]?.text || $input.first().json) }} }"
+        }
+      }
+    ],
+    "connections": {
+      "Cron: 1st of Month 06:00 UTC": {
+        "main": [
+          [
+            {
+              "node": "List Projects (AU + GENERAL)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "List Projects (AU + GENERAL)": {
+        "main": [
+          [
+            {
+              "node": "Split Per Project",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split Per Project": {
+        "main": [
+          [
+            {
+              "node": "Fetch Prior Month Topics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Prior Month Topics": {
+        "main": [
+          [
+            {
+              "node": "Has Published Last Month?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Published Last Month?": {
+        "main": [
+          [
+            {
+              "node": "Fetch Next Month Calendar",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Fetch Competitor Activity",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Fetch Next Month Calendar": {
+        "main": [
+          [
+            {
+              "node": "Resolve coach_monthly Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Competitor Activity": {
+        "main": [
+          [
+            {
+              "node": "Resolve coach_monthly Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resolve coach_monthly Prompt": {
+        "main": [
+          [
+            {
+              "node": "Build Coach Payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Coach Payload": {
+        "main": [
+          [
+            {
+              "node": "Call Claude (Coach Report)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call Claude (Coach Report)": {
+        "main": [
+          [
+            {
+              "node": "Insert coach_reports Row",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-25T20:38:21.304Z",
+        "id": 3576,
+        "workflowId": "8Bt81fwQOd7KOLeu",
+        "versionId": "7aef8f3b-2115-4493-aaaf-6feba736c406",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

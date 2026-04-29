@@ -1,7 +1,11 @@
 {
+  "updatedAt": "2026-04-25T20:41:15.873Z",
+  "createdAt": "2026-04-25T14:29:24.487Z",
   "id": "74QqHrOOXJyu35Ng",
   "name": "WF_DEMONETIZATION_AUDIT",
+  "description": null,
   "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "webhook-1",
@@ -456,7 +460,498 @@
     "availableInMCP": false
   },
   "staticData": null,
+  "meta": null,
   "pinData": null,
   "versionId": "ee87f405-3e92-4edc-85d9-d0c495e3b8ec",
-  "tags": []
+  "activeVersionId": "ee87f405-3e92-4edc-85d9-d0c495e3b8ec",
+  "versionCounter": 5,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-25T14:29:24.489Z",
+      "createdAt": "2026-04-25T14:29:24.489Z",
+      "role": "workflow:owner",
+      "workflowId": "74QqHrOOXJyu35Ng",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-25T20:41:15.874Z",
+    "createdAt": "2026-04-25T20:41:15.874Z",
+    "versionId": "ee87f405-3e92-4edc-85d9-d0c495e3b8ec",
+    "workflowId": "74QqHrOOXJyu35Ng",
+    "nodes": [
+      {
+        "id": "webhook-1",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "path": "demonetization/audit",
+          "httpMethod": "POST",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        }
+      },
+      {
+        "id": "if-auth",
+        "name": "Auth Check",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          470,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "conditions": [
+              {
+                "leftValue": "={{ $json.headers.authorization }}",
+                "rightValue": "=Bearer {{ $env.DASHBOARD_API_TOKEN }}",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "respond-401",
+        "name": "401 Unauthorized",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          700,
+          460
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseCode": 401,
+          "responseBody": "={ \"error\": \"Unauthorized\" }"
+        }
+      },
+      {
+        "id": "http-topic",
+        "name": "Read Topic + Project",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          700,
+          220
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://supabase.operscale.cloud/rest/v1/topics?id=eq.{{ $json.body.topic_id }}&select=*,project:projects(id,country_target,niche,niche_description)",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "if-country",
+        "name": "Is AU?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          930,
+          220
+        ],
+        "parameters": {
+          "conditions": {
+            "conditions": [
+              {
+                "leftValue": "={{ $json[0].country_target }}",
+                "rightValue": "AU",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "respond-skip",
+        "name": "Respond: Skip (General)",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1160,
+          320
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseCode": 200,
+          "responseBody": "={ \"decision\": \"clear\", \"skipped\": true, \"reason\": \"GENERAL project — no country-specific compliance rules to enforce\" }"
+        }
+      },
+      {
+        "id": "http-rules",
+        "name": "Fetch AU Rules",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1160,
+          140
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "https://supabase.operscale.cloud/rest/v1/country_compliance_rules?country_target=eq.AU&select=*",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "exec-router",
+        "name": "Resolve demon_audit_au",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          1390,
+          140
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": {
+            "value": "={{ $env.WF_COUNTRY_ROUTER_ID }}",
+            "mode": "id"
+          },
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "workflow_name",
+                "value": "WF_DEMONETIZATION_AUDIT"
+              },
+              {
+                "name": "country_target",
+                "value": "AU"
+              },
+              {
+                "name": "prompt_stage",
+                "value": "audit"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "code-payload",
+        "name": "Build Anthropic Payload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1620,
+          140
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const topic = $('Read Topic + Project').first().json[0];\nconst rules = $('Fetch AU Rules').first().json;\nconst promptResolved = $input.first().json;\n\nconst userInput = {\n  final_script: topic.script_json,\n  final_title: topic.seo_title,\n  final_description: topic.yt_description,\n  topic_niche_variant: topic.niche_variant,\n  au_rules: rules\n};\n\nreturn [{ json: {\n  topic_id: topic.id,\n  prompt_text: promptResolved.prompt_text,\n  user_input: userInput\n} }];"
+        }
+      },
+      {
+        "id": "http-anthropic",
+        "name": "Call Claude (Audit)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1850,
+          140
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.anthropic.com/v1/messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-api-key",
+                "value": "={{ $env.ANTHROPIC_API_KEY }}"
+              },
+              {
+                "name": "anthropic-version",
+                "value": "2023-06-01"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "model",
+                "value": "claude-sonnet-4-20250514"
+              },
+              {
+                "name": "max_tokens",
+                "value": "4000"
+              },
+              {
+                "name": "system",
+                "value": "={{ $json.prompt_text }}"
+              },
+              {
+                "name": "messages",
+                "value": "=[{\"role\":\"user\",\"content\":\"Audit this content. Input: {{ JSON.stringify($json.user_input) }}\"}]"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "code-parse",
+        "name": "Parse Audit Result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2080,
+          140
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const topic = $('Read Topic + Project').first().json[0];\nconst response = $input.first().json;\nconst payload = response.content?.[0]?.text || '';\n\nlet parsed;\ntry {\n  const jsonText = payload.replace(/^[^{]*/, '').replace(/[^}]*$/, '');\n  parsed = JSON.parse(jsonText);\n} catch (e) {\n  parsed = { overall_decision: 'manual_review_required', error: 'parse_failure', raw: payload.slice(0, 500) };\n}\n\nlet compliance_review_status = 'approved';\nif (parsed.overall_decision === 'manual_review_required') compliance_review_status = 'pending';\nif (parsed.overall_decision === 'block') compliance_review_status = 'rejected';\n\nreturn [{ json: {\n  topic_id: topic.id,\n  audit_result: parsed,\n  compliance_review_status\n} }];"
+        }
+      },
+      {
+        "id": "http-update",
+        "name": "Update Topic",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2310,
+          140
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://supabase.operscale.cloud/rest/v1/topics?id=eq.{{ $json.topic_id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=representation"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyContentType": "json",
+          "jsonBody": "={ \"demonetization_audit_result\": {{ JSON.stringify($json.audit_result) }}, \"compliance_review_status\": \"{{ $json.compliance_review_status }}\" }"
+        }
+      },
+      {
+        "id": "respond-final",
+        "name": "Respond: Audit Complete",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          2540,
+          140
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseCode": 200,
+          "responseBody": "={ \"decision\": \"{{ $('Parse Audit Result').first().json.audit_result.overall_decision }}\", \"compliance_review_status\": \"{{ $('Parse Audit Result').first().json.compliance_review_status }}\" }"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Auth Check",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Auth Check": {
+        "main": [
+          [
+            {
+              "node": "Read Topic + Project",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "401 Unauthorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Topic + Project": {
+        "main": [
+          [
+            {
+              "node": "Is AU?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is AU?": {
+        "main": [
+          [
+            {
+              "node": "Fetch AU Rules",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond: Skip (General)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch AU Rules": {
+        "main": [
+          [
+            {
+              "node": "Resolve demon_audit_au",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resolve demon_audit_au": {
+        "main": [
+          [
+            {
+              "node": "Build Anthropic Payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Anthropic Payload": {
+        "main": [
+          [
+            {
+              "node": "Call Claude (Audit)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call Claude (Audit)": {
+        "main": [
+          [
+            {
+              "node": "Parse Audit Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Audit Result": {
+        "main": [
+          [
+            {
+              "node": "Update Topic",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Topic": {
+        "main": [
+          [
+            {
+              "node": "Respond: Audit Complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-25T20:41:15.986Z",
+        "id": 3579,
+        "workflowId": "74QqHrOOXJyu35Ng",
+        "versionId": "ee87f405-3e92-4edc-85d9-d0c495e3b8ec",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

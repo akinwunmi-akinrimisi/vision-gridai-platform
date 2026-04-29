@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-03-18T15:03:40.262Z",
+  "createdAt": "2026-03-15T21:39:29.330Z",
+  "id": "8rwaDoKgwhqpUkcH",
   "name": "WF_WEBHOOK_STATUS — Health Check",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "webhook-1",
@@ -78,5 +84,120 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "57399f63-2c14-4a08-9b81-41d7d1703d90",
+  "activeVersionId": "57399f63-2c14-4a08-9b81-41d7d1703d90",
+  "versionCounter": 8,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-15T21:39:29.337Z",
+      "createdAt": "2026-03-15T21:39:29.337Z",
+      "role": "workflow:owner",
+      "workflowId": "8rwaDoKgwhqpUkcH",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-03-15T21:39:29.348Z",
+    "createdAt": "2026-03-15T21:39:29.348Z",
+    "versionId": "57399f63-2c14-4a08-9b81-41d7d1703d90",
+    "workflowId": "8rwaDoKgwhqpUkcH",
+    "nodes": [
+      {
+        "id": "webhook-1",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          300
+        ],
+        "parameters": {
+          "path": "status",
+          "httpMethod": "GET",
+          "responseMode": "lastNode"
+        },
+        "webhookId": "status-health"
+      },
+      {
+        "id": "code-health",
+        "name": "Health Check",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          400,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const checks = { n8n: 'ok', supabase: 'unknown', timestamp: new Date().toISOString() };\n\ntry {\n  const supabaseUrl = $env.SUPABASE_URL;\n  const apikey = $env.SUPABASE_ANON_KEY;\n  const srk = $env.SUPABASE_SERVICE_ROLE_KEY;\n  \n  const resp = await fetch(`${supabaseUrl}/rest/v1/projects?select=id&limit=1`, {\n    headers: { apikey, Authorization: `Bearer ${srk}` }\n  });\n  \n  if (resp.ok) {\n    checks.supabase = 'ok';\n  } else {\n    checks.supabase = `error: HTTP ${resp.status}`;\n  }\n} catch(e) {\n  checks.supabase = `error: ${e.message}`;\n}\n\nchecks.healthy = checks.n8n === 'ok' && checks.supabase === 'ok';\n\nreturn [{ json: checks }];"
+        }
+      },
+      {
+        "id": "respond-1",
+        "name": "Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          600,
+          300
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify($json) }}"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Health Check",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Health Check": {
+        "main": [
+          [
+            {
+              "node": "Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-16T13:06:14.707Z",
+        "id": 3104,
+        "workflowId": "8rwaDoKgwhqpUkcH",
+        "versionId": "57399f63-2c14-4a08-9b81-41d7d1703d90",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

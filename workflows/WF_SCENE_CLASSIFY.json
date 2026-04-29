@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-18T16:20:29.896Z",
+  "createdAt": "2026-04-17T00:21:38.858Z",
+  "id": "WaPnGhyhQO2gDemX",
   "name": "WF_SCENE_CLASSIFY",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-sc-webhook",
@@ -307,5 +313,360 @@
     "executionTimeout": 600,
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "164f3206-eaa2-41a2-8300-84e6ade17cd5",
+  "activeVersionId": "164f3206-eaa2-41a2-8300-84e6ade17cd5",
+  "versionCounter": 20,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-17T00:21:38.860Z",
+      "createdAt": "2026-04-17T00:21:38.860Z",
+      "role": "workflow:owner",
+      "workflowId": "WaPnGhyhQO2gDemX",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-18T16:20:29.898Z",
+    "createdAt": "2026-04-18T16:20:29.898Z",
+    "versionId": "164f3206-eaa2-41a2-8300-84e6ade17cd5",
+    "workflowId": "WaPnGhyhQO2gDemX",
+    "nodes": [
+      {
+        "id": "trigger-sc-webhook",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          240
+        ],
+        "parameters": {
+          "path": "scene-classify",
+          "httpMethod": "POST",
+          "authentication": "none",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "scene-classify"
+      },
+      {
+        "id": "code-sc-validate",
+        "name": "Validate & Auth",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          240
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// WF_SCENE_CLASSIFY — validate auth, extract params, calculate video_count.\n// If video_count === 0 (ratio '100_0'), skip classification: mark all scenes has_video=false.\n// Global fetch + $env per MEMORY.md (n8n 2.8.4 task runner compat).\n\nconst raw = $input.first().json;\nconst payload = raw.body || raw;\nconst headers = raw.headers || {};\n\n// Auth check\nconst authHeader = headers.authorization || headers.Authorization || '';\nconst expectedToken = `Bearer ${$env.DASHBOARD_API_TOKEN}`;\nif (authHeader !== expectedToken) {\n  return [{\n    json: {\n      success: false,\n      error: 'Unauthorized — invalid or missing Authorization header',\n      http_status: 401\n    }\n  }];\n}\n\nconst topicId = payload.topic_id;\nconst videoRatio = payload.video_ratio || '100_0';\nconst sceneCount = parseInt(payload.scene_count || '0', 10);\nconst productionRegister = payload.production_register || null;\n\nif (!topicId) {\n  return [{\n    json: {\n      success: false,\n      error: 'Provide { topic_id, video_ratio, scene_count }',\n      http_status: 400\n    }\n  }];\n}\n\nif (sceneCount <= 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'scene_count must be > 0',\n      http_status: 400\n    }\n  }];\n}\n\n// Calculate video_count from ratio\nconst ratioMap = {\n  '100_0': 0,\n  '95_5': 0.05,\n  '90_10': 0.10,\n  '85_15': 0.15\n};\n\nconst fraction = ratioMap[videoRatio];\nif (fraction === undefined) {\n  return [{\n    json: {\n      success: false,\n      error: `Invalid video_ratio '${videoRatio}'. Must be one of: 100_0, 95_5, 90_10, 85_15`,\n      http_status: 400\n    }\n  }];\n}\n\nconst videoCount = Math.round(sceneCount * fraction);\n\n// If video_count === 0, skip classification entirely\nif (videoCount === 0) {\n  const supabaseUrl = $env.SUPABASE_URL;\n  const sbHeaders = {\n    'apikey': $env.SUPABASE_ANON_KEY,\n    'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n    'Content-Type': 'application/json'\n  };\n\n  // Set all scenes to has_video=false, scene_classification='static_optimal'\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/scenes?topic_id=eq.${topicId}`, {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        has_video: false,\n        scene_classification: 'static_optimal',\n        classification_reasoning: 'Video ratio 100_0 — all scenes static'\n      })\n    });\n  } catch (e) {\n    return [{\n      json: {\n        success: false,\n        error: `Failed to patch scenes for 100_0 ratio: ${e.message}`,\n        http_status: 500\n      }\n    }];\n  }\n\n  // Log completion\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        topic_id: topicId,\n        stage: 'scene_classify',\n        scene_number: null,\n        action: 'skip_all_static',\n        status: 'success',\n        duration_ms: 0,\n        cost_usd: 0,\n        retry_count: 0\n      })\n    });\n  } catch (_) { /* logging best-effort */ }\n\n  return [{\n    json: {\n      success: true,\n      production_register: productionRegister,\n      message: 'All scenes set to static (video_ratio=100_0, video_count=0)',\n      topic_id: topicId,\n      video_count: 0,\n      video_ratio: videoRatio,\n      skipped_classification: true,\n      http_status: 200\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    success: true,\n    production_register: productionRegister,\n    topic_id: topicId,\n    video_ratio: videoRatio,\n    scene_count: sceneCount,\n    video_count: videoCount,\n    skipped_classification: false,\n    started_at: new Date().toISOString(),\n    http_status: 200\n  }\n}];"
+        }
+      },
+      {
+        "id": "respond-sc-immediate",
+        "name": "Respond To Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          720,
+          240
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { success: $json.success, message: $json.skipped_classification ? $json.message : 'Classification started', topic_id: $json.topic_id, video_count: $json.video_count, video_ratio: $json.video_ratio, error: $json.error || undefined } }}",
+          "options": {
+            "responseCode": "={{ $json.http_status || 200 }}"
+          }
+        }
+      },
+      {
+        "id": "if-sc-needs-classify",
+        "name": "Needs Classification?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          960,
+          240
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "cond-sc-1",
+                "leftValue": "={{ $json.skipped_classification }}",
+                "rightValue": false,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              },
+              {
+                "id": "cond-sc-2",
+                "leftValue": "={{ $json.success }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "code-sc-fetch-scenes",
+        "name": "Fetch Scenes",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1220,
+          180
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Fetch all scenes for the topic from Supabase REST.\n// Global fetch + $env per MEMORY.md.\n\nconst data = $input.first().json;\nconst topicId = data.topic_id;\nconst videoCount = data.video_count;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst scenesUrl = `${supabaseUrl}/rest/v1/scenes?topic_id=eq.${topicId}&order=scene_number.asc&select=id,scene_number,narration_text,image_prompt,audio_duration_ms,chapter`;\n\nlet scenes = [];\ntry {\n  const res = await fetch(scenesUrl, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) {\n    const errText = await res.text();\n    throw new Error(`HTTP ${res.status}: ${errText.slice(0, 300)}`);\n  }\n  scenes = await res.json();\n} catch (e) {\n  return [{\n    json: {\n      success: false,\n      error: `Failed to fetch scenes: ${e.message}`,\n      topic_id: topicId\n    }\n  }];\n}\n\nif (!Array.isArray(scenes) || scenes.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'No scenes found for topic — cannot classify',\n      topic_id: topicId\n    }\n  }];\n}\n\n// Group chapters for distribution cap later\nconst chapterMap = {};\nfor (const s of scenes) {\n  const ch = String(s.chapter || 'Unassigned').trim();\n  if (!chapterMap[ch]) chapterMap[ch] = [];\n  chapterMap[ch].push(s.scene_number);\n}\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    production_register: data.production_register || null,\n    video_count: videoCount,\n    video_ratio: data.video_ratio,\n    scene_count: scenes.length,\n    scenes,\n    chapter_map: chapterMap,\n    chapter_count: Object.keys(chapterMap).length,\n    started_at: data.started_at\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-sc-classify",
+        "name": "Claude Classification (batched)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1480,
+          180
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Send scenes to Claude Opus 4.6 in batches of 30 for classification.\n// Each scene classified as: motion_required / motion_beneficial / static_optimal.\n// Inline exponential backoff (2s/4s/8s). Max 3 retries per batch.\n// Global fetch + $env per MEMORY.md.\n\nconst data = $input.first().json;\nif (data.success === false) return $input.item;\n\nconst scenes = data.scenes || [];\nconst videoCount = data.video_count;\nconst totalScenes = scenes.length;\n\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nconst BATCH_SIZE = 30;\nconst allClassifications = [];\n\n// Split into batches\nconst batches = [];\nfor (let i = 0; i < scenes.length; i += BATCH_SIZE) {\n  batches.push(scenes.slice(i, i + BATCH_SIZE));\n}\n\nfor (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {\n  const batch = batches[batchIdx];\n\n  // Proportionally distribute video slots per batch\n  const batchVideoSlots = Math.round(videoCount * (batch.length / totalScenes));\n\n  const scenesBlock = batch.map(s => {\n    const dur = s.audio_duration_ms ? `${(s.audio_duration_ms / 1000).toFixed(1)}s` : 'unknown';\n    return `Scene ${s.scene_number} [${dur}] (Ch: ${s.chapter || 'N/A'}):\\n  Narration: ${(s.narration_text || '').slice(0, 200)}\\n  Image Prompt: ${(s.image_prompt || '').slice(0, 150)}`;\n  }).join('\\n\\n');\n\n  const systemPrompt = `You are a cinematic scene analyst for a documentary video production pipeline. You classify scenes by their motion requirements to determine which should receive AI-generated video (I2V) treatment versus remaining as Ken Burns still images.\n\nClassification guide:\n- motion_required: Scenes depicting physical action, movement, transformation, or sequences where stillness would feel unnatural (e.g., walking, driving, water flowing, crowds moving, machinery operating)\n- motion_beneficial: Scenes that would noticeably benefit from subtle motion but work acceptably as stills (e.g., emotional close-ups, weather/atmosphere, slow reveals)\n- static_optimal: Scenes where a still image with Ken Burns pan/zoom is ideal (e.g., data charts, landscapes, portraits, text overlays, abstract concepts, historical photos)\n\nBe strict with motion_required — reserve it for scenes where stillness is genuinely jarring.`;\n\n  const userPrompt = `Classify these ${batch.length} scenes. I need exactly ${batchVideoSlots} scenes selected for video treatment from this batch.\n\n${scenesBlock}\n\nReturn ONLY valid JSON (no markdown fences):\n{\n  \"classifications\": [\n    {\n      \"scene_number\": <int>,\n      \"classification\": \"<motion_required|motion_beneficial|static_optimal>\",\n      \"reasoning\": \"<1 sentence why>\",\n      \"motion_intensity\": <float 0.0-1.0>\n    }\n  ]\n}`;\n\n  let parsed = null;\n  let lastError = null;\n\n  for (let attempt = 1; attempt <= 3; attempt++) {\n    try {\n      const res = await fetch('https://api.anthropic.com/v1/messages', {\n        method: 'POST',\n        headers: {\n          'x-api-key': anthropicKey,\n          'anthropic-version': '2023-06-01',\n          'content-type': 'application/json'\n        },\n        body: JSON.stringify({\n          model: 'claude-opus-4-6',\n          max_tokens: 4096,\n          system: systemPrompt,\n          messages: [{ role: 'user', content: userPrompt }]\n        })\n      });\n\n      if (res.ok) {\n        const body = await res.json();\n        const text = body.content?.[0]?.text || '';\n        const clean = text.replace(/```json|```/g, '').trim();\n\n        try {\n          parsed = JSON.parse(clean);\n        } catch {\n          const m = clean.match(/\\{[\\s\\S]*\\}/);\n          if (m) { try { parsed = JSON.parse(m[0]); } catch {} }\n        }\n\n        if (parsed && Array.isArray(parsed.classifications)) break;\n        lastError = 'JSON parse failed';\n        parsed = null;\n      } else {\n        const errBody = await res.text();\n        lastError = `HTTP ${res.status}: ${errBody.slice(0, 200)}`;\n        if (res.status === 429) await sleep(30000);\n        if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n      }\n    } catch (e) {\n      lastError = e.message;\n    }\n\n    if (attempt < 3) {\n      const delay = [2000, 4000, 8000][attempt - 1];\n      await sleep(delay);\n    }\n  }\n\n  if (parsed && Array.isArray(parsed.classifications)) {\n    // Map by scene_number for quick lookup\n    for (const c of parsed.classifications) {\n      const valid = ['motion_required', 'motion_beneficial', 'static_optimal'].includes(c.classification);\n      allClassifications.push({\n        scene_number: c.scene_number,\n        classification: valid ? c.classification : 'static_optimal',\n        reasoning: String(c.reasoning || '').slice(0, 500),\n        motion_intensity: Math.max(0, Math.min(1, parseFloat(c.motion_intensity) || 0))\n      });\n    }\n  } else {\n    // Fallback: mark entire batch as static_optimal\n    for (const s of batch) {\n      allClassifications.push({\n        scene_number: s.scene_number,\n        classification: 'static_optimal',\n        reasoning: `Classification fallback (batch ${batchIdx + 1} failed: ${lastError || 'unknown'})`,\n        motion_intensity: 0\n      });\n    }\n  }\n\n  // Inter-batch delay to avoid rate limiting\n  if (batchIdx + 1 < batches.length) {\n    await sleep(1500);\n  }\n}\n\nreturn [{\n  json: {\n        production_register: data.production_register || null,\ntopic_id: data.topic_id,\n    video_count: videoCount,\n    video_ratio: data.video_ratio,\n    scene_count: totalScenes,\n    chapter_map: data.chapter_map,\n    chapter_count: data.chapter_count,\n    all_classifications: allClassifications,\n    batches_processed: batches.length,\n    started_at: data.started_at\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-sc-rank-select",
+        "name": "Rank & Select",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1740,
+          180
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Collect all classifications. Sort by priority (motion_required first, then\n// motion_beneficial). Select top N scenes (N = video_count). Distribute across\n// chapters (cap at 40% of video_count per chapter to prevent clustering).\n\nconst data = $input.first().json;\nif (data.success === false) return $input.item;\n\nconst classifications = data.all_classifications || [];\nconst videoCount = data.video_count;\nconst chapterMap = data.chapter_map || {};\nconst chapterCount = data.chapter_count || 1;\n\n// Priority ordering:\n// 1. motion_required — sorted by motion_intensity desc\n// 2. motion_beneficial — sorted by motion_intensity desc\n// 3. static_optimal — never selected unless we must fill quota\nconst priorityOrder = { 'motion_required': 0, 'motion_beneficial': 1, 'static_optimal': 2 };\n\nconst sorted = [...classifications].sort((a, b) => {\n  const pA = priorityOrder[a.classification] ?? 2;\n  const pB = priorityOrder[b.classification] ?? 2;\n  if (pA !== pB) return pA - pB;\n  return (b.motion_intensity || 0) - (a.motion_intensity || 0);\n});\n\n// Build reverse map: scene_number -> chapter name\nconst sceneToChapter = {};\nfor (const [chName, sceneNums] of Object.entries(chapterMap)) {\n  for (const sn of sceneNums) {\n    sceneToChapter[sn] = chName;\n  }\n}\n\n// Per-chapter cap: max 40% of total video_count per chapter\nconst maxPerChapter = Math.max(1, Math.ceil(videoCount * 0.4));\nconst chapterCounts = {};\nfor (const ch of Object.keys(chapterMap)) {\n  chapterCounts[ch] = 0;\n}\n\nconst selected = [];\nconst remaining = [];\n\nfor (const item of sorted) {\n  if (selected.length >= videoCount) {\n    remaining.push(item);\n    continue;\n  }\n\n  const ch = sceneToChapter[item.scene_number] || 'Unassigned';\n  const currentCount = chapterCounts[ch] || 0;\n\n  if (currentCount >= maxPerChapter) {\n    // Cap exceeded for this chapter — defer to remaining\n    remaining.push(item);\n    continue;\n  }\n\n  selected.push(item);\n  chapterCounts[ch] = currentCount + 1;\n}\n\n// If we still need more (cap deferred some), fill from remaining\nif (selected.length < videoCount && remaining.length > 0) {\n  const need = videoCount - selected.length;\n  const overflow = remaining\n    .filter(r => !selected.some(s => s.scene_number === r.scene_number))\n    .slice(0, need);\n  selected.push(...overflow);\n}\n\nconst selectedSceneNumbers = new Set(selected.map(s => s.scene_number));\n\n// Build classification map for all scenes\nconst classificationMap = {};\nfor (const c of classifications) {\n  classificationMap[c.scene_number] = {\n    classification: c.classification,\n    reasoning: c.reasoning,\n    motion_intensity: c.motion_intensity,\n    has_video: selectedSceneNumbers.has(c.scene_number)\n  };\n}\n\nreturn [{\n  json: {\n        production_register: data.production_register || null,\ntopic_id: data.topic_id,\n    video_count: videoCount,\n    actual_selected: selected.length,\n    video_ratio: data.video_ratio,\n    scene_count: data.scene_count,\n    selected_scene_numbers: [...selectedSceneNumbers].sort((a, b) => a - b),\n    classification_map: classificationMap,\n    chapter_distribution: chapterCounts,\n    started_at: data.started_at\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-sc-placement",
+        "name": "Video Placement",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2000,
+          180
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// For each selected video scene, call Claude to determine optimal 10-second\n// window placement within the scene's duration. Batch all selected scenes\n// in one call to minimize API cost.\n// Global fetch + $env per MEMORY.md.\n\nconst data = $input.first().json;\nif (data.success === false) return $input.item;\n\nconst selectedNumbers = data.selected_scene_numbers || [];\nconst classMap = data.classification_map || {};\n\nif (selectedNumbers.length === 0) {\n  return [{\n    json: {\n      ...data,\n      placement_results: {},\n      placement_cost_usd: 0\n    }\n  }];\n}\n\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\n// Fetch full scene data for selected scenes to get narration + duration\nconst idFilter = selectedNumbers.map(n => `scene_number.eq.${n}`).join(',');\nconst scenesUrl = `${supabaseUrl}/rest/v1/scenes?topic_id=eq.${data.topic_id}&or=(${idFilter})&select=scene_number,narration_text,audio_duration_ms,image_prompt&order=scene_number.asc`;\n\nlet selectedScenes = [];\ntry {\n  const res = await fetch(scenesUrl, { method: 'GET', headers: sbHeaders });\n  if (res.ok) selectedScenes = await res.json();\n} catch (_) { /* fallback below */ }\n\n// Build prompt for placement\nconst scenesBlock = selectedScenes.map(s => {\n  const durMs = s.audio_duration_ms || 10000;\n  const durSec = (durMs / 1000).toFixed(1);\n  return `Scene ${s.scene_number} [${durSec}s total]:\\n  Narration: ${(s.narration_text || '').slice(0, 150)}\\n  Visual: ${(s.image_prompt || '').slice(0, 100)}`;\n}).join('\\n\\n');\n\nconst placementPrompt = `For each documentary scene below, determine the optimal 10-second window for AI video generation within its total duration.\n\nRules:\n- The video clip is exactly 10 seconds (10000ms)\n- It must fit within the scene's total duration (start_ms + 10000 <= total_duration_ms)\n- Place the video at the most visually dynamic moment in the narration\n- If scene is shorter than 12 seconds, start at 0ms\n- Prefer placing video at emotional peaks, action moments, or reveal points\n\nScenes:\n${scenesBlock}\n\nReturn ONLY valid JSON (no markdown fences):\n{\n  \"placements\": [\n    {\n      \"scene_number\": <int>,\n      \"start_ms\": <int>,\n      \"end_ms\": <int>,\n      \"placement_reason\": \"<1 sentence>\"\n    }\n  ]\n}`;\n\nlet placements = null;\nlet placementCost = 0;\n\nfor (let attempt = 1; attempt <= 3; attempt++) {\n  try {\n    const res = await fetch('https://api.anthropic.com/v1/messages', {\n      method: 'POST',\n      headers: {\n        'x-api-key': anthropicKey,\n        'anthropic-version': '2023-06-01',\n        'content-type': 'application/json'\n      },\n      body: JSON.stringify({\n        model: 'claude-opus-4-6',\n        max_tokens: 2048,\n        messages: [{ role: 'user', content: placementPrompt }]\n      })\n    });\n\n    if (res.ok) {\n      const body = await res.json();\n      const text = body.content?.[0]?.text || '';\n      const clean = text.replace(/```json|```/g, '').trim();\n      try {\n        placements = JSON.parse(clean);\n      } catch {\n        const m = clean.match(/\\{[\\s\\S]*\\}/);\n        if (m) { try { placements = JSON.parse(m[0]); } catch {} }\n      }\n      if (placements && Array.isArray(placements.placements)) {\n        placementCost = 0.03;\n        break;\n      }\n      placements = null;\n    } else if (res.status === 429) {\n      await sleep(30000);\n    }\n  } catch (_) { }\n\n  if (attempt < 3) await sleep(Math.min(2000 * Math.pow(2, attempt - 1), 8000));\n}\n\n// Build placement map\nconst placementMap = {};\nif (placements && Array.isArray(placements.placements)) {\n  for (const p of placements.placements) {\n    const sceneData = selectedScenes.find(s => s.scene_number === p.scene_number);\n    const totalMs = sceneData?.audio_duration_ms || 30000;\n    let startMs = Math.max(0, parseInt(p.start_ms) || 0);\n    let endMs = startMs + 10000;\n\n    // Clamp to scene duration\n    if (endMs > totalMs) {\n      startMs = Math.max(0, totalMs - 10000);\n      endMs = startMs + 10000;\n    }\n\n    placementMap[p.scene_number] = {\n      start_ms: startMs,\n      end_ms: endMs,\n      placement_reason: String(p.placement_reason || '').slice(0, 300)\n    };\n  }\n}\n\n// Fill defaults for any missing placements\nfor (const sn of selectedNumbers) {\n  if (!placementMap[sn]) {\n    placementMap[sn] = {\n      start_ms: 0,\n      end_ms: 10000,\n      placement_reason: 'Default placement (beginning of scene)'\n    };\n  }\n}\n\nreturn [{\n  json: {\n    ...data,\n    placement_map: placementMap,\n    placement_cost_usd: placementCost\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-sc-write-results",
+        "name": "Write Results",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2260,
+          180
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Batch PATCH all scenes with classification results.\n// For video scenes: has_video=true, video_placement_start_ms, video_placement_end_ms,\n//   scene_classification, classification_reasoning\n// For non-video scenes: has_video=false, scene_classification, classification_reasoning\n// Also INSERT scene_classifications JSONB into cost_calculator_snapshots.\n// Global fetch + $env per MEMORY.md.\n\nconst data = $input.first().json;\nif (data.success === false) return $input.item;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst topicId = data.topic_id;\nconst classMap = data.classification_map || {};\nconst placementMap = data.placement_map || {};\nconst selectedSet = new Set(data.selected_scene_numbers || []);\nconst productionRegister = data.production_register || null;\n\nlet patchErrors = [];\nlet patchCount = 0;\n\n// Batch patch by scene_number. Supabase REST does not support bulk PATCH with\n// different bodies per row, so we loop. For efficiency, batch non-video scenes\n// in a single PATCH (they share the same has_video=false fields minus reasoning).\n\n// Video scenes — individual patches (each has unique placement data)\nfor (const sn of data.selected_scene_numbers || []) {\n  const cls = classMap[sn] || {};\n  const placement = placementMap[sn] || { start_ms: 0, end_ms: 10000 };\n\n  const body = {\n    has_video: true,\n    video_placement_start_ms: placement.start_ms,\n    video_placement_end_ms: placement.end_ms,\n    scene_classification: cls.classification || 'motion_beneficial',\n    classification_reasoning: `${cls.reasoning || ''} | Placement: ${placement.placement_reason || ''}`.slice(0, 1000)\n  };\n  body.production_register = productionRegister;\n\n  try {\n    const res = await fetch(`${supabaseUrl}/rest/v1/scenes?topic_id=eq.${topicId}&scene_number=eq.${sn}`, {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify(body)\n    });\n    if (!res.ok) {\n      patchErrors.push(`Scene ${sn}: HTTP ${res.status}`);\n    } else {\n      patchCount++;\n    }\n  } catch (e) {\n    patchErrors.push(`Scene ${sn}: ${e.message}`);\n  }\n}\n\n// Non-video scenes — batch by classification type for fewer PATCHes\nconst byClassification = {};\nfor (const [snStr, cls] of Object.entries(classMap)) {\n  const sn = parseInt(snStr, 10);\n  if (selectedSet.has(sn)) continue; // already patched above\n  const key = cls.classification || 'static_optimal';\n  if (!byClassification[key]) byClassification[key] = [];\n  byClassification[key].push(sn);\n}\n\nfor (const [classification, sceneNumbers] of Object.entries(byClassification)) {\n  // Supabase supports filter-based PATCH on multiple rows\n  // We can batch all scenes of same classification type\n  const filter = sceneNumbers.map(n => `scene_number.eq.${n}`).join(',');\n  const body = {\n    has_video: false,\n    scene_classification: classification,\n    classification_reasoning: 'Not selected for video treatment'\n  };\n  body.production_register = productionRegister;\n\n  try {\n    const res = await fetch(`${supabaseUrl}/rest/v1/scenes?topic_id=eq.${topicId}&or=(${filter})`, {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify(body)\n    });\n    if (!res.ok) {\n      patchErrors.push(`Batch ${classification}: HTTP ${res.status}`);\n    } else {\n      patchCount += sceneNumbers.length;\n    }\n  } catch (e) {\n    patchErrors.push(`Batch ${classification}: ${e.message}`);\n  }\n}\n\n// Insert classification snapshot into cost_calculator_snapshots\ntry {\n  const snapshot = {\n    topic_id: topicId,\n    video_count: data.actual_selected || data.video_count,\n    video_ratio: data.video_ratio,\n    selected_scene_numbers: data.selected_scene_numbers,\n    chapter_distribution: data.chapter_distribution,\n    classification_summary: {\n      motion_required: Object.values(classMap).filter(c => c.classification === 'motion_required').length,\n      motion_beneficial: Object.values(classMap).filter(c => c.classification === 'motion_beneficial').length,\n      static_optimal: Object.values(classMap).filter(c => c.classification === 'static_optimal').length\n    },\n    classified_at: new Date().toISOString()\n  };\n\n  // Upsert: check if row exists for this topic_id\n  const existingRes = await fetch(`${supabaseUrl}/rest/v1/cost_calculator_snapshots?topic_id=eq.${topicId}&select=id&limit=1`, {\n    method: 'GET',\n    headers: sbHeaders\n  });\n  const existing = existingRes.ok ? await existingRes.json() : [];\n\n  if (Array.isArray(existing) && existing.length > 0) {\n    await fetch(`${supabaseUrl}/rest/v1/cost_calculator_snapshots?topic_id=eq.${topicId}`, {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({ scene_classifications: snapshot })\n    });\n  } else {\n    await fetch(`${supabaseUrl}/rest/v1/cost_calculator_snapshots`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        topic_id: topicId,\n        scene_classifications: snapshot\n      })\n    });\n  }\n} catch (_) { /* snapshot logging best-effort */ }\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    video_count: data.video_count,\n    actual_selected: data.actual_selected || data.video_count,\n    video_ratio: data.video_ratio,\n    scene_count: data.scene_count,\n    scenes_patched: patchCount,\n    patch_errors: patchErrors,\n    selected_scene_numbers: data.selected_scene_numbers,\n    chapter_distribution: data.chapter_distribution,\n    started_at: data.started_at,\n    placement_cost_usd: data.placement_cost_usd || 0\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-sc-update-pipeline",
+        "name": "Update Pipeline Stage",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2520,
+          180
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// PATCH topics SET pipeline_stage='tts' to resume the pipeline, then POST /webhook/production/trigger to start TTS.\n// Global fetch + $env per MEMORY.md.\n\nconst data = $input.first().json;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst topicId = data.topic_id;\nlet pipelineError = null;\nlet productionError = null;\n\ntry {\n  const res = await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${topicId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      pipeline_stage: 'tts',\n      last_status_change: new Date().toISOString()\n    })\n  });\n  if (!res.ok) {\n    const errText = await res.text();\n    pipelineError = `PATCH pipeline_stage failed: HTTP ${res.status}: ${errText.slice(0, 200)}`;\n  }\n} catch (e) {\n  pipelineError = `PATCH pipeline_stage exception: ${e.message}`;\n}\n\n// Kick off production (TTS/images) now that scenes are classified\nif (!pipelineError) {\n  try {\n    const webhookBase = $env.N8N_WEBHOOK_BASE;\n    const token = $env.DASHBOARD_API_TOKEN;\n    const prodRes = await fetch(`${webhookBase}/production/trigger`, {\n      method: 'POST',\n      headers: {\n        'Authorization': `Bearer ${token}`,\n        'Content-Type': 'application/json'\n      },\n      body: JSON.stringify({ topic_id: topicId })\n    });\n    if (!prodRes.ok) {\n      const errText = await prodRes.text();\n      productionError = `POST /production/trigger failed: HTTP ${prodRes.status}: ${errText.slice(0, 200)}`;\n    }\n  } catch (e) {\n    productionError = `POST /production/trigger exception: ${e.message}`;\n  }\n}\n\nreturn [{\n  json: {\n    ...data,\n    pipeline_stage_updated: !pipelineError,\n    pipeline_error: pipelineError,\n    production_triggered: !productionError,\n    production_error: productionError\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-sc-log",
+        "name": "Log Completed",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2780,
+          180
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// INSERT into production_logs: stage='scene_classify', action='completed',\n// details with video_count, cost_usd.\n// Global fetch + $env per MEMORY.md.\n\nconst data = $input.first().json;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst topicId = data.topic_id;\nconst durationMs = data.started_at ? Date.now() - new Date(data.started_at).getTime() : 0;\n\n// Estimate classification API cost:\n// - Classification batches: ~$0.02 per batch of 30 scenes (Opus 4.6)\n// - Placement call: data.placement_cost_usd\nconst batchCount = Math.ceil((data.scene_count || 0) / 30);\nconst classifyCost = batchCount * 0.02;\nconst totalCost = classifyCost + (data.placement_cost_usd || 0);\n\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      topic_id: topicId,\n      stage: 'scene_classify',\n      scene_number: null,\n      action: 'completed',\n      status: (data.patch_errors && data.patch_errors.length > 0) ? 'partial' : 'success',\n      duration_ms: durationMs,\n      cost_usd: Math.round(totalCost * 1000) / 1000,\n      retry_count: 0\n    })\n  });\n} catch (_) { /* logging best-effort */ }\n\nreturn [{\n  json: {\n    success: true,\n    topic_id: topicId,\n    video_count: data.video_count,\n    actual_selected: data.actual_selected,\n    video_ratio: data.video_ratio,\n    scene_count: data.scene_count,\n    scenes_patched: data.scenes_patched,\n    selected_scene_numbers: data.selected_scene_numbers,\n    chapter_distribution: data.chapter_distribution,\n    pipeline_stage_updated: data.pipeline_stage_updated,\n    duration_ms: durationMs,\n    estimated_cost_usd: Math.round(totalCost * 1000) / 1000,\n    patch_errors: data.patch_errors || [],\n    completed_at: new Date().toISOString()\n  }\n}];"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Validate & Auth",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate & Auth": {
+        "main": [
+          [
+            {
+              "node": "Respond To Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Respond To Webhook": {
+        "main": [
+          [
+            {
+              "node": "Needs Classification?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Needs Classification?": {
+        "main": [
+          [
+            {
+              "node": "Fetch Scenes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Scenes": {
+        "main": [
+          [
+            {
+              "node": "Claude Classification (batched)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude Classification (batched)": {
+        "main": [
+          [
+            {
+              "node": "Rank & Select",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Rank & Select": {
+        "main": [
+          [
+            {
+              "node": "Video Placement",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Video Placement": {
+        "main": [
+          [
+            {
+              "node": "Write Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Write Results": {
+        "main": [
+          [
+            {
+              "node": "Update Pipeline Stage",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Pipeline Stage": {
+        "main": [
+          [
+            {
+              "node": "Log Completed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-18T16:20:29.948Z",
+        "id": 3231,
+        "workflowId": "WaPnGhyhQO2gDemX",
+        "versionId": "164f3206-eaa2-41a2-8300-84e6ade17cd5",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-18T16:20:29.932Z",
+        "id": 3230,
+        "workflowId": "WaPnGhyhQO2gDemX",
+        "versionId": "164f3206-eaa2-41a2-8300-84e6ade17cd5",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

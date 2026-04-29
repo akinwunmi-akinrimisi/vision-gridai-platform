@@ -1,7 +1,11 @@
 {
+  "updatedAt": "2026-04-25T21:45:58.854Z",
+  "createdAt": "2026-04-18T13:09:52.962Z",
   "id": "Miy5h5O7ncIIrnRg",
   "name": "WF_REGISTER_ANALYZE",
+  "description": null,
   "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "wf-ra-webhook",
@@ -110,7 +114,160 @@
     "availableInMCP": false
   },
   "staticData": null,
+  "meta": null,
   "pinData": null,
   "versionId": "cb9a710c-2ad1-4f27-b621-cb8f5ce86d86",
-  "tags": []
+  "activeVersionId": "cb9a710c-2ad1-4f27-b621-cb8f5ce86d86",
+  "versionCounter": 22,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-18T13:09:52.964Z",
+      "createdAt": "2026-04-18T13:09:52.964Z",
+      "role": "workflow:owner",
+      "workflowId": "Miy5h5O7ncIIrnRg",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-25T21:45:58.856Z",
+    "createdAt": "2026-04-25T21:45:58.856Z",
+    "versionId": "cb9a710c-2ad1-4f27-b621-cb8f5ce86d86",
+    "workflowId": "Miy5h5O7ncIIrnRg",
+    "nodes": [
+      {
+        "id": "wf-ra-webhook",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "register/analyze",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {
+            "allowedOrigins": "*"
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        },
+        "webhookId": "wf-register-analyze-prod"
+      },
+      {
+        "id": "wf-ra-validate",
+        "name": "Validate Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const raw = $input.first().json;\nconst payload = raw.body || raw;\nconst headers = raw.headers || {};\nconst authHeader = headers.authorization || headers.Authorization || '';\nif (authHeader !== 'Bearer ' + $env.DASHBOARD_API_TOKEN) {\n  throw new Error('Unauthorized');\n}\nconst topic_id = payload.topic_id;\nif (!topic_id) throw new Error('topic_id is required');\nconst input_mode = (payload.input_mode === 'topic') ? 'topic' : 'script';\nreturn [{ json: {\n  topic_id,\n  input_mode,\n  topic_research_brief: payload.topic_research_brief || '',\n  topic_angle: payload.topic_angle || '',\n  seo_title_override: payload.seo_title || ''\n} }];"
+        }
+      },
+      {
+        "id": "wf-ra-respond",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          680,
+          200
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ success: true, message: 'Register analysis started', topic_id: $json.topic_id }) }}",
+          "options": {
+            "responseCode": 202
+          }
+        }
+      },
+      {
+        "id": "wf-ra-analyze",
+        "name": "Analyze & Write",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          680,
+          420
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const { topic_id, input_mode, topic_research_brief, topic_angle, seo_title_override } = $input.first().json;\nconst inputMode = input_mode || 'script';\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst AK = $env.ANTHROPIC_API_KEY;\nconst sbHeaders = { 'apikey': SRK, 'Authorization': `Bearer ${SRK}`, 'Content-Type': 'application/json' };\n\n// 1. Read topic\nconst topicRes = await fetch(`${SB}/rest/v1/topics?id=eq.${topic_id}&select=id,project_id,seo_title,original_title,narrative_hook,script_json,scene_count,country_target`, { headers: sbHeaders });\nconst topicArr = await topicRes.json();\nconst topic = topicArr[0];\nif (!topic) throw new Error('Topic not found: ' + topic_id);\n\n// 2. Resolve combined_text\n//    input_mode='topic': use topic_research_brief + topic_angle + seo_title (pre-script classification)\n//    input_mode='script' (default): use script_json or scenes narration\nlet combined = null;\nif (inputMode === 'topic') {\n  combined = [\n    topic_research_brief || '',\n    topic_angle || '',\n    seo_title_override || topic.seo_title || topic.original_title || '',\n    topic.narrative_hook || ''\n  ].filter(Boolean).join('\\n\\n');\n}\nconst sj = topic.script_json;\nif (!combined && sj && typeof sj === 'object' && !Array.isArray(sj)) {\n  // Object form: {combined_text, pass_1, pass_2, pass_3}\n  combined = sj.combined_text;\n  if (!combined && sj.pass_1 && sj.pass_2 && sj.pass_3) {\n    combined = sj.pass_1 + '\\n\\n' + sj.pass_2 + '\\n\\n' + sj.pass_3;\n  }\n}\nif (!combined && Array.isArray(sj)) {\n  // Array form: scenes_array inlined into script_json\n  combined = sj.map(s => s.narration_text || '').filter(Boolean).join(' ');\n}\nif (!combined && typeof sj === 'string') {\n  // Stringified array form (our current stuck topic is this)\n  try {\n    const parsed = JSON.parse(sj);\n    if (Array.isArray(parsed)) {\n      combined = parsed.map(s => s.narration_text || '').filter(Boolean).join(' ');\n    }\n  } catch (e) { /* fall through */ }\n}\nif (!combined) {\n  // Final fallback: aggregate narration from scenes table\n  const scRes = await fetch(`${SB}/rest/v1/scenes?topic_id=eq.${topic_id}&select=scene_number,narration_text&order=scene_number.asc`, { headers: sbHeaders });\n  const scenes = await scRes.json();\n  if (Array.isArray(scenes) && scenes.length > 0) {\n    combined = scenes.map(s => s.narration_text || '').filter(Boolean).join(' ');\n  }\n}\nif (!combined) throw new Error('No text available for register analysis (input_mode=' + inputMode + ') for topic ' + topic_id);\n\n// 3. Trim to ~4k words (first 3k + last 1k)\nconst words = combined.split(/\\s+/);\nconst sample = words.length <= 4000\n  ? combined\n  : words.slice(0, 3000).join(' ') + '\\n\\n[... middle truncated ...]\\n\\n' + words.slice(-1000).join(' ');\n\n// 4. Build classifier prompt\nconst system = 'You are a cinematic production-register classifier for a YouTube documentary platform. Return ONLY valid JSON, no markdown, no commentary.';\n\nconst user = `Classify the script excerpt below into the top 2 best-fit Production Registers from these 5:\\n\\nREGISTER_01_ECONOMIST — documentary explainer. Analytical language, data citations, numeric density, comparison words (\"versus,\" \"compared to\"), definition language. Default for unclassified explainer content across finance, legal, tax, B2B, real estate.\\n\\nREGISTER_02_PREMIUM — luxury editorial. Luxury product names (Platinum, Reserve, Centurion, Sotheby's, Private Client), lifestyle descriptors (marble, leather, first class, mahogany), dollar figures >$10K, wealth/legacy language, luxury real-estate content, HNW personal finance.\\n\\nREGISTER_03_NOIR — true-crime investigation. Investigation language (\"scheme,\" \"fraud,\" \"predatory,\" \"exposed,\" \"hidden\"), past-tense narrative about wrongdoing, legal/regulatory content, whistleblower or victim testimony, crime content, revenge stories in present-tense investigative framing.\\n\\nREGISTER_04_SIGNAL — tech/fintech precision. Technical terminology (algorithm, blockchain, tokenization, API, neural network), future-framing, fintech/AI/cyber content, B2B SaaS reviews and tutorials, product-technology mechanics.\\n\\nREGISTER_05_ARCHIVE — historical/biographical/intimate. Past-tense with year references, biographical language (birth, upbringing, meeting), historical-era markers, founder/origin stories, family drama with retrospective framing, revenge stories framed as slow-burn biographical, real-estate mogul histories.\\n\\nAlso detect the dominant era if REGISTER_05_ARCHIVE is in the top 2. Era is one of: \"1920s\", \"1960s\", \"1980s\", \"2000s\", \"modern\". Null if not applicable.\\n\\nAlso classify the niche variant for the top-ranked register:\\n- REGISTER_01_ECONOMIST: one of \"primary\", \"real_estate\", \"legal_tax\"\\n- REGISTER_02_PREMIUM: one of \"primary\", \"real_estate\", \"travel_lifestyle\"\\n- REGISTER_03_NOIR: one of \"primary\", \"financial_fraud\", \"dark_family\"\\n- REGISTER_04_SIGNAL: one of \"primary\", \"crypto_payment\", \"cybersecurity\"\\n- REGISTER_05_ARCHIVE: \"primary\" (era_detected already handles variation)\\nDefault to \"primary\" when uncertain.\\n\\nReturn this exact JSON shape:\\n{\\n  \"all_5_ranked\": [ { \"register_id\": \"REGISTER_XX\", \"confidence\": 0.0-1.0, \"reasoning\": \"one sentence\" } , ...5 entries in descending confidence ],\\n  \"top_2\": [ { \"register_id\": \"REGISTER_XX\", \"confidence\": 0.0-1.0, \"reasoning\": \"2-3 sentence paragraph explaining why this register fits the script\", \"reference_channels\": [\"Channel Name 1\", \"Channel Name 2\"] }, ... ],\\n  \"era_detected\": \"1960s\" | null,\\n  \"niche_variant\": \"primary\" | \"real_estate\" | \"legal_tax\" | \"travel_lifestyle\" | \"financial_fraud\" | \"dark_family\" | \"crypto_payment\" | \"cybersecurity\",\\n  \"notes\": \"one-sentence classifier observation\"\\n}\\n\\nVideo title: ${topic.seo_title || topic.original_title || ''}\\nNarrative hook: ${topic.narrative_hook || ''}\\n\\nScript excerpt:\\n---\\n${sample}\\n---`;\n\n// === BEGIN AU OVERLAY (migration 034) — append AU sub-niche addendum if applicable\nlet userPrompt = user;\nif ((topic.country_target || 'GENERAL') === 'AU') {\n  try {\n    const addRes = await fetch(`${SB}/rest/v1/system_prompts?prompt_type=eq.register_classify_au_addendum&is_active=eq.true&select=prompt_text`, { headers: sbHeaders });\n    if (addRes.ok) {\n      const addRows = await addRes.json();\n      const addendum = (addRows && addRows[0] && addRows[0].prompt_text) || '';\n      if (addendum) userPrompt = userPrompt + '\\n\\n=== AU NICHE-VARIANT ADDENDUM ===\\n' + addendum;\n    }\n  } catch (_) { /* leave userPrompt unchanged on failure */ }\n}\n// === END AU OVERLAY ===\n\n// 5. Call Claude Haiku\nconst claudeRes = await fetch('https://api.anthropic.com/v1/messages', {\n  method: 'POST',\n  headers: { 'x-api-key': AK, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },\n  body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2000, system, messages: [{ role: 'user', content: userPrompt }] })\n});\nif (!claudeRes.ok) {\n  const err = await claudeRes.text();\n  throw new Error(`Claude ${claudeRes.status}: ${err.slice(0, 400)}`);\n}\nconst claudeData = await claudeRes.json();\nconst responseText = (claudeData.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n\nlet analysis;\ntry {\n  const cleaned = responseText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```\\s*$/m, '').trim();\n  const s = cleaned.indexOf('{');\n  const e = cleaned.lastIndexOf('}');\n  if (s < 0 || e <= s) throw new Error('No JSON object found');\n  analysis = JSON.parse(cleaned.substring(s, e + 1));\n} catch (err) {\n  throw new Error(`Parse failed: ${err.message} — raw: ${responseText.slice(0, 300)}`);\n}\n\nif (!analysis.top_2 || !Array.isArray(analysis.top_2) || analysis.top_2.length < 2) {\n  throw new Error('Invalid analysis shape: top_2 missing or < 2 entries');\n}\n\nconst recommendations = { analyzed_at: new Date().toISOString(), model: 'claude-haiku-4-5-20251001', ...analysis };\n\n// Auto-suggest top pick as production_register — user confirms at Gate 1 (register_selected_at stays null)\nconst topPickRegisterId = (analysis.top_2 && analysis.top_2[0] && analysis.top_2[0].register_id) || null;\nconst patchBody = {\n  register_recommendations: recommendations,\n  register_analyzed_at: new Date().toISOString(),\n  register_era_detected: analysis.era_detected || null,\n  niche_variant: analysis.niche_variant || 'primary',\n  production_register: topPickRegisterId,\n  updated_at: new Date().toISOString()\n};\n\nconst patchRes = await fetch(`${SB}/rest/v1/topics?id=eq.${topic_id}`, {\n  method: 'PATCH',\n  headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n  body: JSON.stringify(patchBody)\n});\nif (!patchRes.ok) {\n  const err = await patchRes.text();\n  throw new Error(`PATCH failed ${patchRes.status}: ${err.slice(0, 300)}`);\n}\n\nawait fetch(`${SB}/rest/v1/production_logs`, {\n  method: 'POST',\n  headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n  body: JSON.stringify({ topic_id, stage: 'register_analyze', action: 'completed', status: 'success', metadata: { input_mode: inputMode, top_2: analysis.top_2.map(r => ({ register_id: r.register_id, confidence: r.confidence })), era_detected: analysis.era_detected, niche_variant: analysis.niche_variant || 'primary', model: 'claude-haiku-4-5-20251001' } })\n}).catch(e => console.warn('Log failed (non-fatal): ' + e.message));\n\nreturn [{ json: { success: true, topic_id, top_2: analysis.top_2, era_detected: analysis.era_detected, niche_variant: analysis.niche_variant || 'primary', input_mode: inputMode } }];"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Validate Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Request": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Analyze & Write",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-25T21:45:58.906Z",
+        "id": 3586,
+        "workflowId": "Miy5h5O7ncIIrnRg",
+        "versionId": "cb9a710c-2ad1-4f27-b621-cb8f5ce86d86",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-25T21:45:58.885Z",
+        "id": 3585,
+        "workflowId": "Miy5h5O7ncIIrnRg",
+        "versionId": "cb9a710c-2ad1-4f27-b621-cb8f5ce86d86",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

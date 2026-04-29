@@ -464,17 +464,49 @@ def is_allowed(f: Finding, allowlist: set[str]) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--file", type=pathlib.Path, help="Lint a specific workflow JSON file instead of live sqlite")
+    parser.add_argument("--file", type=pathlib.Path, help="Lint a single workflow JSON file instead of live sqlite")
+    parser.add_argument(
+        "--files",
+        nargs="+",
+        type=pathlib.Path,
+        help="Lint multiple workflow JSON files (use with pre-commit / CI). "
+             "Files that don't parse as workflow JSON are skipped silently.",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--allowlist", type=pathlib.Path, default=pathlib.Path(__file__).parent / "lint_allowlist.txt")
-    parser.add_argument("--rules", help="Comma-separated rule IDs to enforce (default all): CRED-01,CHAIN-01,AUTH-01,MODE-01")
+    parser.add_argument("--rules", help="Comma-separated rule IDs to enforce (default all): CRED-01,CHAIN-01,AUTH-01,AUTH-WRITE-01,AUTH-READ-01,MODE-01")
     args = parser.parse_args()
 
     active_rules = set(args.rules.split(",")) if args.rules else None
     allowlist = load_allowlist(args.allowlist)
 
     try:
-        if args.file:
+        if args.files:
+            workflows = []
+            for p in args.files:
+                # Skip non-existent paths gracefully (pre-commit may pass deleted files)
+                if not p.exists():
+                    continue
+                # Skip non-workflow JSON files (e.g. a JSON in workflows/ that
+                # isn't a workflow export — like a config or schema).
+                try:
+                    data = json.loads(p.read_text(encoding="utf-8"))
+                except json.JSONDecodeError:
+                    continue
+                # An n8n workflow JSON has a 'nodes' array. Skip anything else.
+                has_nodes = isinstance(data, dict) and isinstance(data.get("nodes"), list)
+                has_wrapped = isinstance(data, dict) and isinstance(data.get("workflows"), list)
+                if not (has_nodes or has_wrapped):
+                    continue
+                # Match sqlite-mode semantics: only lint workflows that are
+                # active=true on live. Repo retains historical inactive snapshots
+                # and pre-API legacy exports without an `active` field;
+                # skipping both keeps the gate aligned with what production runs.
+                if has_nodes:
+                    if data.get("active") is not True:
+                        continue
+                workflows.extend(load_from_file(p))
+        elif args.file:
             workflows = load_from_file(args.file)
         else:
             with tempfile.TemporaryDirectory() as tmp:

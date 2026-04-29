@@ -1,0 +1,31 @@
+# Vision GridAI pre-commit hooks
+#
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+# Skip a hook: SKIP=lint-n8n-workflows git commit ...
+#
+# The lint-n8n-workflows hook enforces:
+#   CRED-01        — webhook credential matches nginx-injected Bearer
+#   CHAIN-01       — return=minimal HTTP node feeding executeWorkflow
+#   AUTH-01        — sensitive webhook path missing auth (WARN)
+#   AUTH-WRITE-01  — write to Supabase REST without Authorization header
+#   AUTH-READ-01   — GET to Supabase REST without Authorization header
+#
+# Background: AUTH-WRITE/READ-01 catch the silent-failure class fixed in
+# commits 5fc2cd1 (44+10 nodes) and b38a94b (13 nodes). Without this gate,
+# anyone editing a workflow can accidentally drop the Authorization header
+# and the bug stays invisible until that workflow next runs and silently
+# writes 0 rows under post-030 RLS.
+
+repos:
+  - repo: local
+    hooks:
+      - id: lint-n8n-workflows
+        name: Lint n8n workflow JSON
+        entry: python tools/lint_n8n_workflows.py --files
+        language: system
+        # Only run on workflow JSON files (and the linter itself, in case rules change)
+        files: ^(workflows/.*\.json|tools/lint_n8n_workflows\.py)$
+        pass_filenames: true
+        # Don't pass non-workflow files; the linter will silently skip them anyway,
+        # but `files` regex narrows the trigger.

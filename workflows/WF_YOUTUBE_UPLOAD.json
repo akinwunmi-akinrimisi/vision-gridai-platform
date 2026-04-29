@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-03-15T21:40:26.637Z",
+  "createdAt": "2026-03-09T17:51:37.014Z",
+  "id": "IKu9SGDkS0pzZwoP",
   "name": "WF_YOUTUBE_UPLOAD",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-execute",
@@ -1345,5 +1351,1406 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "dc3f598f-0c23-4d7d-923c-494a04017d82",
+  "activeVersionId": "dc3f598f-0c23-4d7d-923c-494a04017d82",
+  "versionCounter": 112,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-03-09T17:51:37.015Z",
+      "createdAt": "2026-03-09T17:51:37.015Z",
+      "role": "workflow:owner",
+      "workflowId": "IKu9SGDkS0pzZwoP",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [
+    {
+      "updatedAt": "2026-03-09T22:09:21.352Z",
+      "createdAt": "2026-03-09T22:09:21.352Z",
+      "id": "AThibo2wxLpjDbNa",
+      "name": "vision-gridai"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2026-03-15T21:40:26.641Z",
+    "createdAt": "2026-03-15T21:40:26.641Z",
+    "versionId": "dc3f598f-0c23-4d7d-923c-494a04017d82",
+    "workflowId": "IKu9SGDkS0pzZwoP",
+    "nodes": [
+      {
+        "id": "trigger-execute",
+        "name": "Execute Workflow Trigger",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "parse-input",
+        "name": "Parse Input",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          470,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\nconst topicId = input.topic_id;\nconst privacyStatus = input.privacy_status || 'public';\n\nif (!topicId) throw new Error('Missing topic_id input');\n\nreturn [{ json: { topicId, privacyStatus } }];"
+        }
+      },
+      {
+        "id": "load-topic",
+        "name": "Load Topic Data",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          690,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "id",
+                "value": "=eq.{{ $json.topicId }}"
+              },
+              {
+                "name": "select",
+                "value": "*,projects(*)"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "load-scenes",
+        "name": "Load Scenes",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          690,
+          500
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "topic_id",
+                "value": "=eq.{{ $('Parse Input').item.json.topicId }}"
+              },
+              {
+                "name": "select",
+                "value": "scene_number,narration_text,chapter,start_time_ms,end_time_ms,audio_duration_ms"
+              },
+              {
+                "name": "order",
+                "value": "scene_number.asc"
+              },
+              {
+                "name": "limit",
+                "value": "500"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "check-quota",
+        "name": "Check Daily Quota",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          910,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "stage",
+                "value": "eq.youtube_upload"
+              },
+              {
+                "name": "action",
+                "value": "eq.completed"
+              },
+              {
+                "name": "created_at",
+                "value": "=gte.{{ new Date(new Date().toISOString().split('T')[0] + 'T00:00:00Z').toISOString() }}"
+              },
+              {
+                "name": "select",
+                "value": "id"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Prefer",
+                "value": "count=exact"
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "prepare-metadata",
+        "name": "Prepare YouTube Metadata",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1130,
+          400
+        ],
+        "parameters": {
+          "jsCode": "const topic = $('Load Topic Data').first().json[0] || $('Load Topic Data').first().json;\nconst project = topic.projects || {};\nconst scenes = $('Load Scenes').first().json;\nconst quotaResult = $('Check Daily Quota').first().json;\nlet privacyStatus = $('Parse Input').first().json.privacyStatus;\n\n// Quota check: count uploads today\nconst uploadsToday = Array.isArray(quotaResult) ? quotaResult.length : 0;\nconst quotaExceeded = uploadsToday >= 6;\n\n// If quota exceeded and trying to publish public, override to private\nif (quotaExceeded && privacyStatus === 'public') {\n  privacyStatus = 'private';\n}\n\n// Build chapter timestamps from scenes\nconst chapterMap = new Map();\nconst sceneList = Array.isArray(scenes) ? scenes : [];\nfor (const scene of sceneList) {\n  if (scene.chapter && !chapterMap.has(scene.chapter)) {\n    const ms = scene.start_time_ms || 0;\n    const totalSec = Math.floor(ms / 1000);\n    const h = Math.floor(totalSec / 3600);\n    const m = Math.floor((totalSec % 3600) / 60);\n    const s = totalSec % 60;\n    const ts = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;\n    chapterMap.set(scene.chapter, ts);\n  }\n}\n\nconst chapters = Array.from(chapterMap.entries())\n  .map(([name, ts]) => `${ts} ${name}`)\n  .join('\\n');\n\n// Build description\nconst meta = topic.script_metadata || {};\nconst hook = topic.narrative_hook || '';\nconst tags = meta.tags || [];\nconst hashtags = tags.slice(0, 5).map(t => '#' + t.replace(/\\s+/g, '')).join(' ');\n\nconst description = [\n  hook,\n  '',\n  'Chapters:',\n  chapters || '00:00:00 Introduction',\n  '',\n  hashtags,\n  '',\n  '---',\n  'Produced with Vision GridAI Platform'\n].join('\\n');\n\n// Determine playlist ID\nconst playlistGroup = topic.playlist_group || 1;\nconst playlistId = playlistGroup === 1 ? project.youtube_playlist1_id\n  : playlistGroup === 2 ? project.youtube_playlist2_id\n  : project.youtube_playlist3_id;\n\nconst title = topic.seo_title || topic.original_title || 'Untitled Video';\n\nreturn [{ json: {\n  topicId: topic.id,\n  projectId: project.id,\n  title: title.substring(0, 100),\n  description: description.substring(0, 5000),\n  tags: tags.slice(0, 30),\n  categoryId: '27',\n  privacyStatus,\n  scheduledPublishAt: topic.scheduled_publish_at || null,\n  driveVideoUrl: topic.drive_video_url,\n  driveFileId: topic.drive_video_url ? topic.drive_video_url.match(/\\/d\\/([^\\/]+)/)?.[1] || '' : '',\n  thumbnailUrl: topic.thumbnail_url,\n  playlistId: playlistId || null,\n  quotaExceeded,\n  scenes: sceneList\n} }];"
+        }
+      },
+      {
+        "id": "update-progress-uploading",
+        "name": "Update Progress - Uploading",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1350,
+          400
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "id",
+                "value": "=eq.{{ $json.topicId }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ publish_progress: 'uploading_video' }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "initiate-resumable",
+        "name": "Initiate Resumable Upload",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1570,
+          400
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+          "authentication": "oAuth2Api",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Upload-Content-Type",
+                "value": "video/*"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ snippet: { title: $('Prepare YouTube Metadata').item.json.title, description: $('Prepare YouTube Metadata').item.json.description, tags: $('Prepare YouTube Metadata').item.json.tags, categoryId: $('Prepare YouTube Metadata').item.json.categoryId }, status: { privacyStatus: $('Prepare YouTube Metadata').item.json.privacyStatus, selfDeclaredMadeForKids: false, publishAt: $('Prepare YouTube Metadata').item.json.scheduledPublishAt || undefined } }) }}",
+          "options": {
+            "timeout": 30000,
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "credentials": {
+          "oAuth2Api": {
+            "id": "bV36zJBQkG9QrayH",
+            "name": "YouTube OAuth2"
+          }
+        }
+      },
+      {
+        "id": "extract-upload-uri",
+        "name": "Extract Upload URI",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1790,
+          400
+        ],
+        "parameters": {
+          "jsCode": "const response = $input.first().json;\nconst uploadUri = response.headers?.location || response.headers?.Location || '';\n\nif (!uploadUri) {\n  throw new Error('No upload URI returned from YouTube resumable upload init. Headers: ' + JSON.stringify(response.headers));\n}\n\nreturn [{ json: { uploadUri } }];"
+        }
+      },
+      {
+        "id": "download-from-drive",
+        "name": "Download Video from Drive",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2010,
+          400
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Prepare YouTube Metadata').item.json.driveFileId }}?alt=media",
+          "authentication": "oAuth2Api",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "file"
+              }
+            },
+            "timeout": 600000
+          }
+        },
+        "credentials": {
+          "oAuth2Api": {
+            "id": "z0gigNHVnhcGz2pD",
+            "name": "Google Drive OAuth2"
+          }
+        }
+      },
+      {
+        "id": "upload-video",
+        "name": "Upload Video to YouTube",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2230,
+          400
+        ],
+        "parameters": {
+          "method": "PUT",
+          "url": "={{ $('Extract Upload URI').item.json.uploadUri }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "video/*"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "binaryData",
+          "inputDataFieldName": "data",
+          "options": {
+            "timeout": 3600000
+          }
+        },
+        "continueOnFail": true
+      },
+      {
+        "id": "if-upload-success",
+        "name": "If Upload Success",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2450,
+          400
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "upload-success",
+                "leftValue": "={{ $json.id ? true : false }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "retry-check",
+        "name": "Retry Check",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2670,
+          600
+        ],
+        "parameters": {
+          "jsCode": "const retryCount = ($input.first().json._retryCount || 0) + 1;\nif (retryCount > 2) {\n  throw new Error('Upload failed after 2 retries: ' + ($input.first().json.error || 'unknown error'));\n}\nreturn [{ json: { ...$input.first().json, _retryCount: retryCount } }];"
+        }
+      },
+      {
+        "id": "wait-retry",
+        "name": "Wait Before Retry",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          2890,
+          600
+        ],
+        "parameters": {
+          "amount": 5,
+          "unit": "seconds"
+        }
+      },
+      {
+        "id": "extract-video-id",
+        "name": "Extract Video ID",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2670,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const videoId = $('Upload Video to YouTube').first().json.id;\nif (!videoId) throw new Error('No video ID from upload response');\nreturn [{ json: { videoId } }];"
+        }
+      },
+      {
+        "id": "update-progress-metadata",
+        "name": "Update Progress - Metadata",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2890,
+          300
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "id",
+                "value": "=eq.{{ $('Prepare YouTube Metadata').item.json.topicId }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ publish_progress: 'setting_metadata', youtube_video_id: $json.videoId }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "build-srt",
+        "name": "Build SRT Captions",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3110,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const scenes = $('Prepare YouTube Metadata').first().json.scenes || [];\n\n// Build SRT content from scenes\nlet srt = '';\nlet counter = 1;\nfor (const scene of scenes) {\n  const startMs = scene.start_time_ms || 0;\n  const endMs = scene.end_time_ms || (startMs + (scene.audio_duration_ms || 3000));\n  const text = scene.narration_text || '';\n  if (!text) continue;\n\n  const formatTime = (ms) => {\n    const totalSec = Math.floor(ms / 1000);\n    const h = Math.floor(totalSec / 3600);\n    const m = Math.floor((totalSec % 3600) / 60);\n    const s = totalSec % 60;\n    const milli = ms % 1000;\n    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(milli).padStart(3,'0')}`;\n  };\n\n  srt += `${counter}\\n${formatTime(startMs)} --> ${formatTime(endMs)}\\n${text}\\n\\n`;\n  counter++;\n}\n\nreturn [{ json: { srtContent: srt } }];"
+        }
+      },
+      {
+        "id": "init-caption-upload",
+        "name": "Init Caption Upload",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3330,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "=https://www.googleapis.com/upload/youtube/v3/captions?uploadType=resumable&part=snippet",
+          "authentication": "oAuth2Api",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Upload-Content-Type",
+                "value": "application/x-subrip"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ snippet: { videoId: $('Extract Video ID').item.json.videoId, language: 'en', name: 'English' } }) }}",
+          "options": {
+            "timeout": 30000,
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "credentials": {
+          "oAuth2Api": {
+            "id": "bV36zJBQkG9QrayH",
+            "name": "YouTube OAuth2"
+          }
+        },
+        "continueOnFail": true
+      },
+      {
+        "id": "extract-caption-uri",
+        "name": "Extract Caption URI",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3550,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const response = $input.first().json;\nconst captionUri = response.headers?.location || response.headers?.Location || '';\nreturn [{ json: { captionUri } }];"
+        }
+      },
+      {
+        "id": "upload-captions",
+        "name": "Upload Captions",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3770,
+          300
+        ],
+        "parameters": {
+          "method": "PUT",
+          "url": "={{ $json.captionUri }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/x-subrip"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "string",
+          "body": "={{ $('Build SRT Captions').item.json.srtContent }}",
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "continueOnFail": true
+      },
+      {
+        "id": "update-progress-captions",
+        "name": "Update Progress - Captions",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3990,
+          300
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "id",
+                "value": "=eq.{{ $('Prepare YouTube Metadata').item.json.topicId }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ publish_progress: 'uploading_captions' }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "set-thumbnail",
+        "name": "Set Thumbnail",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4210,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "=https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={{ $('Extract Video ID').item.json.videoId }}",
+          "authentication": "oAuth2Api",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "image/png"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "credentials": {
+          "oAuth2Api": {
+            "id": "bV36zJBQkG9QrayH",
+            "name": "YouTube OAuth2"
+          }
+        },
+        "continueOnFail": true
+      },
+      {
+        "id": "update-progress-thumbnail",
+        "name": "Update Progress - Thumbnail",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4430,
+          300
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "id",
+                "value": "=eq.{{ $('Prepare YouTube Metadata').item.json.topicId }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ publish_progress: 'setting_thumbnail' }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "if-has-playlist",
+        "name": "If Has Playlist",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          4650,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "has-playlist",
+                "leftValue": "={{ $('Prepare YouTube Metadata').item.json.playlistId ? true : false }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "add-to-playlist",
+        "name": "Add to Playlist",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4870,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet",
+          "authentication": "oAuth2Api",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ snippet: { playlistId: $('Prepare YouTube Metadata').item.json.playlistId, resourceId: { kind: 'youtube#video', videoId: $('Extract Video ID').item.json.videoId } } }) }}",
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "credentials": {
+          "oAuth2Api": {
+            "id": "bV36zJBQkG9QrayH",
+            "name": "YouTube OAuth2"
+          }
+        },
+        "continueOnFail": true
+      },
+      {
+        "id": "update-progress-playlist",
+        "name": "Update Progress - Playlist",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          5090,
+          200
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "id",
+                "value": "=eq.{{ $('Prepare YouTube Metadata').item.json.topicId }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ publish_progress: 'assigning_playlist' }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "finalize-publish",
+        "name": "Finalize - Published",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          5310,
+          300
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "id",
+                "value": "=eq.{{ $('Prepare YouTube Metadata').item.json.topicId }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=representation"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ publish_progress: 'complete', status: 'published', youtube_url: 'https://youtube.com/watch?v=' + $('Extract Video ID').item.json.videoId, published_at: new Date().toISOString() }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "log-upload-complete",
+        "name": "Log Upload Complete",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          5530,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('Prepare YouTube Metadata').item.json.projectId, topic_id: $('Prepare YouTube Metadata').item.json.topicId, stage: 'youtube_upload', action: 'completed', details: { video_id: $('Extract Video ID').item.json.videoId, privacy_status: $('Prepare YouTube Metadata').item.json.privacyStatus } }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "mark-failed",
+        "name": "Mark Upload Failed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3110,
+          700
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/topics",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "id",
+                "value": "=eq.{{ $('Prepare YouTube Metadata').item.json.topicId }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=representation"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ publish_progress: 'failed', status: 'upload_failed', error_log: 'Upload failed after retries' }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "log-upload-failed",
+        "name": "Log Upload Failed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3330,
+          700
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('Prepare YouTube Metadata').item.json.projectId, topic_id: $('Prepare YouTube Metadata').item.json.topicId, stage: 'youtube_upload', action: 'failed', details: { error: 'Upload failed after retries' } }) }}",
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "Execute Workflow Trigger": {
+        "main": [
+          [
+            {
+              "node": "Parse Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Input": {
+        "main": [
+          [
+            {
+              "node": "Load Topic Data",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Load Scenes",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Check Daily Quota",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load Topic Data": {
+        "main": [
+          [
+            {
+              "node": "Prepare YouTube Metadata",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load Scenes": {
+        "main": [
+          [
+            {
+              "node": "Prepare YouTube Metadata",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Daily Quota": {
+        "main": [
+          [
+            {
+              "node": "Prepare YouTube Metadata",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare YouTube Metadata": {
+        "main": [
+          [
+            {
+              "node": "Update Progress - Uploading",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Progress - Uploading": {
+        "main": [
+          [
+            {
+              "node": "Initiate Resumable Upload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Initiate Resumable Upload": {
+        "main": [
+          [
+            {
+              "node": "Extract Upload URI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Upload URI": {
+        "main": [
+          [
+            {
+              "node": "Download Video from Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Download Video from Drive": {
+        "main": [
+          [
+            {
+              "node": "Upload Video to YouTube",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload Video to YouTube": {
+        "main": [
+          [
+            {
+              "node": "If Upload Success",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If Upload Success": {
+        "main": [
+          [
+            {
+              "node": "Extract Video ID",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry Check",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Retry Check": {
+        "main": [
+          [
+            {
+              "node": "Wait Before Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait Before Retry": {
+        "main": [
+          [
+            {
+              "node": "Upload Video to YouTube",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Video ID": {
+        "main": [
+          [
+            {
+              "node": "Update Progress - Metadata",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Progress - Metadata": {
+        "main": [
+          [
+            {
+              "node": "Build SRT Captions",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build SRT Captions": {
+        "main": [
+          [
+            {
+              "node": "Init Caption Upload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Init Caption Upload": {
+        "main": [
+          [
+            {
+              "node": "Extract Caption URI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Caption URI": {
+        "main": [
+          [
+            {
+              "node": "Upload Captions",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload Captions": {
+        "main": [
+          [
+            {
+              "node": "Update Progress - Captions",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Progress - Captions": {
+        "main": [
+          [
+            {
+              "node": "Set Thumbnail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Thumbnail": {
+        "main": [
+          [
+            {
+              "node": "Update Progress - Thumbnail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Progress - Thumbnail": {
+        "main": [
+          [
+            {
+              "node": "If Has Playlist",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If Has Playlist": {
+        "main": [
+          [
+            {
+              "node": "Add to Playlist",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Finalize - Published",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Add to Playlist": {
+        "main": [
+          [
+            {
+              "node": "Update Progress - Playlist",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Progress - Playlist": {
+        "main": [
+          [
+            {
+              "node": "Finalize - Published",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Finalize - Published": {
+        "main": [
+          [
+            {
+              "node": "Log Upload Complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Mark Upload Failed": {
+        "main": [
+          [
+            {
+              "node": "Log Upload Failed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-03-15T21:40:26.764Z",
+        "id": 1974,
+        "workflowId": "IKu9SGDkS0pzZwoP",
+        "versionId": "dc3f598f-0c23-4d7d-923c-494a04017d82",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-03-15T21:40:26.737Z",
+        "id": 1973,
+        "workflowId": "IKu9SGDkS0pzZwoP",
+        "versionId": "dc3f598f-0c23-4d7d-923c-494a04017d82",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

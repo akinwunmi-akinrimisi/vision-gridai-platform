@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-20T21:43:24.988Z",
+  "createdAt": "2026-04-15T19:01:26.381Z",
+  "id": "iLshY0uGhxSUXrfU",
   "name": "WF_VIRAL_TAG",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-viral-exec",
@@ -163,5 +169,214 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "7bb7c41a-5479-48b8-8e58-ca270ad88035",
+  "activeVersionId": "7bb7c41a-5479-48b8-8e58-ca270ad88035",
+  "versionCounter": 16,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-15T19:01:26.382Z",
+      "createdAt": "2026-04-15T19:01:26.382Z",
+      "role": "workflow:owner",
+      "workflowId": "iLshY0uGhxSUXrfU",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-20T21:43:24.989Z",
+    "createdAt": "2026-04-20T21:43:24.989Z",
+    "versionId": "7bb7c41a-5479-48b8-8e58-ca270ad88035",
+    "workflowId": "iLshY0uGhxSUXrfU",
+    "nodes": [
+      {
+        "id": "trigger-viral-exec",
+        "name": "Execute Workflow Trigger",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          200,
+          240
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "trigger-viral-webhook",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          440
+        ],
+        "parameters": {
+          "path": "viral/tag",
+          "httpMethod": "POST",
+          "responseMode": "responseNode",
+          "options": {},
+          "authentication": "headerAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        },
+        "webhookId": "viral-tag"
+      },
+      {
+        "id": "code-viral-fetch",
+        "name": "Normalize + Fetch Scenes",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          340
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// CF12 WF_VIRAL_TAG — normalize trigger, idempotency, fetch topic + scenes.\n// Prepares batches of ≤50 scenes for downstream Opus scoring.\n// Global fetch + $env per MEMORY.md.\n\nconst raw = $input.first().json;\nconst viaWebhook = !!raw.body;\nconst payload = raw.body || raw;\n\nconst topicId = payload.topic_id;\nconst force = payload.force === true;\n\nif (!topicId) {\n  return [{\n    json: {\n      success: false,\n      error: 'Provide { topic_id }',\n      http_status: 400,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nasync function sbGet(url, label) {\n  const res = await fetch(url, { method: 'GET', headers: sbHeaders });\n  if (!res.ok) throw new Error(`${label} failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);\n  return res.json();\n}\n\n// 1. Fetch topic\nconst topicUrl = `${supabaseUrl}/rest/v1/topics?id=eq.${topicId}&select=id,project_id,seo_title,selected_title,viral_moments,top_3_viral_moments_idx,viral_tagged_at`;\nconst topics = await sbGet(topicUrl, 'fetch topic');\nconst topic = Array.isArray(topics) && topics[0] ? topics[0] : null;\n\nif (!topic) {\n  return [{ json: { success: false, error: `Topic ${topicId} not found`, http_status: 404, via_webhook: viaWebhook } }];\n}\n\n// 2. Idempotency\nif (!force && topic.viral_tagged_at) {\n  return [{\n    json: {\n      success: true,\n      skipped: true,\n      reason: 'Viral moments already tagged (pass force=true to re-tag)',\n      topic_id: topicId,\n      project_id: topic.project_id,\n      viral_moments: topic.viral_moments,\n      top_3_viral_moments_idx: topic.top_3_viral_moments_idx,\n      viral_tagged_at: topic.viral_tagged_at,\n      http_status: 200,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst projectId = topic.project_id;\n\n// 3. Fetch project context\nlet project = {};\ntry {\n  const projArr = await sbGet(`${supabaseUrl}/rest/v1/projects?id=eq.${projectId}&select=niche,niche_description`, 'fetch project');\n  project = (projArr && projArr[0]) || {};\n} catch (_) { }\n\n// 4. Fetch scenes\nconst scenesUrl = `${supabaseUrl}/rest/v1/scenes?topic_id=eq.${topicId}&select=scene_number,narration_text,emotional_beat,chapter&order=scene_number.asc&limit=500`;\nlet scenes = [];\ntry {\n  scenes = await sbGet(scenesUrl, 'fetch scenes');\n} catch (e) {\n  return [{ json: { success: false, error: `Failed to fetch scenes: ${e.message}`, http_status: 500, via_webhook: viaWebhook } }];\n}\n\nif (!Array.isArray(scenes) || scenes.length === 0) {\n  return [{ json: { success: false, error: 'No scenes found for topic — cannot tag viral moments', http_status: 422, via_webhook: viaWebhook } }];\n}\n\n// 5. Build batches — ≤60 scenes in one call, otherwise chunks of 50\nconst BATCH_SIZE = 50;\nconst batches = [];\nif (scenes.length <= 60) {\n  batches.push(scenes);\n} else {\n  for (let i = 0; i < scenes.length; i += BATCH_SIZE) {\n    batches.push(scenes.slice(i, i + BATCH_SIZE));\n  }\n}\n\nreturn [{\n  json: {\n    topic_id: topicId,\n    project_id: projectId,\n    topic,\n    project,\n    scenes,\n    batches,\n    total_batches: batches.length,\n    scene_count: scenes.length,\n    via_webhook: viaWebhook,\n    force,\n    started_at: new Date().toISOString()\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-viral-score",
+        "name": "Opus Viral-Score Batches",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          720,
+          340
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Score each batch sequentially via Claude Opus 4.6. Inline backoff per call.\n// Merge results, sort by scene_number, derive top_3_viral_moments_idx.\n\nconst data = $input.first().json;\nif (data.success === false || data.skipped) return $input.item;\n\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nconst topic = data.topic || {};\nconst project = data.project || {};\nconst batches = data.batches || [];\nconst totalBatches = batches.length;\n\nconst seoTitle = topic.selected_title || topic.seo_title || '(untitled)';\nconst nicheContext = project.niche_description || project.niche || 'general audience';\n\nconst VALID_BEATS = ['shock', 'revelation', 'tension', 'payoff', 'setup', 'neutral'];\n\nfunction clampScore100(n) { const v = Number(n) || 0; return Math.max(0, Math.min(100, Math.round(v))); }\n\nfunction parseJson(text) {\n  if (!text) return null;\n  const clean = text.replace(/```json|```/g, '').trim();\n  try { return JSON.parse(clean); } catch {}\n  const m = clean.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch {} }\n  return null;\n}\n\nasync function callClaude(userPrompt, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch('https://api.anthropic.com/v1/messages', {\n        method: 'POST',\n        headers: {\n          'x-api-key': anthropicKey,\n          'anthropic-version': '2023-06-01',\n          'content-type': 'application/json'\n        },\n        body: JSON.stringify({\n          model: 'claude-opus-4-6',\n          max_tokens: 4000,\n          messages: [{ role: 'user', content: userPrompt }]\n        })\n      });\n      if (res.ok) {\n        const body = await res.json();\n        return { ok: true, text: body.content?.[0]?.text || '', attempts: attempt };\n      }\n      const errBody = await res.text();\n      if (res.status === 429) await sleep(30000);\n      lastErr = new Error(`HTTP ${res.status}: ${errBody.slice(0, 300)}`);\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || 'opus_viral_tag failed', attempts: maxRetries };\n}\n\nconst allScored = [];\nconst batchErrors = [];\nlet totalDurationMs = 0;\nlet successfulBatches = 0;\nconst runStart = Date.now();\n\nfor (let bi = 0; bi < batches.length; bi++) {\n  const batch = batches[bi];\n  const scenesBlock = batch\n    .map(s => `[${s.scene_number}] ${(s.narration_text || '').slice(0, 600)}`)\n    .join('\\n\\n');\n\n  const prompt = `You are a YouTube Shorts curator. Score each scene's viral potential for clipping into a Short.\n\nTopic: ${seoTitle}\nNiche: ${nicheContext}\n\nScenes (batch ${bi + 1}/${totalBatches}):\n${scenesBlock}\n\nFor EACH scene, score:\n- viral_potential (0-100): does this moment have hook potential that could stand alone?\n- shorts_worthiness (0-100): would this work as a 15-60s YouTube Short if clipped with surrounding context?\n- emotional_beat: \"shock\" | \"revelation\" | \"tension\" | \"payoff\" | \"setup\" | \"neutral\"\n- shareability_hook: one-line description of WHY someone would share this clip\n\nBe strict. Most scenes score 30-55. Rare 85+. 100 means \"this IS the Short.\"\n\nReturn ONLY valid JSON:\n{\n  \"scenes\": [\n    {\n      \"scene_number\": <int>,\n      \"excerpt\": \"<first 100 chars of narration>\",\n      \"viral_potential\": <int>,\n      \"shorts_worthiness\": <int>,\n      \"emotional_beat\": \"<string>\",\n      \"shareability_hook\": \"<string>\"\n    }\n  ]\n}`;\n\n  const batchStart = Date.now();\n  const res = await callClaude(prompt, 4);\n  totalDurationMs += Date.now() - batchStart;\n\n  if (!res.ok) {\n    batchErrors.push({ batch_index: bi, error: res.error });\n    // Fallback neutral scoring for this batch\n    for (const s of batch) {\n      allScored.push({\n        scene_number: s.scene_number,\n        excerpt: (s.narration_text || '').slice(0, 100),\n        viral_potential: 40,\n        shorts_worthiness: 40,\n        emotional_beat: VALID_BEATS.includes(s.emotional_beat) ? s.emotional_beat : 'neutral',\n        shareability_hook: ''\n      });\n    }\n    // Inter-batch spacing on failure\n    if (bi + 1 < batches.length) await sleep(1000);\n    continue;\n  }\n\n  const parsed = parseJson(res.text);\n  if (!parsed || !Array.isArray(parsed.scenes)) {\n    batchErrors.push({ batch_index: bi, error: 'parse_failed' });\n    for (const s of batch) {\n      allScored.push({\n        scene_number: s.scene_number,\n        excerpt: (s.narration_text || '').slice(0, 100),\n        viral_potential: 40,\n        shorts_worthiness: 40,\n        emotional_beat: VALID_BEATS.includes(s.emotional_beat) ? s.emotional_beat : 'neutral',\n        shareability_hook: ''\n      });\n    }\n    if (bi + 1 < batches.length) await sleep(1000);\n    continue;\n  }\n\n  // Index returned scenes by scene_number for coverage check\n  const returned = new Map();\n  for (const sc of parsed.scenes) {\n    const num = Number(sc.scene_number);\n    if (!Number.isInteger(num)) continue;\n    const beat = VALID_BEATS.includes(sc.emotional_beat) ? sc.emotional_beat : 'neutral';\n    returned.set(num, {\n      scene_number: num,\n      excerpt: String(sc.excerpt || '').slice(0, 200),\n      viral_potential: clampScore100(sc.viral_potential),\n      shorts_worthiness: clampScore100(sc.shorts_worthiness),\n      emotional_beat: beat,\n      shareability_hook: String(sc.shareability_hook || '').slice(0, 500)\n    });\n  }\n\n  // Ensure every input scene in the batch produces an output row\n  for (const s of batch) {\n    const scored = returned.get(s.scene_number);\n    if (scored) {\n      // Prefer excerpt with original narration if Claude returned empty\n      if (!scored.excerpt) scored.excerpt = (s.narration_text || '').slice(0, 100);\n      allScored.push(scored);\n    } else {\n      allScored.push({\n        scene_number: s.scene_number,\n        excerpt: (s.narration_text || '').slice(0, 100),\n        viral_potential: 40,\n        shorts_worthiness: 40,\n        emotional_beat: VALID_BEATS.includes(s.emotional_beat) ? s.emotional_beat : 'neutral',\n        shareability_hook: ''\n      });\n    }\n  }\n\n  successfulBatches += 1;\n  if (bi + 1 < batches.length) await sleep(1000);\n}\n\n// Sort merged results by scene_number\nallScored.sort((a, b) => a.scene_number - b.scene_number);\n\n// top_3_viral_moments_idx: indexes into allScored, ranked by shorts_worthiness then viral_potential\nconst indexed = allScored.map((s, i) => ({ i, sw: s.shorts_worthiness, vp: s.viral_potential }));\nindexed.sort((a, b) => (b.sw - a.sw) || (b.vp - a.vp));\nconst top3 = indexed.slice(0, 3).map(x => x.i);\n\n// Cost estimate: ~$0.05 per batch\nconst costUsd = Math.round(successfulBatches * 0.05 * 1000) / 1000;\nconst anyOk = successfulBatches > 0;\nconst allOk = successfulBatches === totalBatches;\n\nreturn [{\n  json: {\n    ...data,\n    viral_moments: allScored,\n    top_3_viral_moments_idx: top3,\n    opus_all_ok: allOk,\n    opus_any_ok: anyOk,\n    batch_errors: batchErrors,\n    successful_batches: successfulBatches,\n    total_batches_run: totalBatches,\n    opus_duration_ms: totalDurationMs,\n    opus_cost_usd: costUsd,\n    total_run_ms: Date.now() - runStart\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-viral-persist",
+        "name": "Persist + Log",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          980,
+          340
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// PATCH topic with viral_moments + top_3_viral_moments_idx. Log to production_logs.\nconst data = $input.first().json;\nif (data.success === false) return [{ json: data }];\nif (data.skipped) return [{ json: data }];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst topicId = data.topic_id;\nconst projectId = data.project_id;\nconst nowIso = new Date().toISOString();\n\nconst patch = {\n  viral_moments: data.viral_moments,\n  top_3_viral_moments_idx: data.top_3_viral_moments_idx,\n  viral_tagged_at: nowIso\n};\n\nlet patchError = null;\ntry {\n  const res = await fetch(`${supabaseUrl}/rest/v1/topics?id=eq.${topicId}`, {\n    method: 'PATCH',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify(patch)\n  });\n  if (!res.ok) patchError = `PATCH failed: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;\n} catch (e) {\n  patchError = e.message;\n}\n\nlet logStatus;\nif (patchError) logStatus = 'partial';\nelse if (data.opus_all_ok) logStatus = 'success';\nelse if (data.opus_any_ok) logStatus = 'partial';\nelse logStatus = 'fallback';\n\n// production_logs\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: topicId,\n      stage: 'viral_tag',\n      scene_number: null,\n      action: 'opus_scene_score',\n      status: logStatus,\n      duration_ms: data.opus_duration_ms || 0,\n      cost_usd: data.opus_cost_usd || 0,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\nreturn [{\n  json: {\n    success: !patchError,\n    topic_id: topicId,\n    project_id: projectId,\n    viral_moments: data.viral_moments,\n    top_3_viral_moments_idx: data.top_3_viral_moments_idx,\n    viral_tagged_at: nowIso,\n    scene_count: data.scene_count,\n    successful_batches: data.successful_batches,\n    total_batches: data.total_batches_run,\n    batch_errors: data.batch_errors,\n    opus_all_ok: data.opus_all_ok,\n    opus_cost_usd: data.opus_cost_usd,\n    patch_error: patchError,\n    http_status: patchError ? 500 : 200,\n    via_webhook: data.via_webhook\n  }\n}];"
+        }
+      },
+      {
+        "id": "respond-viral",
+        "name": "Respond To Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1240,
+          340
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {
+            "responseCode": "={{ $json.http_status || 200 }}"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Execute Workflow Trigger": {
+        "main": [
+          [
+            {
+              "node": "Normalize + Fetch Scenes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Normalize + Fetch Scenes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize + Fetch Scenes": {
+        "main": [
+          [
+            {
+              "node": "Opus Viral-Score Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Opus Viral-Score Batches": {
+        "main": [
+          [
+            {
+              "node": "Persist + Log",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Persist + Log": {
+        "main": [
+          [
+            {
+              "node": "Respond To Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-20T21:43:25.042Z",
+        "id": 3327,
+        "workflowId": "iLshY0uGhxSUXrfU",
+        "versionId": "7bb7c41a-5479-48b8-8e58-ca270ad88035",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-20T21:43:25.025Z",
+        "id": 3326,
+        "workflowId": "iLshY0uGhxSUXrfU",
+        "versionId": "7bb7c41a-5479-48b8-8e58-ca270ad88035",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

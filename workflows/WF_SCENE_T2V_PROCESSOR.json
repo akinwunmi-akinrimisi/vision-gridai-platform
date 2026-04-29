@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-03-18T15:03:36.510Z",
+  "createdAt": "2026-03-10T20:21:45.932Z",
+  "id": "VLrMKfaDeKYFLU75",
   "name": "WF_SCENE_T2V_PROCESSOR",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "webhook-trigger",
@@ -302,5 +308,385 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "369f89de-2fd5-4b2e-b45b-d3a31ed7b160",
+  "activeVersionId": "369f89de-2fd5-4b2e-b45b-d3a31ed7b160",
+  "versionCounter": 45,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-10T20:21:45.934Z",
+      "createdAt": "2026-03-10T20:21:45.934Z",
+      "role": "workflow:owner",
+      "workflowId": "VLrMKfaDeKYFLU75",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-03-10T23:44:14.964Z",
+    "createdAt": "2026-03-10T23:44:14.964Z",
+    "versionId": "369f89de-2fd5-4b2e-b45b-d3a31ed7b160",
+    "workflowId": "VLrMKfaDeKYFLU75",
+    "nodes": [
+      {
+        "id": "webhook-trigger",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "process-scene/t2v",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "onError": "continueRegularOutput",
+        "webhookId": "process-scene-t2v-wh"
+      },
+      {
+        "id": "respond-accepted",
+        "name": "Respond Accepted",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          470,
+          300
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ accepted: true, scene_id: $json.body.scene_id }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "build-fal-request",
+        "name": "Build Fal Request",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          690,
+          300
+        ],
+        "parameters": {
+          "mode": "manual",
+          "duplicateItem": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "s1",
+                "name": "scene_id",
+                "value": "={{ $('Webhook Trigger').first().json.body.scene_id }}",
+                "type": "string"
+              },
+              {
+                "id": "s2",
+                "name": "topic_id",
+                "value": "={{ $('Webhook Trigger').first().json.body.topic_id }}",
+                "type": "string"
+              },
+              {
+                "id": "s3",
+                "name": "project_id",
+                "value": "={{ $('Webhook Trigger').first().json.body.project_id }}",
+                "type": "string"
+              },
+              {
+                "id": "s4",
+                "name": "image_prompt",
+                "value": "={{ $('Webhook Trigger').first().json.body.image_prompt }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "generate-video",
+        "name": "Generate T2V",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          910,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://fal.run/fal-ai/wan-25-preview/text-to-video",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Key {{ $env.FAL_API_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ prompt: $json.image_prompt, aspect_ratio: '16:9', duration: '5', resolution: '480p' }) }}",
+          "options": {
+            "timeout": 300000
+          }
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 30000,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "check-response",
+        "name": "Check Response",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1130,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "={{ $json.error }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "object",
+                  "operation": "notExists",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "update-scene-success",
+        "name": "Update Scene Success",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1350,
+          200
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes?id=eq.{{ $('Build Fal Request').first().json.scene_id }}",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ video_status: 'uploaded', video_url: $('Generate T2V').first().json.video.url }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "update-scene-failed",
+        "name": "Update Scene Failed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1350,
+          450
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes?id=eq.{{ $('Build Fal Request').first().json.scene_id }}",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ video_status: 'failed' }) }}",
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Respond Accepted",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Respond Accepted": {
+        "main": [
+          [
+            {
+              "node": "Build Fal Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Fal Request": {
+        "main": [
+          [
+            {
+              "node": "Generate T2V",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Generate T2V": {
+        "main": [
+          [
+            {
+              "node": "Check Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Response": {
+        "main": [
+          [
+            {
+              "node": "Update Scene Success",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Update Scene Failed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-03-10T23:44:15.013Z",
+        "id": 1915,
+        "workflowId": "VLrMKfaDeKYFLU75",
+        "versionId": "369f89de-2fd5-4b2e-b45b-d3a31ed7b160",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-03-18T15:03:36.551Z",
+        "id": 2282,
+        "workflowId": "VLrMKfaDeKYFLU75",
+        "versionId": "369f89de-2fd5-4b2e-b45b-d3a31ed7b160",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-18T16:59:01.589Z",
+        "id": 3241,
+        "workflowId": "VLrMKfaDeKYFLU75",
+        "versionId": "369f89de-2fd5-4b2e-b45b-d3a31ed7b160",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-03-10T23:44:14.991Z",
+        "id": 1914,
+        "workflowId": "VLrMKfaDeKYFLU75",
+        "versionId": "369f89de-2fd5-4b2e-b45b-d3a31ed7b160",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-03-18T15:03:36.536Z",
+        "id": 2281,
+        "workflowId": "VLrMKfaDeKYFLU75",
+        "versionId": "369f89de-2fd5-4b2e-b45b-d3a31ed7b160",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-03-28T17:05:56.544Z",
+        "id": 2378,
+        "workflowId": "VLrMKfaDeKYFLU75",
+        "versionId": "369f89de-2fd5-4b2e-b45b-d3a31ed7b160",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

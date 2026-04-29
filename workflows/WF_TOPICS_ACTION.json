@@ -1,7 +1,11 @@
 {
+  "updatedAt": "2026-04-28T15:17:40.280Z",
+  "createdAt": "2026-03-09T17:51:54.829Z",
   "id": "BE1mpwuBigLsq26v",
   "name": "WF_TOPICS_ACTION � Approve/Reject/Refine/Edit Topics",
+  "description": null,
   "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "wf-ta-webhook",
@@ -1195,8 +1199,31 @@
     "availableInMCP": false
   },
   "staticData": null,
+  "meta": null,
   "pinData": null,
   "versionId": "066c3be6-061f-435b-8cb4-aeeec876eef2",
+  "activeVersionId": "066c3be6-061f-435b-8cb4-aeeec876eef2",
+  "versionCounter": 130,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-09T17:51:54.831Z",
+      "createdAt": "2026-03-09T17:51:54.831Z",
+      "role": "workflow:owner",
+      "workflowId": "BE1mpwuBigLsq26v",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
   "tags": [
     {
       "updatedAt": "2026-03-09T22:09:21.352Z",
@@ -1204,5 +1231,1220 @@
       "id": "AThibo2wxLpjDbNa",
       "name": "vision-gridai"
     }
-  ]
+  ],
+  "activeVersion": {
+    "updatedAt": "2026-04-28T15:17:40.281Z",
+    "createdAt": "2026-04-28T15:17:40.281Z",
+    "versionId": "066c3be6-061f-435b-8cb4-aeeec876eef2",
+    "workflowId": "BE1mpwuBigLsq26v",
+    "nodes": [
+      {
+        "id": "wf-ta-webhook",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          300
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "topics/action",
+          "responseMode": "lastNode",
+          "options": {
+            "allowedOrigins": "*"
+          }
+        },
+        "webhookId": "wf-topics-action-prod"
+      },
+      {
+        "id": "wf-ta-parse",
+        "name": "Parse Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          420,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst action = body.action;\nconst topic_ids = body.topic_ids || (body.topic_id ? [body.topic_id] : []);\nconst project_id = body.project_id;\nconst feedback = body.feedback || '';\nconst instructions = body.instructions || '';\nconst fields = body.fields || {};\n\nif (!action) throw new Error('action required');\nif (!topic_ids.length && !['regenerate-rejected'].includes(action)) throw new Error('topic_ids required');\n\nreturn [{ json: { action, topic_ids, project_id, feedback, instructions, fields, topic_id: topic_ids[0] } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-ta-switch",
+        "name": "Route by Action",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3,
+        "position": [
+          640,
+          300
+        ],
+        "parameters": {
+          "mode": "expression",
+          "numberOutputs": 5,
+          "output": "={{ {'approve': 0, 'reject': 1, 'refine': 2, 'edit': 3, 'edit_avatar': 4}[$json.action] }}"
+        }
+      },
+      {
+        "id": "wf-ta-approve",
+        "name": "Approve Topics",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          880,
+          100
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=in.({{ $json.topic_ids.join(',') }})",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ review_status: 'approved' }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-reject",
+        "name": "Reject Topics",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          880,
+          260
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=in.({{ $('Parse Request').first().json.topic_ids.join(',') }})",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ review_status: 'rejected', review_feedback: $('Parse Request').first().json.feedback }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-refine-status",
+        "name": "Status ? Refining",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          880,
+          420
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Parse Request').first().json.topic_id }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ review_status: 'refining' }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-read-all-topics",
+        "name": "Read All Topics",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1100,
+          420
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?project_id=eq.{{ $('Parse Request').first().json.project_id }}&select=*,avatars(*)&order=topic_number.asc",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-build-refine-prompt",
+        "name": "Build Refine Prompt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          420
+        ],
+        "parameters": {
+          "jsCode": "const allTopics = $input.first().json;\nconst topics = Array.isArray(allTopics) ? allTopics : [allTopics];\nconst targetId = $('Parse Request').first().json.topic_id;\nconst instructions = $('Parse Request').first().json.instructions;\nconst targetTopic = topics.find(t => t.id === targetId);\nconst otherTopics = topics.filter(t => t.id !== targetId).map(t => ({ topic_number: t.topic_number, seo_title: t.seo_title, playlist_angle: t.playlist_angle, narrative_hook: t.narrative_hook }));\n\nconst prompt = `Refine this YouTube topic based on the user's instructions. IMPORTANT: Consider the other 24 topics below to avoid overlap.\n\nTopic to refine:\n${JSON.stringify(targetTopic, null, 2)}\n\nUser instructions: ${instructions}\n\nOther topics (avoid overlap):\n${JSON.stringify(otherTopics, null, 2)}\n\nReturn ONLY valid JSON with the refined topic fields: { seo_title, narrative_hook, key_segments, estimated_cpm, viral_potential }`;\n\nreturn [{ json: { prompt, targetId, instructions, project_id: $('Parse Request').first().json.project_id, existingHistory: targetTopic?.refinement_history || [] } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-ta-anthropic-refine",
+        "name": "Claude: Refine Topic",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1540,
+          420
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.anthropic.com/v1/messages",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "anthropic-version",
+                "value": "2023-06-01"
+              },
+              {
+                "name": "content-type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4096, messages: [{ role: 'user', content: $json.prompt }] }) }}",
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "vlfOXwvIUlRYnr41",
+            "name": "Anthropic API Key"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "wf-ta-check-refine-error",
+        "name": "Check Refine Error",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          420
+        ],
+        "parameters": {
+          "jsCode": "const response = $input.first().json;\nif (response.error || response.type === 'error') {\n  return [{ json: {\n    isError: true,\n    error_message: response.error?.message || JSON.stringify(response.error || response),\n    topic_id: $('Build Refine Prompt').first().json.targetId,\n    project_id: $('Build Refine Prompt').first().json.project_id\n  }}];\n}\nreturn [{ json: { ...response, isError: false } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-ta-if-refine-error",
+        "name": "IF Refine Error",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          1980,
+          420
+        ],
+        "parameters": {
+          "conditions": {
+            "boolean": [
+              {
+                "value1": "={{ $json.isError }}",
+                "value2": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "wf-ta-patch-refine-failed",
+        "name": "PATCH Refine Failed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2200,
+          320
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $json.topic_id }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ review_status: 'refine_failed', error_log: $json.error_message }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-log-refine-failed",
+        "name": "Log Refine Failed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2420,
+          320
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('IF Refine Error').first().json.project_id, topic_id: $('IF Refine Error').first().json.topic_id, stage: 'topic_review', action: 'failed', details: { error: $('IF Refine Error').first().json.error_message } }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-parse-refine",
+        "name": "Parse Refine Result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2200,
+          520
+        ],
+        "parameters": {
+          "jsCode": "const prev = $('Build Refine Prompt').first().json;\nconst response = $input.first().json;\nconst text = (response.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\nlet jsonText = text.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst s = jsonText.indexOf('{'), e = jsonText.lastIndexOf('}');\nconst refined = JSON.parse(jsonText.substring(s, e + 1));\nconst history = [...(prev.existingHistory || []), { instruction: prev.instructions, result: refined.seo_title, timestamp: new Date().toISOString() }];\nreturn [{ json: { targetId: prev.targetId, refined, history, project_id: prev.project_id } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-ta-update-refined",
+        "name": "UPDATE Refined Topic",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2420,
+          520
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $json.targetId }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ ...($json.refined), review_status: 'pending', refinement_history: $json.history }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-edit",
+        "name": "Edit Topic",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          880,
+          580
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{ $('Parse Request').first().json.topic_id }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($('Parse Request').first().json.fields) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-get-avatar",
+        "name": "Get Avatar by Topic",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          880,
+          740
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/avatars?topic_id=eq.{{ $('Parse Request').first().json.topic_id }}&select=id&limit=1",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-patch-avatar",
+        "name": "PATCH Avatar Fields",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1100,
+          740
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/avatars?topic_id=eq.{{ $('Parse Request').first().json.topic_id }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($('Parse Request').first().json.fields) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-log-approved",
+        "name": "Log Approved",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1100,
+          100
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('Parse Request').first().json.project_id, topic_id: $('Parse Request').first().json.topic_id, stage: 'topic_review', action: 'approved', details: { topic_id: $('Parse Request').first().json.topic_id } }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-log-rejected",
+        "name": "Log Rejected",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1100,
+          260
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('Parse Request').first().json.project_id, topic_id: $('Parse Request').first().json.topic_id, stage: 'topic_review', action: 'rejected', details: { topic_id: $('Parse Request').first().json.topic_id, feedback: $('Parse Request').first().json.feedback } }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-log-edited",
+        "name": "Log Edited",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1100,
+          580
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('Parse Request').first().json.project_id, topic_id: $('Parse Request').first().json.topic_id, stage: 'topic_review', action: 'edited', details: { topic_id: $('Parse Request').first().json.topic_id } }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-log-avatar-edited",
+        "name": "Log Edit Avatar",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1320,
+          740
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('Parse Request').first().json.project_id, topic_id: $('Parse Request').first().json.topic_id, stage: 'topic_review', action: 'avatar_edited', details: { topic_id: $('Parse Request').first().json.topic_id } }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-log-refined",
+        "name": "Log Refined",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2640,
+          520
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_log",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$env.SUPABASE_ANON_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ project_id: $('Parse Request').first().json.project_id, topic_id: $('Parse Request').first().json.topic_id, stage: 'topic_review', action: 'refined', details: { topic_id: $('Parse Request').first().json.topic_id } }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QsqqFXtnLakNfVKR",
+            "name": "Supabase Service Role"
+          }
+        }
+      },
+      {
+        "id": "wf-ta-success-approve",
+        "name": "Success (Approve)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          100
+        ],
+        "parameters": {
+          "jsCode": "return [{ json: { success: true, action: $('Parse Request').first().json.action } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-ta-success-reject",
+        "name": "Success (Reject)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          260
+        ],
+        "parameters": {
+          "jsCode": "return [{ json: { success: true, action: 'reject' } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-ta-success-refine",
+        "name": "Success (Refine)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2860,
+          520
+        ],
+        "parameters": {
+          "jsCode": "return [{ json: { success: true, action: 'refine' } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-ta-success-edit",
+        "name": "Success (Edit)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          580
+        ],
+        "parameters": {
+          "jsCode": "return [{ json: { success: true, action: 'edit' } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-ta-success-avatar",
+        "name": "Success (Avatar)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1540,
+          740
+        ],
+        "parameters": {
+          "jsCode": "return [{ json: { success: true, action: 'edit_avatar' } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "wf-ta-success-refine-failed",
+        "name": "Success (Refine Failed)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2640,
+          320
+        ],
+        "parameters": {
+          "jsCode": "return [{ json: { success: false, action: 'refine', error: $('PATCH Refine Failed').first().json } }];",
+          "mode": "runOnceForAllItems"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Parse Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Request": {
+        "main": [
+          [
+            {
+              "node": "Route by Action",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Route by Action": {
+        "main": [
+          [
+            {
+              "node": "Approve Topics",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Reject Topics",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Status ? Refining",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Edit Topic",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Get Avatar by Topic",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Approve Topics": {
+        "main": [
+          [
+            {
+              "node": "Log Approved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Approved": {
+        "main": [
+          [
+            {
+              "node": "Success (Approve)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reject Topics": {
+        "main": [
+          [
+            {
+              "node": "Log Rejected",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Rejected": {
+        "main": [
+          [
+            {
+              "node": "Success (Reject)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Status ? Refining": {
+        "main": [
+          [
+            {
+              "node": "Read All Topics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read All Topics": {
+        "main": [
+          [
+            {
+              "node": "Build Refine Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Refine Prompt": {
+        "main": [
+          [
+            {
+              "node": "Claude: Refine Topic",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude: Refine Topic": {
+        "main": [
+          [
+            {
+              "node": "Check Refine Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Refine Error": {
+        "main": [
+          [
+            {
+              "node": "IF Refine Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Refine Error": {
+        "main": [
+          [
+            {
+              "node": "PATCH Refine Failed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Parse Refine Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "PATCH Refine Failed": {
+        "main": [
+          [
+            {
+              "node": "Log Refine Failed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Refine Failed": {
+        "main": [
+          [
+            {
+              "node": "Success (Refine Failed)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Refine Result": {
+        "main": [
+          [
+            {
+              "node": "UPDATE Refined Topic",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "UPDATE Refined Topic": {
+        "main": [
+          [
+            {
+              "node": "Log Refined",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Refined": {
+        "main": [
+          [
+            {
+              "node": "Success (Refine)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Topic": {
+        "main": [
+          [
+            {
+              "node": "Log Edited",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Edited": {
+        "main": [
+          [
+            {
+              "node": "Success (Edit)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Avatar by Topic": {
+        "main": [
+          [
+            {
+              "node": "PATCH Avatar Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "PATCH Avatar Fields": {
+        "main": [
+          [
+            {
+              "node": "Log Edit Avatar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Edit Avatar": {
+        "main": [
+          [
+            {
+              "node": "Success (Avatar)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-28T15:17:40.337Z",
+        "id": 3690,
+        "workflowId": "BE1mpwuBigLsq26v",
+        "versionId": "066c3be6-061f-435b-8cb4-aeeec876eef2",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-28T15:17:40.322Z",
+        "id": 3689,
+        "workflowId": "BE1mpwuBigLsq26v",
+        "versionId": "066c3be6-061f-435b-8cb4-aeeec876eef2",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

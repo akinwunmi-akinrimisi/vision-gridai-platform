@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-18T22:59:21.921Z",
+  "createdAt": "2026-04-06T13:30:56.248Z",
+  "id": "Pfu5DS1qqTl6wn9Q",
   "name": "WF_DRIVE_UPLOAD — Download + Upload + Patch DB",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger",
@@ -162,5 +168,212 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "f5bb79a3-d8cb-4fd9-af0e-b8e36098066c",
+  "activeVersionId": "f5bb79a3-d8cb-4fd9-af0e-b8e36098066c",
+  "versionCounter": 42,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-06T13:30:56.252Z",
+      "createdAt": "2026-04-06T13:30:56.252Z",
+      "role": "workflow:owner",
+      "workflowId": "Pfu5DS1qqTl6wn9Q",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-18T22:59:21.921Z",
+    "createdAt": "2026-04-18T22:59:21.921Z",
+    "versionId": "f5bb79a3-d8cb-4fd9-af0e-b8e36098066c",
+    "workflowId": "Pfu5DS1qqTl6wn9Q",
+    "nodes": [
+      {
+        "id": "trigger",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          300
+        ],
+        "parameters": {
+          "path": "drive-upload",
+          "responseMode": "responseNode",
+          "options": {},
+          "httpMethod": "POST",
+          "multipleMethods": false,
+          "authentication": "headerAuth"
+        },
+        "webhookId": "kinetic-upload-temp",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        }
+      },
+      {
+        "id": "download",
+        "name": "Download File",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          420,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $json.body.file_url || 'http://172.18.0.1:9999/' + ($json.body.file_path || 'missing') }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "file"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "upload",
+        "name": "Upload to Drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          640,
+          300
+        ],
+        "parameters": {
+          "resource": "file",
+          "operation": "upload",
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $('Webhook').first().json.body.drive_folder_id || '1NjhTfdPzEwtY29QhtN5fB3xj-ODkj_Xg' }}",
+            "mode": "id",
+            "cachedResultName": "/ (Root folder)"
+          },
+          "name": "=Kinetic_{{ $('Webhook').first().json.body.topic_id ? $('Webhook').first().json.body.topic_id.substring(0,8) : 'video' }}.mp4",
+          "options": {},
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive",
+            "cachedResultName": "My Drive"
+          }
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "z0gigNHVnhcGz2pD",
+            "name": "GoogleDriveAccount"
+          }
+        }
+      },
+      {
+        "id": "respond-ok",
+        "name": "Respond OK",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          420,
+          460
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ success: true, acknowledged: true }) }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "patch-db",
+        "name": "Patch DB",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          860,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const webhook = $(\"Webhook\").first().json;\nconst body = webhook.body || webhook;\nconst driveFile = $input.first().json;\nconst driveUrl = driveFile.webViewLink || driveFile.webContentLink || null;\nconst topicId = body.topic_id;\nconst jobId = body.job_id;\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\n\nawait fetch(SB + \"/rest/v1/topics?id=eq.\" + topicId, {\n  method: \"PATCH\",\n  headers: { \"apikey\": SRK, \"Authorization\": \"Bearer \" + SRK, \"Content-Type\": \"application/json\", \"Prefer\": \"return=minimal\" },\n  body: JSON.stringify({ status: \"assembled\", assembly_status: \"complete\", drive_video_url: driveUrl, last_status_change: new Date().toISOString() })\n});\n\nif (jobId) {\n  await fetch(SB + \"/rest/v1/kinetic_jobs?id=eq.\" + jobId, {\n    method: \"PATCH\",\n    headers: { \"apikey\": SRK, \"Authorization\": \"Bearer \" + SRK, \"Content-Type\": \"application/json\", \"Prefer\": \"return=minimal\" },\n    body: JSON.stringify({ video_url: driveUrl, render_end: new Date().toISOString() })\n  });\n}\n\nreturn [{ json: { success: true, drive_url: driveUrl, topic_id: topicId } }];"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Download File",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Respond OK",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Download File": {
+        "main": [
+          [
+            {
+              "node": "Upload to Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload to Drive": {
+        "main": [
+          [
+            {
+              "node": "Patch DB",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-18T22:59:21.954Z",
+        "id": 3271,
+        "workflowId": "Pfu5DS1qqTl6wn9Q",
+        "versionId": "f5bb79a3-d8cb-4fd9-af0e-b8e36098066c",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-18T22:59:21.945Z",
+        "id": 3270,
+        "workflowId": "Pfu5DS1qqTl6wn9Q",
+        "versionId": "f5bb79a3-d8cb-4fd9-af0e-b8e36098066c",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

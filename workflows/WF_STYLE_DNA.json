@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-20T21:43:19.493Z",
+  "createdAt": "2026-04-15T19:01:20.685Z",
+  "id": "89MCbb6MXu9oomxY",
   "name": "WF_STYLE_DNA",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-sd-webhook",
@@ -188,5 +194,239 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "active": true
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "0b7a7f33-7d6b-4458-bd0b-c8041e1e75b1",
+  "activeVersionId": "0b7a7f33-7d6b-4458-bd0b-c8041e1e75b1",
+  "versionCounter": 16,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-15T19:01:20.687Z",
+      "createdAt": "2026-04-15T19:01:20.687Z",
+      "role": "workflow:owner",
+      "workflowId": "89MCbb6MXu9oomxY",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-20T21:43:19.496Z",
+    "createdAt": "2026-04-20T21:43:19.496Z",
+    "versionId": "0b7a7f33-7d6b-4458-bd0b-c8041e1e75b1",
+    "workflowId": "89MCbb6MXu9oomxY",
+    "nodes": [
+      {
+        "id": "trigger-sd-webhook",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          220
+        ],
+        "parameters": {
+          "path": "style-dna/analyze",
+          "httpMethod": "POST",
+          "responseMode": "responseNode",
+          "options": {},
+          "authentication": "headerAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        },
+        "webhookId": "style-dna-analyze"
+      },
+      {
+        "id": "trigger-sd-exec",
+        "name": "Execute Workflow Trigger",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          200,
+          400
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "code-sd-resolve",
+        "name": "Resolve Channel + Idempotency",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          440,
+          310
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// CF14 WF_STYLE_DNA — normalize payload, resolve channel_url -> channel_id,\n// idempotency check against style_profiles (within last 30 days).\n// Global fetch + $env per MEMORY.md (n8n 2.8.4 task runner compat).\n\nconst raw = $input.first().json;\nconst viaWebhook = !!raw.body;\nconst payload = raw.body || raw;\n\nconst channelUrl = payload.channel_url || '';\nconst channelIdInput = payload.channel_id || '';\nconst projectId = payload.project_id || null;\nconst applyToProject = payload.apply_to_project === true;\nconst force = payload.force === true;\n\nif (!channelUrl && !channelIdInput) {\n  return [{\n    json: {\n      success: false,\n      error: 'Provide { channel_url } or { channel_id }',\n      http_status: 400,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\nconst ytKey = $env.YOUTUBE_API_KEY;\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      if (res.ok) return { ok: true, json: await res.json(), attempts: attempt };\n      const body = await res.text();\n      if (res.status === 403 && /quotaExceeded|dailyLimitExceeded/i.test(body)) {\n        return { ok: false, quota: true, status: res.status, error: body, attempts: attempt };\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\n// Resolve channel_id from URL\nlet channelId = channelIdInput;\nlet channelHandle = null;\n\nif (!channelId && channelUrl) {\n  // Direct /channel/UC... URL\n  const ucMatch = channelUrl.match(/youtube\\.com\\/channel\\/(UC[A-Za-z0-9_-]{22})/i);\n  if (ucMatch) {\n    channelId = ucMatch[1];\n  } else {\n    // @handle URL\n    const handleMatch = channelUrl.match(/youtube\\.com\\/@([A-Za-z0-9._-]+)/i);\n    if (handleMatch) {\n      channelHandle = handleMatch[1];\n      // forHandle requires @ prefix\n      const byHandleUrl = `https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=@${channelHandle}&key=${ytKey}`;\n      const byHandleRes = await fetchWithRetry(byHandleUrl, { method: 'GET' }, 'yt_channels_by_handle');\n      if (byHandleRes.ok && byHandleRes.json?.items?.length > 0) {\n        channelId = byHandleRes.json.items[0].id;\n      } else {\n        // Fallback: search\n        const sUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channelHandle)}&maxResults=1&key=${ytKey}`;\n        const sRes = await fetchWithRetry(sUrl, { method: 'GET' }, 'yt_search_channel');\n        if (sRes.ok && sRes.json?.items?.length > 0) {\n          channelId = sRes.json.items[0].snippet?.channelId || sRes.json.items[0].id?.channelId;\n        }\n      }\n    } else {\n      // Legacy /user/ URL or /c/ URL — search by path segment\n      const pathMatch = channelUrl.match(/youtube\\.com\\/(?:user|c)\\/([A-Za-z0-9._-]+)/i);\n      if (pathMatch) {\n        const q = pathMatch[1];\n        const sUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(q)}&maxResults=1&key=${ytKey}`;\n        const sRes = await fetchWithRetry(sUrl, { method: 'GET' }, 'yt_search_channel');\n        if (sRes.ok && sRes.json?.items?.length > 0) {\n          channelId = sRes.json.items[0].snippet?.channelId || sRes.json.items[0].id?.channelId;\n        }\n      }\n    }\n  }\n}\n\nif (!channelId) {\n  return [{\n    json: {\n      success: false,\n      error: `Could not resolve channel from input (channel_url=${channelUrl}, channel_id=${channelIdInput})`,\n      http_status: 400,\n      via_webhook: viaWebhook\n    }\n  }];\n}\n\n// Idempotency: existing row within last 30 days for (project_id, channel_id)?\nif (!force) {\n  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();\n  let idemUrl = `${supabaseUrl}/rest/v1/style_profiles?channel_id=eq.${encodeURIComponent(channelId)}&analyzed_at=gte.${encodeURIComponent(thirtyDaysAgo)}&order=analyzed_at.desc&limit=1&select=*`;\n  if (projectId) {\n    idemUrl += `&project_id=eq.${projectId}`;\n  } else {\n    idemUrl += `&project_id=is.null`;\n  }\n  const idemRes = await fetch(idemUrl, { method: 'GET', headers: sbHeaders });\n  if (idemRes.ok) {\n    const arr = await idemRes.json();\n    if (Array.isArray(arr) && arr.length > 0) {\n      return [{\n        json: {\n          success: true,\n          skipped: true,\n          reason: 'Existing style_profile within last 30 days (pass force=true to rerun)',\n          style_profile: arr[0],\n          http_status: 200,\n          via_webhook: viaWebhook\n        }\n      }];\n    }\n  }\n}\n\nreturn [{\n  json: {\n    channel_id: channelId,\n    channel_url: channelUrl || `https://www.youtube.com/channel/${channelId}`,\n    channel_handle: channelHandle,\n    project_id: projectId,\n    apply_to_project: applyToProject,\n    force,\n    via_webhook: viaWebhook,\n    triggered_at: new Date().toISOString()\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-sd-fetch",
+        "name": "Fetch Channel + 20 Uploads",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          310
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Fetch channel metadata + 20 most recent uploads with stats + thumbnails.\n// Uses inline backoff. Quota exhaustion -> surface error back to caller.\n\nconst data = $input.first().json;\nif (data.success === false || data.skipped) return $input.item;\n\nconst channelId = data.channel_id;\nconst ytKey = $env.YOUTUBE_API_KEY;\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nasync function fetchWithRetry(url, options, label, maxRetries = 4) {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch(url, options);\n      if (res.ok) return { ok: true, json: await res.json(), attempts: attempt };\n      const body = await res.text();\n      if (res.status === 403 && /quotaExceeded|dailyLimitExceeded/i.test(body)) {\n        return { ok: false, quota: true, status: res.status, error: body, attempts: attempt };\n      }\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) {\n        return { ok: false, status: res.status, error: body, attempts: attempt };\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\nfunction parseIsoDuration(s) {\n  if (!s || typeof s !== 'string') return 0;\n  const m = s.match(/^PT(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?$/);\n  if (!m) return 0;\n  return parseInt(m[1]||'0',10)*3600 + parseInt(m[2]||'0',10)*60 + parseInt(m[3]||'0',10);\n}\n\n// 1. channels.list\nconst chInfoUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&id=${channelId}&key=${ytKey}`;\nconst chInfo = await fetchWithRetry(chInfoUrl, { method: 'GET' }, 'yt_channels');\nif (chInfo.quota) {\n  return [{ json: { success: false, error: 'YouTube quota exhausted', http_status: 429, via_webhook: data.via_webhook } }];\n}\nif (!chInfo.ok || !(chInfo.json?.items?.length)) {\n  return [{ json: { success: false, error: `Channel fetch failed: ${chInfo.error || 'empty result'}`, http_status: 500, via_webhook: data.via_webhook } }];\n}\n\nconst chItem = chInfo.json.items[0];\nconst channelName = chItem.snippet?.title || '';\nconst uploadsPlaylistId = chItem.contentDetails?.relatedPlaylists?.uploads;\nconst subCount = parseInt(chItem.statistics?.subscriberCount || '0', 10);\n\nif (!uploadsPlaylistId) {\n  return [{ json: { success: false, error: 'Channel has no uploads playlist', http_status: 500, via_webhook: data.via_webhook } }];\n}\n\n// 2. playlistItems.list -> 20 most recent\nconst plUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=20&key=${ytKey}`;\nconst plRes = await fetchWithRetry(plUrl, { method: 'GET' }, 'yt_playlistItems');\nif (plRes.quota) return [{ json: { success: false, error: 'YouTube quota exhausted', http_status: 429, via_webhook: data.via_webhook } }];\nif (!plRes.ok) return [{ json: { success: false, error: `playlistItems failed: ${plRes.error}`, http_status: 500, via_webhook: data.via_webhook } }];\n\nconst videoIds = (plRes.json?.items || []).map(it => it.contentDetails?.videoId || it.snippet?.resourceId?.videoId).filter(Boolean);\n\nif (videoIds.length === 0) {\n  return [{ json: { success: false, error: 'No uploads found', http_status: 500, via_webhook: data.via_webhook } }];\n}\n\n// 3. videos.list batched (max 50 per call; 20 is fine in one call)\nconst vUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(',')}&key=${ytKey}`;\nconst vRes = await fetchWithRetry(vUrl, { method: 'GET' }, 'yt_videos');\nif (vRes.quota) return [{ json: { success: false, error: 'YouTube quota exhausted', http_status: 429, via_webhook: data.via_webhook } }];\nif (!vRes.ok) return [{ json: { success: false, error: `videos.list failed: ${vRes.error}`, http_status: 500, via_webhook: data.via_webhook } }];\n\nconst videoItems = vRes.json?.items || [];\nconst now = Date.now();\n\nconst recentVideos = videoItems.map(v => {\n  const pub = v.snippet?.publishedAt;\n  const pubMs = pub ? new Date(pub).getTime() : now;\n  const durationSec = parseIsoDuration(v.contentDetails?.duration);\n  return {\n    video_id: v.id,\n    title: v.snippet?.title || '',\n    views: parseInt(v.statistics?.viewCount || '0', 10),\n    published_at: pub,\n    days_ago: Math.max(0, Math.round((now - pubMs) / 86400000)),\n    duration_seconds: durationSec,\n    duration_minutes: Math.round((durationSec / 60) * 10) / 10,\n    thumbnail_url: v.snippet?.thumbnails?.maxres?.url || v.snippet?.thumbnails?.high?.url || v.snippet?.thumbnails?.medium?.url || null\n  };\n}).sort((a, b) => (new Date(b.published_at).getTime() || 0) - (new Date(a.published_at).getTime() || 0));\n\n// Cap thumbnails at 8 for Pass 2 (Vision cost + token budget)\nconst thumbnails = recentVideos.map(v => v.thumbnail_url).filter(Boolean).slice(0, 8);\n\nreturn [{\n  json: {\n    ...data,\n    channel_id: channelId,\n    channel_name: channelName,\n    channel_url: data.channel_url,\n    channel_handle: data.channel_handle,\n    subscriber_count: subCount,\n    uploads_playlist_id: uploadsPlaylistId,\n    recent_videos: recentVideos,\n    thumbnail_urls: thumbnails,\n    videos_count: recentVideos.length,\n    thumbnails_count: thumbnails.length\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-sd-analyze",
+        "name": "3-Pass Claude Analysis + Synthesis",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          960,
+          310
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Pass 1: Title Analysis (Opus 4.6, text)\n// Pass 2: Thumbnail DNA (Opus 4.6, Vision, up to 8 thumbnails)\n// Pass 3: Content Strategy (Opus 4.6, text)\n// Then: synthesize final style_profile record.\n// Inline exponential backoff per pass. Partial analysis allowed — passes are independent.\n\nconst data = $input.first().json;\nif (data.success === false || data.skipped) return $input.item;\n\nconst anthropicKey = $env.ANTHROPIC_API_KEY;\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\nconst analysisStart = Date.now();\n\nconst recentVideos = data.recent_videos || [];\nconst thumbs = data.thumbnail_urls || [];\nconst channelName = data.channel_name || '';\n\nasync function callClaude(messages, maxTokens, maxRetries = 4, label = 'claude') {\n  let lastErr = null;\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const res = await fetch('https://api.anthropic.com/v1/messages', {\n        method: 'POST',\n        headers: {\n          'x-api-key': anthropicKey,\n          'anthropic-version': '2023-06-01',\n          'content-type': 'application/json'\n        },\n        body: JSON.stringify({\n          model: 'claude-opus-4-6',\n          max_tokens: maxTokens,\n          messages\n        })\n      });\n      if (res.ok) {\n        const body = await res.json();\n        return { ok: true, text: body.content?.[0]?.text || '', attempts: attempt };\n      }\n      const errBody = await res.text();\n      // Vision rate limit: extra backoff\n      if (res.status === 429) {\n        await sleep(30000);\n      }\n      lastErr = new Error(`HTTP ${res.status}: ${errBody.slice(0, 300)}`);\n      if (res.status >= 400 && res.status < 500 && res.status !== 429) break;\n    } catch (e) { lastErr = e; }\n    if (attempt < maxRetries) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 30000));\n  }\n  return { ok: false, error: lastErr?.message || `${label} failed`, attempts: maxRetries };\n}\n\nfunction parseJson(text) {\n  if (!text) return null;\n  const clean = text.replace(/```json|```/g, '').trim();\n  try { return JSON.parse(clean); } catch {}\n  const m = clean.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch {} }\n  return null;\n}\n\n// ─── Pass 1: Title Analysis ───────────────────────────────────────────────\nconst titleLines = recentVideos.map((v, idx) => `${idx + 1}. \"${v.title}\" | Views: ${v.views} | Published: ${v.days_ago}d ago`).join('\\n');\nconst pass1Prompt = `TITLE PATTERN ANALYSIS\n\nChannel: ${channelName}\nLast ${recentVideos.length} Video Titles (ordered newest → oldest):\n${titleLines}\n\nAnalyze these titles and extract the dominant structural formulas this channel uses.\n\nLook for:\n1. Opening word patterns (Why / How / [Number] / I / The / etc.)\n2. Length patterns (average chars, range)\n3. Structural templates that recur (identify 3-5)\n4. Emotional triggers used (fear / curiosity / desire / social proof)\n5. Whether high-view titles differ structurally from low-view titles\n\nReturn ONLY this JSON:\n{\n  \"title_formulas\": [\n    {\n      \"pattern_name\": \"<descriptive name for this formula>\",\n      \"template\": \"<structural template with placeholders>\",\n      \"example\": \"<one of their actual titles that fits>\",\n      \"frequency_pct\": <float 0-100>,\n      \"avg_views_when_used\": <integer>,\n      \"emotional_trigger\": \"<fear|curiosity|desire|social_proof|mixed>\"\n    }\n  ],\n  \"title_stats\": {\n    \"avg_char_count\": <integer>,\n    \"uses_numbers_pct\": <float>,\n    \"starts_with_question_pct\": <float>,\n    \"uses_parentheses_pct\": <float>\n  },\n  \"top_performing_formula\": <index into title_formulas>,\n  \"title_pattern_summary\": \"<2-3 sentence description of their overall title strategy>\"\n}`;\n\nconst pass1 = await callClaude([{ role: 'user', content: pass1Prompt }], 1500, 4, 'pass1_titles');\nconst titleDNA = pass1.ok ? parseJson(pass1.text) : null;\n\n// ─── Pass 2: Thumbnail DNA (Vision) ───────────────────────────────────────\nconst pass2TextPrompt = `THUMBNAIL DNA ANALYSIS\n\nI'm showing you the thumbnails for ${channelName}'s recent videos. Analyze all of them together to identify consistent visual patterns.\n\nFor the entire set, identify:\n1. Dominant color palette (top 3 colors in hex)\n2. Text positioning (where does text typically appear: left / center / right / bottom / top / none)\n3. Face presence (what % of thumbnails show a human face?)\n4. Dominant emotional expression in face thumbnails\n5. Background type (solid color / gradient / busy scene / blurred / stock photo)\n6. Text characteristics (font style: bold/thin, text case: upper/title/mixed, typical word count)\n7. Visual \"brand signature\" — is there a consistent element across all thumbnails? (Arrow, circle, specific color, logo, etc.)\n\nReturn ONLY this JSON:\n{\n  \"thumbnail_dna\": {\n    \"dominant_colors\": [\"<hex>\", \"<hex>\", \"<hex>\"],\n    \"text_position\": \"<left|center|right|bottom|none|varied>\",\n    \"face_presence_pct\": <float 0-100>,\n    \"dominant_emotion\": \"<shock|excitement|concern|curiosity|neutral|none>\",\n    \"background_type\": \"<solid|gradient|scene|blurred|stock>\",\n    \"text_style\": \"<bold-caps|bold-title|thin-title|mixed>\",\n    \"typical_word_count_in_thumbnail\": <integer>,\n    \"brand_signature\": \"<description or 'none'>\",\n    \"visual_complexity\": \"<minimal|moderate|busy>\"\n  },\n  \"thumbnail_consistency_score\": <integer 0-100>,\n  \"thumbnail_visual_summary\": \"<2-3 sentence description>\"\n}`;\n\nlet thumbnailDNA = null;\nlet pass2Ok = false;\nif (thumbs.length > 0) {\n  const visionContent = thumbs.map(url => ({ type: 'image', source: { type: 'url', url } }));\n  visionContent.push({ type: 'text', text: pass2TextPrompt });\n  const pass2 = await callClaude([{ role: 'user', content: visionContent }], 1500, 4, 'pass2_thumbnails');\n  pass2Ok = pass2.ok;\n  if (pass2.ok) thumbnailDNA = parseJson(pass2.text);\n}\n\n// ─── Pass 3: Content Strategy ─────────────────────────────────────────────\nconst contentLines = recentVideos.map(v => `- \"${v.title}\" → ${v.views} views | ${v.duration_minutes}min`).join('\\n');\nconst uploadDates = recentVideos.map(v => v.published_at).filter(Boolean).slice(0, 20).join(', ');\n\nconst pass3Prompt = `CONTENT PILLAR + CADENCE ANALYSIS\n\nChannel: ${channelName}\n\nVideo titles and view counts (last ${recentVideos.length}):\n${contentLines}\n\nUpload dates: ${uploadDates}\nSubscriber count: ${data.subscriber_count || 'unknown'}\n\nTASK:\n1. Group these videos into 3-5 content pillars (recurring topic clusters)\n2. Calculate upload cadence (frequency + preferred days)\n3. Identify the relationship between video length and view performance\n4. Summarize what makes this channel's content strategy distinctive\n\nReturn ONLY this JSON:\n{\n  \"content_pillars\": [\n    {\n      \"pillar_name\": \"<topic cluster name>\",\n      \"description\": \"<what this content covers>\",\n      \"example_titles\": [\"<title>\", \"<title>\"],\n      \"pct_of_uploads\": <float>,\n      \"avg_views\": <integer>\n    }\n  ],\n  \"upload_cadence\": {\n    \"uploads_per_week\": <float>,\n    \"preferred_days\": [\"<day>\"],\n    \"avg_video_length_minutes\": <float>,\n    \"length_performance_correlation\": \"<longer performs better|shorter performs better|no clear pattern>\"\n  },\n  \"content_strategy_summary\": \"<3-4 sentence description of what makes this channel's content approach distinctive and replicable>\",\n  \"replication_difficulty\": \"<easy|medium|hard>\",\n  \"replication_notes\": \"<what would be hardest to replicate and why>\"\n}`;\n\nconst pass3 = await callClaude([{ role: 'user', content: pass3Prompt }], 1500, 4, 'pass3_content');\nconst contentStrategy = pass3.ok ? parseJson(pass3.text) : null;\n\n// ─── Synthesis ────────────────────────────────────────────────────────────\n// Even if passes fail, assemble what we have (partial record).\nconst titleFormulas = (titleDNA?.title_formulas) || [];\nconst topFormulaIdx = typeof titleDNA?.top_performing_formula === 'number' ? titleDNA.top_performing_formula : null;\nconst topFormula = (topFormulaIdx != null && titleFormulas[topFormulaIdx]) || titleFormulas[0] || null;\n\nconst thumbSummary = thumbnailDNA?.thumbnail_visual_summary || 'Thumbnail analysis unavailable.';\nconst facePct = thumbnailDNA?.thumbnail_dna?.face_presence_pct || 0;\nconst face = facePct > 60 ? 'face-forward' : (facePct > 20 ? 'mixed-face' : 'faceless');\n\nconst uploadsPerWeek = contentStrategy?.upload_cadence?.uploads_per_week;\nconst topPillar = contentStrategy?.content_pillars?.[0]?.pillar_name;\n\nlet styleSummary;\nif (titleDNA && thumbnailDNA && contentStrategy && topFormula) {\n  styleSummary = `${channelName} is a ${face} channel with a ${(uploadsPerWeek || 0).toFixed(1)}x/week cadence. ` +\n    (topPillar ? `Top-performing content cluster: \"${topPillar}\". ` : '') +\n    `Dominant title formula: ${topFormula.pattern_name} (${(topFormula.frequency_pct || 0).toFixed(0)}% of uploads, ${(topFormula.avg_views_when_used || 0).toLocaleString()} avg views). ` +\n    thumbSummary;\n} else {\n  const missing = [];\n  if (!titleDNA) missing.push('pass1_titles');\n  if (!thumbnailDNA && thumbs.length > 0) missing.push('pass2_thumbnails');\n  if (!contentStrategy) missing.push('pass3_content');\n  styleSummary = `Partial analysis for ${channelName} (failed passes: ${missing.join(', ') || 'none'}).`;\n}\n\nconst analysisCostUsd = (pass1.ok ? 0.06 : 0) + (pass2Ok ? 0.06 : 0) + (pass3.ok ? 0.03 : 0);\n\nreturn [{\n  json: {\n    ...data,\n    title_dna: titleDNA,\n    thumbnail_dna_result: thumbnailDNA,\n    content_strategy: contentStrategy,\n    style_summary: styleSummary,\n    analysis_cost_usd: Math.round(analysisCostUsd * 1000) / 1000,\n    analysis_duration_ms: Date.now() - analysisStart,\n    pass_status: {\n      pass1_titles: pass1.ok,\n      pass2_thumbnails: pass2Ok,\n      pass3_content: pass3.ok\n    }\n  }\n}];"
+        }
+      },
+      {
+        "id": "code-sd-persist",
+        "name": "Persist + Alert + Log",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1220,
+          310
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// UPSERT style_profiles on (project_id, channel_id). Because style_profiles has\n// no explicit unique constraint on (project_id, channel_id), we emulate upsert via\n// read-or-insert: if a matching row exists, PATCH it; otherwise INSERT.\n// Also: optional apply_to_project marker, alert creation, production_logs entry,\n// and build the webhook response payload.\n\nconst data = $input.first().json;\n\n// Short-circuit pass-throughs from earlier nodes\nif (data.success === false) {\n  return [{ json: data }];\n}\nif (data.skipped) {\n  return [{ json: data }];\n}\n\nconst projectId = data.project_id || null;\nconst channelId = data.channel_id;\nconst channelName = data.channel_name || '';\nconst applyToProject = data.apply_to_project === true;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst titleDNA = data.title_dna || {};\nconst thumbDNA = data.thumbnail_dna_result || {};\nconst content = data.content_strategy || {};\n\n// Find linked competitor_channels row (if this channel is tracked under this project)\nlet competitorChannelId = null;\nif (projectId) {\n  try {\n    const ccUrl = `${supabaseUrl}/rest/v1/competitor_channels?project_id=eq.${projectId}&channel_id=eq.${encodeURIComponent(channelId)}&select=id&limit=1`;\n    const ccRes = await fetch(ccUrl, { method: 'GET', headers: sbHeaders });\n    if (ccRes.ok) {\n      const arr = await ccRes.json();\n      if (Array.isArray(arr) && arr.length > 0) competitorChannelId = arr[0].id;\n    }\n  } catch (_) { }\n}\n\nconst row = {\n  project_id: projectId,\n  competitor_channel_id: competitorChannelId,\n  channel_id: channelId,\n  channel_url: data.channel_url || null,\n  channel_name: channelName,\n  title_formulas: titleDNA.title_formulas || [],\n  title_stats: titleDNA.title_stats || {},\n  top_performing_formula_idx: typeof titleDNA.top_performing_formula === 'number' ? titleDNA.top_performing_formula : null,\n  title_pattern_summary: titleDNA.title_pattern_summary || null,\n  thumbnail_dna: thumbDNA.thumbnail_dna || {},\n  thumbnail_consistency_score: typeof thumbDNA.thumbnail_consistency_score === 'number' ? thumbDNA.thumbnail_consistency_score : null,\n  thumbnail_visual_summary: thumbDNA.thumbnail_visual_summary || null,\n  content_pillars: content.content_pillars || [],\n  upload_cadence: content.upload_cadence || {},\n  content_strategy_summary: content.content_strategy_summary || null,\n  replication_difficulty: ['easy','medium','hard'].includes(content.replication_difficulty) ? content.replication_difficulty : null,\n  replication_notes: content.replication_notes || null,\n  style_summary: data.style_summary || null,\n  videos_analyzed: data.videos_count || 0,\n  thumbnails_analyzed: data.thumbnails_count || 0,\n  applied_to_project: applyToProject && !!projectId,\n  applied_at: (applyToProject && projectId) ? new Date().toISOString() : null,\n  analysis_cost_usd: data.analysis_cost_usd || 0,\n  analyzed_at: new Date().toISOString()\n};\n\n// Emulated UPSERT: look up existing row, PATCH if found, INSERT otherwise.\nlet styleProfile = null;\nlet existingId = null;\nif (!data.force) {\n  // Only skip re-writing on dedupe key match; but force=true here means the resolver\n  // already let us through, so we still want to overwrite the most recent row.\n}\n\ntry {\n  let lookupUrl = `${supabaseUrl}/rest/v1/style_profiles?channel_id=eq.${encodeURIComponent(channelId)}&order=analyzed_at.desc&limit=1&select=id`;\n  if (projectId) {\n    lookupUrl += `&project_id=eq.${projectId}`;\n  } else {\n    lookupUrl += `&project_id=is.null`;\n  }\n  const lookupRes = await fetch(lookupUrl, { method: 'GET', headers: sbHeaders });\n  if (lookupRes.ok) {\n    const arr = await lookupRes.json();\n    if (Array.isArray(arr) && arr.length > 0) existingId = arr[0].id;\n  }\n} catch (_) { }\n\nlet persistError = null;\ntry {\n  if (existingId) {\n    const patchRes = await fetch(`${supabaseUrl}/rest/v1/style_profiles?id=eq.${existingId}`, {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n      body: JSON.stringify(row)\n    });\n    if (patchRes.ok) {\n      const arr = await patchRes.json();\n      styleProfile = Array.isArray(arr) && arr[0] ? arr[0] : null;\n    } else {\n      persistError = `PATCH failed: HTTP ${patchRes.status}: ${(await patchRes.text()).slice(0, 200)}`;\n    }\n  } else {\n    const insRes = await fetch(`${supabaseUrl}/rest/v1/style_profiles`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n      body: JSON.stringify(row)\n    });\n    if (insRes.ok) {\n      const arr = await insRes.json();\n      styleProfile = Array.isArray(arr) && arr[0] ? arr[0] : null;\n    } else {\n      persistError = `INSERT failed: HTTP ${insRes.status}: ${(await insRes.text()).slice(0, 200)}`;\n    }\n  }\n} catch (e) {\n  persistError = e.message;\n}\n\n// Create dashboard alert (requires project_id)\nif (projectId && styleProfile?.id) {\n  try {\n    await fetch(`${supabaseUrl}/rest/v1/competitor_alerts`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({\n        project_id: projectId,\n        competitor_channel_id: competitorChannelId,\n        alert_type: 'style_dna_ready',\n        severity: 'normal',\n        title: `🧬 Style DNA ready: ${channelName}`.slice(0, 200),\n        message: (data.style_summary || 'Style profile analysis complete.').slice(0, 2000),\n        metadata: {\n          style_profile_id: styleProfile.id,\n          channel_id: channelId,\n          channel_name: channelName,\n          videos_analyzed: row.videos_analyzed,\n          thumbnails_analyzed: row.thumbnails_analyzed,\n          pass_status: data.pass_status || {}\n        }\n      })\n    });\n  } catch (_) { }\n}\n\n// TODO (Sprint S3/S6): if applyToProject, inject style DNA into prompt_configs for\n// topic generation + thumbnail prompts. For S2, applied_to_project + applied_at\n// are written above as a marker; actual injection is out of scope.\n\n// production_logs\ntry {\n  await fetch(`${supabaseUrl}/rest/v1/production_logs`, {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: null,\n      stage: 'style_dna',\n      scene_number: null,\n      action: '3pass_analysis',\n      status: persistError ? 'partial' : 'success',\n      duration_ms: data.analysis_duration_ms || null,\n      cost_usd: data.analysis_cost_usd || 0,\n      retry_count: 0\n    })\n  });\n} catch (_) { }\n\nreturn [{\n  json: {\n    success: !persistError,\n    skipped: false,\n    style_profile: styleProfile,\n    style_profile_id: styleProfile?.id || null,\n    channel_id: channelId,\n    channel_name: channelName,\n    project_id: projectId,\n    videos_analyzed: row.videos_analyzed,\n    thumbnails_analyzed: row.thumbnails_analyzed,\n    pass_status: data.pass_status || {},\n    applied_to_project: row.applied_to_project,\n    analysis_cost_usd: data.analysis_cost_usd || 0,\n    persist_error: persistError,\n    via_webhook: data.via_webhook\n  }\n}];"
+        }
+      },
+      {
+        "id": "respond-sd",
+        "name": "Respond To Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1480,
+          310
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {
+            "responseCode": "={{ $json.http_status || 200 }}"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Resolve Channel + Idempotency",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Execute Workflow Trigger": {
+        "main": [
+          [
+            {
+              "node": "Resolve Channel + Idempotency",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resolve Channel + Idempotency": {
+        "main": [
+          [
+            {
+              "node": "Fetch Channel + 20 Uploads",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Channel + 20 Uploads": {
+        "main": [
+          [
+            {
+              "node": "3-Pass Claude Analysis + Synthesis",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "3-Pass Claude Analysis + Synthesis": {
+        "main": [
+          [
+            {
+              "node": "Persist + Alert + Log",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Persist + Alert + Log": {
+        "main": [
+          [
+            {
+              "node": "Respond To Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-20T21:43:19.541Z",
+        "id": 3315,
+        "workflowId": "89MCbb6MXu9oomxY",
+        "versionId": "0b7a7f33-7d6b-4458-bd0b-c8041e1e75b1",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-20T21:43:19.526Z",
+        "id": 3314,
+        "workflowId": "89MCbb6MXu9oomxY",
+        "versionId": "0b7a7f33-7d6b-4458-bd0b-c8041e1e75b1",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

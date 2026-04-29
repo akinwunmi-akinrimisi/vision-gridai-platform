@@ -1,7 +1,11 @@
 {
+  "updatedAt": "2026-04-25T21:19:27.384Z",
+  "createdAt": "2026-04-25T14:29:22.259Z",
   "id": "T6fGAX9dPIAMc7kD",
   "name": "WF_COUNTRY_ROUTER",
+  "description": null,
   "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-1",
@@ -135,7 +139,185 @@
     "availableInMCP": false
   },
   "staticData": null,
+  "meta": null,
   "pinData": null,
   "versionId": "49a6b05b-9be2-4dc5-9e3f-0c8fd10dcd11",
-  "tags": []
+  "activeVersionId": "49a6b05b-9be2-4dc5-9e3f-0c8fd10dcd11",
+  "versionCounter": 8,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-04-25T14:29:22.261Z",
+      "createdAt": "2026-04-25T14:29:22.261Z",
+      "role": "workflow:owner",
+      "workflowId": "T6fGAX9dPIAMc7kD",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-25T21:19:27.385Z",
+    "createdAt": "2026-04-25T21:19:27.385Z",
+    "versionId": "49a6b05b-9be2-4dc5-9e3f-0c8fd10dcd11",
+    "workflowId": "T6fGAX9dPIAMc7kD",
+    "nodes": [
+      {
+        "id": "trigger-1",
+        "name": "Execute Workflow Trigger",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "code-1",
+        "name": "Build Resolver Inputs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Inputs (from caller):\n//   workflow_name: 'WF_TOPICS_GENERATE' | 'WF_SCRIPT_PASS' | ...\n//   country_target: 'GENERAL' | 'AU' | future\n//   prompt_stage: 'pass1' | 'pass2' | 'pass3' | 'evaluator' | 'topic_master' | etc.\n//\n// Output: { primary_key, fallback_key, lookup_url }\n\nconst input = $input.first().json;\nconst workflow = (input.workflow_name || '').toUpperCase();\nconst country = (input.country_target || 'GENERAL').toUpperCase();\nconst stage = (input.prompt_stage || '').toLowerCase();\n\n// Map (workflow, stage) -> base prompt_type\nconst baseKey = (() => {\n  if (workflow === 'WF_TOPICS_GENERATE') return 'topic_generator_master';\n  if (workflow === 'WF_SCRIPT_PASS') {\n    if (stage === 'pass1') return 'script_pass1';\n    if (stage === 'pass2') return 'script_pass2';\n    if (stage === 'pass3') return 'script_pass3';\n    if (stage === 'evaluator') return 'script_evaluator';\n    if (stage === 'retry') return 'script_retry_template';\n    if (stage === 'metadata_extractor') return 'script_metadata_extractor';\n    return 'script_pass1';\n  }\n  if (workflow === 'WF_REGISTER_ANALYZE') return 'register_classify';\n  if (workflow === 'WF_VIDEO_METADATA') {\n    if (stage === 'title') return country === 'AU' ? 'seo_title_au' : 'seo_title';\n    if (stage === 'description') return country === 'AU' ? 'seo_desc_au' : 'seo_desc';\n    if (stage === 'tags') return country === 'AU' ? 'seo_tags_au' : 'seo_tags';\n    return 'video_metadata';\n  }\n  if (workflow === 'WF_THUMBNAIL_GENERATE') {\n    if (stage === 'concept') return country === 'AU' ? 'thumb_concept_au' : 'thumbnail_concept';\n    if (stage === 'prompt') return country === 'AU' ? 'thumb_prompt_au' : 'thumbnail_prompt';\n    return 'thumbnail_concept';\n  }\n  if (workflow === 'WF_TOPIC_INTELLIGENCE') {\n    if (stage === 'discover') return country === 'AU' ? 'topic_discover_au' : null;\n    if (stage === 'event') return country === 'AU' ? 'topic_event_au' : null;\n    if (stage === 'gap_score') return country === 'AU' ? 'gap_score_au' : null;\n    return null;\n  }\n  if (workflow === 'WF_DEMONETIZATION_AUDIT') {\n    return country === 'AU' ? 'demon_audit_au' : null;\n  }\n  if (workflow === 'WF_COMPETITOR_ANALYZER') {\n    if (stage === 'channel') return country === 'AU' ? 'swot_channel_au' : null;\n    if (stage === 'subniche') return country === 'AU' ? 'swot_subniche_au' : null;\n    return null;\n  }\n  if (workflow === 'WF_COACH_REPORT') {\n    return country === 'AU' ? 'coach_monthly_au' : null;\n  }\n  if (workflow === 'WF_ANALYTICS_CRON' && stage === 'retention') {\n    return country === 'AU' ? 'retention_analyze_au' : null;\n  }\n  return null;\n})();\n\nif (!baseKey) {\n  return [{ json: { error: 'No prompt mapping for ' + workflow + '/' + stage + '/' + country, primary_key: null, fallback_key: null } }];\n}\n\n// Country-aware key resolution\n// For prompts that have a _au-suffixed sibling (script_pass1_au), prefer that\n// when country='AU'. For shared prompts (topic_generator_master) the country\n// content arrives via the 4 slot variables — same key for all countries.\nlet primaryKey = baseKey;\nlet fallbackKey = baseKey;\n\nif (country === 'AU') {\n  const auKey = baseKey + '_au';\n  // For these specific prompts, _au sibling exists; otherwise use the General master + slots\n  const HAS_AU_SIBLING = new Set([\n    'topic_discover_au', 'topic_event_au', 'gap_score_au',\n    'register_classify_au_addendum', 'demon_audit_au',\n    'swot_channel_au', 'swot_subniche_au', 'retention_analyze_au',\n    'coach_monthly_au', 'seo_title_au', 'seo_desc_au', 'seo_tags_au',\n    'thumb_concept_au', 'thumb_prompt_au'\n  ]);\n  if (HAS_AU_SIBLING.has(baseKey)) {\n    primaryKey = baseKey;\n    fallbackKey = baseKey;\n  }\n  // For General masters (script_pass1/2/3, script_evaluator, topic_generator_master),\n  // primaryKey = baseKey; the 4 country slot variables fill in AU content.\n}\n\nreturn [{ json: {\n  workflow_name: workflow,\n  country_target: country,\n  prompt_stage: stage,\n  primary_key: primaryKey,\n  fallback_key: fallbackKey,\n  lookup_url: 'https://supabase.operscale.cloud/rest/v1/system_prompts?prompt_type=eq.' + primaryKey + '&is_active=eq.true&select=prompt_type,prompt_text,version&limit=1'\n} }];"
+        }
+      },
+      {
+        "id": "http-1",
+        "name": "Fetch Active Prompt",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          710,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $json.lookup_url }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "code-2",
+        "name": "Build Result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          940,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const resolver = $('Build Resolver Inputs').first().json;\nconst rows = $input.first().json;\nconst row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;\n\nif (!row) {\n  return [{ json: {\n    success: false,\n    error: 'Prompt not found: ' + resolver.primary_key,\n    primary_key: resolver.primary_key,\n    country_target: resolver.country_target\n  } }];\n}\n\nlet promptText = row.prompt_text;\nconst PLACEHOLDER_RE = /\\{country_(?:compliance_block|terminology_block|calendar_context|demonetization_constraints)\\}/;\n\nif (PLACEHOLDER_RE.test(promptText)) {\n  try {\n    const blocksRes = await fetch($env.SUPABASE_URL + '/rest/v1/rpc/render_country_blocks', {\n      method: 'POST',\n      headers: {\n        apikey: $env.SUPABASE_ANON_KEY,\n        Authorization: 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY,\n        'Content-Type': 'application/json'\n      },\n      body: JSON.stringify({ p_country_target: (resolver.country_target || 'GENERAL') })\n    });\n    if (blocksRes.ok) {\n      const blocks = await blocksRes.json();\n      promptText = promptText\n        .replace(/\\{country_compliance_block\\}/g, (blocks.country_compliance_block || ''))\n        .replace(/\\{country_terminology_block\\}/g, (blocks.country_terminology_block || ''))\n        .replace(/\\{country_calendar_context\\}/g, (blocks.country_calendar_context || ''))\n        .replace(/\\{country_demonetization_constraints\\}/g, (blocks.country_demonetization_constraints || ''));\n    }\n  } catch (e) {\n    // On RPC failure, leave placeholders intact rather than silently stripping content.\n    // Caller workflows can detect the literal {country_*} strings and surface a warning.\n  }\n}\n\nreturn [{ json: {\n  success: true,\n  prompt_type: row.prompt_type,\n  prompt_text: promptText,\n  version: row.version,\n  country_target: resolver.country_target,\n  workflow_name: resolver.workflow_name,\n  prompt_stage: resolver.prompt_stage\n} }];\n"
+        }
+      },
+      {
+        "id": "noop-1",
+        "name": "Return Result",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          1170,
+          300
+        ],
+        "parameters": {}
+      }
+    ],
+    "connections": {
+      "Execute Workflow Trigger": {
+        "main": [
+          [
+            {
+              "node": "Build Resolver Inputs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Resolver Inputs": {
+        "main": [
+          [
+            {
+              "node": "Fetch Active Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Active Prompt": {
+        "main": [
+          [
+            {
+              "node": "Build Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Result": {
+        "main": [
+          [
+            {
+              "node": "Return Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-25T21:19:27.418Z",
+        "id": 3582,
+        "workflowId": "T6fGAX9dPIAMc7kD",
+        "versionId": "49a6b05b-9be2-4dc5-9e3f-0c8fd10dcd11",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      },
+      {
+        "createdAt": "2026-04-25T21:19:27.408Z",
+        "id": 3581,
+        "workflowId": "T6fGAX9dPIAMc7kD",
+        "versionId": "49a6b05b-9be2-4dc5-9e3f-0c8fd10dcd11",
+        "event": "deactivated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

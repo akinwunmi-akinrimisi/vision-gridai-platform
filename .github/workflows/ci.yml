@@ -47,3 +47,23 @@ jobs:
           cache-dependency-path: dashboard/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  lint-workflows:
+    # Catches the silent-failure auth-gap class fixed in 5fc2cd1 + b38a94b.
+    # See tools/lint_n8n_workflows.py — AUTH-WRITE-01 / AUTH-READ-01 etc.
+    # Runs against repo workflow JSON (no live n8n SSH access needed in CI).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Lint n8n workflow JSON
+        run: |
+          shopt -s nullglob
+          files=(workflows/*.json)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No workflows/ JSON files found; nothing to lint."
+            exit 0
+          fi
+          python tools/lint_n8n_workflows.py --files "${files[@]}"
