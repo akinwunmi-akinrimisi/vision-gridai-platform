@@ -12,7 +12,7 @@ function useProjectStyleRow(projectId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('id, niche, niche_category, niche_input, niche_description, channel_style, style_dna, style_dna_template_key')
+        .select('id, niche, niche_description, channel_style, niche_expertise_profile, niche_blue_ocean_strategy, style_dna, style_dna_template_key')
         .eq('id', projectId)
         .single();
       if (error) throw error;

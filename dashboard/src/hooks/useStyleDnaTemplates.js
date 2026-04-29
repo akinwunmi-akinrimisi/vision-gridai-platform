@@ -88,11 +88,11 @@ export function useSelectStyleDna() {
 export function recommendStyleDnaKey(project, templates) {
   if (!templates || templates.length === 0) return null;
   const blob = [
-    project?.niche_category,
     project?.niche,
-    project?.niche_input,
     project?.niche_description,
     project?.channel_style,
+    project?.niche_expertise_profile,
+    project?.niche_blue_ocean_strategy,
   ]
     .filter(Boolean)
     .join(' ')
