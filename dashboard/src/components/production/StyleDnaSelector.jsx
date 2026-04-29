@@ -19,7 +19,13 @@ function useProjectStyleRow(projectId) {
       return data;
     },
     enabled: !!projectId,
-    refetchInterval: 5_000,
+    // Don't poll — useSelectStyleDna mutation invalidates this key on success.
+    // Polling caused the picker to flicker on/off when the parent
+    // ProductionMonitor re-rendered between background fetches.
+    staleTime: Infinity,
+    // placeholderData keeps the last successful data during any refetch so the
+    // UI never flips back to the loading skeleton mid-session.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -72,15 +78,19 @@ const TAGLINE_BY_KEY = {
  */
 export default function StyleDnaSelector({ projectId }) {
   const [selectedKey, setSelectedKey] = useState(null);
-  const { data: project, isLoading: projectLoading } = useProjectStyleRow(projectId);
-  const { data: templates = [], isLoading: templatesLoading } = useStyleDnaTemplates();
+  const { data: project } = useProjectStyleRow(projectId);
+  const { data: templates = [] } = useStyleDnaTemplates();
   const selectMutation = useSelectStyleDna();
-  const isLoading = projectLoading || templatesLoading;
 
   // Already locked? Render a small confirmation strip instead of the picker.
   const alreadyLocked = !!project?.style_dna && !!project?.style_dna_template_key;
 
-  if (isLoading) {
+  // Gate the loading state on data presence (not isLoading) so background
+  // refetches never flash the skeleton. We only need a spinner when both the
+  // project row and the templates list are still undefined on first load.
+  const showSkeleton = !project || templates.length === 0;
+
+  if (showSkeleton) {
     return (
       <div className="bg-card/80 backdrop-blur border border-border rounded-xl p-6 sm:p-8">
         <div className="flex items-center justify-center py-12">
