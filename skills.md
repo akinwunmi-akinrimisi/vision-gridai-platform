@@ -162,7 +162,7 @@ All 61 agents from [msitarzewski/agency-agents](https://github.com/msitarzewski/
 | **D3:** Ken Burns + Color Grade | FFmpeg Ken Burns, FFmpeg Color Science | Resume/Checkpoint |
 | **D4:** Captions + Transitions + Assembly | ASS Subtitles, FFmpeg xfade, FFmpeg concat | Offset Calculation |
 | **D5:** Background Music | FFmpeg Audio Ducking, Music Library | AI Music Mood |
-| **D6:** End Card + Thumbnail | FFmpeg fade, Fal.ai, Sharp/Jimp text overlay | — |
+| **D6:** End Card + Thumbnail | FFmpeg fade (end card); OpenRouter gemini-3-pro-image + FFmpeg drawtext/drawbox compositing (thumbnail) | — |
 | **D7:** Platform Renders | Platform Export Profiles | — |
 | **E:** QA → GATE 3 → Publish | Automated QA (13 checks) | — |
 | **F:** Analytics (cron) | YouTube/TikTok/Instagram APIs | Supabase |

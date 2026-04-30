@@ -17,7 +17,7 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - **Background Music:** Google Vertex AI Lyria (lyria-002, custom AI-generated music per video) + FFmpeg voice-ducking
 - **Assembly:** FFmpeg (in n8n Docker container)
 - **Captions:** Whisper forced alignment → kinetic ASS subtitles → FFmpeg libass burn via caption burn service (VPS port :9998, host-side to bypass n8n OOM)
-- **Thumbnails:** Fal.ai image + text overlay via Sharp/Jimp, auto-uploaded
+- **Thumbnails:** OpenRouter `google/gemini-3-pro-image-preview` (photorealistic, native text-in-image) + FFmpeg `drawtext`/`drawbox` compositing, auto-uploaded. Fallback model via `OPENROUTER_IMAGE_MODEL` env var. Supports `text_format`: `stack` (1-3 single words), `question` (rhetorical, 2-4 lines, auto-?), `headline` (1-3 phrases up to 22ch).
 - **End Cards:** FFmpeg from static branded image (3s short, 5-8s long)
 - **Storage:** Google Drive
 - **Upload:** YouTube Data API v3 + TikTok Content API + Instagram Graph API

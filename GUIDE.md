@@ -208,11 +208,12 @@ WF_ENDCARD:
 3. Concatenate onto final assembled video
 4. Duration: 5-8 seconds for long-form
 
-WF_THUMBNAIL:
-1. Use AI (Fal.ai Seedream) to generate a thumbnail image from script hook + style_dna
-2. Add text overlay via n8n Code node (Sharp/Jimp): thumbnail_text from YouTube SEO Metadata prompt
-3. Upload to Google Drive
-4. Store URL in platform_metadata table
+WF_THUMBNAIL_GENERATE (live id 7GqpEAug8hxxU7f6):
+1. Generate Concepts via Claude Sonnet — produces 2 A/B concepts with niche-aware emotion profile, country-aware representation, and per-register color grade. Selects style (single_face/dual_face/scene_overlay) and text_format (stack/question/headline).
+2. Generate Images via OpenRouter google/gemini-3-pro-image-preview (photorealistic, native text-in-image rendering). One call per panel; FFmpeg crops to thumbnail target size after generation.
+3. Compose Thumbnails via FFmpeg drawbox (gradient overlay) + drawtext (auto-fit Montserrat ExtraBold, hex palette colors). Supports 1-4 lines with character-aware font sizing.
+4. Upload to Google Drive (variant A primary).
+5. Store URL on topics.thumbnail_url + log to production_log with image_prompts and concept JSON.
 
 Store as WF_ENDCARD.json and WF_THUMBNAIL.json.
 ```

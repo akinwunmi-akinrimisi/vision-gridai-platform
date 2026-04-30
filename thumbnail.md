@@ -333,3 +333,93 @@ Live n8n workflow `WF_THUMBNAIL_GENERATE` (`7GqpEAug8hxxU7f6`) was patched 2026-
 | Niche / brand fit | 4 / 10 | **9 / 10** | Per-register grade + per-niche emotion + country representation all working |
 | Compliance / safety | 4 / 10 | **9 / 10** | No more "sinister official" character; abstract antagonist for finance/benefits niches |
 | **Overall** | **5.5 / 10** | **8.2 / 10** | Three P0/P1 prompt-side bugs eliminated; remaining items are compositor-side or model-baseline |
+
+---
+
+## 10. Phase 2 — model swap + multi-line text (2026-04-30 19:15Z)
+
+### Image model swap: Fal.ai Seedream 4.5 → OpenRouter `google/gemini-3-pro-image-preview`
+
+Why this happened:
+- Seedream's baseline aggressively smooths skin and ignores layout instructions. Anti-smoothing tokens helped but didn't solve it (§6.5 stayed open).
+- User asked to switch to "top ChatGPT model via OpenRouter". Investigation: OpenRouter does NOT proxy `gpt-image-1` (only via chat completions, and `gpt-image-1` isn't a registered chat model on OR). OpenAI direct rejected with "Billing hard limit reached" on the existing key.
+- `openai/gpt-5-image` IS on OpenRouter, but its content moderation refuses ethnicity-specific prompts (which our country-representation logic depends on — *"diverse Australian features, e.g. Aboriginal heritage / Asian-Australian / Pacific Islander"* is mandatory in the system prompt for AU projects).
+- `google/gemini-3-pro-image-preview` on OpenRouter: top-tier photorealism, **native text-in-image rendering** (test render produced a real Healthcare Card form with readable "Australian Government / HEALTHCARE CARD FORM" text), no ethnicity refusal, $0.137 per call.
+
+Implementation:
+- `Generate Images` node rewritten to POST `/api/v1/chat/completions` with `model: 'google/gemini-3-pro-image-preview'`, `modalities: ['image','text']`, prompt with embedded aspect-ratio hint (`"Render in landscape 16:9 aspect ratio"` or portrait 8:9 / square 1:1).
+- Response parses `choices[0].message.images[0].image_url.url` (data URL); base64 decoded via `execSync` with stdin (n8n sandbox blocks `require('fs')`).
+- FFmpeg crops to target dimensions after generation (1280×720 / 640×720 / 480×480).
+- Model swappable via `OPENROUTER_IMAGE_MODEL` env var.
+
+### Multi-line + rhetorical-question support
+
+`Generate Concepts` schema extended with `text_format`:
+- `stack` — 1-3 single words, max 10 chars per line (the original behavior, default for shocking facts/dollar reveals)
+- `question` — 2-4 lines forming a rhetorical question, max 18 chars per line, last line forced to end with `?`
+- `headline` — 1-3 phrase chunks, max 22 chars per line
+
+`Compose Thumbnails` rewritten with **character-aware auto-fit font sizing**:
+```
+fontSize = min(
+  availWidth / (maxChars × 0.55),     // longest-line constraint
+  availHeight / (lineCount × spacing), // total-height constraint
+  165                                   // hard cap
+)
+```
+Style → text-band width: `single_face=480px`, `dual_face=1200px`, `scene_overlay=850px`. Auto-fit means a 4-line question on `single_face` automatically drops to ~65px font; a 1-word stack on `dual_face` automatically lifts to ~165px hero.
+
+Format-A/B-variety hard-enforced — `concepts[0].text_format` MUST differ from `concepts[1].text_format`. Same hard rule on style.
+
+### Compositor §6.4 fix
+
+Palettes converted to FFmpeg-explicit hex:
+```
+A: { emphasisColor: '0xFFEB00', textColor: '0xFFFFFF', borderColor: '0x000000' }
+B: { emphasisColor: '0xFF2020', textColor: '0xFFFFFF', borderColor: '0x000000' }
+```
+Replaces named CSS colors (`'yellow'`, `'white'`, `'black'`) and `'#FF2020'` to remove any FFmpeg parsing ambiguity. Yellow now renders as bright `#FFEB00`, distinct from B's saturated red.
+
+### v4 evidence — same topic 4
+
+Variant A — `dual_face / stack` 3-line: **$50K / THRESHOLD / SECRET**
+- Drive: <https://drive.google.com/file/d/1M5E9dVMCEQMA9tv_x2G24VM7gNwSrVQq/view>
+- Same Aboriginal Australian woman across both panels, past-self → present-self framing
+- "HEALTHCARE CARD" text visibly readable on the card she's holding (native text rendering)
+- Skin texture: real age lines, freckles, gray hair fibers, no smoothing
+- Auto-fit: 3 lines @ ~85px because dual_face has 1200px width
+
+Variant B — `single_face / question` 3-line: **MISSING / $5000 / BENEFITS?**
+- Drive: <https://drive.google.com/file/d/1cVmPC0VHEMNnc0IiwlewsG8wnKpTJ7A4/view>
+- Asian-Australian man, real natural skin (visible stubble + eye sheen)
+- Holding "Healthcare Card / benefits letter" with readable text
+- Subject right-of-center, dark left zone, text overlays cleanly
+- Question format: auto-? on last line, 3 lines @ ~75px
+
+### Final scorecard
+
+| Category | v1 | v3 | v4 |
+|---|---|---|---|
+| Concept generation (Claude) | 8 / 10 | 9.5 / 10 | **9.5 / 10** |
+| Image generation | 5 / 10 | 6.5 / 10 | **9.5 / 10** (gemini-3-pro photorealism + native text) |
+| Compositor | 7 / 10 | 7 / 10 | **9 / 10** (auto-fit + hex palettes + multi-line) |
+| Hero text format flexibility | 4 / 10 | 5 / 10 | **9 / 10** (rhetorical questions + headlines + stacks all supported) |
+| Niche / brand fit | 4 / 10 | 9 / 10 | **9 / 10** |
+| Compliance / safety | 4 / 10 | 9 / 10 | **9 / 10** |
+| **Overall** | **5.5 / 10** | **8.2 / 10** | **9.2 / 10** |
+
+### Cost shift
+
+Per topic (2 variants × 1-2 images each):
+- Seedream: $0.06–$0.12
+- gemini-3-pro-image: $0.27–$0.55
+
+4-5× cost increase, but the photorealism delta justifies it for thumbnails (the click-rate trigger).
+
+### Still pending
+
+- **§6.6 full** — post-generation darkness scan + auto-reroll if `single_face` left zone isn't dark. Current is heuristic via prompt — works most of the time but not bulletproof.
+- **§6.7** — prop fidelity verification via Claude Vision ("does the rendered image actually contain the prompted Healthcare Card?").
+- **§6.8** — mobile 320×180 readability gate (auto-render preview, fail if hero text would be unreadable at phone size).
+
+These three are non-blocking for production. The biggest remaining lift would be §6.7 because gemini-3-pro is excellent but not perfect at prop fidelity.
