@@ -483,7 +483,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ topic_id: $('Prepare Batch').first().json.first_topic_id }) }}",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $json.first_topic_id }) }}",
         "options": {}
       }
     },
@@ -658,7 +658,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ project_id: $('Webhook Stop').first().json.body?.project_id, topic_id: $('Webhook Stop').first().json.body.topic_id, stage: 'production', action: 'stopped', details: { stopped_by: 'dashboard' } }) }}",
+        "jsonBody": "={{ JSON.stringify({ project_id: $json.body?.project_id, topic_id: $('Webhook Stop').item.json.body.topic_id, stage: 'production', action: 'stopped', details: { stopped_by: 'dashboard' } }) }}",
         "options": {}
       }
     },
@@ -875,7 +875,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.N8N_WEBHOOK_BASE }}/{{ $('Determine Resume Stage').first().json.webhook_path }}",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/{{ $json.webhook_path }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -891,7 +891,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ topic_id: $('Determine Resume Stage').first().json.topic_id }) }}",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $json.topic_id }) }}",
         "options": {}
       }
     },
@@ -2579,11 +2579,11 @@
       ],
       "parameters": {
         "operation": "upload",
-        "name": "={{ $json.body.file_name || 'video.mp4' }}",
+        "name": "={{ $(\"Webhook Upload to Drive\").first().json.body.file_name || \"video.mp4\" }}",
         "folderId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.body.folder_id }}",
+          "value": "={{ $(\"Webhook Upload to Drive\").first().json.body.folder_id }}",
           "cachedResultName": "/ (Root folder)"
         },
         "options": {}
@@ -3414,7 +3414,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "3331a45c-1c4d-435a-90a2-d46aff4db5c0",
+  "versionId": "f54df43c-2ef0-49f2-8138-dcce6dbc4bdf",
   "meta": null,
   "id": "SsdE4siQ8EbO76ye",
   "tags": [
