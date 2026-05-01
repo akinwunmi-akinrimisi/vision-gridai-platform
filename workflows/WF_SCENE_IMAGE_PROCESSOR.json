@@ -42,123 +42,15 @@
     },
     {
       "id": "build-fal-request",
-      "name": "Build Fal Request",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "name": "Generate Scene Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         690,
         300
       ],
       "parameters": {
-        "mode": "manual",
-        "duplicateItem": false,
-        "assignments": {
-          "assignments": [
-            {
-              "id": "s1",
-              "name": "scene_id",
-              "value": "={{ $('Webhook Trigger').first().json.body.scene_id }}",
-              "type": "string"
-            },
-            {
-              "id": "s2",
-              "name": "topic_id",
-              "value": "={{ $('Webhook Trigger').first().json.body.topic_id }}",
-              "type": "string"
-            },
-            {
-              "id": "s3",
-              "name": "project_id",
-              "value": "={{ $('Webhook Trigger').first().json.body.project_id }}",
-              "type": "string"
-            },
-            {
-              "id": "s4",
-              "name": "image_prompt",
-              "value": "={{ $('Webhook Trigger').first().json.body.image_prompt }}",
-              "type": "string"
-            },
-            {
-              "id": "s5",
-              "name": "negative_prompt",
-              "value": "={{ $('Webhook Trigger').first().json.body.negative_prompt || '' }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      }
-    },
-    {
-      "id": "generate-image",
-      "name": "Generate Image",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        910,
-        300
-      ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://fal.run/fal-ai/bytedance/seedream/v4/text-to-image",
-        "authentication": "none",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Key {{ $env.FAL_API_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ prompt: $json.image_prompt + '. Cinematic illustrated digital artwork in a dark atmospheric concept-art style. Hand-crafted ink linework with painterly brushstroke textures visible throughout. Desaturated muted tones with deep shadows, controlled highlights, and strong tonal range. Moody dramatic lighting with volumetric haze, rim light accents, and chiaroscuro depth. Semi-realistic proportions, editorial illustration quality. Rich surface detail. No text, no watermarks, no UI elements.', negative_prompt: $json.negative_prompt || 'text, words, letters, watermark, signature, logo, blurry, deformed, distorted, disfigured, bad anatomy, extra limbs', image_size: 'landscape_16_9' }) }}",
-        "options": {
-          "timeout": 120000
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 30000,
-      "onError": "continueRegularOutput"
-    },
-    {
-      "id": "check-response",
-      "name": "Check Response",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1130,
-        300
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": false,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "c1",
-              "leftValue": "={{ $json.error }}",
-              "rightValue": "",
-              "operator": {
-                "type": "object",
-                "operation": "notExists",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
+        "jsCode": "// WF_SCENE_IMAGE_PROCESSOR / Generate Scene Image\n// v3 (2026-05-01): hybrid model routing, no illustration suffix, full data preservation.\n//\n// Routing:\n//   requires_text_rendering=true OR keyword match \u00e2\u2020\u2019 openai/gpt-5-image-mini\n//     (OpenRouter, $0.045/img, native text rendering)\n//     fallback \u00e2\u2020\u2019 google/gemini-3-pro-image-preview (OpenRouter, $0.069/img)\n//   else \u00e2\u2020\u2019 fal-ai/flux/schnell (Fal.ai, $0.003/img, fast photoreal)\n//\n// All upstream intelligence (composition_prefix + image_prompt + registerAnchors\n// + styleDna + negative_prompt) is forwarded verbatim to the chosen model.\n// Resolved prompt + chosen model + cost are persisted to scenes + production_log\n// so nothing is lost downstream.\n\nconst { execSync } = require('child_process');\nconst body = $('Webhook Trigger').first().json.body || {};\nconst sceneId = body.scene_id;\nconst sceneNumber = body.scene_number || 0;\nconst paddedNum = sceneNumber.toString().padStart(3, '0');\nconst topicId = body.topic_id;\nconst projectId = body.project_id;\nconst promptIn = (body.image_prompt || '').toString();\nconst negativePrompt = body.negative_prompt || '';\nconst requiresTextFlag = body.requires_text_rendering === true;\n\n// Keyword fallback for legacy scenes (where requires_text_rendering flag is missing).\n// TIGHT phrase matches only \u00e2\u20ac\u201d generic words like 'magazine' or 'chart' are stylistic\n// fluff in many script-gen prompts and would over-route. Trust requires_text_rendering\n// flag from script-gen as primary; this fallback catches obvious-text-needed legacy scenes.\nconst TEXT_KEYWORDS = [\n  // Named programs (text always present on the rendered prop)\n  'mygov', 'medicare card', 'healthcare card', 'commonwealth seniors',\n  'centrelink form', 'centrelink letter', 'centrelink statement',\n  // Document types\n  'application form', 'tax form', 'tax statement', 'tax return',\n  'benefits letter', 'pension form', 'invoice', 'receipt',\n  // UI elements (have text by definition)\n  'login page', 'login screen', 'web page', 'webpage', 'screenshot',\n  'spreadsheet', 'app interface', 'dashboard interface',\n  // Print/news with visible headlines\n  'magazine cover', 'newspaper headline', 'newspaper front page',\n  'breaking news headline', 'price tag', 'price chart', 'pricing chart',\n  // Educational binders/booklets where label text drives meaning\n  'training materials', 'training brochure', 'training binder',\n  'brochure cover', 'booklet cover',\n  // Comparison/breakdown charts (PBS, ATO, cost analyses \u00e2\u20ac\u201d text-driven)\n  'pbs pricing', 'pbs price', 'pricing structure', 'pricing breakdown',\n  'price comparison', 'cost comparison', 'cost breakdown', 'savings calculation',\n  'rate comparison', 'rate chart', 'safety net threshold',\n  'eligibility chart', 'income threshold', 'asset test'\n];\nconst promptLower = promptIn.toLowerCase();\nconst keywordHit = TEXT_KEYWORDS.find(function(k) { return promptLower.indexOf(k) !== -1; }) || null;\nconst useTextModel = requiresTextFlag || !!keywordHit;\n\nconsole.log('[scene ' + sceneNumber + '] requires_text=' + requiresTextFlag + ' keywordHit=' + (keywordHit || 'none') + ' useTextModel=' + useTextModel + ' promptLen=' + promptIn.length);\n\nlet modelUsed = '';\nlet imageUrl = '';\nlet costUsd = 0;\nlet providerError = null;\nconst startTime = Date.now();\n\nasync function callOpenRouter(modelName, prompt) {\n  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {\n    method: 'POST',\n    headers: {\n      'Authorization': 'Bearer ' + $env.OPENROUTER_API_KEY,\n      'Content-Type': 'application/json',\n      'HTTP-Referer': 'https://dashboard.operscale.cloud',\n      'X-Title': 'Vision GridAI Scene Images'\n    },\n    body: JSON.stringify({\n      model: modelName,\n      messages: [{ role: 'user', content: prompt + ' Render in landscape 16:9 aspect ratio.' }],\n      modalities: ['image', 'text']\n    })\n  });\n  const result = await resp.json();\n  if (result.error) return { error: result.error };\n  const msg = (result.choices && result.choices[0] && result.choices[0].message) || {};\n  if (!msg.images || !msg.images[0] || !msg.images[0].image_url || !msg.images[0].image_url.url) {\n    return { error: { refusal: (msg.content || msg.refusal || '').toString().substring(0, 300) } };\n  }\n  const dataUrl = msg.images[0].image_url.url;\n  const b64 = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',', 2)[1] : dataUrl;\n  const cost = (result.usage && result.usage.cost) || 0.05;\n  return { b64: b64, cost: cost };\n}\n\nfunction saveB64ToScenePath(b64) {\n  const dir = '/tmp/production/' + topicId + '/scene_images';\n  execSync('mkdir -p ' + dir, { shell: '/bin/sh' });\n  const rawPath = dir + '/raw_' + paddedNum + '.png';\n  const outPath = dir + '/scene_' + paddedNum + '.png';\n  execSync('base64 -d > ' + rawPath, { shell: '/bin/sh', input: b64, maxBuffer: 50 * 1024 * 1024, timeout: 15000 });\n  // Crop/resize to 1280x720 landscape so downstream Ken Burns gets uniform input\n  execSync('ffmpeg -y -i ' + rawPath + ' -vf \"scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720\" ' + outPath + ' 2>&1', { shell: '/bin/sh', timeout: 20000 });\n  try { execSync('rm -f ' + rawPath, { shell: '/bin/sh' }); } catch(e) {}\n  // URL the n8n container can fetch from later (http.server :9999 is bound to /data/n8n-production)\n  return 'http://172.18.0.1:9999/' + topicId + '/scene_images/scene_' + paddedNum + '.png';\n}\n\ntry {\n  if (useTextModel) {\n    modelUsed = 'openai/gpt-5-image-mini';\n    let r = await callOpenRouter(modelUsed, promptIn);\n    if (r.error) {\n      console.log('gpt-5-image-mini fallback to gemini-3-pro: ' + JSON.stringify(r.error).substring(0, 200));\n      modelUsed = 'google/gemini-3-pro-image-preview';\n      r = await callOpenRouter(modelUsed, promptIn);\n      if (r.error) throw new Error('Both text models failed: ' + JSON.stringify(r.error).substring(0, 300));\n    }\n    imageUrl = saveB64ToScenePath(r.b64);\n    costUsd = r.cost;\n  } else {\n    modelUsed = 'fal-ai/flux/schnell';\n    const resp = await fetch('https://fal.run/fal-ai/flux/schnell', {\n      method: 'POST',\n      headers: { 'Authorization': 'Key ' + $env.FAL_API_KEY, 'Content-Type': 'application/json' },\n      body: JSON.stringify({\n        prompt: promptIn,\n        negative_prompt: negativePrompt,\n        image_size: 'landscape_16_9',\n        num_inference_steps: 4\n      })\n    });\n    const result = await resp.json();\n    if (!result.images || !result.images[0]) throw new Error('Flux Schnell empty: ' + JSON.stringify(result).substring(0, 300));\n    imageUrl = result.images[0].url;\n    costUsd = 0.003;\n  }\n} catch (err) {\n  providerError = err.message || String(err);\n  console.log('[scene ' + sceneNumber + '] PROVIDER ERROR: ' + providerError);\n}\n\nconst elapsedMs = Date.now() - startTime;\n\n// Persist resolved prompt + model + cost on the scene row (full provenance preserved)\ntry {\n  await fetch($env.SUPABASE_URL + '/rest/v1/scenes?id=eq.' + sceneId, {\n    method: 'PATCH',\n    headers: {\n      'apikey': $env.SUPABASE_ANON_KEY,\n      'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=minimal'\n    },\n    body: JSON.stringify({\n      image_prompt_resolved: promptIn.substring(0, 8000),\n      image_model: modelUsed,\n      image_cost_usd: Math.round(costUsd * 100000) / 100000\n    })\n  });\n} catch (e) { /* non-fatal */ }\n\n// Append to production_log so we have a forensic trail of every image call\ntry {\n  await fetch($env.SUPABASE_URL + '/rest/v1/production_log', {\n    method: 'POST',\n    headers: {\n      'apikey': $env.SUPABASE_ANON_KEY,\n      'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=minimal'\n    },\n    body: JSON.stringify({\n      project_id: projectId,\n      topic_id: topicId,\n      stage: 'image',\n      action: providerError ? 'failed' : 'completed',\n      details: {\n        scene_id: sceneId,\n        scene_number: sceneNumber,\n        model: modelUsed,\n        prompt_resolved_preview: promptIn.substring(0, 600),\n        prompt_length: promptIn.length,\n        requires_text: useTextModel,\n        keyword_hit: keywordHit,\n        cost_usd: costUsd,\n        elapsed_ms: elapsedMs,\n        error: providerError,\n        image_url: imageUrl,\n        register_id: body.register_id,\n        color_mood: body.color_mood,\n        zoom_direction: body.zoom_direction,\n        composition_prefix: body.composition_prefix\n      }\n    })\n  });\n} catch (e) { /* non-fatal */ }\n\nif (providerError) throw new Error('Image generation failed for scene ' + sceneNumber + ': ' + providerError);\n\nreturn [{ json: {\n  scene_id: sceneId,\n  scene_number: sceneNumber,\n  image_url: imageUrl,\n  model: modelUsed,\n  cost_usd: costUsd,\n  elapsed_ms: elapsedMs,\n  image_status: 'uploaded'\n} }];"
       }
     },
     {
@@ -172,7 +64,7 @@
       ],
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes?id=eq.{{ $('Build Fal Request').first().json.scene_id }}",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes?id=eq.{{ $('Generate Scene Image').first().json.scene_id }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -197,7 +89,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ image_status: 'uploaded', image_url: $('Generate Image').first().json.images[0].url }) }}",
+        "jsonBody": "={{ JSON.stringify({ image_status: 'uploaded', image_url: $('Generate Scene Image').first().json.image_url }) }}",
         "options": {}
       }
     },
@@ -212,7 +104,7 @@
       ],
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes?id=eq.{{ $('Build Fal Request').first().json.scene_id }}",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/scenes?id=eq.{{ $('Webhook Trigger').first().json.body.scene_id }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -258,47 +150,18 @@
       "main": [
         [
           {
-            "node": "Build Fal Request",
+            "node": "Generate Scene Image",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Fal Request": {
-      "main": [
-        [
-          {
-            "node": "Generate Image",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Generate Image": {
-      "main": [
-        [
-          {
-            "node": "Check Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Response": {
+    "Generate Scene Image": {
       "main": [
         [
           {
             "node": "Update Scene Success",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Update Scene Failed",
             "type": "main",
             "index": 0
           }
@@ -319,7 +182,7 @@
   "pinData": null,
   "versionId": "294abd1d-d11d-47af-a2a9-bcd5320ff878",
   "activeVersionId": "294abd1d-d11d-47af-a2a9-bcd5320ff878",
-  "versionCounter": 93,
+  "versionCounter": 96,
   "triggerCount": 1,
   "shared": [
     {
