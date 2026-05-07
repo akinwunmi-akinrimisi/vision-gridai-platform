@@ -1,9 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { dashboardRead } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 /**
  * Fetch scenes for a topic and compute stage-by-stage production progress.
- * Polls every 15s post-migration 030 (Supabase Realtime disabled for anon).
+ * 2026-05-07: Switched from dashboardRead webhook to direct Supabase query.
+ * The webhook was routing through n8n's single-threaded task runner, which
+ * gets queue-starved during peak image-gen bursts and made the production
+ * monitor look frozen. Supabase REST handles concurrent reads in parallel,
+ * so the dashboard stays responsive even when n8n is saturated.
+ * Polls every 3s.
  *
  * @param {string|null} topicId - Topic UUID
  * @param {object} [topicData] - Optional topic row (reserved for future use)
@@ -12,7 +17,15 @@ import { dashboardRead } from '../lib/api';
 export function useProductionProgress(topicId, topicData) {
   const query = useQuery({
     queryKey: ['scenes', topicId],
-    queryFn: () => dashboardRead('scene_progress', { topic_id: topicId }),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('scenes')
+        .select('id, scene_number, narration_text, audio_status, image_status, video_status, clip_status, visual_type')
+        .eq('topic_id', topicId)
+        .order('scene_number', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
     enabled: !!topicId,
     refetchInterval: 3_000,
   });

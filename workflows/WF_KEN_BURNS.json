@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-05-07T21:38:52.523Z",
+  "createdAt": "2026-03-28T17:25:57.560Z",
+  "id": "OYahvKcydMrUxK8j",
   "name": "WF_KEN_BURNS",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "id": "trigger-1",
@@ -28,36 +34,14 @@
     {
       "id": "query-1",
       "name": "Get Pending Scenes",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         480,
         300
       ],
       "parameters": {
-        "method": "GET",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/scenes?topic_id=eq.{{$json.body.topic_id}}&clip_status=eq.pending&image_url=not.is.null&select=id,scene_number,image_url,zoom_direction,color_mood,selective_color_element,audio_duration_ms&order=scene_number.asc",
-        "authentication": "none",
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": false
-            }
-          }
-        },
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_ANON_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            }
-          ]
-        },
-        "sendHeaders": true
+        "jsCode": "// Get Pending: unified fetch over scene_segments (when uses_segments=true) and scenes (legacy).\n// Emits one item per work unit. Each item has {kind, scene_id, segment_id, scene_number,\n// segment_number, image_url, duration_seconds, zoom_direction, color_mood, selective_color_element}.\n\nconst topicId = $(\"Webhook Trigger\").first().json.body.topic_id;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst headers = {\n  \"apikey\": $env.SUPABASE_ANON_KEY,\n  \"Authorization\": \"Bearer \" + $env.SUPABASE_SERVICE_ROLE_KEY,\n};\n\nasync function get(url) {\n  const r = await this.helpers.httpRequest({ method: \"GET\", url, headers });\n  if (Array.isArray(r)) return r;\n  if (typeof r === \"string\") { try { return JSON.parse(r); } catch(_) { return []; } }\n  return r || [];\n}\nconst fetchJson = get.bind(this);\n\n// 1a. Pending segments with embedded parent scene metadata\nconst segUrl = supabaseUrl + \"/rest/v1/scene_segments?topic_id=eq.\" + topicId\n  + \"&clip_status=eq.pending&image_url=not.is.null\"\n  + \"&select=id,scene_id,segment_number,duration_ms,image_url,scenes(scene_number,zoom_direction,color_mood,selective_color_element)\"\n  + \"&order=scene_id.asc,segment_number.asc\";\nconst segs = await fetchJson(segUrl);\n\n// 1b. Pending scenes that do NOT use segments (legacy 1-image-per-scene topics)\nconst sceneUrl = supabaseUrl + \"/rest/v1/scenes?topic_id=eq.\" + topicId\n  + \"&clip_status=eq.pending&image_url=not.is.null&uses_segments=not.eq.true\"\n  + \"&select=id,scene_number,image_url,zoom_direction,color_mood,selective_color_element,audio_duration_ms\"\n  + \"&order=scene_number.asc\";\nconst legacyScenes = await fetchJson(sceneUrl);\n\nconst items = [];\nfor (const s of segs) {\n  const parent = s.scenes || {};\n  items.push({ json: {\n    kind: \"segment\",\n    scene_id: s.scene_id,\n    segment_id: s.id,\n    scene_number: parent.scene_number,\n    segment_number: s.segment_number,\n    image_url: s.image_url,\n    duration_seconds: (s.duration_ms || 8000) / 1000,\n    zoom_direction: parent.zoom_direction || \"in\",\n    color_mood: parent.color_mood || \"full_natural\",\n    selective_color_element: parent.selective_color_element || null,\n  }});\n}\nfor (const s of legacyScenes) {\n  items.push({ json: {\n    kind: \"scene\",\n    scene_id: s.id,\n    segment_id: null,\n    scene_number: s.scene_number,\n    segment_number: null,\n    image_url: s.image_url,\n    duration_seconds: s.audio_duration_ms ? (s.audio_duration_ms / 1000) : 6,\n    zoom_direction: s.zoom_direction || \"in\",\n    color_mood: s.color_mood || \"full_natural\",\n    selective_color_element: s.selective_color_element || null,\n  }});\n}\n\nconsole.log(\"Ken Burns: \" + segs.length + \" segments + \" + legacyScenes.length + \" legacy scenes pending\");\n\nreturn items;"
       }
     },
     {
@@ -117,7 +101,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Ken Burns: download image → run FFmpeg → return clip path\nconst scene = $input.first().json;\nconst topicId = $('Webhook Trigger').first().json.body.topic_id;\nconst sceneNum = String(scene.scene_number).padStart(3, '0');\nconst duration = scene.audio_duration_ms ? (scene.audio_duration_ms / 1000).toFixed(1) : '6';\nconst zoomDir = scene.zoom_direction || 'in';\nconst colorMood = scene.color_mood || 'full_natural';\nconst skipColor = scene.selective_color_element ? '1' : '0';\nconst imgPath = `/tmp/production/kb_${topicId}_${sceneNum}.png`;\nconst clipPath = `/tmp/production/kb_${topicId}_${sceneNum}.mp4`;\n\n// Download image\nconst { execSync } = require('child_process');\ntry {\n  execSync(`curl -sL -o \"${imgPath}\" \"${scene.image_url}\"`, { timeout: 30000 });\n} catch (e) {\n  return [{ json: { success: false, scene_id: scene.id, scene_number: scene.scene_number, error: 'Image download failed: ' + e.message } }];\n}\n\n// Run Ken Burns\ntry {\n  const cmd = `bash /tmp/production/ken_burns.sh \"${imgPath}\" ${duration} ${zoomDir} ${colorMood} \"${clipPath}\" ${skipColor}`;\n  execSync(cmd, { timeout: 120000 });\n} catch (e) {\n  // Cleanup\n  try { execSync(`rm -f \"${imgPath}\"`); } catch(_) {}\n  return [{ json: { success: false, scene_id: scene.id, scene_number: scene.scene_number, error: 'Ken Burns failed: ' + e.message } }];\n}\n\n// Cleanup input image\ntry { execSync(`rm -f \"${imgPath}\"`); } catch(_) {}\n\nreturn [{ json: {\n  success: true,\n  scene_id: scene.id,\n  scene_number: scene.scene_number,\n  clip_path: clipPath,\n  duration: parseFloat(duration),\n  zoom_direction: zoomDir,\n  color_mood: colorMood,\n} }];"
+        "jsCode": "// Ken Burns: download image -> run FFmpeg -> return clip path\n// Supports both per-scene (legacy) and per-segment (new variable-pace) work units.\n\nconst item = $input.first().json;\nif (item.__empty === true) {\n  return [{ json: { success: true, skipped: true, reason: \"no_pending\" } }];\n}\n\nconst topicId = $(\"Webhook Trigger\").first().json.body.topic_id;\nconst sceneNum = String(item.scene_number).padStart(3, \"0\");\nconst isSegment = item.kind === \"segment\";\nconst segNum = isSegment ? String(item.segment_number).padStart(2, \"0\") : null;\n\nconst duration = (item.duration_seconds || 6).toFixed(1);\nconst zoomDir = item.zoom_direction || \"in\";\nconst colorMood = item.color_mood || \"full_natural\";\nconst skipColor = item.selective_color_element ? \"1\" : \"0\";\n\nconst baseName = isSegment ? `kb_${topicId}_${sceneNum}_${segNum}` : `kb_${topicId}_${sceneNum}`;\nconst imgPath = `/tmp/production/${baseName}.png`;\nconst clipPath = `/tmp/production/${baseName}.mp4`;\n\nconst { execSync } = require(\"child_process\");\ntry {\n  execSync(`curl -sL -o \"${imgPath}\" \"${item.image_url}\"`, { timeout: 30000 });\n} catch (e) {\n  return [{ json: { success: false, kind: item.kind, scene_id: item.scene_id, segment_id: item.segment_id, scene_number: item.scene_number, segment_number: item.segment_number, error: \"Image download failed: \" + e.message } }];\n}\n\ntry {\n  const cmd = `bash /tmp/production/ken_burns.sh \"${imgPath}\" ${duration} ${zoomDir} ${colorMood} \"${clipPath}\" ${skipColor}`;\n  execSync(cmd, { timeout: 120000 });\n} catch (e) {\n  try { execSync(`rm -f \"${imgPath}\"`); } catch(_) {}\n  return [{ json: { success: false, kind: item.kind, scene_id: item.scene_id, segment_id: item.segment_id, scene_number: item.scene_number, segment_number: item.segment_number, error: \"Ken Burns failed: \" + e.message } }];\n}\n\ntry { execSync(`rm -f \"${imgPath}\"`); } catch(_) {}\n\nreturn [{ json: {\n  success: true,\n  kind: item.kind,\n  scene_id: item.scene_id,\n  segment_id: item.segment_id,\n  scene_number: item.scene_number,\n  segment_number: item.segment_number,\n  clip_path: clipPath,\n  duration: parseFloat(duration),\n  zoom_direction: zoomDir,\n  color_mood: colorMood,\n} }];"
       }
     },
     {
@@ -164,11 +148,11 @@
       ],
       "parameters": {
         "method": "PATCH",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/scenes?id=eq.{{$json.scene_id}}",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/{{ $json.segment_id ? 'scene_segments' : 'scenes' }}?id=eq.{{ $json.segment_id || $json.scene_id }}",
         "authentication": "none",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ clip_status: \"uploaded\", video_url: \"file://\" + $json.clip_path }) }}",
+        "jsonBody": "={{ JSON.stringify($json.segment_id ? { clip_status: 'uploaded', clip_url: 'file://' + $json.clip_path } : { clip_status: 'uploaded', video_url: 'file://' + $json.clip_path }) }}",
         "options": {
           "response": {
             "response": {
@@ -207,7 +191,7 @@
         "authentication": "none",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ topic_id: $(\"Webhook Trigger\").first().json.body.topic_id, stage: \"ken_burns\", scene_number: $json.scene_number, action: \"ken_burns_generate\", status: \"failed\", error_message: $json.error }) }}",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Webhook Trigger').first().json.body.topic_id, stage: 'ken_burns', scene_number: $json.scene_number, action: 'ken_burns_generate', status: 'failed', error_message: $json.error, details: { kind: $json.kind, scene_id: $json.scene_id, segment_id: $json.segment_id, segment_number: $json.segment_number } }) }}",
         "options": {
           "response": {
             "response": {
@@ -312,7 +296,6 @@
       }
     }
   ],
-  "pinData": {},
   "connections": {
     "Webhook Trigger": {
       "main": [
@@ -446,7 +429,6 @@
       ]
     }
   },
-  "active": true,
   "settings": {
     "executionOrder": "v1",
     "saveDataErrorExecution": "all",
@@ -454,8 +436,474 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "702daedb-a816-4209-9103-79b35e808701",
+  "staticData": null,
   "meta": null,
-  "id": "OYahvKcydMrUxK8j",
-  "tags": []
+  "pinData": null,
+  "versionId": "0efe0f5c-e010-451d-be9c-d684219b8f7b",
+  "activeVersionId": "0efe0f5c-e010-451d-be9c-d684219b8f7b",
+  "versionCounter": 104,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-28T17:25:57.563Z",
+      "createdAt": "2026-03-28T17:25:57.563Z",
+      "role": "workflow:owner",
+      "workflowId": "OYahvKcydMrUxK8j",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-07T21:38:52.524Z",
+    "createdAt": "2026-05-07T21:38:52.524Z",
+    "versionId": "0efe0f5c-e010-451d-be9c-d684219b8f7b",
+    "workflowId": "OYahvKcydMrUxK8j",
+    "nodes": [
+      {
+        "id": "trigger-1",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "production/ken-burns",
+          "authentication": "headerAuth",
+          "options": {},
+          "multipleMethods": false
+        },
+        "webhookId": "ken-burns-trigger",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        }
+      },
+      {
+        "id": "query-1",
+        "name": "Get Pending Scenes",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Get Pending: unified fetch over scene_segments (when uses_segments=true) and scenes (legacy).\n// Emits one item per work unit. Each item has {kind, scene_id, segment_id, scene_number,\n// segment_number, image_url, duration_seconds, zoom_direction, color_mood, selective_color_element}.\n\nconst topicId = $(\"Webhook Trigger\").first().json.body.topic_id;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst headers = {\n  \"apikey\": $env.SUPABASE_ANON_KEY,\n  \"Authorization\": \"Bearer \" + $env.SUPABASE_SERVICE_ROLE_KEY,\n};\n\nasync function get(url) {\n  const r = await this.helpers.httpRequest({ method: \"GET\", url, headers });\n  if (Array.isArray(r)) return r;\n  if (typeof r === \"string\") { try { return JSON.parse(r); } catch(_) { return []; } }\n  return r || [];\n}\nconst fetchJson = get.bind(this);\n\n// 1a. Pending segments with embedded parent scene metadata\nconst segUrl = supabaseUrl + \"/rest/v1/scene_segments?topic_id=eq.\" + topicId\n  + \"&clip_status=eq.pending&image_url=not.is.null\"\n  + \"&select=id,scene_id,segment_number,duration_ms,image_url,scenes(scene_number,zoom_direction,color_mood,selective_color_element)\"\n  + \"&order=scene_id.asc,segment_number.asc\";\nconst segs = await fetchJson(segUrl);\n\n// 1b. Pending scenes that do NOT use segments (legacy 1-image-per-scene topics)\nconst sceneUrl = supabaseUrl + \"/rest/v1/scenes?topic_id=eq.\" + topicId\n  + \"&clip_status=eq.pending&image_url=not.is.null&uses_segments=not.eq.true\"\n  + \"&select=id,scene_number,image_url,zoom_direction,color_mood,selective_color_element,audio_duration_ms\"\n  + \"&order=scene_number.asc\";\nconst legacyScenes = await fetchJson(sceneUrl);\n\nconst items = [];\nfor (const s of segs) {\n  const parent = s.scenes || {};\n  items.push({ json: {\n    kind: \"segment\",\n    scene_id: s.scene_id,\n    segment_id: s.id,\n    scene_number: parent.scene_number,\n    segment_number: s.segment_number,\n    image_url: s.image_url,\n    duration_seconds: (s.duration_ms || 8000) / 1000,\n    zoom_direction: parent.zoom_direction || \"in\",\n    color_mood: parent.color_mood || \"full_natural\",\n    selective_color_element: parent.selective_color_element || null,\n  }});\n}\nfor (const s of legacyScenes) {\n  items.push({ json: {\n    kind: \"scene\",\n    scene_id: s.id,\n    segment_id: null,\n    scene_number: s.scene_number,\n    segment_number: null,\n    image_url: s.image_url,\n    duration_seconds: s.audio_duration_ms ? (s.audio_duration_ms / 1000) : 6,\n    zoom_direction: s.zoom_direction || \"in\",\n    color_mood: s.color_mood || \"full_natural\",\n    selective_color_element: s.selective_color_element || null,\n  }});\n}\n\nconsole.log(\"Ken Burns: \" + segs.length + \" segments + \" + legacyScenes.length + \" legacy scenes pending\");\n\nreturn items;"
+        }
+      },
+      {
+        "id": "check-1",
+        "name": "Any Pending?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          700,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "leftValue": "={{ $items().length }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                },
+                "id": "condition-1774718757387-y9zwhubmq"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "split-1",
+        "name": "Process Each Scene",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          920,
+          200
+        ],
+        "parameters": {
+          "batchSize": 1,
+          "options": {}
+        }
+      },
+      {
+        "id": "code-1",
+        "name": "Run Ken Burns FFmpeg",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1140,
+          200
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Ken Burns: download image -> run FFmpeg -> return clip path\n// Supports both per-scene (legacy) and per-segment (new variable-pace) work units.\n\nconst item = $input.first().json;\nif (item.__empty === true) {\n  return [{ json: { success: true, skipped: true, reason: \"no_pending\" } }];\n}\n\nconst topicId = $(\"Webhook Trigger\").first().json.body.topic_id;\nconst sceneNum = String(item.scene_number).padStart(3, \"0\");\nconst isSegment = item.kind === \"segment\";\nconst segNum = isSegment ? String(item.segment_number).padStart(2, \"0\") : null;\n\nconst duration = (item.duration_seconds || 6).toFixed(1);\nconst zoomDir = item.zoom_direction || \"in\";\nconst colorMood = item.color_mood || \"full_natural\";\nconst skipColor = item.selective_color_element ? \"1\" : \"0\";\n\nconst baseName = isSegment ? `kb_${topicId}_${sceneNum}_${segNum}` : `kb_${topicId}_${sceneNum}`;\nconst imgPath = `/tmp/production/${baseName}.png`;\nconst clipPath = `/tmp/production/${baseName}.mp4`;\n\nconst { execSync } = require(\"child_process\");\ntry {\n  execSync(`curl -sL -o \"${imgPath}\" \"${item.image_url}\"`, { timeout: 30000 });\n} catch (e) {\n  return [{ json: { success: false, kind: item.kind, scene_id: item.scene_id, segment_id: item.segment_id, scene_number: item.scene_number, segment_number: item.segment_number, error: \"Image download failed: \" + e.message } }];\n}\n\ntry {\n  const cmd = `bash /tmp/production/ken_burns.sh \"${imgPath}\" ${duration} ${zoomDir} ${colorMood} \"${clipPath}\" ${skipColor}`;\n  execSync(cmd, { timeout: 120000 });\n} catch (e) {\n  try { execSync(`rm -f \"${imgPath}\"`); } catch(_) {}\n  return [{ json: { success: false, kind: item.kind, scene_id: item.scene_id, segment_id: item.segment_id, scene_number: item.scene_number, segment_number: item.segment_number, error: \"Ken Burns failed: \" + e.message } }];\n}\n\ntry { execSync(`rm -f \"${imgPath}\"`); } catch(_) {}\n\nreturn [{ json: {\n  success: true,\n  kind: item.kind,\n  scene_id: item.scene_id,\n  segment_id: item.segment_id,\n  scene_number: item.scene_number,\n  segment_number: item.segment_number,\n  clip_path: clipPath,\n  duration: parseFloat(duration),\n  zoom_direction: zoomDir,\n  color_mood: colorMood,\n} }];"
+        }
+      },
+      {
+        "id": "check-2",
+        "name": "Ken Burns OK?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1360,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "leftValue": "={{ $json.success }}",
+                "rightValue": "true",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                },
+                "id": "condition-1774718757387-ri8aql9om"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "update-1",
+        "name": "Update Scene Status",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1580,
+          100
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/{{ $json.segment_id ? 'scene_segments' : 'scenes' }}?id=eq.{{ $json.segment_id || $json.scene_id }}",
+          "authentication": "none",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.segment_id ? { clip_status: 'uploaded', clip_url: 'file://' + $json.clip_path } : { clip_status: 'uploaded', video_url: 'file://' + $json.clip_path }) }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": false
+              }
+            }
+          },
+          "contentType": "json",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendHeaders": true
+        }
+      },
+      {
+        "id": "log-1",
+        "name": "Log Failure",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1580,
+          350
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/production_logs",
+          "authentication": "none",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ topic_id: $('Webhook Trigger').first().json.body.topic_id, stage: 'ken_burns', scene_number: $json.scene_number, action: 'ken_burns_generate', status: 'failed', error_message: $json.error, details: { kind: $json.kind, scene_id: $json.scene_id, segment_id: $json.segment_id, segment_number: $json.segment_number } }) }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": false
+              }
+            }
+          },
+          "contentType": "json",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendHeaders": true
+        }
+      },
+      {
+        "id": "done-1",
+        "name": "All Done",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          920,
+          450
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "update-topic-1",
+        "name": "Update Topic Stage",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1140,
+          450
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{$env.SUPABASE_URL}}/rest/v1/topics?id=eq.{{$('Webhook Trigger').first().json.body.topic_id}}",
+          "authentication": "none",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\"pipeline_stage\": \"ken_burns\"}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": false
+              }
+            }
+          },
+          "contentType": "json",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              }
+            ]
+          },
+          "sendHeaders": true
+        }
+      },
+      {
+        "id": "fire-assembly",
+        "name": "Fire Assembly",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1360,
+          450
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://localhost:5678/webhook/production/assembly",
+          "authentication": "none",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ topic_id: $('Webhook Trigger').first().json.body.topic_id, project_id: $('Webhook Trigger').first().json.body.project_id }) }}",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{$env.DASHBOARD_API_TOKEN}}"
+              }
+            ]
+          },
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Get Pending Scenes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Pending Scenes": {
+        "main": [
+          [
+            {
+              "node": "Any Pending?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Any Pending?": {
+        "main": [
+          [
+            {
+              "node": "Process Each Scene",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "All Done",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run Ken Burns FFmpeg": {
+        "main": [
+          [
+            {
+              "node": "Ken Burns OK?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ken Burns OK?": {
+        "main": [
+          [
+            {
+              "node": "Update Scene Status",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Log Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Scene Status": {
+        "main": [
+          [
+            {
+              "node": "Process Each Scene",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Failure": {
+        "main": [
+          [
+            {
+              "node": "Process Each Scene",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "All Done": {
+        "main": [
+          [
+            {
+              "node": "Update Topic Stage",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Each Scene": {
+        "main": [
+          [
+            {
+              "node": "All Done",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Run Ken Burns FFmpeg",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Topic Stage": {
+        "main": [
+          [
+            {
+              "node": "Fire Assembly",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-07T21:39:02.532Z",
+        "id": 3923,
+        "workflowId": "OYahvKcydMrUxK8j",
+        "versionId": "0efe0f5c-e010-451d-be9c-d684219b8f7b",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
 }

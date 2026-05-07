@@ -87,7 +87,7 @@ const ASSET_STAGES = [
     color: 'text-success',
     bgColor: 'bg-success/10',
     statusField: 'image_status',
-    description: 'FLUX Schnell / GPT-5 Image (hybrid routing)',
+    description: 'FLUX Schnell / Recraft V3 (hybrid routing per requires_text_rendering)',
     appliesTo: 'all',
   },
   {

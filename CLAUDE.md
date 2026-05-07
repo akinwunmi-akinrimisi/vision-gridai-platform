@@ -27,7 +27,7 @@ A platform that turns any niche into a YouTube channel. Input a niche → resear
 - @Agent.md — Full platform architecture, Supabase schema, all pipeline phases, scoring rubric, dashboard spec
 - @skills.md — Skills reference map (18 skills across pipeline stages)
 - @skills.sh — Skill installer + environment verification
-- @Dashboard_Implementation_Plan.md — Detailed dashboard page specs and Supabase Realtime patterns
+- Dashboard_Implementation_Plan.md — Detailed dashboard page specs and Supabase Realtime patterns (read on demand, not auto-imported)
 - @design-system/MASTER.md — DEPRECATED design system doc. Use Tailwind tokens (bg-card, bg-muted, border-border) + src/components/ui/ instead.
 - @.planning/ — GSD state files (PROJECT.md, ROADMAP.md, STATE.md). Read for current sprint context.
 - @GUIDE.md — Consolidated build guide (31 features, Superpowers + gstack + Agency Agents)

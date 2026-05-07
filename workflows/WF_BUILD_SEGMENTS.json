@@ -1,0 +1,289 @@
+{
+  "updatedAt": "2026-05-07T21:07:58.014Z",
+  "createdAt": "2026-05-07T21:07:58.014Z",
+  "id": "BYdbUw8xSA6YQEpA",
+  "name": "WF_BUILD_SEGMENTS",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "webhook-build-segments",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production/build-segments",
+        "responseMode": "responseNode",
+        "authentication": "headerAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "webhookId": "production-build-segments-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      }
+    },
+    {
+      "id": "respond-accepted",
+      "name": "Respond Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Trigger').first().json.body.topic_id, message: 'Build segments started' }, error: null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "build-segments-main",
+      "name": "Build Segments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// WF_BUILD_SEGMENTS — splits each scene into 5/8/12s segments by emotional_beat,\n// generates per-segment image_prompt via Haiku batch, inserts scene_segments rows,\n// then fires /production/images. Forward-only — topic 4 stays on legacy 1-image-per-scene.\n//\n// Pacing rule (Wendover/Polymatter baseline):\n//   data | revelation        -> 5s   (data-dense: viewer needs visual change to anchor specifics)\n//   hook | tension | story   -> 8s   (default narrative cadence)\n//   resolution | transition  -> 12s  (contemplative beats)\n//\n// Audio is the master clock. N segments per scene = ceil(audio_ms / (target*1000)).\n// Each segment.duration_ms = round(audio_ms / N) so segments distribute evenly and\n// sum exactly to scene's audio. Captions burn over final concat — sync preserved.\n\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst ANON = $env.SUPABASE_ANON_KEY;\nconst AK = $env.ANTHROPIC_API_KEY;\nconst sbHeaders = { apikey: ANON, Authorization: 'Bearer ' + SRK, 'Content-Type': 'application/json' };\n\nconst body = $('Webhook Trigger').first().json.body || {};\nconst topicId = body.topic_id;\nif (!topicId) throw new Error('topic_id missing from webhook body');\n\n// Pacing map\nfunction targetSecondsForBeat(beat) {\n  const b = (beat || 'story').toLowerCase();\n  if (b === 'data' || b === 'revelation') return 5;\n  if (b === 'resolution' || b === 'transition') return 12;\n  return 8; // hook | tension | story | unknown\n}\n\n// 1. Load all scenes for this topic\nconst scenesResp = await fetch(SB + '/rest/v1/scenes?topic_id=eq.' + topicId + '&select=id,scene_number,scene_id,audio_duration_ms,emotional_beat,narration_text,image_prompt&order=scene_number.asc', { headers: sbHeaders });\nif (!scenesResp.ok) throw new Error('Scene fetch failed: ' + scenesResp.status);\nconst scenes = await scenesResp.json();\nconsole.log('Loaded ' + scenes.length + ' scenes');\n\n// Skip if segments already exist (idempotent / resume-safe)\nconst existResp = await fetch(SB + '/rest/v1/scene_segments?topic_id=eq.' + topicId + '&select=id&limit=1', { headers: sbHeaders });\nconst existing = await existResp.json();\nif (Array.isArray(existing) && existing.length > 0) {\n  console.log('scene_segments already exist for topic ' + topicId + ' — skipping rebuild');\n  return [{ json: { topic_id: topicId, skipped: true, reason: 'already_built' } }];\n}\n\n// 2. Compute segments per scene (timing only, no prompts yet)\nconst segmentPlans = [];\nfor (const scene of scenes) {\n  const audioMs = scene.audio_duration_ms || 0;\n  if (audioMs < 1000) continue; // skip degenerate scenes\n  const targetSec = targetSecondsForBeat(scene.emotional_beat);\n  const targetMs = targetSec * 1000;\n  const N = Math.max(1, Math.ceil(audioMs / targetMs));\n  const eachMs = Math.round(audioMs / N);\n  // Distribute narration words proportionally\n  const words = (scene.narration_text || '').split(/\\s+/).filter(Boolean);\n  const wordsPerSeg = Math.ceil(words.length / N);\n  for (let i = 0; i < N; i++) {\n    const startWord = i * wordsPerSeg;\n    const endWord = Math.min(words.length, (i + 1) * wordsPerSeg);\n    const excerpt = words.slice(startWord, endWord).join(' ');\n    const isLast = (i === N - 1);\n    const dur = isLast ? (audioMs - eachMs * (N - 1)) : eachMs;\n    segmentPlans.push({\n      scene_id: scene.id,\n      topic_id: topicId,\n      project_id: undefined, // filled below\n      scene_number: scene.scene_number,\n      segment_number: i + 1,\n      start_offset_ms: i * eachMs,\n      duration_ms: dur,\n      narration_excerpt: excerpt,\n      emotional_beat: scene.emotional_beat,\n      target_seconds: targetSec\n    });\n  }\n}\nconsole.log('Computed ' + segmentPlans.length + ' segments across ' + scenes.length + ' scenes');\n\n// Pull project_id once\nlet projectId = null;\nif (scenes[0]) {\n  const t = await fetch(SB + '/rest/v1/topics?id=eq.' + topicId + '&select=project_id', { headers: sbHeaders });\n  const tj = await t.json();\n  projectId = (Array.isArray(tj) && tj[0]) ? tj[0].project_id : null;\n}\nfor (const p of segmentPlans) p.project_id = projectId;\n\n// 3. Haiku batch call — one prompt for all segments at once\nconst classifierSystem = 'You are a precise visual-routing classifier and image-prompt generator for documentary thumbnails. Given a scene\\'s parent narration plus a list of segment excerpts, generate a per-segment image_prompt that depicts a CONCRETE noun/action LITERALLY appearing in that segment\\'s excerpt. Do not invent imagery (people, professions, objects, settings) the excerpt does not mention. If the excerpt is abstract (emotion, statistic, policy), depict a relevant ACTION or PROP from the words on the page — never a vague figure with abstract lighting. Each prompt: 30-50 words, cinematic structure [SUBJECT]+[ENVIRONMENT]+[LIGHTING]+[COMPOSITION]+[MOOD]. Return ONLY a JSON array.';\n\n// Group by scene, send one batch prompt with all scenes\nconst batchInput = scenes.map(s => {\n  const segsForScene = segmentPlans.filter(p => p.scene_id === s.id);\n  return {\n    scene_number: s.scene_number,\n    parent_narration: (s.narration_text || '').substring(0, 800),\n    parent_image_prompt: s.image_prompt || '',\n    segments: segsForScene.map(seg => ({\n      segment_number: seg.segment_number,\n      excerpt: seg.narration_excerpt.substring(0, 240)\n    }))\n  };\n}).filter(s => s.segments.length > 0);\n\nconst userPrompt = 'Generate per-segment image_prompts. For EACH segment provide:\\n' +\n  '- scene_number, segment_number, image_prompt (30-50 words), key_visual_anchor (1-6 words naming the concrete subject literally appearing in the excerpt), requires_text_rendering (true only if scene meaning depends on legible text in the image — chart labels, document headlines, app/UI text, signage; false for incidental papers).\\n\\n' +\n  'Return ONLY a JSON array of {scene_number, segment_number, image_prompt, key_visual_anchor, requires_text_rendering} objects. No prose, no markdown.\\n\\n' +\n  'INPUT:\\n' + JSON.stringify(batchInput, null, 0);\n\nconsole.log('Haiku batch call: ' + batchInput.length + ' scenes, ' + segmentPlans.length + ' segments, prompt ~' + Math.round(userPrompt.length / 1000) + 'K chars');\n\nconst claudeResp = await fetch('https://api.anthropic.com/v1/messages', {\n  method: 'POST',\n  headers: { 'x-api-key': AK, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 32000,\n    system: classifierSystem,\n    messages: [{ role: 'user', content: userPrompt }]\n  })\n});\nif (!claudeResp.ok) {\n  const err = await claudeResp.text();\n  throw new Error('Haiku call failed: ' + claudeResp.status + ' ' + err.substring(0, 300));\n}\nconst claudeJson = await claudeResp.json();\nconst rawText = claudeJson.content[0].text;\nconsole.log('Haiku response: ' + rawText.length + ' chars  in=' + claudeJson.usage.input_tokens + ' out=' + claudeJson.usage.output_tokens);\n\n// Parse\nconst cleaned = rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst si = cleaned.indexOf('['), ei = cleaned.lastIndexOf(']');\nif (si < 0 || ei <= si) throw new Error('No JSON array in Haiku response: ' + cleaned.substring(0, 300));\nconst classifications = JSON.parse(cleaned.substring(si, ei + 1));\nconsole.log('Parsed ' + classifications.length + ' classifications');\n\n// Index by (scene_number, segment_number)\nconst clsMap = {};\nfor (const c of classifications) {\n  clsMap[c.scene_number + '_' + c.segment_number] = c;\n}\n\n// 4. Build INSERT rows\nconst rows = segmentPlans.map(p => {\n  const c = clsMap[p.scene_number + '_' + p.segment_number] || {};\n  return {\n    scene_id: p.scene_id,\n    topic_id: p.topic_id,\n    project_id: p.project_id,\n    segment_number: p.segment_number,\n    start_offset_ms: p.start_offset_ms,\n    duration_ms: p.duration_ms,\n    narration_excerpt: p.narration_excerpt.substring(0, 1000),\n    image_prompt: c.image_prompt || (p.narration_excerpt.substring(0, 80) + ' — documentary scene, cinematic lighting, moody atmosphere'),\n    key_visual_anchor: (c.key_visual_anchor || '').substring(0, 64),\n    requires_text_rendering: c.requires_text_rendering === true,\n    image_status: 'pending',\n    clip_status: 'pending'\n  };\n});\n\n// 5. Bulk insert (chunk into batches of 50 to avoid PostgREST payload limits)\nconst CHUNK = 50;\nlet inserted = 0;\nfor (let i = 0; i < rows.length; i += CHUNK) {\n  const batch = rows.slice(i, i + CHUNK);\n  const insResp = await fetch(SB + '/rest/v1/scene_segments', {\n    method: 'POST',\n    headers: { ...sbHeaders, Prefer: 'return=minimal' },\n    body: JSON.stringify(batch)\n  });\n  if (!insResp.ok) {\n    const err = await insResp.text();\n    throw new Error('scene_segments insert failed at chunk ' + (i / CHUNK) + ': ' + err.substring(0, 300));\n  }\n  inserted += batch.length;\n}\nconsole.log('Inserted ' + inserted + ' scene_segments rows');\n\n// 6. Mark scenes.uses_segments = true\nawait fetch(SB + '/rest/v1/scenes?topic_id=eq.' + topicId, {\n  method: 'PATCH',\n  headers: { ...sbHeaders, Prefer: 'return=minimal' },\n  body: JSON.stringify({ uses_segments: true })\n});\n\n// 7. Update topic telemetry\nconst avgDur = Math.round(rows.reduce((s, r) => s + r.duration_ms, 0) / rows.length);\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topicId, {\n  method: 'PATCH',\n  headers: { ...sbHeaders, Prefer: 'return=minimal' },\n  body: JSON.stringify({ segment_count: rows.length, avg_segment_duration_ms: avgDur })\n});\n\nreturn [{ json: { topic_id: topicId, scenes: scenes.length, segments: rows.length, avg_segment_duration_ms: avgDur } }];"
+      }
+    },
+    {
+      "id": "fire-images",
+      "name": "Fire Images Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/images",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_id: $('Webhook Trigger').first().json.body.topic_id }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KtMyWD7uJJBZYLjt",
+          "name": "Authorization"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Respond Accepted",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Segments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Segments": {
+      "main": [
+        [
+          {
+            "node": "Fire Images Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "ae2a869a-438e-4882-a4f4-bf4aecb639c6",
+  "activeVersionId": "ae2a869a-438e-4882-a4f4-bf4aecb639c6",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-05-07T21:07:58.218Z",
+      "createdAt": "2026-05-07T21:07:58.218Z",
+      "role": "workflow:owner",
+      "workflowId": "BYdbUw8xSA6YQEpA",
+      "projectId": "ccWn1Q4giuKzXIbJ",
+      "project": {
+        "updatedAt": "2026-01-26T11:09:31.107Z",
+        "createdAt": "2026-01-26T03:51:33.410Z",
+        "id": "ccWn1Q4giuKzXIbJ",
+        "name": "Akinwunmi Akinrimisi <akinolacrypto@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-07T21:07:59.114Z",
+    "createdAt": "2026-05-07T21:07:59.114Z",
+    "versionId": "ae2a869a-438e-4882-a4f4-bf4aecb639c6",
+    "workflowId": "BYdbUw8xSA6YQEpA",
+    "nodes": [
+      {
+        "id": "webhook-build-segments",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "production/build-segments",
+          "responseMode": "responseNode",
+          "authentication": "headerAuth",
+          "options": {
+            "allowedOrigins": "*"
+          }
+        },
+        "webhookId": "production-build-segments-webhook",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        }
+      },
+      {
+        "id": "respond-accepted",
+        "name": "Respond Accepted",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          460,
+          300
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ success: true, data: { topic_id: $('Webhook Trigger').first().json.body.topic_id, message: 'Build segments started' }, error: null }) }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "build-segments-main",
+        "name": "Build Segments",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          680,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// WF_BUILD_SEGMENTS — splits each scene into 5/8/12s segments by emotional_beat,\n// generates per-segment image_prompt via Haiku batch, inserts scene_segments rows,\n// then fires /production/images. Forward-only — topic 4 stays on legacy 1-image-per-scene.\n//\n// Pacing rule (Wendover/Polymatter baseline):\n//   data | revelation        -> 5s   (data-dense: viewer needs visual change to anchor specifics)\n//   hook | tension | story   -> 8s   (default narrative cadence)\n//   resolution | transition  -> 12s  (contemplative beats)\n//\n// Audio is the master clock. N segments per scene = ceil(audio_ms / (target*1000)).\n// Each segment.duration_ms = round(audio_ms / N) so segments distribute evenly and\n// sum exactly to scene's audio. Captions burn over final concat — sync preserved.\n\nconst SB = $env.SUPABASE_URL;\nconst SRK = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst ANON = $env.SUPABASE_ANON_KEY;\nconst AK = $env.ANTHROPIC_API_KEY;\nconst sbHeaders = { apikey: ANON, Authorization: 'Bearer ' + SRK, 'Content-Type': 'application/json' };\n\nconst body = $('Webhook Trigger').first().json.body || {};\nconst topicId = body.topic_id;\nif (!topicId) throw new Error('topic_id missing from webhook body');\n\n// Pacing map\nfunction targetSecondsForBeat(beat) {\n  const b = (beat || 'story').toLowerCase();\n  if (b === 'data' || b === 'revelation') return 5;\n  if (b === 'resolution' || b === 'transition') return 12;\n  return 8; // hook | tension | story | unknown\n}\n\n// 1. Load all scenes for this topic\nconst scenesResp = await fetch(SB + '/rest/v1/scenes?topic_id=eq.' + topicId + '&select=id,scene_number,scene_id,audio_duration_ms,emotional_beat,narration_text,image_prompt&order=scene_number.asc', { headers: sbHeaders });\nif (!scenesResp.ok) throw new Error('Scene fetch failed: ' + scenesResp.status);\nconst scenes = await scenesResp.json();\nconsole.log('Loaded ' + scenes.length + ' scenes');\n\n// Skip if segments already exist (idempotent / resume-safe)\nconst existResp = await fetch(SB + '/rest/v1/scene_segments?topic_id=eq.' + topicId + '&select=id&limit=1', { headers: sbHeaders });\nconst existing = await existResp.json();\nif (Array.isArray(existing) && existing.length > 0) {\n  console.log('scene_segments already exist for topic ' + topicId + ' — skipping rebuild');\n  return [{ json: { topic_id: topicId, skipped: true, reason: 'already_built' } }];\n}\n\n// 2. Compute segments per scene (timing only, no prompts yet)\nconst segmentPlans = [];\nfor (const scene of scenes) {\n  const audioMs = scene.audio_duration_ms || 0;\n  if (audioMs < 1000) continue; // skip degenerate scenes\n  const targetSec = targetSecondsForBeat(scene.emotional_beat);\n  const targetMs = targetSec * 1000;\n  const N = Math.max(1, Math.ceil(audioMs / targetMs));\n  const eachMs = Math.round(audioMs / N);\n  // Distribute narration words proportionally\n  const words = (scene.narration_text || '').split(/\\s+/).filter(Boolean);\n  const wordsPerSeg = Math.ceil(words.length / N);\n  for (let i = 0; i < N; i++) {\n    const startWord = i * wordsPerSeg;\n    const endWord = Math.min(words.length, (i + 1) * wordsPerSeg);\n    const excerpt = words.slice(startWord, endWord).join(' ');\n    const isLast = (i === N - 1);\n    const dur = isLast ? (audioMs - eachMs * (N - 1)) : eachMs;\n    segmentPlans.push({\n      scene_id: scene.id,\n      topic_id: topicId,\n      project_id: undefined, // filled below\n      scene_number: scene.scene_number,\n      segment_number: i + 1,\n      start_offset_ms: i * eachMs,\n      duration_ms: dur,\n      narration_excerpt: excerpt,\n      emotional_beat: scene.emotional_beat,\n      target_seconds: targetSec\n    });\n  }\n}\nconsole.log('Computed ' + segmentPlans.length + ' segments across ' + scenes.length + ' scenes');\n\n// Pull project_id once\nlet projectId = null;\nif (scenes[0]) {\n  const t = await fetch(SB + '/rest/v1/topics?id=eq.' + topicId + '&select=project_id', { headers: sbHeaders });\n  const tj = await t.json();\n  projectId = (Array.isArray(tj) && tj[0]) ? tj[0].project_id : null;\n}\nfor (const p of segmentPlans) p.project_id = projectId;\n\n// 3. Haiku batch call — one prompt for all segments at once\nconst classifierSystem = 'You are a precise visual-routing classifier and image-prompt generator for documentary thumbnails. Given a scene\\'s parent narration plus a list of segment excerpts, generate a per-segment image_prompt that depicts a CONCRETE noun/action LITERALLY appearing in that segment\\'s excerpt. Do not invent imagery (people, professions, objects, settings) the excerpt does not mention. If the excerpt is abstract (emotion, statistic, policy), depict a relevant ACTION or PROP from the words on the page — never a vague figure with abstract lighting. Each prompt: 30-50 words, cinematic structure [SUBJECT]+[ENVIRONMENT]+[LIGHTING]+[COMPOSITION]+[MOOD]. Return ONLY a JSON array.';\n\n// Group by scene, send one batch prompt with all scenes\nconst batchInput = scenes.map(s => {\n  const segsForScene = segmentPlans.filter(p => p.scene_id === s.id);\n  return {\n    scene_number: s.scene_number,\n    parent_narration: (s.narration_text || '').substring(0, 800),\n    parent_image_prompt: s.image_prompt || '',\n    segments: segsForScene.map(seg => ({\n      segment_number: seg.segment_number,\n      excerpt: seg.narration_excerpt.substring(0, 240)\n    }))\n  };\n}).filter(s => s.segments.length > 0);\n\nconst userPrompt = 'Generate per-segment image_prompts. For EACH segment provide:\\n' +\n  '- scene_number, segment_number, image_prompt (30-50 words), key_visual_anchor (1-6 words naming the concrete subject literally appearing in the excerpt), requires_text_rendering (true only if scene meaning depends on legible text in the image — chart labels, document headlines, app/UI text, signage; false for incidental papers).\\n\\n' +\n  'Return ONLY a JSON array of {scene_number, segment_number, image_prompt, key_visual_anchor, requires_text_rendering} objects. No prose, no markdown.\\n\\n' +\n  'INPUT:\\n' + JSON.stringify(batchInput, null, 0);\n\nconsole.log('Haiku batch call: ' + batchInput.length + ' scenes, ' + segmentPlans.length + ' segments, prompt ~' + Math.round(userPrompt.length / 1000) + 'K chars');\n\nconst claudeResp = await fetch('https://api.anthropic.com/v1/messages', {\n  method: 'POST',\n  headers: { 'x-api-key': AK, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 32000,\n    system: classifierSystem,\n    messages: [{ role: 'user', content: userPrompt }]\n  })\n});\nif (!claudeResp.ok) {\n  const err = await claudeResp.text();\n  throw new Error('Haiku call failed: ' + claudeResp.status + ' ' + err.substring(0, 300));\n}\nconst claudeJson = await claudeResp.json();\nconst rawText = claudeJson.content[0].text;\nconsole.log('Haiku response: ' + rawText.length + ' chars  in=' + claudeJson.usage.input_tokens + ' out=' + claudeJson.usage.output_tokens);\n\n// Parse\nconst cleaned = rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim();\nconst si = cleaned.indexOf('['), ei = cleaned.lastIndexOf(']');\nif (si < 0 || ei <= si) throw new Error('No JSON array in Haiku response: ' + cleaned.substring(0, 300));\nconst classifications = JSON.parse(cleaned.substring(si, ei + 1));\nconsole.log('Parsed ' + classifications.length + ' classifications');\n\n// Index by (scene_number, segment_number)\nconst clsMap = {};\nfor (const c of classifications) {\n  clsMap[c.scene_number + '_' + c.segment_number] = c;\n}\n\n// 4. Build INSERT rows\nconst rows = segmentPlans.map(p => {\n  const c = clsMap[p.scene_number + '_' + p.segment_number] || {};\n  return {\n    scene_id: p.scene_id,\n    topic_id: p.topic_id,\n    project_id: p.project_id,\n    segment_number: p.segment_number,\n    start_offset_ms: p.start_offset_ms,\n    duration_ms: p.duration_ms,\n    narration_excerpt: p.narration_excerpt.substring(0, 1000),\n    image_prompt: c.image_prompt || (p.narration_excerpt.substring(0, 80) + ' — documentary scene, cinematic lighting, moody atmosphere'),\n    key_visual_anchor: (c.key_visual_anchor || '').substring(0, 64),\n    requires_text_rendering: c.requires_text_rendering === true,\n    image_status: 'pending',\n    clip_status: 'pending'\n  };\n});\n\n// 5. Bulk insert (chunk into batches of 50 to avoid PostgREST payload limits)\nconst CHUNK = 50;\nlet inserted = 0;\nfor (let i = 0; i < rows.length; i += CHUNK) {\n  const batch = rows.slice(i, i + CHUNK);\n  const insResp = await fetch(SB + '/rest/v1/scene_segments', {\n    method: 'POST',\n    headers: { ...sbHeaders, Prefer: 'return=minimal' },\n    body: JSON.stringify(batch)\n  });\n  if (!insResp.ok) {\n    const err = await insResp.text();\n    throw new Error('scene_segments insert failed at chunk ' + (i / CHUNK) + ': ' + err.substring(0, 300));\n  }\n  inserted += batch.length;\n}\nconsole.log('Inserted ' + inserted + ' scene_segments rows');\n\n// 6. Mark scenes.uses_segments = true\nawait fetch(SB + '/rest/v1/scenes?topic_id=eq.' + topicId, {\n  method: 'PATCH',\n  headers: { ...sbHeaders, Prefer: 'return=minimal' },\n  body: JSON.stringify({ uses_segments: true })\n});\n\n// 7. Update topic telemetry\nconst avgDur = Math.round(rows.reduce((s, r) => s + r.duration_ms, 0) / rows.length);\nawait fetch(SB + '/rest/v1/topics?id=eq.' + topicId, {\n  method: 'PATCH',\n  headers: { ...sbHeaders, Prefer: 'return=minimal' },\n  body: JSON.stringify({ segment_count: rows.length, avg_segment_duration_ms: avgDur })\n});\n\nreturn [{ json: { topic_id: topicId, scenes: scenes.length, segments: rows.length, avg_segment_duration_ms: avgDur } }];"
+        }
+      },
+      {
+        "id": "fire-images",
+        "name": "Fire Images Workflow",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          900,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/images",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ topic_id: $('Webhook Trigger').first().json.body.topic_id }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KtMyWD7uJJBZYLjt",
+            "name": "Authorization"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Respond Accepted",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Build Segments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Segments": {
+        "main": [
+          [
+            {
+              "node": "Fire Images Workflow",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Akinwunmi Akinrimisi",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-07T21:08:25.216Z",
+        "id": 3913,
+        "workflowId": "BYdbUw8xSA6YQEpA",
+        "versionId": "ae2a869a-438e-4882-a4f4-bf4aecb639c6",
+        "event": "activated",
+        "userId": "ab010feb-355c-4130-b354-4e929908258e"
+      }
+    ]
+  }
+}

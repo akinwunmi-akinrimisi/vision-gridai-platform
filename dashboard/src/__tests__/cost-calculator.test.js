@@ -4,24 +4,24 @@ import { computeCostOption, IMAGE_COST, VIDEO_COST, RATIO_OPTIONS } from '../hoo
 /* ================================================================== *
  *  Cost calculation tests for the hybrid image/video pipeline.       *
  *                                                                    *
- *  Pricing (2026-05-07 hybrid routing — see useCostCalculator.js):   *
+ *  Pricing (2026-05-07 v4 routing — see useCostCalculator.js):       *
  *    Script:   $1.80 flat (3-pass generation)                        *
  *    TTS:      sceneCount x $0.002                                   *
- *    Images:   sceneCount x $0.0093 BLENDED                          *
- *      (85% photo @ FLUX Schnell $0.003 + 15% text @ GPT-5 $0.045)   *
- *    I2V:      videoCount x $2.419 (Seedance 2.0 Fast, 10s clip)    *
+ *    Images:   sceneCount x $0.01410 BLENDED                         *
+ *      (70% photo @ FLUX Schnell $0.003 + 30% text @ Recraft $0.04)  *
+ *    I2V:      videoCount x $2.419 (Seedance 2.0 Fast, 10s clip)     *
  *    Assembly: $0.06 flat (Ken Burns + color + music + end card)     *
  *                                                                    *
  *  ALL scenes get images. Video clips are additional cost on top.    *
- *  User picks ratio: 100/0, 95/5, 90/10, 85/15.                    *
+ *  User picks ratio: 100/0, 95/5, 90/10, 85/15.                      *
  * ================================================================== */
 
 // ── Constants validation ───────────────────────────────────────────
 
 describe('Cost constants', () => {
-  it('IMAGE_COST is the blended hybrid estimate (FLUX Schnell + GPT-5 Image)', () => {
-    // 85% non-text * $0.003 + 15% text * $0.045 = 0.00255 + 0.00675 = 0.0093
-    expect(IMAGE_COST).toBeCloseTo(0.0093, 4);
+  it('IMAGE_COST is the blended hybrid estimate (FLUX Schnell + Recraft V3)', () => {
+    // 70% non-text * $0.003 + 30% text * $0.04 = 0.0021 + 0.012 = 0.0141
+    expect(IMAGE_COST).toBeCloseTo(0.0141, 4);
   });
 
   it('VIDEO_COST is $2.419 (Seedance 2.0 Fast, 10s clip)', () => {
@@ -209,16 +209,18 @@ describe('Full per-video cost estimation', () => {
     return SCRIPT_COST + tts + media.totalCost + ASSEMBLY_COST;
   }
 
-  it('172 scenes, 100/0: ~$9.20 per video', () => {
-    // script(1.80) + tts(172*0.002=0.344) + images(6.88) + assembly(0.06) = 9.084
+  it('172 scenes, 100/0: ~$4.63 per video', () => {
+    // script(1.80) + tts(172*0.002=0.344) + images(172*0.0141=2.4252) + assembly(0.06) = 4.6292
+    // 0.0141 blend = 70% Flux Schnell @ $0.003 + 30% Recraft V3 @ $0.04
     const total = fullVideoCost(172, RATIO_OPTIONS[0]);
-    expect(total).toBeCloseTo(9.084, 2);
+    expect(total).toBeCloseTo(4.6292, 2);
   });
 
-  it('172 scenes, 85/15: ~$71.89 per video', () => {
-    // script(1.80) + tts(0.344) + media(69.774) + assembly(0.06) = 71.978
+  it('172 scenes, 85/15: ~$67.52 per video', () => {
+    // script(1.80) + tts(0.344) + images(172*0.0141=2.4252)
+    //   + video(round(172*0.15)=26 clips * 2.419=62.894) + assembly(0.06) = 67.5232
     const total = fullVideoCost(172, RATIO_OPTIONS[3]);
-    expect(total).toBeCloseTo(1.80 + 0.344 + 69.774 + 0.06, 2);
+    expect(total).toBeCloseTo(67.5232, 2);
   });
 
   it('shorts pack (20 clips * ~5 scenes) analysis cost stays under $0.50', () => {

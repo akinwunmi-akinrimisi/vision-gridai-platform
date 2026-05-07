@@ -126,20 +126,21 @@ describe('CostCalculator component', () => {
     });
   });
 
-  it('shows "$6.88" total for 100/0 option with 172 scenes', async () => {
+  it('shows "$2.43" total for 100/0 option with 172 scenes', async () => {
     renderComponent({ sceneCount: 172 });
     await waitFor(() => {
-      // The 100/0 card shows $6.88 total (172 * $0.04 images, 0 video)
-      const allTotals = screen.getAllByText('$6.88');
+      // The 100/0 card shows $2.43 total (172 * $0.0141 blended images, 0 video)
+      // Blend: 70% Flux Schnell @ $0.003 + 30% Recraft V3 @ $0.04 = $0.0141/img
+      const allTotals = screen.getAllByText('$2.43');
       expect(allTotals.length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it('shows "$28.65" total for 95/5 option with 172 scenes', async () => {
+  it('shows "$24.20" total for 95/5 option with 172 scenes', async () => {
     renderComponent({ sceneCount: 172 });
     await waitFor(() => {
-      // 172 images ($6.88) + 9 clips ($21.77) = $28.65
-      const totals = screen.getAllByText('$28.65');
+      // 172 images ($2.43) + 9 clips ($21.77) = $24.20
+      const totals = screen.getAllByText('$24.20');
       expect(totals.length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -203,7 +204,7 @@ describe('CostCalculator component', () => {
   it('displays model pricing info at the bottom', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByText(/FLUX Schnell \+ GPT-5 Image/)).toBeTruthy();
+      expect(screen.getByText(/FLUX Schnell \+ Recraft V3/)).toBeTruthy();
       expect(screen.getByText(/Seedance 2.0 Fast/)).toBeTruthy();
     });
   });

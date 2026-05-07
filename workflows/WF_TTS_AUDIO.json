@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-21T20:24:13.054Z",
+  "updatedAt": "2026-05-07T21:26:52.325Z",
   "createdAt": "2026-03-09T17:51:15.812Z",
   "id": "4L2j3aU2WGnfcvvj",
   "name": "WF_TTS_AUDIO",
@@ -912,7 +912,7 @@
     },
     {
       "id": "fire-images-workflow",
-      "name": "Fire Images Workflow",
+      "name": "Fire Build Segments",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -921,7 +921,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/images",
+        "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/build-segments",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -1422,7 +1422,7 @@
       "main": [
         [
           {
-            "node": "Fire Images Workflow",
+            "node": "Fire Build Segments",
             "type": "main",
             "index": 0
           },
@@ -1491,21 +1491,21 @@
   },
   "staticData": {
     "global": {
-      "topic_id": "2967980a-31b3-4fa0-978d-4e9aea011e73",
-      "project_id": "4bdfbbe3-2a9c-4532-95e9-41a743e8c253",
-      "total_scenes": 161,
-      "scenes_completed": 77,
+      "topic_id": "a904bff1-2994-4a71-8a8c-5c47cdb1503c",
+      "project_id": "19a714fd-7973-497e-bf71-993b74c3c7da",
+      "total_scenes": 142,
+      "scenes_completed": 142,
       "scenes_failed": 0,
       "total_cost": 0,
-      "cumulative_end_time_ms": 3445632,
-      "total_tts_cost": 2.4519999999999516
+      "cumulative_end_time_ms": 7070760,
+      "total_tts_cost": 3.045999999999886
     }
   },
   "meta": null,
   "pinData": null,
-  "versionId": "38f2ed0c-798e-4706-834b-940678f3a6e4",
-  "activeVersionId": "38f2ed0c-798e-4706-834b-940678f3a6e4",
-  "versionCounter": 157,
+  "versionId": "10e05b37-bab3-40fe-bbf0-6d566f7a4a83",
+  "activeVersionId": "10e05b37-bab3-40fe-bbf0-6d566f7a4a83",
+  "versionCounter": 168,
   "triggerCount": 1,
   "shared": [
     {
@@ -1535,9 +1535,9 @@
     }
   ],
   "activeVersion": {
-    "updatedAt": "2026-04-21T20:24:13.055Z",
-    "createdAt": "2026-04-21T20:24:13.055Z",
-    "versionId": "38f2ed0c-798e-4706-834b-940678f3a6e4",
+    "updatedAt": "2026-05-07T21:26:52.425Z",
+    "createdAt": "2026-05-07T21:26:52.425Z",
+    "versionId": "10e05b37-bab3-40fe-bbf0-6d566f7a4a83",
     "workflowId": "4L2j3aU2WGnfcvvj",
     "nodes": [
       {
@@ -2445,7 +2445,7 @@
       },
       {
         "id": "fire-images-workflow",
-        "name": "Fire Images Workflow",
+        "name": "Fire Build Segments",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
         "position": [
@@ -2454,7 +2454,7 @@
         ],
         "parameters": {
           "method": "POST",
-          "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/images",
+          "url": "={{ $env.N8N_WEBHOOK_BASE }}/production/build-segments",
           "authentication": "none",
           "sendHeaders": true,
           "headerParameters": {
@@ -2955,7 +2955,7 @@
         "main": [
           [
             {
-              "node": "Fire Images Workflow",
+              "node": "Fire Build Segments",
               "type": "main",
               "index": 0
             },
@@ -3023,10 +3023,10 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-04-21T20:24:13.143Z",
-        "id": 3354,
+        "createdAt": "2026-05-07T21:27:03.125Z",
+        "id": 3915,
         "workflowId": "4L2j3aU2WGnfcvvj",
-        "versionId": "38f2ed0c-798e-4706-834b-940678f3a6e4",
+        "versionId": "10e05b37-bab3-40fe-bbf0-6d566f7a4a83",
         "event": "activated",
         "userId": "ab010feb-355c-4130-b354-4e929908258e"
       }

@@ -58,17 +58,19 @@ import { Badge } from '@/components/ui/badge';
 import AccountCard from '../social/AccountCard';
 
 // -- Model options with costs -------------------------------------------------
-// NOTE: Production routes images automatically per-scene via WF_SCENE_IMAGE_PROCESSOR
-//   requires_text_rendering -> openai/gpt-5-image-mini ($0.045)
-//   else                    -> fal-ai/flux/schnell ($0.003)
-// The dropdown below is informational/legacy — projects.image_model is no longer
-// the single source of truth. Real model + cost per scene are recorded on
-// scenes.image_model and scenes.image_cost_usd.
+// NOTE: Production routes images automatically per-scene via WF_SCENE_IMAGE_PROCESSOR (v4, 2026-05-07).
+//   requires_text_rendering=true  -> fal-ai/recraft-v3   ($0.04, native text rendering)
+//                                     fallback ideogram-v2 ($0.08)
+//   requires_text_rendering=false -> fal-ai/flux/schnell ($0.003, fast photoreal)
+// Both providers are Fal.ai — the OpenRouter (gpt-5-image-mini / gemini-3-pro) hybrid
+// was retired after the routing-bug incident. The dropdown below is informational —
+// projects.image_model is no longer the single source of truth. Real model + cost per
+// scene are recorded on scenes.image_model and scenes.image_cost_usd at gen-time.
 
 const IMAGE_MODEL_OPTIONS = [
   { value: 'fal-ai/flux/schnell', label: 'FLUX Schnell (no-text scenes)', cost: 0.003 },
-  { value: 'openai/gpt-5-image-mini', label: 'GPT-5 Image Mini (text scenes, via OpenRouter)', cost: 0.045 },
-  { value: 'google/gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image (text-scene fallback)', cost: 0.069 },
+  { value: 'fal-ai/recraft-v3', label: 'Recraft V3 (text-in-image, native rendering)', cost: 0.04 },
+  { value: 'fal-ai/ideogram-v2', label: 'Ideogram V2 (text-scene fallback)', cost: 0.08 },
   { value: 'fal-ai/bytedance/seedream/v4.5/text-to-image', label: 'Seedream 4.5 (legacy — not used in production)', cost: 0.04 },
 ];
 

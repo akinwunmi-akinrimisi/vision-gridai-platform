@@ -5,18 +5,27 @@ import { toast } from 'sonner';
 /**
  * Cost constants for the hybrid image/video pipeline.
  *
- * Image generation routes per-scene in WF_SCENE_IMAGE_PROCESSOR (2026-05-01 v3):
- *   requires_text_rendering OR keyword match -> openai/gpt-5-image-mini ($0.045/img)
- *                                                fallback gemini-3-pro ($0.069/img)
- *   else                                     -> fal-ai/flux/schnell ($0.003/img)
+ * Image generation routes per-scene in WF_SCENE_IMAGE_PROCESSOR (2026-05-07 v4):
+ *   requires_text_rendering=true (set at script-gen) -> fal-ai/recraft-v3   ($0.04/img)
+ *                                                        fallback ideogram-v2 ($0.08/img)
+ *   requires_text_rendering=false                    -> fal-ai/flux/schnell ($0.003/img)
  *
- * IMAGE_COST is a BLENDED estimate using TEXT_SCENE_RATIO (default 15%) — actual
- * spend per scene is recorded on scenes.image_cost_usd at gen-time.
+ * Both providers are Fal.ai (one auth, one rate-limit lane). Earlier hybrid
+ * (FLUX + GPT-5 via OpenRouter) was retired after the 2026-05-07 routing-bug
+ * incident; keyword-only fallback was niche-tuned and missed 35+ text scenes
+ * on topic 4. Source-of-truth is now the per-scene flag set by Claude during
+ * Visual Assignment.
+ *
+ * IMAGE_COST is a BLENDED estimate using TEXT_SCENE_RATIO (default 30% —
+ * higher than the old 15% because Recraft is reliable enough that we no
+ * longer over-conserve). Actual spend per scene is recorded on
+ * scenes.image_cost_usd at gen-time.
+ *
  * Video clips: Seedance 2.0 Fast (10s clip @ 720p, $2.419/clip).
  */
 const IMAGE_COST_PHOTO = 0.003;   // fal-ai/flux/schnell (no-text scenes)
-const IMAGE_COST_TEXT = 0.045;    // openai/gpt-5-image-mini (text-in-image scenes)
-const TEXT_SCENE_RATIO = 0.15;    // estimated % of scenes needing text rendering
+const IMAGE_COST_TEXT = 0.04;     // fal-ai/recraft-v3 (text-in-image scenes)
+const TEXT_SCENE_RATIO = 0.30;    // estimated % of scenes needing text rendering
 const IMAGE_COST = (1 - TEXT_SCENE_RATIO) * IMAGE_COST_PHOTO + TEXT_SCENE_RATIO * IMAGE_COST_TEXT;
 const VIDEO_COST = 2.419;
 
