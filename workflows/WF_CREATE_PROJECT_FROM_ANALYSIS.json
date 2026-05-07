@@ -1,222 +1,506 @@
-{
-  "name": "WF_CREATE_PROJECT_FROM_ANALYSIS",
-  "nodes": [
-    {
-      "id": "trigger-cpfa-webhook",
-      "name": "Webhook Trigger",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        200,
-        300
-      ],
-      "parameters": {
-        "path": "project/create-from-analysis",
-        "httpMethod": "POST",
-        "authentication": "none",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "webhookId": "project-create-from-analysis"
-    },
-    {
-      "id": "code-cpfa-validate",
-      "name": "Validate & Auth",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        420,
-        300
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// WF_CREATE_PROJECT_FROM_ANALYSIS \u2014 Validate payload, auth check.\n// Extract: analysis_group_id, niche_name, niche_description, include_channels.\n\nconst raw = $input.first().json;\nconst payload = raw.body || raw;\n\nconst analysisGroupId = (payload.analysis_group_id || '').trim();\nconst nicheName = (payload.niche_name || '').trim();\nconst nicheDescription = (payload.niche_description || '').trim();\nconst includeChannels = Array.isArray(payload.include_channels) ? payload.include_channels : [];\n\nif (!analysisGroupId) {\n  return [{ json: { success: false, error: 'analysis_group_id is required', http_status: 400 } }];\n}\nif (!nicheName) {\n  return [{ json: { success: false, error: 'niche_name is required', http_status: 400 } }];\n}\n\nreturn [{ json: {\n  success: true,\n  analysis_group_id: analysisGroupId,\n  niche_name: nicheName,\n  niche_description: nicheDescription,\n  include_channels: includeChannels,\n  http_status: 200\n} }];"
-      }
-    },
-    {
-      "id": "code-cpfa-fetch",
-      "name": "Fetch Data",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        640,
-        300
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// Fetch completed channel_analyses + channel_comparison_reports for this group.\n\nconst data = $input.first().json;\nif (!data.success) return [{ json: data }];\n\nconst groupId = data.analysis_group_id;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\ntry {\n  // Fetch completed analyses\n  const analysesRes = await fetch(\n    `${supabaseUrl}/rest/v1/channel_analyses?analysis_group_id=eq.${groupId}&status=eq.completed&select=*`,\n    { method: 'GET', headers: sbHeaders }\n  );\n  if (!analysesRes.ok) {\n    const errText = await analysesRes.text();\n    // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + '/rest/v1/niche_viability_reports?analysis_group_id=eq.' + groupId + '&select=*&order=created_at.desc&limit=1',\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) && vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, success: false, error: `Fetch analyses failed: HTTP ${analysesRes.status}: ${errText.slice(0, 200)}`, http_status: 500 } }];\n  }\n  const analyses = await analysesRes.json();\n\n  // Fetch comparison report\n  const reportRes = await fetch(\n    `${supabaseUrl}/rest/v1/channel_comparison_reports?analysis_group_id=eq.${groupId}&select=*&order=created_at.desc&limit=1`,\n    { method: 'GET', headers: sbHeaders }\n  );\n  let report = null;\n  if (reportRes.ok) {\n    const reports = await reportRes.json();\n    report = Array.isArray(reports) && reports[0] ? reports[0] : null;\n  }\n\n  if (!Array.isArray(analyses) || analyses.length === 0) {\n    // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + '/rest/v1/niche_viability_reports?analysis_group_id=eq.' + groupId + '&select=*&order=created_at.desc&limit=1',\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) && vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, success: false, error: 'No completed analyses found for this group', http_status: 404 } }];\n  }\n\n  // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + '/rest/v1/niche_viability_reports?analysis_group_id=eq.' + groupId + '&select=*&order=created_at.desc&limit=1',\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) && vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, analyses, comparison_report: report,\n    viability_report: viabilityReport, failed: false } }];\n} catch (e) {\n  // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + '/rest/v1/niche_viability_reports?analysis_group_id=eq.' + groupId + '&select=*&order=created_at.desc&limit=1',\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) && vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, success: false, error: `Exception: ${e.message}`, http_status: 500 } }];\n}"
-      }
-    },
-    {
-      "id": "code-cpfa-create",
-      "name": "Create Project",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        860,
-        300
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const data = $input.first().json;\nif (data.failed || !data.success) return [{ json: data }];\n\nconst analyses = data.analyses || [];\nconst report = data.comparison_report;\nconst viability = data.viability_report;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY,\n  'Content-Type': 'application/json'\n};\n\n// Aggregate ALL comment insights across channels\nconst allContentGaps = [];\nconst allPainPoints = [];\nconst allRequestedTopics = [];\nconst allTopQuestions = [];\nconst allCompetitorMentions = [];\nfor (const a of analyses) {\n  const ci = a.comment_insights;\n  if (ci) {\n    if (ci.content_gaps) allContentGaps.push(...ci.content_gaps);\n    if (ci.pain_points) allPainPoints.push(...ci.pain_points);\n    if (ci.requested_topics) allRequestedTopics.push(...ci.requested_topics);\n    if (ci.top_questions) allTopQuestions.push(...ci.top_questions);\n    if (ci.competitor_mentions) allCompetitorMentions.push(...ci.competitor_mentions);\n  }\n}\n\nconst channelAnalysisContext = {\n  blue_ocean_gaps: report?.combined_blue_ocean_gaps || (viability?.blue_ocean_opportunities || []),\n  differentiation_strategy: report?.differentiation_strategy || (viability?.differentiation_strategy || ''),\n  content_pillars: report?.recommended_content_pillars || (viability?.recommended_content_pillars || []),\n  topic_landscape: report?.combined_topic_landscape || {},\n  saturation_map: report?.combined_saturation_map || (viability?.saturated_topics || []),\n  overall_verdict: report?.overall_verdict || (viability?.viability_verdict || null),\n  overall_verdict_score: report?.overall_verdict_score || (viability?.viability_score || null),\n  channel_count: analyses.length,\n  monetization_score: viability?.monetization_score || null,\n  audience_demand_score: viability?.audience_demand_score || null,\n  competition_gap_score: viability?.competition_gap_score || null,\n  entry_difficulty_score: viability?.entry_difficulty_score || null,\n  estimated_rpm: { low: viability?.estimated_rpm_low, mid: viability?.estimated_rpm_mid, high: viability?.estimated_rpm_high },\n  sponsorship_potential: viability?.sponsorship_potential || null,\n  moat_indicators: viability?.moat_indicators || null,\n  posting_frequency_benchmark: viability?.posting_frequency_benchmark || null,\n  audience_size_estimate: viability?.audience_size_estimate || null,\n  engagement_benchmarks: viability?.engagement_benchmarks || null,\n  comment_content_gaps: [...new Set(allContentGaps)],\n  comment_pain_points: [...new Set(allPainPoints)],\n  comment_requested_topics: [...new Set(allRequestedTopics)],\n  comment_top_questions: [...new Set(allTopQuestions)],\n  comment_competitor_mentions: [...new Set(allCompetitorMentions)],\n};\n\nconst scriptReferenceData = {\n  per_channel: analyses.map(a => ({\n    channel_name: a.channel_name || 'Unknown',\n    scripting_depth: a.scripting_depth || {},\n    content_style: a.content_style || null,\n    target_audience: a.target_audience_description || null,\n    strengths: a.strengths || [],\n    weaknesses: a.weaknesses || [],\n    posting_schedule: a.posting_schedule || null,\n  })),\n  targets: viability?.script_depth_targets || null,\n};\n\nconst nicheDesc = data.niche_description || report?.recommended_niche_description || '';\n\nconst projectRow = {\n  name: data.niche_name,\n  niche: data.niche_name,\n  niche_description: nicheDesc.slice(0, 10000),\n  channel_analysis_context: channelAnalysisContext,\n  script_reference_data: scriptReferenceData,\n  analysis_group_id: data.analysis_group_id,\n  niche_viability_score: viability?.viability_score || null,\n  niche_viability_verdict: viability?.viability_verdict || null,\n  topics_to_avoid: viability?.topics_to_avoid || [],\n  recommended_topics: viability?.recommended_topics || [],\n  recommended_angle: viability?.recommended_angle || null,\n  revenue_projections: viability?.revenue_projections || null,\n  script_depth_targets: viability?.script_depth_targets || null,\n  title_dna_patterns: viability?.title_dna_patterns || null,\n  thumbnail_dna_patterns: viability?.thumbnail_dna_patterns || null,\n  status: 'created'\n};\n\ntry {\n  const res = await fetch(supabaseUrl + '/rest/v1/projects', {\n    method: 'POST',\n    headers: { ...sbHeaders, 'Prefer': 'return=representation' },\n    body: JSON.stringify(projectRow)\n  });\n  if (!res.ok) {\n    const errText = await res.text();\n    return [{ json: { ...data, success: false, error: 'HTTP ' + res.status + ': ' + errText.slice(0, 200) } }];\n  }\n  const inserted = await res.json();\n  const project = Array.isArray(inserted) && inserted[0] ? inserted[0] : null;\n  if (!project || !project.id) {\n    return [{ json: { ...data, success: false, error: 'Empty insert' } }];\n  }\n  return [{ json: { ...data, project_id: project.id, failed: false } }];\n} catch (e) {\n  return [{ json: { ...data, success: false, error: e.message } }];\n}"
-      }
-    },
-    {
-      "id": "respond-cpfa",
-      "name": "Respond To Webhook",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        1080,
-        200
-      ],
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { success: $json.success !== false, project_id: $json.project_id || null, error: $json.error || null } }}",
-        "options": {
-          "responseCode": "={{ $json.http_status || 200 }}"
-        }
-      }
-    },
-    {
-      "id": "code-cpfa-seed-competitors",
-      "name": "Seed Competitors",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1080,
-        400
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// For each selected analysis (filtered by include_channels): INSERT into competitor_channels.\n// Uses ON CONFLICT (project_id, channel_id) DO NOTHING for idempotency.\n\nconst data = $input.first().json;\nif (data.failed || !data.project_id) return [{ json: data }];\n\nconst projectId = data.project_id;\nconst analyses = data.analyses || [];\nconst includeChannels = data.include_channels || [];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\n// Filter analyses by include_channels if specified, otherwise include all\nconst selected = includeChannels.length > 0\n  ? analyses.filter(a => includeChannels.includes(a.id))\n  : analyses;\n\nlet seededCount = 0;\nlet errors = [];\n\nfor (const a of selected) {\n  const row = {\n    project_id: projectId,\n    channel_id: a.youtube_channel_id || null,\n    channel_name: a.channel_name || 'Unknown',\n    channel_url: a.channel_url || null,\n    channel_handle: a.custom_url || null,\n    added_from: 'channel_analyzer',\n    subscriber_count: a.subscriber_count || 0,\n    total_video_count: a.video_count || 0,\n    total_view_count: a.total_view_count || 0,\n    is_active: true\n  };\n\n  try {\n    const res = await fetch(`${supabaseUrl}/rest/v1/competitor_channels`, {\n      method: 'POST',\n      headers: {\n        ...sbHeaders,\n        'Prefer': 'return=minimal,resolution=ignore-duplicates'\n      },\n      body: JSON.stringify(row)\n    });\n    if (res.ok || res.status === 409) {\n      seededCount++;\n    } else {\n      const errText = await res.text();\n      errors.push(`${a.channel_name}: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n    }\n  } catch (e) {\n    errors.push(`${a.channel_name}: ${e.message}`);\n  }\n}\n\nreturn [{ json: { ...data, seeded_competitors: seededCount, seed_errors: errors, failed: false } }];"
-      }
-    },
-    {
-      "id": "code-cpfa-seed-style",
-      "name": "Seed Style DNA",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1300,
-        400
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// For each analysis with thumbnail_patterns: INSERT into style_profiles.\n\nconst data = $input.first().json;\nif (data.failed || !data.project_id) return [{ json: data }];\n\nconst projectId = data.project_id;\nconst analyses = data.analyses || [];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nlet seededCount = 0;\nlet errors = [];\n\nfor (const a of analyses) {\n  // Only seed if analysis has thumbnail_patterns or title_patterns\n  if (!a.thumbnail_patterns && !a.title_patterns) continue;\n\n  const row = {\n    project_id: projectId,\n    channel_id: a.youtube_channel_id || null,\n    channel_name: a.channel_name || 'Unknown',\n    title_formulas: a.title_patterns || {},\n    thumbnail_dna: a.thumbnail_patterns || {},\n    content_pillars: a.primary_topics || [],\n    analyzed_at: a.analyzed_at || new Date().toISOString()\n  };\n\n  try {\n    const res = await fetch(`${supabaseUrl}/rest/v1/style_profiles`, {\n      method: 'POST',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify(row)\n    });\n    if (res.ok) {\n      seededCount++;\n    } else {\n      const errText = await res.text();\n      errors.push(`${a.channel_name}: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n    }\n  } catch (e) {\n    errors.push(`${a.channel_name}: ${e.message}`);\n  }\n}\n\nreturn [{ json: { ...data, seeded_styles: seededCount, style_errors: errors, failed: false } }];"
-      }
-    },
-    {
-      "id": "code-cpfa-link",
-      "name": "Link Analyses",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1520,
-        400
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// PATCH channel_analyses and channel_comparison_reports to link them to the new project.\n\nconst data = $input.first().json;\nif (data.failed || !data.project_id) return [{ json: data }];\n\nconst projectId = data.project_id;\nconst groupId = data.analysis_group_id;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nlet linkedAnalyses = false;\nlet linkedReport = false;\nlet errors = [];\n\n// Link channel_analyses to project\ntry {\n  const res = await fetch(\n    `${supabaseUrl}/rest/v1/channel_analyses?analysis_group_id=eq.${groupId}`,\n    {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({ project_id: projectId })\n    }\n  );\n  linkedAnalyses = res.ok;\n  if (!res.ok) {\n    const errText = await res.text();\n    errors.push(`Link analyses: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n  }\n} catch (e) {\n  errors.push(`Link analyses: ${e.message}`);\n}\n\n// Link channel_comparison_reports to project\ntry {\n  const res = await fetch(\n    `${supabaseUrl}/rest/v1/channel_comparison_reports?analysis_group_id=eq.${groupId}`,\n    {\n      method: 'PATCH',\n      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n      body: JSON.stringify({ project_id: projectId })\n    }\n  );\n  linkedReport = res.ok;\n  if (!res.ok) {\n    const errText = await res.text();\n    errors.push(`Link report: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n  }\n} catch (e) {\n  errors.push(`Link report: ${e.message}`);\n}\n\nreturn [{ json: { ...data, linked_analyses: linkedAnalyses, linked_report: linkedReport, link_errors: errors, failed: false } }];"
-      }
-    },
-    {
-      "id": "code-cpfa-log",
-      "name": "Log Completed",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1740,
-        400
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const data = $input.first().json;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  'apikey': $env.SUPABASE_ANON_KEY,\n  'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY,\n  'Content-Type': 'application/json'\n};\n\ntry {\n  await fetch(supabaseUrl + '/rest/v1/production_logs', {\n    method: 'POST',\n    headers: Object.assign({}, sbHeaders, { 'Prefer': 'return=minimal' }),\n    body: JSON.stringify({\n      project_id: data.project_id || null,\n      topic_id: null,\n      stage: 'create_project_from_analysis',\n      scene_number: null,\n      action: 'completed',\n      status: 'success',\n      duration_ms: 0,\n      cost_usd: 0,\n      retry_count: 0\n    })\n  });\n} catch (_) {}\n\nif (data.project_id) {\n  try {\n    await fetch(supabaseUrl + '/rest/v1/projects?id=eq.' + data.project_id, {\n      method: 'PATCH',\n      headers: Object.assign({}, sbHeaders, { 'Prefer': 'return=minimal' }),\n      body: JSON.stringify({ status: 'ready_for_topics', updated_at: new Date().toISOString() })\n    });\n  } catch (_) {}\n}\n\nreturn [{ json: {\n  success: true,\n  project_id: data.project_id,\n  analysis_group_id: data.analysis_group_id,\n  seeded_competitors: data.seeded_competitors || 0,\n  seeded_styles: data.seeded_styles || 0,\n  linked_analyses: data.linked_analyses || false,\n  linked_report: data.linked_report || false\n} }];"
-      }
-    }
-  ],
-  "connections": {
-    "Webhook Trigger": {
-      "main": [
-        [
-          {
-            "node": "Validate & Auth",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate & Auth": {
-      "main": [
-        [
-          {
-            "node": "Fetch Data",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch Data": {
-      "main": [
-        [
-          {
-            "node": "Create Project",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Project": {
-      "main": [
-        [
-          {
-            "node": "Respond To Webhook",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Seed Competitors",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Seed Competitors": {
-      "main": [
-        [
-          {
-            "node": "Seed Style DNA",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Seed Style DNA": {
-      "main": [
-        [
-          {
-            "node": "Link Analyses",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Link Analyses": {
-      "main": [
-        [
-          {
-            "node": "Log Completed",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  }
+﻿{
+    "updatedAt":  "2026-05-07T04:31:48.940Z",
+    "createdAt":  "2026-04-17T00:14:37.045Z",
+    "id":  "jU9VEw5SaKEHjvUn",
+    "name":  "WF_CREATE_PROJECT_FROM_ANALYSIS",
+    "description":  null,
+    "active":  true,
+    "isArchived":  false,
+    "nodes":  [
+                  {
+                      "id":  "trigger-cpfa-webhook",
+                      "name":  "Webhook Trigger",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2,
+                      "position":  [
+                                       200,
+                                       300
+                                   ],
+                      "parameters":  {
+                                         "path":  "project/create-from-analysis",
+                                         "httpMethod":  "POST",
+                                         "authentication":  "none",
+                                         "responseMode":  "responseNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "webhookId":  "project-create-from-analysis"
+                  },
+                  {
+                      "id":  "code-cpfa-validate",
+                      "name":  "Validate \u0026 Auth",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       420,
+                                       300
+                                   ],
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "// WF_CREATE_PROJECT_FROM_ANALYSIS - Validate payload, auth check.\n// Extract: analysis_group_id, niche_name, niche_description, include_channels.\n\nconst raw = $input.first().json;\nconst payload = raw.body || raw;\n\nconst analysisGroupId = (payload.analysis_group_id || \u0027\u0027).trim();\nconst nicheName = (payload.niche_name || \u0027\u0027).trim();\nconst nicheDescription = (payload.niche_description || \u0027\u0027).trim();\nconst includeChannels = Array.isArray(payload.include_channels) ? payload.include_channels : [];\n\nif (!analysisGroupId) {\n  return [{ json: { success: false, error: \u0027analysis_group_id is required\u0027, http_status: 400 } }];\n}\nif (!nicheName) {\n  return [{ json: { success: false, error: \u0027niche_name is required\u0027, http_status: 400 } }];\n}\n\nreturn [{ json: {\n  success: true,\n  analysis_group_id: analysisGroupId,\n  niche_name: nicheName,\n  niche_description: nicheDescription,\n  include_channels: includeChannels,\n  http_status: 200\n} }];"
+                                     }
+                  },
+                  {
+                      "id":  "code-cpfa-fetch",
+                      "name":  "Fetch Data",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       640,
+                                       300
+                                   ],
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "// Fetch completed channel_analyses + channel_comparison_reports for this group.\n\nconst data = $input.first().json;\nif (!data.success) return [{ json: data }];\n\nconst groupId = data.analysis_group_id;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\ntry {\n  // Fetch completed analyses\n  const analysesRes = await fetch(\n    `${supabaseUrl}/rest/v1/channel_analyses?analysis_group_id=eq.${groupId}\u0026status=eq.completed\u0026select=*`,\n    { method: \u0027GET\u0027, headers: sbHeaders }\n  );\n  if (!analysesRes.ok) {\n    const errText = await analysesRes.text();\n    // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + \u0027/rest/v1/niche_viability_reports?analysis_group_id=eq.\u0027 + groupId + \u0027\u0026select=*\u0026order=created_at.desc\u0026limit=1\u0027,\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) \u0026\u0026 vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, success: false, error: `Fetch analyses failed: HTTP ${analysesRes.status}: ${errText.slice(0, 200)}`, http_status: 500 } }];\n  }\n  const analyses = await analysesRes.json();\n\n  // Fetch comparison report\n  const reportRes = await fetch(\n    `${supabaseUrl}/rest/v1/channel_comparison_reports?analysis_group_id=eq.${groupId}\u0026select=*\u0026order=created_at.desc\u0026limit=1`,\n    { method: \u0027GET\u0027, headers: sbHeaders }\n  );\n  let report = null;\n  if (reportRes.ok) {\n    const reports = await reportRes.json();\n    report = Array.isArray(reports) \u0026\u0026 reports[0] ? reports[0] : null;\n  }\n\n  if (!Array.isArray(analyses) || analyses.length === 0) {\n    // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + \u0027/rest/v1/niche_viability_reports?analysis_group_id=eq.\u0027 + groupId + \u0027\u0026select=*\u0026order=created_at.desc\u0026limit=1\u0027,\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) \u0026\u0026 vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, success: false, error: \u0027No completed analyses found for this group\u0027, http_status: 404 } }];\n  }\n\n  // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + \u0027/rest/v1/niche_viability_reports?analysis_group_id=eq.\u0027 + groupId + \u0027\u0026select=*\u0026order=created_at.desc\u0026limit=1\u0027,\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) \u0026\u0026 vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, analyses, comparison_report: report,\n    viability_report: viabilityReport, failed: false } }];\n} catch (e) {\n  // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + \u0027/rest/v1/niche_viability_reports?analysis_group_id=eq.\u0027 + groupId + \u0027\u0026select=*\u0026order=created_at.desc\u0026limit=1\u0027,\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) \u0026\u0026 vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, success: false, error: `Exception: ${e.message}`, http_status: 500 } }];\n}"
+                                     }
+                  },
+                  {
+                      "id":  "code-cpfa-create",
+                      "name":  "Create Project",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       860,
+                                       300
+                                   ],
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "const data = $input.first().json;\nif (data.failed || !data.success) return [{ json: data }];\n\nconst analyses = data.analyses || [];\nconst report = data.comparison_report;\nconst viability = data.viability_report;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: \u0027Bearer \u0027 + $env.SUPABASE_SERVICE_ROLE_KEY,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\n// === COUNTRY/LANGUAGE INHERITANCE (added 2026-05-07) ===\n// Single source of truth: analysis_groups.country_target.\n// Before this fix, projects created from AU analyses landed as GENERAL/en-US -\n// they were hidden under the AU dashboard tab AND downstream prompts used US\n// spelling/terminology for AU content. The dashboard payload doesn\u0027t pass the\n// active country tab through, so we read it from the linked group at insert time.\nlet inheritedCountry = \u0027GENERAL\u0027;\ntry {\n  const grpRes = await fetch(\n    supabaseUrl + \u0027/rest/v1/analysis_groups?id=eq.\u0027 + data.analysis_group_id + \u0027\u0026select=country_target\u0027,\n    { headers: sbHeaders }\n  );\n  if (grpRes.ok) {\n    const rows = await grpRes.json();\n    if (Array.isArray(rows) \u0026\u0026 rows[0] \u0026\u0026 rows[0].country_target) {\n      inheritedCountry = rows[0].country_target;\n    }\n  }\n} catch (_) { /* fall back to GENERAL */ }\nconst inheritedLanguage = inheritedCountry === \u0027AU\u0027 ? \u0027en-AU\u0027 : \u0027en-US\u0027;\n// === END COUNTRY/LANGUAGE INHERITANCE ===\n\n// Aggregate ALL comment insights across channels\nconst allContentGaps = [];\nconst allPainPoints = [];\nconst allRequestedTopics = [];\nconst allTopQuestions = [];\nconst allCompetitorMentions = [];\nfor (const a of analyses) {\n  const ci = a.comment_insights;\n  if (ci) {\n    if (ci.content_gaps) allContentGaps.push(...ci.content_gaps);\n    if (ci.pain_points) allPainPoints.push(...ci.pain_points);\n    if (ci.requested_topics) allRequestedTopics.push(...ci.requested_topics);\n    if (ci.top_questions) allTopQuestions.push(...ci.top_questions);\n    if (ci.competitor_mentions) allCompetitorMentions.push(...ci.competitor_mentions);\n  }\n}\n\nconst channelAnalysisContext = {\n  blue_ocean_gaps: report?.combined_blue_ocean_gaps || (viability?.blue_ocean_opportunities || []),\n  differentiation_strategy: report?.differentiation_strategy || (viability?.differentiation_strategy || \u0027\u0027),\n  content_pillars: report?.recommended_content_pillars || (viability?.recommended_content_pillars || []),\n  topic_landscape: report?.combined_topic_landscape || {},\n  saturation_map: report?.combined_saturation_map || (viability?.saturated_topics || []),\n  overall_verdict: report?.overall_verdict || (viability?.viability_verdict || null),\n  overall_verdict_score: report?.overall_verdict_score || (viability?.viability_score || null),\n  channel_count: analyses.length,\n  monetization_score: viability?.monetization_score || null,\n  audience_demand_score: viability?.audience_demand_score || null,\n  competition_gap_score: viability?.competition_gap_score || null,\n  entry_difficulty_score: viability?.entry_difficulty_score || null,\n  estimated_rpm: { low: viability?.estimated_rpm_low, mid: viability?.estimated_rpm_mid, high: viability?.estimated_rpm_high },\n  sponsorship_potential: viability?.sponsorship_potential || null,\n  moat_indicators: viability?.moat_indicators || null,\n  posting_frequency_benchmark: viability?.posting_frequency_benchmark || null,\n  audience_size_estimate: viability?.audience_size_estimate || null,\n  engagement_benchmarks: viability?.engagement_benchmarks || null,\n  comment_content_gaps: [...new Set(allContentGaps)],\n  comment_pain_points: [...new Set(allPainPoints)],\n  comment_requested_topics: [...new Set(allRequestedTopics)],\n  comment_top_questions: [...new Set(allTopQuestions)],\n  comment_competitor_mentions: [...new Set(allCompetitorMentions)],\n};\n\nconst scriptReferenceData = {\n  per_channel: analyses.map(a =\u003e ({\n    channel_name: a.channel_name || \u0027Unknown\u0027,\n    scripting_depth: a.scripting_depth || {},\n    content_style: a.content_style || null,\n    target_audience: a.target_audience_description || null,\n    strengths: a.strengths || [],\n    weaknesses: a.weaknesses || [],\n    posting_schedule: a.posting_schedule || null,\n  })),\n  targets: viability?.script_depth_targets || null,\n};\n\nconst nicheDesc = data.niche_description || report?.recommended_niche_description || \u0027\u0027;\n\nconst projectRow = {\n  name: data.niche_name,\n  niche: data.niche_name,\n  niche_description: nicheDesc.slice(0, 10000),\n  country_target: inheritedCountry,\n  language: inheritedLanguage,\n  channel_analysis_context: channelAnalysisContext,\n  script_reference_data: scriptReferenceData,\n  analysis_group_id: data.analysis_group_id,\n  niche_viability_score: viability?.viability_score || null,\n  niche_viability_verdict: viability?.viability_verdict || null,\n  topics_to_avoid: viability?.topics_to_avoid || [],\n  recommended_topics: viability?.recommended_topics || [],\n  recommended_angle: viability?.recommended_angle || null,\n  revenue_projections: viability?.revenue_projections || null,\n  script_depth_targets: viability?.script_depth_targets || null,\n  title_dna_patterns: viability?.title_dna_patterns || null,\n  thumbnail_dna_patterns: viability?.thumbnail_dna_patterns || null,\n  status: \u0027created\u0027\n};\n\ntry {\n  const res = await fetch(supabaseUrl + \u0027/rest/v1/projects\u0027, {\n    method: \u0027POST\u0027,\n    headers: { ...sbHeaders, \u0027Prefer\u0027: \u0027return=representation\u0027 },\n    body: JSON.stringify(projectRow)\n  });\n  if (!res.ok) {\n    const errText = await res.text();\n    return [{ json: { ...data, success: false, error: \u0027HTTP \u0027 + res.status + \u0027: \u0027 + errText.slice(0, 200) } }];\n  }\n  const inserted = await res.json();\n  const project = Array.isArray(inserted) \u0026\u0026 inserted[0] ? inserted[0] : null;\n  if (!project || !project.id) {\n    return [{ json: { ...data, success: false, error: \u0027Empty insert\u0027 } }];\n  }\n  return [{ json: { ...data, project_id: project.id, failed: false } }];\n} catch (e) {\n  return [{ json: { ...data, success: false, error: e.message } }];\n}"
+                                     }
+                  },
+                  {
+                      "id":  "respond-cpfa",
+                      "name":  "Respond To Webhook",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.1,
+                      "position":  [
+                                       1080,
+                                       200
+                                   ],
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { success: $json.success !== false, project_id: $json.project_id || null, error: $json.error || null } }}",
+                                         "options":  {
+                                                         "responseCode":  "={{ $json.http_status || 200 }}"
+                                                     }
+                                     }
+                  },
+                  {
+                      "id":  "code-cpfa-seed-competitors",
+                      "name":  "Seed Competitors",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1080,
+                                       400
+                                   ],
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "// For each selected analysis (filtered by include_channels): INSERT into competitor_channels.\n// Uses ON CONFLICT (project_id, channel_id) DO NOTHING for idempotency.\n\nconst data = $input.first().json;\nif (data.failed || !data.project_id) return [{ json: data }];\n\nconst projectId = data.project_id;\nconst analyses = data.analyses || [];\nconst includeChannels = data.include_channels || [];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\n// Filter analyses by include_channels if specified, otherwise include all\nconst selected = includeChannels.length \u003e 0\n  ? analyses.filter(a =\u003e includeChannels.includes(a.id))\n  : analyses;\n\nlet seededCount = 0;\nlet errors = [];\n\nfor (const a of selected) {\n  const row = {\n    project_id: projectId,\n    channel_id: a.youtube_channel_id || null,\n    channel_name: a.channel_name || \u0027Unknown\u0027,\n    channel_url: a.channel_url || null,\n    channel_handle: a.custom_url || null,\n    added_from: \u0027channel_analyzer\u0027,\n    subscriber_count: a.subscriber_count || 0,\n    total_video_count: a.video_count || 0,\n    total_view_count: a.total_view_count || 0,\n    is_active: true\n  };\n\n  try {\n    const res = await fetch(`${supabaseUrl}/rest/v1/competitor_channels`, {\n      method: \u0027POST\u0027,\n      headers: {\n        ...sbHeaders,\n        \u0027Prefer\u0027: \u0027return=minimal,resolution=ignore-duplicates\u0027\n      },\n      body: JSON.stringify(row)\n    });\n    if (res.ok || res.status === 409) {\n      seededCount++;\n    } else {\n      const errText = await res.text();\n      errors.push(`${a.channel_name}: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n    }\n  } catch (e) {\n    errors.push(`${a.channel_name}: ${e.message}`);\n  }\n}\n\nreturn [{ json: { ...data, seeded_competitors: seededCount, seed_errors: errors, failed: false } }];"
+                                     }
+                  },
+                  {
+                      "id":  "code-cpfa-seed-style",
+                      "name":  "Seed Style DNA",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1300,
+                                       400
+                                   ],
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "// For each analysis with thumbnail_patterns: INSERT into style_profiles.\n\nconst data = $input.first().json;\nif (data.failed || !data.project_id) return [{ json: data }];\n\nconst projectId = data.project_id;\nconst analyses = data.analyses || [];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\nlet seededCount = 0;\nlet errors = [];\n\nfor (const a of analyses) {\n  // Only seed if analysis has thumbnail_patterns or title_patterns\n  if (!a.thumbnail_patterns \u0026\u0026 !a.title_patterns) continue;\n\n  const row = {\n    project_id: projectId,\n    channel_id: a.youtube_channel_id || null,\n    channel_name: a.channel_name || \u0027Unknown\u0027,\n    title_formulas: a.title_patterns || {},\n    thumbnail_dna: a.thumbnail_patterns || {},\n    content_pillars: a.primary_topics || [],\n    analyzed_at: a.analyzed_at || new Date().toISOString()\n  };\n\n  try {\n    const res = await fetch(`${supabaseUrl}/rest/v1/style_profiles`, {\n      method: \u0027POST\u0027,\n      headers: { ...sbHeaders, \u0027Prefer\u0027: \u0027return=minimal\u0027 },\n      body: JSON.stringify(row)\n    });\n    if (res.ok) {\n      seededCount++;\n    } else {\n      const errText = await res.text();\n      errors.push(`${a.channel_name}: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n    }\n  } catch (e) {\n    errors.push(`${a.channel_name}: ${e.message}`);\n  }\n}\n\nreturn [{ json: { ...data, seeded_styles: seededCount, style_errors: errors, failed: false } }];"
+                                     }
+                  },
+                  {
+                      "id":  "code-cpfa-link",
+                      "name":  "Link Analyses",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1520,
+                                       400
+                                   ],
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "// PATCH channel_analyses and channel_comparison_reports to link them to the new project.\n\nconst data = $input.first().json;\nif (data.failed || !data.project_id) return [{ json: data }];\n\nconst projectId = data.project_id;\nconst groupId = data.analysis_group_id;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\nlet linkedAnalyses = false;\nlet linkedReport = false;\nlet errors = [];\n\n// Link channel_analyses to project\ntry {\n  const res = await fetch(\n    `${supabaseUrl}/rest/v1/channel_analyses?analysis_group_id=eq.${groupId}`,\n    {\n      method: \u0027PATCH\u0027,\n      headers: { ...sbHeaders, \u0027Prefer\u0027: \u0027return=minimal\u0027 },\n      body: JSON.stringify({ project_id: projectId })\n    }\n  );\n  linkedAnalyses = res.ok;\n  if (!res.ok) {\n    const errText = await res.text();\n    errors.push(`Link analyses: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n  }\n} catch (e) {\n  errors.push(`Link analyses: ${e.message}`);\n}\n\n// Link channel_comparison_reports to project\ntry {\n  const res = await fetch(\n    `${supabaseUrl}/rest/v1/channel_comparison_reports?analysis_group_id=eq.${groupId}`,\n    {\n      method: \u0027PATCH\u0027,\n      headers: { ...sbHeaders, \u0027Prefer\u0027: \u0027return=minimal\u0027 },\n      body: JSON.stringify({ project_id: projectId })\n    }\n  );\n  linkedReport = res.ok;\n  if (!res.ok) {\n    const errText = await res.text();\n    errors.push(`Link report: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n  }\n} catch (e) {\n  errors.push(`Link report: ${e.message}`);\n}\n\nreturn [{ json: { ...data, linked_analyses: linkedAnalyses, linked_report: linkedReport, link_errors: errors, failed: false } }];"
+                                     }
+                  },
+                  {
+                      "id":  "code-cpfa-log",
+                      "name":  "Log Completed",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1740,
+                                       400
+                                   ],
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "const data = $input.first().json;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: \u0027Bearer \u0027 + $env.SUPABASE_SERVICE_ROLE_KEY,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\ntry {\n  await fetch(supabaseUrl + \u0027/rest/v1/production_logs\u0027, {\n    method: \u0027POST\u0027,\n    headers: Object.assign({}, sbHeaders, { \u0027Prefer\u0027: \u0027return=minimal\u0027 }),\n    body: JSON.stringify({\n      project_id: data.project_id || null,\n      topic_id: null,\n      stage: \u0027create_project_from_analysis\u0027,\n      scene_number: null,\n      action: \u0027completed\u0027,\n      status: \u0027success\u0027,\n      duration_ms: 0,\n      cost_usd: 0,\n      retry_count: 0\n    })\n  });\n} catch (_) {}\n\nif (data.project_id) {\n  try {\n    await fetch(supabaseUrl + \u0027/rest/v1/projects?id=eq.\u0027 + data.project_id, {\n      method: \u0027PATCH\u0027,\n      headers: Object.assign({}, sbHeaders, { \u0027Prefer\u0027: \u0027return=minimal\u0027 }),\n      body: JSON.stringify({ status: \u0027ready_for_topics\u0027, updated_at: new Date().toISOString() })\n    });\n  } catch (_) {}\n}\n\nreturn [{ json: {\n  success: true,\n  project_id: data.project_id,\n  analysis_group_id: data.analysis_group_id,\n  seeded_competitors: data.seeded_competitors || 0,\n  seeded_styles: data.seeded_styles || 0,\n  linked_analyses: data.linked_analyses || false,\n  linked_report: data.linked_report || false\n} }];"
+                                     }
+                  }
+              ],
+    "connections":  {
+                        "Webhook Trigger":  {
+                                                "main":  [
+                                                             [
+                                                                 {
+                                                                     "node":  "Validate \u0026 Auth",
+                                                                     "type":  "main",
+                                                                     "index":  0
+                                                                 }
+                                                             ]
+                                                         ]
+                                            },
+                        "Validate \u0026 Auth":  {
+                                                     "main":  [
+                                                                  [
+                                                                      {
+                                                                          "node":  "Fetch Data",
+                                                                          "type":  "main",
+                                                                          "index":  0
+                                                                      }
+                                                                  ]
+                                                              ]
+                                                 },
+                        "Fetch Data":  {
+                                           "main":  [
+                                                        [
+                                                            {
+                                                                "node":  "Create Project",
+                                                                "type":  "main",
+                                                                "index":  0
+                                                            }
+                                                        ]
+                                                    ]
+                                       },
+                        "Create Project":  {
+                                               "main":  [
+                                                            [
+                                                                {
+                                                                    "node":  "Respond To Webhook",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                },
+                                                                {
+                                                                    "node":  "Seed Competitors",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                }
+                                                            ]
+                                                        ]
+                                           },
+                        "Seed Competitors":  {
+                                                 "main":  [
+                                                              [
+                                                                  {
+                                                                      "node":  "Seed Style DNA",
+                                                                      "type":  "main",
+                                                                      "index":  0
+                                                                  }
+                                                              ]
+                                                          ]
+                                             },
+                        "Seed Style DNA":  {
+                                               "main":  [
+                                                            [
+                                                                {
+                                                                    "node":  "Link Analyses",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                }
+                                                            ]
+                                                        ]
+                                           },
+                        "Link Analyses":  {
+                                              "main":  [
+                                                           [
+                                                               {
+                                                                   "node":  "Log Completed",
+                                                                   "type":  "main",
+                                                                   "index":  0
+                                                               }
+                                                           ]
+                                                       ]
+                                          }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "callerPolicy":  "workflowsFromSameOwner",
+                     "executionTimeout":  600,
+                     "availableInMCP":  false
+                 },
+    "staticData":  null,
+    "meta":  null,
+    "pinData":  null,
+    "versionId":  "7223e46c-64e3-4f26-97b1-ebdffcc9c135",
+    "activeVersionId":  "7223e46c-64e3-4f26-97b1-ebdffcc9c135",
+    "versionCounter":  24,
+    "triggerCount":  1,
+    "shared":  [
+                   {
+                       "updatedAt":  "2026-04-17T00:14:37.077Z",
+                       "createdAt":  "2026-04-17T00:14:37.077Z",
+                       "role":  "workflow:owner",
+                       "workflowId":  "jU9VEw5SaKEHjvUn",
+                       "projectId":  "ccWn1Q4giuKzXIbJ",
+                       "project":  {
+                                       "updatedAt":  "2026-01-26T11:09:31.107Z",
+                                       "createdAt":  "2026-01-26T03:51:33.410Z",
+                                       "id":  "ccWn1Q4giuKzXIbJ",
+                                       "name":  "Akinwunmi Akinrimisi \u003cakinolacrypto@gmail.com\u003e",
+                                       "type":  "personal",
+                                       "icon":  null,
+                                       "description":  null,
+                                       "creatorId":  "ab010feb-355c-4130-b354-4e929908258e"
+                                   }
+                   }
+               ],
+    "tags":  [
+
+             ],
+    "activeVersion":  {
+                          "updatedAt":  "2026-05-07T04:31:48.943Z",
+                          "createdAt":  "2026-05-07T04:31:48.943Z",
+                          "versionId":  "7223e46c-64e3-4f26-97b1-ebdffcc9c135",
+                          "workflowId":  "jU9VEw5SaKEHjvUn",
+                          "nodes":  [
+                                        {
+                                            "id":  "trigger-cpfa-webhook",
+                                            "name":  "Webhook Trigger",
+                                            "type":  "n8n-nodes-base.webhook",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             200,
+                                                             300
+                                                         ],
+                                            "parameters":  {
+                                                               "path":  "project/create-from-analysis",
+                                                               "httpMethod":  "POST",
+                                                               "authentication":  "none",
+                                                               "responseMode":  "responseNode",
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "webhookId":  "project-create-from-analysis"
+                                        },
+                                        {
+                                            "id":  "code-cpfa-validate",
+                                            "name":  "Validate \u0026 Auth",
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             420,
+                                                             300
+                                                         ],
+                                            "parameters":  {
+                                                               "mode":  "runOnceForAllItems",
+                                                               "jsCode":  "// WF_CREATE_PROJECT_FROM_ANALYSIS - Validate payload, auth check.\n// Extract: analysis_group_id, niche_name, niche_description, include_channels.\n\nconst raw = $input.first().json;\nconst payload = raw.body || raw;\n\nconst analysisGroupId = (payload.analysis_group_id || \u0027\u0027).trim();\nconst nicheName = (payload.niche_name || \u0027\u0027).trim();\nconst nicheDescription = (payload.niche_description || \u0027\u0027).trim();\nconst includeChannels = Array.isArray(payload.include_channels) ? payload.include_channels : [];\n\nif (!analysisGroupId) {\n  return [{ json: { success: false, error: \u0027analysis_group_id is required\u0027, http_status: 400 } }];\n}\nif (!nicheName) {\n  return [{ json: { success: false, error: \u0027niche_name is required\u0027, http_status: 400 } }];\n}\n\nreturn [{ json: {\n  success: true,\n  analysis_group_id: analysisGroupId,\n  niche_name: nicheName,\n  niche_description: nicheDescription,\n  include_channels: includeChannels,\n  http_status: 200\n} }];"
+                                                           }
+                                        },
+                                        {
+                                            "id":  "code-cpfa-fetch",
+                                            "name":  "Fetch Data",
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             640,
+                                                             300
+                                                         ],
+                                            "parameters":  {
+                                                               "mode":  "runOnceForAllItems",
+                                                               "jsCode":  "// Fetch completed channel_analyses + channel_comparison_reports for this group.\n\nconst data = $input.first().json;\nif (!data.success) return [{ json: data }];\n\nconst groupId = data.analysis_group_id;\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\ntry {\n  // Fetch completed analyses\n  const analysesRes = await fetch(\n    `${supabaseUrl}/rest/v1/channel_analyses?analysis_group_id=eq.${groupId}\u0026status=eq.completed\u0026select=*`,\n    { method: \u0027GET\u0027, headers: sbHeaders }\n  );\n  if (!analysesRes.ok) {\n    const errText = await analysesRes.text();\n    // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + \u0027/rest/v1/niche_viability_reports?analysis_group_id=eq.\u0027 + groupId + \u0027\u0026select=*\u0026order=created_at.desc\u0026limit=1\u0027,\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) \u0026\u0026 vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, success: false, error: `Fetch analyses failed: HTTP ${analysesRes.status}: ${errText.slice(0, 200)}`, http_status: 500 } }];\n  }\n  const analyses = await analysesRes.json();\n\n  // Fetch comparison report\n  const reportRes = await fetch(\n    `${supabaseUrl}/rest/v1/channel_comparison_reports?analysis_group_id=eq.${groupId}\u0026select=*\u0026order=created_at.desc\u0026limit=1`,\n    { method: \u0027GET\u0027, headers: sbHeaders }\n  );\n  let report = null;\n  if (reportRes.ok) {\n    const reports = await reportRes.json();\n    report = Array.isArray(reports) \u0026\u0026 reports[0] ? reports[0] : null;\n  }\n\n  if (!Array.isArray(analyses) || analyses.length === 0) {\n    // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + \u0027/rest/v1/niche_viability_reports?analysis_group_id=eq.\u0027 + groupId + \u0027\u0026select=*\u0026order=created_at.desc\u0026limit=1\u0027,\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) \u0026\u0026 vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, success: false, error: \u0027No completed analyses found for this group\u0027, http_status: 404 } }];\n  }\n\n  // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + \u0027/rest/v1/niche_viability_reports?analysis_group_id=eq.\u0027 + groupId + \u0027\u0026select=*\u0026order=created_at.desc\u0026limit=1\u0027,\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) \u0026\u0026 vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, analyses, comparison_report: report,\n    viability_report: viabilityReport, failed: false } }];\n} catch (e) {\n  // Also fetch niche viability report\n  let viabilityReport = null;\n  try {\n    const vResp = await fetch(\n      supabaseUrl + \u0027/rest/v1/niche_viability_reports?analysis_group_id=eq.\u0027 + groupId + \u0027\u0026select=*\u0026order=created_at.desc\u0026limit=1\u0027,\n      { headers: sbHeaders }\n    );\n    const vRows = await vResp.json();\n    viabilityReport = Array.isArray(vRows) \u0026\u0026 vRows[0] ? vRows[0] : null;\n  } catch (e) { /* ignore */ }\n\n  return [{ json: { ...data, success: false, error: `Exception: ${e.message}`, http_status: 500 } }];\n}"
+                                                           }
+                                        },
+                                        {
+                                            "id":  "code-cpfa-create",
+                                            "name":  "Create Project",
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             860,
+                                                             300
+                                                         ],
+                                            "parameters":  {
+                                                               "mode":  "runOnceForAllItems",
+                                                               "jsCode":  "const data = $input.first().json;\nif (data.failed || !data.success) return [{ json: data }];\n\nconst analyses = data.analyses || [];\nconst report = data.comparison_report;\nconst viability = data.viability_report;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: \u0027Bearer \u0027 + $env.SUPABASE_SERVICE_ROLE_KEY,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\n// === COUNTRY/LANGUAGE INHERITANCE (added 2026-05-07) ===\n// Single source of truth: analysis_groups.country_target.\n// Before this fix, projects created from AU analyses landed as GENERAL/en-US -\n// they were hidden under the AU dashboard tab AND downstream prompts used US\n// spelling/terminology for AU content. The dashboard payload doesn\u0027t pass the\n// active country tab through, so we read it from the linked group at insert time.\nlet inheritedCountry = \u0027GENERAL\u0027;\ntry {\n  const grpRes = await fetch(\n    supabaseUrl + \u0027/rest/v1/analysis_groups?id=eq.\u0027 + data.analysis_group_id + \u0027\u0026select=country_target\u0027,\n    { headers: sbHeaders }\n  );\n  if (grpRes.ok) {\n    const rows = await grpRes.json();\n    if (Array.isArray(rows) \u0026\u0026 rows[0] \u0026\u0026 rows[0].country_target) {\n      inheritedCountry = rows[0].country_target;\n    }\n  }\n} catch (_) { /* fall back to GENERAL */ }\nconst inheritedLanguage = inheritedCountry === \u0027AU\u0027 ? \u0027en-AU\u0027 : \u0027en-US\u0027;\n// === END COUNTRY/LANGUAGE INHERITANCE ===\n\n// Aggregate ALL comment insights across channels\nconst allContentGaps = [];\nconst allPainPoints = [];\nconst allRequestedTopics = [];\nconst allTopQuestions = [];\nconst allCompetitorMentions = [];\nfor (const a of analyses) {\n  const ci = a.comment_insights;\n  if (ci) {\n    if (ci.content_gaps) allContentGaps.push(...ci.content_gaps);\n    if (ci.pain_points) allPainPoints.push(...ci.pain_points);\n    if (ci.requested_topics) allRequestedTopics.push(...ci.requested_topics);\n    if (ci.top_questions) allTopQuestions.push(...ci.top_questions);\n    if (ci.competitor_mentions) allCompetitorMentions.push(...ci.competitor_mentions);\n  }\n}\n\nconst channelAnalysisContext = {\n  blue_ocean_gaps: report?.combined_blue_ocean_gaps || (viability?.blue_ocean_opportunities || []),\n  differentiation_strategy: report?.differentiation_strategy || (viability?.differentiation_strategy || \u0027\u0027),\n  content_pillars: report?.recommended_content_pillars || (viability?.recommended_content_pillars || []),\n  topic_landscape: report?.combined_topic_landscape || {},\n  saturation_map: report?.combined_saturation_map || (viability?.saturated_topics || []),\n  overall_verdict: report?.overall_verdict || (viability?.viability_verdict || null),\n  overall_verdict_score: report?.overall_verdict_score || (viability?.viability_score || null),\n  channel_count: analyses.length,\n  monetization_score: viability?.monetization_score || null,\n  audience_demand_score: viability?.audience_demand_score || null,\n  competition_gap_score: viability?.competition_gap_score || null,\n  entry_difficulty_score: viability?.entry_difficulty_score || null,\n  estimated_rpm: { low: viability?.estimated_rpm_low, mid: viability?.estimated_rpm_mid, high: viability?.estimated_rpm_high },\n  sponsorship_potential: viability?.sponsorship_potential || null,\n  moat_indicators: viability?.moat_indicators || null,\n  posting_frequency_benchmark: viability?.posting_frequency_benchmark || null,\n  audience_size_estimate: viability?.audience_size_estimate || null,\n  engagement_benchmarks: viability?.engagement_benchmarks || null,\n  comment_content_gaps: [...new Set(allContentGaps)],\n  comment_pain_points: [...new Set(allPainPoints)],\n  comment_requested_topics: [...new Set(allRequestedTopics)],\n  comment_top_questions: [...new Set(allTopQuestions)],\n  comment_competitor_mentions: [...new Set(allCompetitorMentions)],\n};\n\nconst scriptReferenceData = {\n  per_channel: analyses.map(a =\u003e ({\n    channel_name: a.channel_name || \u0027Unknown\u0027,\n    scripting_depth: a.scripting_depth || {},\n    content_style: a.content_style || null,\n    target_audience: a.target_audience_description || null,\n    strengths: a.strengths || [],\n    weaknesses: a.weaknesses || [],\n    posting_schedule: a.posting_schedule || null,\n  })),\n  targets: viability?.script_depth_targets || null,\n};\n\nconst nicheDesc = data.niche_description || report?.recommended_niche_description || \u0027\u0027;\n\nconst projectRow = {\n  name: data.niche_name,\n  niche: data.niche_name,\n  niche_description: nicheDesc.slice(0, 10000),\n  country_target: inheritedCountry,\n  language: inheritedLanguage,\n  channel_analysis_context: channelAnalysisContext,\n  script_reference_data: scriptReferenceData,\n  analysis_group_id: data.analysis_group_id,\n  niche_viability_score: viability?.viability_score || null,\n  niche_viability_verdict: viability?.viability_verdict || null,\n  topics_to_avoid: viability?.topics_to_avoid || [],\n  recommended_topics: viability?.recommended_topics || [],\n  recommended_angle: viability?.recommended_angle || null,\n  revenue_projections: viability?.revenue_projections || null,\n  script_depth_targets: viability?.script_depth_targets || null,\n  title_dna_patterns: viability?.title_dna_patterns || null,\n  thumbnail_dna_patterns: viability?.thumbnail_dna_patterns || null,\n  status: \u0027created\u0027\n};\n\ntry {\n  const res = await fetch(supabaseUrl + \u0027/rest/v1/projects\u0027, {\n    method: \u0027POST\u0027,\n    headers: { ...sbHeaders, \u0027Prefer\u0027: \u0027return=representation\u0027 },\n    body: JSON.stringify(projectRow)\n  });\n  if (!res.ok) {\n    const errText = await res.text();\n    return [{ json: { ...data, success: false, error: \u0027HTTP \u0027 + res.status + \u0027: \u0027 + errText.slice(0, 200) } }];\n  }\n  const inserted = await res.json();\n  const project = Array.isArray(inserted) \u0026\u0026 inserted[0] ? inserted[0] : null;\n  if (!project || !project.id) {\n    return [{ json: { ...data, success: false, error: \u0027Empty insert\u0027 } }];\n  }\n  return [{ json: { ...data, project_id: project.id, failed: false } }];\n} catch (e) {\n  return [{ json: { ...data, success: false, error: e.message } }];\n}"
+                                                           }
+                                        },
+                                        {
+                                            "id":  "respond-cpfa",
+                                            "name":  "Respond To Webhook",
+                                            "type":  "n8n-nodes-base.respondToWebhook",
+                                            "typeVersion":  1.1,
+                                            "position":  [
+                                                             1080,
+                                                             200
+                                                         ],
+                                            "parameters":  {
+                                                               "respondWith":  "json",
+                                                               "responseBody":  "={{ { success: $json.success !== false, project_id: $json.project_id || null, error: $json.error || null } }}",
+                                                               "options":  {
+                                                                               "responseCode":  "={{ $json.http_status || 200 }}"
+                                                                           }
+                                                           }
+                                        },
+                                        {
+                                            "id":  "code-cpfa-seed-competitors",
+                                            "name":  "Seed Competitors",
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             1080,
+                                                             400
+                                                         ],
+                                            "parameters":  {
+                                                               "mode":  "runOnceForAllItems",
+                                                               "jsCode":  "// For each selected analysis (filtered by include_channels): INSERT into competitor_channels.\n// Uses ON CONFLICT (project_id, channel_id) DO NOTHING for idempotency.\n\nconst data = $input.first().json;\nif (data.failed || !data.project_id) return [{ json: data }];\n\nconst projectId = data.project_id;\nconst analyses = data.analyses || [];\nconst includeChannels = data.include_channels || [];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\n// Filter analyses by include_channels if specified, otherwise include all\nconst selected = includeChannels.length \u003e 0\n  ? analyses.filter(a =\u003e includeChannels.includes(a.id))\n  : analyses;\n\nlet seededCount = 0;\nlet errors = [];\n\nfor (const a of selected) {\n  const row = {\n    project_id: projectId,\n    channel_id: a.youtube_channel_id || null,\n    channel_name: a.channel_name || \u0027Unknown\u0027,\n    channel_url: a.channel_url || null,\n    channel_handle: a.custom_url || null,\n    added_from: \u0027channel_analyzer\u0027,\n    subscriber_count: a.subscriber_count || 0,\n    total_video_count: a.video_count || 0,\n    total_view_count: a.total_view_count || 0,\n    is_active: true\n  };\n\n  try {\n    const res = await fetch(`${supabaseUrl}/rest/v1/competitor_channels`, {\n      method: \u0027POST\u0027,\n      headers: {\n        ...sbHeaders,\n        \u0027Prefer\u0027: \u0027return=minimal,resolution=ignore-duplicates\u0027\n      },\n      body: JSON.stringify(row)\n    });\n    if (res.ok || res.status === 409) {\n      seededCount++;\n    } else {\n      const errText = await res.text();\n      errors.push(`${a.channel_name}: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n    }\n  } catch (e) {\n    errors.push(`${a.channel_name}: ${e.message}`);\n  }\n}\n\nreturn [{ json: { ...data, seeded_competitors: seededCount, seed_errors: errors, failed: false } }];"
+                                                           }
+                                        },
+                                        {
+                                            "id":  "code-cpfa-seed-style",
+                                            "name":  "Seed Style DNA",
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             1300,
+                                                             400
+                                                         ],
+                                            "parameters":  {
+                                                               "mode":  "runOnceForAllItems",
+                                                               "jsCode":  "// For each analysis with thumbnail_patterns: INSERT into style_profiles.\n\nconst data = $input.first().json;\nif (data.failed || !data.project_id) return [{ json: data }];\n\nconst projectId = data.project_id;\nconst analyses = data.analyses || [];\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\nlet seededCount = 0;\nlet errors = [];\n\nfor (const a of analyses) {\n  // Only seed if analysis has thumbnail_patterns or title_patterns\n  if (!a.thumbnail_patterns \u0026\u0026 !a.title_patterns) continue;\n\n  const row = {\n    project_id: projectId,\n    channel_id: a.youtube_channel_id || null,\n    channel_name: a.channel_name || \u0027Unknown\u0027,\n    title_formulas: a.title_patterns || {},\n    thumbnail_dna: a.thumbnail_patterns || {},\n    content_pillars: a.primary_topics || [],\n    analyzed_at: a.analyzed_at || new Date().toISOString()\n  };\n\n  try {\n    const res = await fetch(`${supabaseUrl}/rest/v1/style_profiles`, {\n      method: \u0027POST\u0027,\n      headers: { ...sbHeaders, \u0027Prefer\u0027: \u0027return=minimal\u0027 },\n      body: JSON.stringify(row)\n    });\n    if (res.ok) {\n      seededCount++;\n    } else {\n      const errText = await res.text();\n      errors.push(`${a.channel_name}: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n    }\n  } catch (e) {\n    errors.push(`${a.channel_name}: ${e.message}`);\n  }\n}\n\nreturn [{ json: { ...data, seeded_styles: seededCount, style_errors: errors, failed: false } }];"
+                                                           }
+                                        },
+                                        {
+                                            "id":  "code-cpfa-link",
+                                            "name":  "Link Analyses",
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             1520,
+                                                             400
+                                                         ],
+                                            "parameters":  {
+                                                               "mode":  "runOnceForAllItems",
+                                                               "jsCode":  "// PATCH channel_analyses and channel_comparison_reports to link them to the new project.\n\nconst data = $input.first().json;\nif (data.failed || !data.project_id) return [{ json: data }];\n\nconst projectId = data.project_id;\nconst groupId = data.analysis_group_id;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\nlet linkedAnalyses = false;\nlet linkedReport = false;\nlet errors = [];\n\n// Link channel_analyses to project\ntry {\n  const res = await fetch(\n    `${supabaseUrl}/rest/v1/channel_analyses?analysis_group_id=eq.${groupId}`,\n    {\n      method: \u0027PATCH\u0027,\n      headers: { ...sbHeaders, \u0027Prefer\u0027: \u0027return=minimal\u0027 },\n      body: JSON.stringify({ project_id: projectId })\n    }\n  );\n  linkedAnalyses = res.ok;\n  if (!res.ok) {\n    const errText = await res.text();\n    errors.push(`Link analyses: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n  }\n} catch (e) {\n  errors.push(`Link analyses: ${e.message}`);\n}\n\n// Link channel_comparison_reports to project\ntry {\n  const res = await fetch(\n    `${supabaseUrl}/rest/v1/channel_comparison_reports?analysis_group_id=eq.${groupId}`,\n    {\n      method: \u0027PATCH\u0027,\n      headers: { ...sbHeaders, \u0027Prefer\u0027: \u0027return=minimal\u0027 },\n      body: JSON.stringify({ project_id: projectId })\n    }\n  );\n  linkedReport = res.ok;\n  if (!res.ok) {\n    const errText = await res.text();\n    errors.push(`Link report: HTTP ${res.status}: ${errText.slice(0, 100)}`);\n  }\n} catch (e) {\n  errors.push(`Link report: ${e.message}`);\n}\n\nreturn [{ json: { ...data, linked_analyses: linkedAnalyses, linked_report: linkedReport, link_errors: errors, failed: false } }];"
+                                                           }
+                                        },
+                                        {
+                                            "id":  "code-cpfa-log",
+                                            "name":  "Log Completed",
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             1740,
+                                                             400
+                                                         ],
+                                            "parameters":  {
+                                                               "mode":  "runOnceForAllItems",
+                                                               "jsCode":  "const data = $input.first().json;\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst sbHeaders = {\n  \u0027apikey\u0027: $env.SUPABASE_ANON_KEY,\n  \u0027Authorization\u0027: \u0027Bearer \u0027 + $env.SUPABASE_SERVICE_ROLE_KEY,\n  \u0027Content-Type\u0027: \u0027application/json\u0027\n};\n\ntry {\n  await fetch(supabaseUrl + \u0027/rest/v1/production_logs\u0027, {\n    method: \u0027POST\u0027,\n    headers: Object.assign({}, sbHeaders, { \u0027Prefer\u0027: \u0027return=minimal\u0027 }),\n    body: JSON.stringify({\n      project_id: data.project_id || null,\n      topic_id: null,\n      stage: \u0027create_project_from_analysis\u0027,\n      scene_number: null,\n      action: \u0027completed\u0027,\n      status: \u0027success\u0027,\n      duration_ms: 0,\n      cost_usd: 0,\n      retry_count: 0\n    })\n  });\n} catch (_) {}\n\nif (data.project_id) {\n  try {\n    await fetch(supabaseUrl + \u0027/rest/v1/projects?id=eq.\u0027 + data.project_id, {\n      method: \u0027PATCH\u0027,\n      headers: Object.assign({}, sbHeaders, { \u0027Prefer\u0027: \u0027return=minimal\u0027 }),\n      body: JSON.stringify({ status: \u0027ready_for_topics\u0027, updated_at: new Date().toISOString() })\n    });\n  } catch (_) {}\n}\n\nreturn [{ json: {\n  success: true,\n  project_id: data.project_id,\n  analysis_group_id: data.analysis_group_id,\n  seeded_competitors: data.seeded_competitors || 0,\n  seeded_styles: data.seeded_styles || 0,\n  linked_analyses: data.linked_analyses || false,\n  linked_report: data.linked_report || false\n} }];"
+                                                           }
+                                        }
+                                    ],
+                          "connections":  {
+                                              "Webhook Trigger":  {
+                                                                      "main":  [
+                                                                                   [
+                                                                                       {
+                                                                                           "node":  "Validate \u0026 Auth",
+                                                                                           "type":  "main",
+                                                                                           "index":  0
+                                                                                       }
+                                                                                   ]
+                                                                               ]
+                                                                  },
+                                              "Validate \u0026 Auth":  {
+                                                                           "main":  [
+                                                                                        [
+                                                                                            {
+                                                                                                "node":  "Fetch Data",
+                                                                                                "type":  "main",
+                                                                                                "index":  0
+                                                                                            }
+                                                                                        ]
+                                                                                    ]
+                                                                       },
+                                              "Fetch Data":  {
+                                                                 "main":  [
+                                                                              [
+                                                                                  {
+                                                                                      "node":  "Create Project",
+                                                                                      "type":  "main",
+                                                                                      "index":  0
+                                                                                  }
+                                                                              ]
+                                                                          ]
+                                                             },
+                                              "Create Project":  {
+                                                                     "main":  [
+                                                                                  [
+                                                                                      {
+                                                                                          "node":  "Respond To Webhook",
+                                                                                          "type":  "main",
+                                                                                          "index":  0
+                                                                                      },
+                                                                                      {
+                                                                                          "node":  "Seed Competitors",
+                                                                                          "type":  "main",
+                                                                                          "index":  0
+                                                                                      }
+                                                                                  ]
+                                                                              ]
+                                                                 },
+                                              "Seed Competitors":  {
+                                                                       "main":  [
+                                                                                    [
+                                                                                        {
+                                                                                            "node":  "Seed Style DNA",
+                                                                                            "type":  "main",
+                                                                                            "index":  0
+                                                                                        }
+                                                                                    ]
+                                                                                ]
+                                                                   },
+                                              "Seed Style DNA":  {
+                                                                     "main":  [
+                                                                                  [
+                                                                                      {
+                                                                                          "node":  "Link Analyses",
+                                                                                          "type":  "main",
+                                                                                          "index":  0
+                                                                                      }
+                                                                                  ]
+                                                                              ]
+                                                                 },
+                                              "Link Analyses":  {
+                                                                    "main":  [
+                                                                                 [
+                                                                                     {
+                                                                                         "node":  "Log Completed",
+                                                                                         "type":  "main",
+                                                                                         "index":  0
+                                                                                     }
+                                                                                 ]
+                                                                             ]
+                                                                }
+                                          },
+                          "authors":  "Akinwunmi Akinrimisi",
+                          "name":  null,
+                          "description":  null,
+                          "autosaved":  false,
+                          "workflowPublishHistory":  [
+                                                         {
+                                                             "createdAt":  "2026-05-07T04:31:49.163Z",
+                                                             "id":  3867,
+                                                             "workflowId":  "jU9VEw5SaKEHjvUn",
+                                                             "versionId":  "7223e46c-64e3-4f26-97b1-ebdffcc9c135",
+                                                             "event":  "activated",
+                                                             "userId":  "ab010feb-355c-4130-b354-4e929908258e"
+                                                         }
+                                                     ]
+                      }
 }

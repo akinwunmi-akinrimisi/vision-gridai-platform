@@ -64,3 +64,6 @@ Thumbs.db
 # MkDocs build output
 docs-site/site/
 docs-site/.cache/
+
+# n8n workflow backups (created before deactivate→PUT→reactivate cycles)
+.n8n-backups/
