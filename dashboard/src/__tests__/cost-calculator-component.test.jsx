@@ -203,7 +203,7 @@ describe('CostCalculator component', () => {
   it('displays model pricing info at the bottom', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByText(/Seedream 4.5/)).toBeTruthy();
+      expect(screen.getByText(/FLUX Schnell \+ GPT-5 Image/)).toBeTruthy();
       expect(screen.getByText(/Seedance 2.0 Fast/)).toBeTruthy();
     });
   });

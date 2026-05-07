@@ -4,10 +4,11 @@ import { computeCostOption, IMAGE_COST, VIDEO_COST, RATIO_OPTIONS } from '../hoo
 /* ================================================================== *
  *  Cost calculation tests for the hybrid image/video pipeline.       *
  *                                                                    *
- *  Pricing:                                                          *
+ *  Pricing (2026-05-07 hybrid routing — see useCostCalculator.js):   *
  *    Script:   $1.80 flat (3-pass generation)                        *
  *    TTS:      sceneCount x $0.002                                   *
- *    Images:   sceneCount x $0.04 (Seedream 4.5)                     *
+ *    Images:   sceneCount x $0.0093 BLENDED                          *
+ *      (85% photo @ FLUX Schnell $0.003 + 15% text @ GPT-5 $0.045)   *
  *    I2V:      videoCount x $2.419 (Seedance 2.0 Fast, 10s clip)    *
  *    Assembly: $0.06 flat (Ken Burns + color + music + end card)     *
  *                                                                    *
@@ -18,8 +19,9 @@ import { computeCostOption, IMAGE_COST, VIDEO_COST, RATIO_OPTIONS } from '../hoo
 // ── Constants validation ───────────────────────────────────────────
 
 describe('Cost constants', () => {
-  it('IMAGE_COST is $0.04 (Seedream 4.5)', () => {
-    expect(IMAGE_COST).toBe(0.04);
+  it('IMAGE_COST is the blended hybrid estimate (FLUX Schnell + GPT-5 Image)', () => {
+    // 85% non-text * $0.003 + 15% text * $0.045 = 0.00255 + 0.00675 = 0.0093
+    expect(IMAGE_COST).toBeCloseTo(0.0093, 4);
   });
 
   it('VIDEO_COST is $2.419 (Seedance 2.0 Fast, 10s clip)', () => {
@@ -31,10 +33,10 @@ describe('Cost constants', () => {
   });
 
   it('RATIO_OPTIONS labels and ratios are correct', () => {
-    expect(RATIO_OPTIONS[0]).toEqual({ label: '100% / 0%', imageRatio: 1.0, videoRatio: 0.0 });
-    expect(RATIO_OPTIONS[1]).toEqual({ label: '95% / 5%', imageRatio: 0.95, videoRatio: 0.05 });
-    expect(RATIO_OPTIONS[2]).toEqual({ label: '90% / 10%', imageRatio: 0.90, videoRatio: 0.10 });
-    expect(RATIO_OPTIONS[3]).toEqual({ label: '85% / 15%', imageRatio: 0.85, videoRatio: 0.15 });
+    expect(RATIO_OPTIONS[0]).toMatchObject({ label: '100% / 0%', imageRatio: 1.0, videoRatio: 0.0 });
+    expect(RATIO_OPTIONS[1]).toMatchObject({ label: '95% / 5%', imageRatio: 0.95, videoRatio: 0.05 });
+    expect(RATIO_OPTIONS[2]).toMatchObject({ label: '90% / 10%', imageRatio: 0.90, videoRatio: 0.10 });
+    expect(RATIO_OPTIONS[3]).toMatchObject({ label: '85% / 15%', imageRatio: 0.85, videoRatio: 0.15 });
   });
 });
 
@@ -42,45 +44,46 @@ describe('Cost constants', () => {
 
 describe('computeCostOption — ratio calculations (172 scenes)', () => {
   const SCENE_COUNT = 172;
+  const expectedImageCost = SCENE_COUNT * IMAGE_COST;
 
-  it('100/0 ratio: 172 images ($6.88) + 0 clips ($0.00) = $6.88 media', () => {
+  it('100/0 ratio: 172 hybrid images + 0 clips', () => {
     const result = computeCostOption(SCENE_COUNT, RATIO_OPTIONS[0]);
 
     expect(result.imageCount).toBe(172);
     expect(result.videoCount).toBe(0); // Math.round(172 * 0.0) = 0
-    expect(result.imageCost).toBeCloseTo(6.88, 2);
+    expect(result.imageCost).toBeCloseTo(expectedImageCost, 4);
     expect(result.videoCost).toBeCloseTo(0.0, 2);
-    expect(result.totalCost).toBeCloseTo(6.88, 2);
+    expect(result.totalCost).toBeCloseTo(expectedImageCost, 4);
   });
 
-  it('95/5 ratio: 172 images ($6.88) + 9 clips ($21.77) = $28.65 media', () => {
+  it('95/5 ratio: 172 hybrid images + 9 clips ($21.77)', () => {
     const result = computeCostOption(SCENE_COUNT, RATIO_OPTIONS[1]);
 
     expect(result.imageCount).toBe(172);
     expect(result.videoCount).toBe(9); // Math.round(172 * 0.05) = 9
-    expect(result.imageCost).toBeCloseTo(6.88, 2);
+    expect(result.imageCost).toBeCloseTo(expectedImageCost, 4);
     expect(result.videoCost).toBeCloseTo(21.77, 2); // 9 * 2.419 = 21.771
-    expect(result.totalCost).toBeCloseTo(28.65, 2);
+    expect(result.totalCost).toBeCloseTo(expectedImageCost + 21.771, 2);
   });
 
-  it('90/10 ratio: 172 images ($6.88) + 17 clips ($41.12) = $48.00 media', () => {
+  it('90/10 ratio: 172 hybrid images + 17 clips ($41.12)', () => {
     const result = computeCostOption(SCENE_COUNT, RATIO_OPTIONS[2]);
 
     expect(result.imageCount).toBe(172);
     expect(result.videoCount).toBe(17); // Math.round(172 * 0.10) = 17
-    expect(result.imageCost).toBeCloseTo(6.88, 2);
+    expect(result.imageCost).toBeCloseTo(expectedImageCost, 4);
     expect(result.videoCost).toBeCloseTo(41.12, 2); // 17 * 2.419 = 41.123
-    expect(result.totalCost).toBeCloseTo(48.00, 2);
+    expect(result.totalCost).toBeCloseTo(expectedImageCost + 41.123, 2);
   });
 
-  it('85/15 ratio: 172 images ($6.88) + 26 clips ($62.89) = $69.77 media', () => {
+  it('85/15 ratio: 172 hybrid images + 26 clips ($62.89)', () => {
     const result = computeCostOption(SCENE_COUNT, RATIO_OPTIONS[3]);
 
     expect(result.imageCount).toBe(172);
     expect(result.videoCount).toBe(26); // Math.round(172 * 0.15) = 26
-    expect(result.imageCost).toBeCloseTo(6.88, 2);
+    expect(result.imageCost).toBeCloseTo(expectedImageCost, 4);
     expect(result.videoCost).toBeCloseTo(62.89, 2); // 26 * 2.419 = 62.894
-    expect(result.totalCost).toBeCloseTo(69.77, 2);
+    expect(result.totalCost).toBeCloseTo(expectedImageCost + 62.894, 2);
   });
 });
 
@@ -90,9 +93,9 @@ describe('computeCostOption — custom scene counts', () => {
 
     expect(result.imageCount).toBe(100);
     expect(result.videoCount).toBe(10); // Math.round(100 * 0.10) = 10
-    expect(result.imageCost).toBeCloseTo(4.00, 2); // 100 * 0.04
+    expect(result.imageCost).toBeCloseTo(100 * IMAGE_COST, 4);
     expect(result.videoCost).toBeCloseTo(24.19, 2); // 10 * 2.419
-    expect(result.totalCost).toBeCloseTo(28.19, 2);
+    expect(result.totalCost).toBeCloseTo(100 * IMAGE_COST + 24.19, 2);
   });
 
   it('zero scenes produces $0 media cost for all ratios', () => {
@@ -110,9 +113,9 @@ describe('computeCostOption — custom scene counts', () => {
     const result = computeCostOption(1, RATIO_OPTIONS[3]);
     expect(result.imageCount).toBe(1);
     expect(result.videoCount).toBe(0); // Math.round(1 * 0.15) = 0
-    expect(result.imageCost).toBeCloseTo(0.04, 2);
+    expect(result.imageCost).toBeCloseTo(IMAGE_COST, 4);
     expect(result.videoCost).toBe(0);
-    expect(result.totalCost).toBeCloseTo(0.04, 2);
+    expect(result.totalCost).toBeCloseTo(IMAGE_COST, 4);
   });
 
   it('200 scenes at 95/5 ratio: 10 video clips', () => {
@@ -123,10 +126,9 @@ describe('computeCostOption — custom scene counts', () => {
 });
 
 describe('computeCostOption — precision and rounding', () => {
-  it('image cost per scene is exactly $0.04', () => {
+  it('image cost per scene equals IMAGE_COST blended estimate', () => {
     const result = computeCostOption(1, RATIO_OPTIONS[0]);
     expect(result.imageCost).toBe(IMAGE_COST);
-    expect(result.imageCost).toBe(0.04);
   });
 
   it('I2V clip cost is exactly $2.419', () => {

@@ -76,7 +76,7 @@ export default function CostEstimateDialog({
                 <span className="tabular-nums font-medium">${ttsCost.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Images ({imagesCount} x Seedream 4.0)</span>
+                <span className="text-muted-foreground">Images ({imagesCount} x FLUX/GPT-5 hybrid)</span>
                 <span className="tabular-nums font-medium">${imagesCost.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">

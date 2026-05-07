@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Image, Film, DollarSign, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCostCalculator, IMAGE_COST, VIDEO_COST } from '../../hooks/useCostCalculator';
+import { useCostCalculator, IMAGE_COST, IMAGE_COST_PHOTO, IMAGE_COST_TEXT, TEXT_SCENE_RATIO, VIDEO_COST } from '../../hooks/useCostCalculator';
 import { cn } from '@/lib/utils';
 
 /**
@@ -160,11 +160,11 @@ export default function CostCalculator({ topicId, projectId, sceneCount: sceneCo
         })}
       </div>
 
-      {/* Model info */}
+      {/* Model info — hybrid image routing (production_log records actual model + cost per scene) */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1" title={`Per scene: photo (${(100 - TEXT_SCENE_RATIO * 100).toFixed(0)}%) FLUX Schnell $${IMAGE_COST_PHOTO.toFixed(3)} · text (${(TEXT_SCENE_RATIO * 100).toFixed(0)}%) GPT-5 Image $${IMAGE_COST_TEXT.toFixed(3)}`}>
           <Image className="w-3 h-3" />
-          Seedream 4.5 (${IMAGE_COST.toFixed(2)}/img)
+          FLUX Schnell + GPT-5 Image (~${IMAGE_COST.toFixed(4)}/img blended)
         </span>
         <span className="flex items-center gap-1">
           <Film className="w-3 h-3" />

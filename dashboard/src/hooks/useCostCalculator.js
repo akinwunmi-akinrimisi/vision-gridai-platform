@@ -4,9 +4,20 @@ import { toast } from 'sonner';
 
 /**
  * Cost constants for the hybrid image/video pipeline.
- * Seedream 4.5 for images, Seedance 2.0 Fast for video clips.
+ *
+ * Image generation routes per-scene in WF_SCENE_IMAGE_PROCESSOR (2026-05-01 v3):
+ *   requires_text_rendering OR keyword match -> openai/gpt-5-image-mini ($0.045/img)
+ *                                                fallback gemini-3-pro ($0.069/img)
+ *   else                                     -> fal-ai/flux/schnell ($0.003/img)
+ *
+ * IMAGE_COST is a BLENDED estimate using TEXT_SCENE_RATIO (default 15%) — actual
+ * spend per scene is recorded on scenes.image_cost_usd at gen-time.
+ * Video clips: Seedance 2.0 Fast (10s clip @ 720p, $2.419/clip).
  */
-const IMAGE_COST = 0.04;
+const IMAGE_COST_PHOTO = 0.003;   // fal-ai/flux/schnell (no-text scenes)
+const IMAGE_COST_TEXT = 0.045;    // openai/gpt-5-image-mini (text-in-image scenes)
+const TEXT_SCENE_RATIO = 0.15;    // estimated % of scenes needing text rendering
+const IMAGE_COST = (1 - TEXT_SCENE_RATIO) * IMAGE_COST_PHOTO + TEXT_SCENE_RATIO * IMAGE_COST_TEXT;
 const VIDEO_COST = 2.419;
 
 /**
@@ -166,4 +177,4 @@ export function useCostCalculator(topicId, projectId) {
   };
 }
 
-export { IMAGE_COST, VIDEO_COST, RATIO_OPTIONS };
+export { IMAGE_COST, IMAGE_COST_PHOTO, IMAGE_COST_TEXT, TEXT_SCENE_RATIO, VIDEO_COST, RATIO_OPTIONS };

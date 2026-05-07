@@ -87,7 +87,7 @@ const ASSET_STAGES = [
     color: 'text-success',
     bgColor: 'bg-success/10',
     statusField: 'image_status',
-    description: 'Seedream 4.0 image generation',
+    description: 'FLUX Schnell / GPT-5 Image (hybrid routing)',
     appliesTo: 'all',
   },
   {
