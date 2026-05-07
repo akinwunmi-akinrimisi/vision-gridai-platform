@@ -1,16 +1,23 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'sonner';
-import { queryClient } from './lib/queryClient';
+import { queryClient, queryPersister, QUERY_CACHE_KEY } from './lib/queryClient';
 import App from './App';
 import './styles/globals.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: queryPersister,
+        maxAge: 24 * 60 * 60 * 1000,
+        buster: QUERY_CACHE_KEY,
+      }}
+    >
       <BrowserRouter>
         <App />
         <Toaster
@@ -26,6 +33,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         />
       </BrowserRouter>
       <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </React.StrictMode>
 );
