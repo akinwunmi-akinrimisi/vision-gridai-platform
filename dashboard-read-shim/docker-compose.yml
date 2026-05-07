@@ -1,0 +1,35 @@
+# dashboard-read-shim — sub-second replacement for the WF_DASHBOARD_READ
+# n8n hop. Co-resident with n8n on n8n_n8n_network so the dashboard nginx
+# container can reach it via DNS name `dashboard-read:3030`.
+#
+# Deployment: scp this directory to /docker/dashboard-read/, then
+#   cd /docker/dashboard-read && docker compose up -d --build
+#
+# Env file `/docker/dashboard-read/.env` holds:
+#   SUPABASE_URL=https://supabase.operscale.cloud
+#   SUPABASE_ANON_KEY=...
+#   SUPABASE_SERVICE_ROLE_KEY=...
+#   DASHBOARD_API_TOKEN=4543f08f...   (same token nginx injects)
+
+services:
+  dashboard-read:
+    build: .
+    image: dashboard-read-shim:latest
+    container_name: dashboard-read
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3030
+      NODE_ENV: production
+    networks:
+      - n8n_n8n_network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3030/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+networks:
+  n8n_n8n_network:
+    external: true

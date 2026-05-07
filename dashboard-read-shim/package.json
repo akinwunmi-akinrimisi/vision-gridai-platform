@@ -1,0 +1,17 @@
+{
+  "name": "vision-gridai-dashboard-read-shim",
+  "version": "1.0.0",
+  "description": "Sub-second drop-in replacement for the WF_DASHBOARD_READ n8n shim. Same {query, params} contract; ports the entire Dispatch Query logic to a tiny Node Express service so reads no longer pay n8n's 1-2s per-call overhead.",
+  "private": true,
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
