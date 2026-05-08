@@ -107,7 +107,7 @@ export default function ProductionMonitor() {
 
   const currentTopic = activeTopic || stoppedTopic || lastCompletedTopic;
 
-  const { scenes, stageProgress, failedScenes: hookFailedScenes, isLoading: scenesLoading } =
+  const { scenes, segments, usesSegments, stageProgress, failedScenes: hookFailedScenes, isLoading: scenesLoading } =
     useProductionProgress(currentTopic?.id || null, currentTopic);
   const { logs } = useProductionLog(currentTopic?.id || null);
 
@@ -489,7 +489,7 @@ export default function ProductionMonitor() {
 
           {/* DotGrid */}
           {scenes.length > 0 && (
-            <DotGrid scenes={scenes} onSceneClick={setSelectedScene} />
+            <DotGrid scenes={scenes} segments={segments} usesSegments={usesSegments} onSceneClick={setSelectedScene} />
           )}
 
           {/* Failed Scenes */}

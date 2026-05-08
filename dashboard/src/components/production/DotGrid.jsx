@@ -44,7 +44,7 @@ const LEGEND = [
   { label: 'Skipped', color: 'bg-muted-foreground' },
 ];
 
-export default function DotGrid({ scenes = [], onSceneClick }) {
+export default function DotGrid({ scenes = [], segments = null, usesSegments = false, onSceneClick }) {
   const [hoveredScene, setHoveredScene] = useState(null);
 
   const chapters = scenes.reduce((acc, scene) => {
@@ -54,26 +54,38 @@ export default function DotGrid({ scenes = [], onSceneClick }) {
     return acc;
   }, {});
 
+  // Audio + clip counts stay scene-keyed (audio is per-scene, scene-level clip is final concat).
   const audioCount = scenes.filter((s) => s.audio_status === 'uploaded' || s.audio_status === 'generated').length;
-  const imageCount = scenes.filter((s) => s.image_status === 'uploaded' || s.image_status === 'generated').length;
   const clipCount = scenes.filter((s) => s.clip_status === 'complete' || s.clip_status === 'uploaded').length;
   const failedCount = scenes.filter(
     (s) => s.audio_status === 'failed' || s.image_status === 'failed' || s.video_status === 'failed'
   ).length;
 
+  // Image count flips to segment-level when segments are provided.
+  // Pre-segments topics: count scenes whose image_status === 'uploaded'.
+  // Segmented topics: count uploaded segments (denominator becomes total segments, e.g. 956).
+  const segmentMode = usesSegments && Array.isArray(segments) && segments.length > 0;
+  const imageCount = segmentMode
+    ? segments.filter((s) => s.image_status === 'uploaded' || s.image_status === 'generated').length
+    : scenes.filter((s) => s.image_status === 'uploaded' || s.image_status === 'generated').length;
+  const imageTotal = segmentMode ? segments.length : scenes.length;
+
   // Show progress for the current active stage
-  let activeStageLabel, activeStageCount, pct;
-  if (clipCount > 0 || (audioCount >= scenes.length && imageCount >= scenes.length)) {
+  let activeStageLabel, activeStageCount, activeStageTotal, pct;
+  if (clipCount > 0 || (audioCount >= scenes.length && imageCount >= imageTotal)) {
     activeStageLabel = 'assembled';
     activeStageCount = clipCount;
+    activeStageTotal = scenes.length;
     pct = scenes.length > 0 ? Math.round((clipCount / scenes.length) * 100) : 0;
   } else if (imageCount > 0 || audioCount >= scenes.length) {
-    activeStageLabel = 'images generated';
+    activeStageLabel = segmentMode ? 'segments generated' : 'images generated';
     activeStageCount = imageCount;
-    pct = scenes.length > 0 ? Math.round((imageCount / scenes.length) * 100) : 0;
+    activeStageTotal = imageTotal;
+    pct = imageTotal > 0 ? Math.round((imageCount / imageTotal) * 100) : 0;
   } else {
     activeStageLabel = 'audio generated';
     activeStageCount = audioCount;
+    activeStageTotal = scenes.length;
     pct = scenes.length > 0 ? Math.round((audioCount / scenes.length) * 100) : 0;
   }
 
@@ -86,7 +98,7 @@ export default function DotGrid({ scenes = [], onSceneClick }) {
           <h3 className="text-sm font-semibold">Scene Progress</h3>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 text-2xs text-muted-foreground tabular-nums">
-          <span>{activeStageCount}/{scenes.length} {activeStageLabel}</span>
+          <span>{activeStageCount}/{activeStageTotal} {activeStageLabel}</span>
           {failedCount > 0 && (
             <span className="text-danger">{failedCount} failed</span>
           )}
