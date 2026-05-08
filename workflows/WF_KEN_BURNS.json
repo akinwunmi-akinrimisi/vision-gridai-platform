@@ -290,6 +290,20 @@
         },
         "options": {}
       }
+    },
+    {
+      "id": "dedupe-fire-assembly",
+      "name": "Dedupe Fire Assembly",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        450
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Collapse N items (one per processed scene/segment) into ONE so Fire Assembly fires once.\nconst items = $input.all();\nif (items.length === 0) return [];\nreturn [items[0]];"
+      }
     }
   ],
   "connections": {
@@ -414,6 +428,17 @@
       ]
     },
     "Update Topic Stage": {
+      "main": [
+        [
+          {
+            "node": "Dedupe Fire Assembly",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe Fire Assembly": {
       "main": [
         [
           {
