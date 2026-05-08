@@ -122,7 +122,10 @@ describe('CostCalculator component', () => {
   it('shows correct scene count in header', async () => {
     renderComponent({ sceneCount: 172 });
     await waitFor(() => {
-      expect(screen.getByText(/172 scenes detected/)).toBeTruthy();
+      // Header now reads "172 scenes" (no longer "detected"). Optional segment
+      // suffix only appears when segmentCount > sceneCount, which requires the
+      // hook's scenes fetch to have resolved with emotional_beat data.
+      expect(screen.getByText(/172 scenes/)).toBeTruthy();
     });
   });
 

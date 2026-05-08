@@ -41,10 +41,66 @@ const RATIO_OPTIONS = [
 ];
 
 /**
- * Compute cost breakdown for a given ratio option and scene count.
+ * Variable-pace segment targets per emotional_beat — must stay in sync with
+ * WF_BUILD_SEGMENTS.targetSecondsForBeat() (id BYdbUw8xSA6YQEpA, Code L25-30).
+ * Each scene rotates a new image every N seconds where N depends on the beat.
  */
-export function computeCostOption(sceneCount, option) {
-  const imageCount = sceneCount;
+const TARGET_SEC_BY_BEAT = {
+  data: 5,
+  revelation: 5,
+  hook: 8,
+  tension: 8,
+  story: 8,
+  resolution: 12,
+  transition: 12,
+};
+const DEFAULT_TARGET_SEC = 8;
+const WPM = 150;
+
+/**
+ * Project total image count = sum of segments across all scenes.
+ *
+ * Each scene's audio_duration_sec is either (a) the actual scene.audio_duration_ms
+ * once TTS has run, or (b) estimated from the scene's narration word count at
+ * 150 wpm if TTS is still pending. Per-scene segment count is then
+ *   N = ceil(audio_sec / TARGET_SEC_BY_BEAT[scene.emotional_beat])
+ * and total imageCount = Σ N. This matches WF_BUILD_SEGMENTS exactly.
+ *
+ * Fallback if scenes data isn't available: degrade gracefully to scene_count
+ * (legacy 1-image-per-scene assumption — rare; only happens if the hook fires
+ * before the scenes table is queryable).
+ */
+export function projectSegmentCount(scenes, fallbackSceneCount) {
+  if (!Array.isArray(scenes) || scenes.length === 0) {
+    return fallbackSceneCount || 0;
+  }
+  let total = 0;
+  for (const s of scenes) {
+    const target = TARGET_SEC_BY_BEAT[s.emotional_beat] || DEFAULT_TARGET_SEC;
+    let audioSec;
+    if (s.audio_duration_ms && s.audio_duration_ms > 0) {
+      audioSec = s.audio_duration_ms / 1000;
+    } else {
+      const wordCount = s.narration_text ? s.narration_text.trim().split(/\s+/).filter(Boolean).length : 0;
+      audioSec = wordCount > 0 ? (wordCount / WPM) * 60 : 0;
+    }
+    if (audioSec <= 0) {
+      total += 1;
+      continue;
+    }
+    total += Math.max(1, Math.ceil(audioSec / target));
+  }
+  return total;
+}
+
+/**
+ * Compute cost breakdown for a given ratio option, scene count, and projected
+ * segment count. Image count = segments (one image per scene_segment row in
+ * the live pipeline). Video count = ratio applied to scenes (videos remain
+ * scene-grain — they overlay the entire scene's audio, not per-segment).
+ */
+export function computeCostOption(sceneCount, option, segmentCount) {
+  const imageCount = segmentCount > 0 ? segmentCount : sceneCount;
   const videoCount = Math.round(sceneCount * option.videoRatio);
   const imageCost = imageCount * IMAGE_COST;
   const videoCost = videoCount * VIDEO_COST;
@@ -73,7 +129,7 @@ export function useCostCalculator(topicId, projectId) {
   const queryClient = useQueryClient();
 
   // Fetch topic to get scene_count and current cost selection state
-  const { data: topic, isLoading } = useQuery({
+  const { data: topic, isLoading: isLoadingTopic } = useQuery({
     queryKey: ['cost-calculator', topicId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -88,10 +144,30 @@ export function useCostCalculator(topicId, projectId) {
     enabled: !!topicId,
   });
 
-  const sceneCount = topic?.scene_count || 0;
+  // Fetch scenes' beat + narration so we can project segments. The cost
+  // calculator runs BEFORE TTS, so audio_duration_ms is usually NULL —
+  // projectSegmentCount() falls back to estimating audio from word count.
+  // Once TTS has run (resume scenarios), audio_duration_ms is the source of truth.
+  const { data: scenes, isLoading: isLoadingScenes } = useQuery({
+    queryKey: ['cost-calculator-scenes', topicId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('scenes')
+        .select('id, scene_number, emotional_beat, audio_duration_ms, narration_text')
+        .eq('topic_id', topicId)
+        .order('scene_number', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!topicId,
+  });
 
-  // Pre-compute all 4 options
-  const options = RATIO_OPTIONS.map((opt) => computeCostOption(sceneCount, opt));
+  const sceneCount = topic?.scene_count || 0;
+  const segmentCount = projectSegmentCount(scenes, sceneCount);
+  const isLoading = isLoadingTopic || isLoadingScenes;
+
+  // Pre-compute all 4 options using projected segment count for image cost
+  const options = RATIO_OPTIONS.map((opt) => computeCostOption(sceneCount, opt, segmentCount));
 
   // Confirm selection mutation
   const confirmMutation = useMutation({
@@ -179,6 +255,7 @@ export function useCostCalculator(topicId, projectId) {
   return {
     topic,
     sceneCount,
+    segmentCount,
     options,
     isLoading,
     confirmSelection: confirmMutation.mutate,
@@ -186,4 +263,4 @@ export function useCostCalculator(topicId, projectId) {
   };
 }
 
-export { IMAGE_COST, IMAGE_COST_PHOTO, IMAGE_COST_TEXT, TEXT_SCENE_RATIO, VIDEO_COST, RATIO_OPTIONS };
+export { IMAGE_COST, IMAGE_COST_PHOTO, IMAGE_COST_TEXT, TEXT_SCENE_RATIO, VIDEO_COST, RATIO_OPTIONS, TARGET_SEC_BY_BEAT };

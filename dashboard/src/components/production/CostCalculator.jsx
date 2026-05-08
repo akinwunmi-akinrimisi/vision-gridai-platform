@@ -19,6 +19,7 @@ export default function CostCalculator({ topicId, projectId, sceneCount: sceneCo
   const {
     topic,
     sceneCount: hookSceneCount,
+    segmentCount,
     options,
     isLoading,
     confirmSelection,
@@ -64,7 +65,8 @@ export default function CostCalculator({ topicId, projectId, sceneCount: sceneCo
           <div>
             <h3 className="text-sm font-bold">Select Media Cost Option</h3>
             <p className="text-2xs text-muted-foreground">
-              {sceneCount} scenes detected
+              {sceneCount} scenes
+              {segmentCount > sceneCount ? ` · ~${segmentCount} segments (5/8/12s by emotional beat)` : ''}
               {topic?.seo_title ? ` — ${topic.seo_title}` : ''}
             </p>
           </div>
@@ -114,7 +116,7 @@ export default function CostCalculator({ topicId, projectId, sceneCount: sceneCo
                 <div className="flex items-center gap-1.5 text-xs">
                   <Image className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                   <span className="text-muted-foreground">Images:</span>
-                  <span className="font-medium tabular-nums">{option.imageCount}</span>
+                  <span className="font-medium tabular-nums" title="One image per scene_segment (variable-pace 5/8/12s by emotional beat)">{option.imageCount}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs">
                   <Film className="w-3 h-3 text-muted-foreground flex-shrink-0" />
