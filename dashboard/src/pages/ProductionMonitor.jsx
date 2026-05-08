@@ -154,13 +154,16 @@ export default function ProductionMonitor() {
 
   const eta = useMemo(() => {
     if (!stageProgress || !elapsed || elapsed <= 0) return null;
-    const totalScenes = scenes.length || 1;
-    const doneScenes = scenes.filter(
-      (s) => s.clip_status === 'complete' || s.clip_status === 'uploaded'
-    ).length;
-    if (doneScenes === 0) return null;
-    return ((totalScenes - doneScenes) / doneScenes) * elapsed;
-  }, [stageProgress, elapsed, scenes]);
+    // Drive ETA off the slowest active stage. Under segments architecture,
+    // images/assembly stages report segment counts (956 not 132) — using
+    // stageProgress directly keeps the math consistent across both eras.
+    const candidates = ['images', 'assembly'].map((k) => stageProgress[k]).filter(Boolean);
+    const driver = candidates
+      .filter((s) => s.total > 0 && s.completed > 0 && s.completed < s.total)
+      .sort((a, b) => (a.completed / a.total) - (b.completed / b.total))[0];
+    if (!driver) return null;
+    return ((driver.total - driver.completed) / driver.completed) * elapsed;
+  }, [stageProgress, elapsed]);
 
   // Handlers
   const handleStartProduction = () => {
