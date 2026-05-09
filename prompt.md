@@ -1,121 +1,127 @@
-# Resume — variable-pace segments architecture (Task #12)
+# Resume — T1 captioned video DONE on VPS, blocked on n8n Drive 403 (2026-05-08 ~22:00 UTC)
 
-## Task list state at handoff (paused 2026-05-07 ~21:25 UTC, context 78%)
-- #8  ✅ completed — Image-relevance fix: anti-hallucination Visual Assignment + register prompts
-- #9  ✅ completed — Thumbnail: add scroll_stopper format matching Screenshot.png reference
-- #10 ✅ completed — Migration: scene_segments table for variable-pace image rotation
-- #11 ✅ completed — WF_BUILD_SEGMENTS: Haiku post-TTS step that splits scenes into 5/8/12s segments
-- #12 ⏳ in_progress — **Refactor image + Ken Burns + assembly to iterate scene_segments** ← RESUME HERE
-
-When the next session opens, recreate the task list with this single in-progress item:
+## TL;DR
+T1 (Coles-Woolworths, topic_id `ac60bc97-1f1a-4ab2-aca3-c8c8b5d74ddc`) full pipeline succeeded EXCEPT the final Drive upload of the captioned mp4. The captioned 2.62 GB file sits ready on VPS at:
 
 ```
-TaskCreate subject="Refactor image + Ken Burns + assembly to iterate scene_segments"
-   description="WF_TTS_AUDIO reroute → /production/build-segments. WF_IMAGE_GENERATION
-   dispatcher iterates scene_segments when uses_segments=true. WF_SCENE_IMAGE_PROCESSOR
-   accepts segment_id payload + PATCHes scene_segments. WF_KEN_BURNS SELECTs scene_segments
-   for clip building with segment.duration_ms. WF_CAPTIONS_ASSEMBLY Build Scene Clip
-   pre-concats per-segment kb_*.mp4 into scene-level video before audio merge."
-TaskUpdate status=in_progress
+/data/n8n-production/ac60bc97-1f1a-4ab2-aca3-c8c8b5d74ddc/final/Why_Australia_Cant_Feed_Itself__The_Coles-Woolworths_Stranglehold_Exposed.mp4
 ```
 
-## Goal
-Finish the 5-touch-point chain that lets new topics actually use the `scene_segments` rows produced by `WF_BUILD_SEGMENTS`. Until this chain is complete, the segmenter inserts rows but downstream image-gen / Ken Burns / assembly still iterates the legacy `scenes` table — so segments never get rendered.
+**Captions are burned in** (Courier Prime / NOIR style, libx264 CRF 18, loudnorm audio). FFmpeg finalized at 21:42 UTC. Caption-burn service log says "Caption burn complete: 2502.7 MB".
 
-## What's already shipped (do NOT redo)
-- ✅ Migration 041 — `paused` enum
-- ✅ Migration 042 (+ fixup + register01 finalize) — register prompts emit `requires_text_rendering`
-- ✅ Migration 043 (+ fixup) — anti-hallucination + `key_visual_anchor` in 5 register prompts + scenes.key_visual_anchor column
-- ✅ Migration 044 — `scene_segments` table, indexes, Realtime, scenes.uses_segments flag, topic telemetry
-- ✅ WF_SCRIPT_GENERATE — Build Visual Prompt + Build Scenes Array patched for anchor/anti-hallucination, pushed to n8n
-- ✅ WF_THUMBNAIL_GENERATE — `scroll_stopper` text_format added, alternating yellow/white rendering, dark slab + vertical divider, pushed to n8n. Matches Screenshot.png reference.
-- ✅ WF_BUILD_SEGMENTS — new workflow created (ID `BYdbUw8xSA6YQEpA`), active on n8n. Single-Code-node monolith. On webhook `/production/build-segments`: pulls scenes → picks 5/8/12s target by emotional_beat (data/revelation=5, hook/tension/story=8, resolution/transition=12) → splits narration proportionally → ONE Haiku batch call per topic for all per-segment prompts (+ key_visual_anchor + requires_text_rendering) → bulk inserts scene_segments → marks scenes.uses_segments=true → fires `/production/images`. Local file at `workflows/WF_BUILD_SEGMENTS.json`.
-- ✅ Image-relevance fix is FORWARD-ONLY: topic 4 (`a904bff1-2994-4a71-8a8c-5c47cdb1503c`) ALREADY SHIPPED, no retroactive regen.
+## The recurring blocker
+WF_DRIVE_UPLOAD (id `Pfu5DS1qqTl6wn9Q`) → `Upload to Drive` node returns **HTTP 403 from Google Drive API** on every attempt. User has re-authenticated `GoogleDriveAccount` credential (id `z0gigNHVnhcGz2pD`) and confirms **this is NOT an OAuth-expiry issue** — it has happened multiple sessions in a row, even immediately after re-auth, and even against folders that succeeded earlier the same day.
 
-## Read first (do this before patching anything)
-1. `memory/MEMORY.md` — top entry "Topic 4 SHIPPED" has the full context
-2. `memory/session_2026_05_07_topic4_shipped_recraft_routing_fix.md` — earlier session's wins
-3. `memory/session_2026_05_07_segments_architecture_partial.md` — THIS session's segment work
+Failed exec ids today (all 403'd from Drive): `129708 129719 129745 129765`.
 
-## Critical context
-- **Segments use audio as master clock.** Each segment's `duration_ms` sums exactly to its parent scene's `audio_duration_ms`. Captions burn over the final concat — sync is automatic.
-- **Forward-only.** Topic 4 stays on legacy 1-image-per-scene path. Any topic with `scenes.uses_segments=false` or NULL must continue working through the existing legacy chain.
-- **WF_BUILD_SEGMENTS currently fires `/production/images` on completion.** That endpoint hits WF_IMAGE_GENERATION which still iterates `scenes`. So today, the segments table gets populated but nothing actually consumes it.
+Don't burn time re-firing the workflow expecting different results. See [memory/feedback_n8n_drive_credential_recurring_403.md](../../.claude/projects/C--Users-DELL-Documents-Antigravity-vision-gridai-platform/memory/feedback_n8n_drive_credential_recurring_403.md) for hypotheses.
 
-## The 5 patches needed (in order)
+## Read first (don't skip)
+1. `memory/MEMORY.md` top entry — current blocker context
+2. `memory/feedback_n8n_drive_credential_recurring_403.md` — investigation hypotheses
+3. `memory/feedback_n8n_helpers_httprequest_unavailable.md` — the helpers.httpRequest gotcha
+4. Today's commits: `git log --oneline -10` — 8 commits all shipped
 
-### Patch 1 — WF_TTS_AUDIO: route TTS-complete to build-segments
-File: `workflows/WF_TTS_AUDIO.json`
-Node: `fire-images-workflow` (also rename to `Fire Build Segments`)
-Change: URL `{{ $env.N8N_WEBHOOK_BASE }}/production/images` → `{{ $env.N8N_WEBHOOK_BASE }}/production/build-segments`
-Mirror change in `activeVersion.nodes` if present.
+## Continuation runbook
 
-### Patch 2 — WF_IMAGE_GENERATION: iterate segments when uses_segments=true
-File: `workflows/WF_IMAGE_GENERATION.json`
-Affected: BOTH dispatcher Code nodes at lines 271 + 1019 (and their mirrors in activeVersion.nodes).
-Change: BEFORE the `for (const scene of scenes)` loop, query `scene_segments WHERE scene_id IN (...)` for any scene with `uses_segments=true`. Iterate segments and fire to NEW endpoint `/process-segment/image` with payload `{segment_id, scene_id, scene_number, segment_number, image_prompt, requires_text_rendering, composition_prefix, color_mood, zoom_direction, register_id, negative_prompt, topic_id, project_id}`. For scenes with `uses_segments=false`, keep firing `/process-scene/image` (legacy).
-Also extend the `Get Pending Scenes` SELECT to add `uses_segments` column.
+### Step 1 — Investigate the credential before re-firing
+Re-firing won't fix this. Pick ONE of:
 
-### Patch 3 — WF_SCENE_IMAGE_PROCESSOR: handle segment_id payload
-File: `workflows/WF_SCENE_IMAGE_PROCESSOR.json`
-Add a new webhook trigger at path `process-segment/image` (or modify existing `process-scene/image` to dispatch on `body.segment_id`).
-Generate Scene Image Code node (v4 → v5): if `body.segment_id` is present, PATCH `scene_segments?id=eq.{segment_id}` instead of `scenes?id=eq.{scene_id}`. Update `image_url`, `image_model`, `image_cost_usd`, `image_status='uploaded'`, `image_drive_id`. Other behavior (Recraft V3 routing, retry-on-429, collision guard) stays.
+**1a. Check the Google account behind the cred**
+Open n8n UI → Settings → Credentials → `GoogleDriveAccount` → "Reconnect". The consent screen should show the email. Confirm:
+- That email is the OWNER of folder `1QiRzua151F4p3ClYlxQtDImaJcpNIOEI` (where the uncaptioned upload SUCCEEDED at 20:09 UTC today)
+- The granted scopes include `https://www.googleapis.com/auth/drive` (full Drive) NOT `drive.file` (limited to app-created files)
 
-### Patch 4 — WF_KEN_BURNS: produce per-segment clips when applicable
-File: `workflows/WF_KEN_BURNS.json` (ID `OYahvKcydMrUxK8j`)
-Change `Get Pending Scenes` SELECT to: `scene_segments?topic_id=eq.X&clip_status=eq.pending&image_url=not.is.null&select=id,scene_id,segment_number,start_offset_ms,duration_ms,image_url`.
-Build the per-segment Ken Burns clip with `duration_ms` (not the scene's audio_duration_ms — segments are silent). Output filename: `kb_<topic>_<scene_number>_<segment_number>.mp4`. PATCH `scene_segments` on completion (`clip_status='uploaded'`, `clip_url`).
-Backwards compat: when topic has no segments (`scenes.uses_segments=false`), keep legacy SELECT from `scenes` table.
-
-### Patch 5 — WF_CAPTIONS_ASSEMBLY: pre-concat segments per scene before audio merge
-File: `workflows/WF_CAPTIONS_ASSEMBLY.json` (ID `Fhdy66BLRh7rAwTi`)
-Build Scene Clip Code node: detect if scene has segments (`scene_segments WHERE scene_id=X count > 0`). If yes:
-1. Build a `seg_concat.txt` listing all `kb_<topic>_<scene>_<segment>.mp4` in segment_number order
-2. ffmpeg concat them into a temp scene-video (no audio): `kb_<topic>_<scene>.mp4`
-3. Existing flow continues — merge with `scene_<NNN>.mp3` audio, add fade in/out
-If no segments, use legacy `kb_<topic>_<NNN>.mp4` directly.
-
-## Push instructions for each patched workflow
-Use the `scp + curl` cycle (PowerShell HTTP mangles bytes — verified 2026-05-07):
-```powershell
-# 1. Build minimal PUT body
-$wf = Get-Content workflows/WF_X.json -Raw | ConvertFrom-Json
-$putBody = @{ name=$wf.name; nodes=$wf.nodes; connections=$wf.connections; settings=@{executionOrder='v1'} } | ConvertTo-Json -Depth 100
-$tmp = "C:\tmp\put_<wfId>.json"
-[System.IO.File]::WriteAllText($tmp, $putBody, (New-Object System.Text.UTF8Encoding $false))
-# 2. Deactivate, scp, PUT, activate
-ssh -i $key root@srv1297445.hstgr.cloud "curl -sS -X POST -H 'X-N8N-API-KEY: $n8nKey' -H 'Content-Length: 0' https://n8n.srv1297445.hstgr.cloud/api/v1/workflows/<wfId>/deactivate"
-scp -i $key $tmp root@srv1297445.hstgr.cloud:/tmp/put.json
-ssh -i $key root@srv1297445.hstgr.cloud "curl -s -w 'HTTP %{http_code}' -X PUT -H 'X-N8N-API-KEY: $n8nKey' -H 'Content-Type: application/json' --data-binary @/tmp/put.json https://n8n.srv1297445.hstgr.cloud/api/v1/workflows/<wfId>"
-ssh -i $key root@srv1297445.hstgr.cloud "curl -sS -X POST -H 'X-N8N-API-KEY: $n8nKey' -H 'Content-Length: 0' https://n8n.srv1297445.hstgr.cloud/api/v1/workflows/<wfId>/activate"
+**1b. Hard-restart n8n to bust any cred cache**
+```bash
+ssh -i ~/.ssh/id_ed25519_antigravity root@srv1297445.hstgr.cloud "docker restart n8n-n8n-1"
+# Wait for healthy, then re-fire (Step 2)
 ```
 
-Workflow IDs:
-- WF_TTS_AUDIO: `4L2j3aU2WGnfcvvj`
-- WF_IMAGE_GENERATION: `ScP3yoaeuK7BwpUo`
-- WF_SCENE_IMAGE_PROCESSOR: `Lik3MUT0E9a6JUum`
-- WF_KEN_BURNS: `OYahvKcydMrUxK8j`
-- WF_CAPTIONS_ASSEMBLY: `Fhdy66BLRh7rAwTi`
-- WF_BUILD_SEGMENTS: `BYdbUw8xSA6YQEpA`
+**1c. Try a brand-new credential**
+In n8n UI: create a new `googleDriveOAuth2Api` credential with a different name, OAuth a clean account. Then temporarily edit WF_DRIVE_UPLOAD's Upload to Drive node to use the new cred and re-fire.
 
-## Smoke test order (after all 5 patches)
-1. Pick a small fresh topic (or re-fire build-segments for a non-shipped topic)
-2. Manually fire `/webhook/production/build-segments {topic_id: ...}` (skip TTS for now)
-3. Verify scene_segments rows populate (~1400 for 142 scenes)
-4. Verify scenes.uses_segments=true
-5. Watch image_status flip to uploaded across segments (vs scenes)
-6. Watch clip_status flip via WF_KEN_BURNS
-7. Verify Build Scene Clip pre-concats correctly (look for kb_<topic>_<scene>_*.mp4 → kb_<topic>_<scene>.mp4)
-8. Final captioned mp4 lands on Drive with synced visuals
+### Step 2 — Re-fire upload (after 1a/1b/1c)
+```bash
+TID="ac60bc97-1f1a-4ab2-aca3-c8c8b5d74ddc"
+DFOLDER="1QiRzua151F4p3ClYlxQtDImaJcpNIOEI"  # subfolder.final — same one uncaptioned landed in
+TOKEN="$DASHBOARD_API_TOKEN"  # read from .env, never inline literal tokens in committed files
 
-## Open follow-ups deferred from earlier sessions
-- Delete OPS_* duplicate workflows permanently (deactivated but reactivate on n8n restart): `cQZc47GfASF4Vf03`, `ImcrmlyzjIGLRX58`, `FkDEUWLsSAllJGDY`, `J4x7cdF11GaTY4sF`, `YiM6EJv7qXgeuXvI`, `lbI4uo0fIaKsDe3s`, `kZh8H5L1oQvouDGX`, `ajdCDRkwFx9N9TzD`, `c90QWN48172ckqNP`
-- Re-enable WF_ASSEMBLY_WATCHDOG (`Exm836gCGtxNKOeD`) once it gates on `assembly_status='in_progress'`
-- Patch caption-burn service (`/opt/caption-burn/caption_burn_service.py` line ~140) to send `drive_folder_id` not `folder_id` when triggering `/webhook/drive-upload`
-- Remove WF_DRIVE_UPLOAD's hardcoded fallback folder ID `1NjhTfdPzEwtY29QhtN5fB3xj-ODkj_Xg` (file no longer exists in Drive — causes 404 on missing folder_id)
-- Delete topic 4 `_no_captions.mp4` backup at `/tmp/production/a904bff1-2994-4a71-8a8c-5c47cdb1503c/final/` (1.55 GB)
-- Commit all uncommitted local file changes from this and prior sessions:
-  - `supabase/migrations/041` `042` `042_fixup` `042_register01_finalize` `043` `043_fixup` `044`
-  - `workflows/WF_SCRIPT_GENERATE.json` `WF_IMAGE_GENERATION.json` `WF_SCENE_IMAGE_PROCESSOR.json` `WF_THUMBNAIL_GENERATE.json` `WF_BUILD_SEGMENTS.json`
-  - `dashboard/src/hooks/useCostCalculator.js` + ConfigTab + CostCalculator + CostEstimateDialog + TopicDetail + 2 test files
-  - `prompt.md` (this file)
+ssh -i ~/.ssh/id_ed25519_antigravity root@srv1297445.hstgr.cloud "
+curl -s -X POST 'https://n8n.srv1297445.hstgr.cloud/webhook/drive-upload' \
+  -H \"Authorization: Bearer $TOKEN\" \
+  -H 'Content-Type: application/json' \
+  --max-time 600 \
+  --data '{\"topic_id\":\"$TID\",\"file_url\":\"http://172.18.0.1:9999/$TID/final/Why_Australia_Cant_Feed_Itself__The_Coles-Woolworths_Stranglehold_Exposed.mp4\",\"file_name\":\"Why_Australia_Cant_Feed_Itself__The_Coles-Woolworths_Stranglehold_Exposed_CAPTIONED.mp4\",\"drive_folder_id\":\"$DFOLDER\"}' \
+  -w '\\nHTTP %{http_code}\\n'
+"
+
+# Then check exec status:
+curl -s -H "X-N8N-API-KEY: $N8N_API_KEY" "https://n8n.srv1297445.hstgr.cloud/api/v1/executions?workflowId=Pfu5DS1qqTl6wn9Q&limit=2"
+```
+
+### Step 3 (if Step 2 still 403s) — Bypass n8n entirely
+Two options:
+
+**3a. SCP off VPS + manual Drive web upload**
+```bash
+scp -i ~/.ssh/id_ed25519_antigravity \
+  root@srv1297445.hstgr.cloud:/data/n8n-production/ac60bc97-1f1a-4ab2-aca3-c8c8b5d74ddc/final/Why_Australia_Cant_Feed_Itself__The_Coles-Woolworths_Stranglehold_Exposed.mp4 \
+  ~/Downloads/
+# Then drag into Drive folder via web UI
+```
+
+**3b. Install gdrive CLI on VPS with a service account JSON**
+Faster long-term fix for all future uploads. Service account auth doesn't have OAuth-token-expiry issues.
+
+### Step 4 — After captioned mp4 is on Drive, finalize topic state
+Once the upload succeeds, PATCH topics.drive_video_url with the captioned URL:
+```bash
+NEW_URL="<the new captioned drive url>"
+curl -s -X PATCH "https://supabase.operscale.cloud/rest/v1/topics?id=eq.ac60bc97-1f1a-4ab2-aca3-c8c8b5d74ddc" \
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+  -d "{\"drive_video_url\":\"$NEW_URL\",\"status\":\"ready_review\"}" \
+  -w 'HTTP %{http_code}\n'
+```
+
+Also trigger thumbnail generation (didn't run because Trigger Caption Burn errored before chain continued):
+```bash
+curl -s -X POST "https://dashboard.operscale.cloud/webhook/production/thumbnail" \
+  -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"topic_id\":\"ac60bc97-1f1a-4ab2-aca3-c8c8b5d74ddc\"}" \
+  -w 'HTTP %{http_code}\n'
+```
+
+## What's safely shipped today (DO NOT roll back)
+| Commit | What |
+|---|---|
+| `9ceca3d` | Patch G — Ken Burns Fire Assembly dedupe (was firing 134 times) |
+| `8379a40` | Patch F2 — IMG_PROC scene rollup + live images_progress |
+| `3feac0a` | Dashboard DotGrid segment-aware (X/956 not X/132) |
+| `786a088` | Patches A2+B2 — dispatcher resume-safe |
+| `3e59f4f` | Dashboard segment-aware progress (useProductionProgress) |
+| `ea476ae` | 7 workflows fixed (this.helpers.httpRequest + execSync sleep) |
+| `91b000d` | prodorder.md MYNEW top-10 |
+| `1b8ed43` | Cost-calc segment projection |
+
+## Open follow-ups (deferred, in priority order)
+1. **DRIVE 403 root cause** — see runbook above. Until fixed, every long-form video will hit this same wall at the end.
+2. Set up `gdrive` CLI with a service account on VPS as a fallback path for uploads (eliminates OAuth as a failure mode).
+3. Audit other n8n Code nodes for `this.helpers.httpRequest` AND `execSync("sleep` patterns — only 7 fixed in `ea476ae`, but there are 154 active workflows.
+4. WF_KEN_BURNS' Build Scene Clip pre-concat IIFE silently fails when `_xs(ls ...)` errors — should fail loudly. Today we manually concatenated the scene-level kb files via `concat_scenes.sh`; that worked but root cause of the silent failure not fixed.
+5. WF_CAPTIONS_ASSEMBLY's "Fix Video MIME Type → Update Topic Assembled" branch is dead-end (no incoming connection) — that's why drive_video_url didn't auto-PATCH. We worked around it with manual PATCH. Permanent fix: wire it inline.
+6. Dashboard's `useProductionProgress` Realtime tests are stale (failing pre-existing 2 of 25) — not blocking.
+7. Mirror live WF_BUILD_SEGMENTS to repo (chunked Haiku version still uncommitted).
+
+## Approved-but-waiting topics (don't fire until T1 ships)
+T2, T3, T6, T7, T11, T13, T21, T22, T23 — all `review_status=approved` in MYNEW project. Production-order in `prodorder.md`.
+
+## Cost so far for T1
+- Image gen: $19.15 (438 Recraft + 517 Flux + 1 Ideogram fallback) over 956 segments
+- Script gen: ~$0.30 (Pass 1 + Pass 2 cached)
+- Audio (TTS): ~$3.31 across 132 scenes
+- Ken Burns + assembly + caption burn: $0 (all FFmpeg)
+- Drive storage: $0 (free tier)
+- **Total ~$22.76** for a 2hr documentary
