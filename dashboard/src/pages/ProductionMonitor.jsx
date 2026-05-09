@@ -68,7 +68,7 @@ export default function ProductionMonitor() {
     [topics]
   );
   const completedTopics = useMemo(
-    () => topics.filter((t) => t.status === 'assembled' || t.status === 'published').slice(-3).reverse(),
+    () => topics.filter((t) => t.status === 'assembled' || t.status === 'ready_review' || t.status === 'published').slice(-3).reverse(),
     [topics]
   );
   const scriptApprovedTopics = useMemo(
@@ -95,7 +95,7 @@ export default function ProductionMonitor() {
   // Fallback: if no actively producing/stopped topic, show most recently assembled/published topic
   const lastCompletedTopic = useMemo(() => {
     if (activeTopic || stoppedTopic) return null;
-    const finished = topics.filter((t) => t.status === 'assembled' || t.status === 'published');
+    const finished = topics.filter((t) => t.status === 'assembled' || t.status === 'ready_review' || t.status === 'published');
     if (finished.length === 0) return null;
     // Sort by updated_at descending, fall back to topic_number
     return finished.sort((a, b) => {
