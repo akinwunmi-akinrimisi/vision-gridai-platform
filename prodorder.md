@@ -15,14 +15,14 @@ All 10 topics: `review_status = approved`. Fire script-gen in this sequence.
 | 7 | T13 | `3bc784bc-2b24-422d-9ee3-cb82f4049438` | pending | 30 | Superannuation's Hidden Fees Are Destroying Your Retirement | 60ch perfect length. Power words. Solutions-led — the niche differentiator. Outlier 8 (real data, slight above avg). |
 | 8 | T23 | `1c9be252-3bc2-4999-b457-0852d9b97a30` | pending | 27 ▲ | Who REALLY Owns Australia? — Inside the Foreign Investment Web | **PPS-reworked 2026-05-11 (18→27, +9)**. Leads with "who owns Australia" high-volume query. Question hook + "Web" mystery framing. Playlist 5. |
 | 9 | T7 | `d0dfe2cb-dee3-4a5b-a158-e61776071750` | pending | 30 | Western Sydney's Infrastructure Trap — Why New Estates Are Economic Disasters | Geographic breadth (non-Melbourne). Diversifies Sydney-housing playlist. |
-| 10 | T3 | `ab499c65-7bf0-4cc0-ac24-d63720b59d70` | pending | 22 ▽ | The Australian Drought That Will Erase Entire Towns From the Map | **PPS-reworked 2026-05-11 (84ch→64ch, 30→22, -8)**. Adopted PPS's "erase from map" visceral framing but lost the "Water Wars" power phrase. Consider hybrid rework "Australia's Water Wars — Why the Next Drought Will Erase Entire Towns" (70ch) to recover SEO. |
+| 10 | T3 | `ab499c65-7bf0-4cc0-ac24-d63720b59d70` | pending | re-score pending | Australia's Water Wars — Why the Next Drought Will Erase Entire Towns | **PPS-reworked 2026-05-11 hybrid v2 (70ch)**. Keeps "Water Wars" power phrase + adopts PPS's "erase" visceral verb. SEO score pending — YT API quota exhausted during force re-score so all 11 topics temporarily show fallback 50; real scores from prior committed `ecd83e7` ranking still represent relative position. |
 
 ## 2026-05-11 PPS-rework summary
 
 | T# | Old SEO | New SEO | Δ | Verdict |
 |---|---|---|---|---|
 | T2 | 17 | 17 | 0 | No SEO lift — topic structurally narrow. Click-CTR improved with "Inside the X Crisis" frame. |
-| T3 | 30 | 22 | **-8** | Dropped — losing "Water Wars" hurt search match. Hybrid rework recommended. |
+| T3 | 30 | 22 → hybrid pending | **-8 → pending** | First rework lost "Water Wars". Hybrid v2 "Australia's Water Wars — Why the Next Drought Will Erase Entire Towns" PATCHed 2026-05-11 but force re-score exhausted YT quota; all 11 topics temporarily show fallback SEO=50. Real re-score requires YT quota reset (typically 24h). |
 | T11 | 14 | 35 | **+21** | Biggest win — high-volume keywords "retire in Australia" + "$1M" landed cleanly. |
 | T21 | 33 | 30 | -3 | Length fix (88ch→72ch) worth the small SEO trade. Lima Declaration kept as SEO tail. |
 | T23 | 18 | 27 | **+9** | "Who REALLY Owns Australia" hooks search demand cleanly. |
